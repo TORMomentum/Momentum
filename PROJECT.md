@@ -2,14 +2,13 @@
 
 > University group project — Software Design.
 > Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, Vertex AI.
-> ⚠ Team task: **print the project evaluation form and bring it to class Thursday.**
-> _v2 — revised after an independent AI cross-check (critique + audit, 22 findings folded in)._
+> _v2 — revised after internal review; 22 findings addressed._
 
 ---
 
 ## 1. Problem Statement
 
-Bangkok Metropolitan Administration (BMA — all agencies under Governor Chadchart) publishes
+Bangkok Metropolitan Administration (BMA) agencies publish
 procurement TORs (Terms of Reference) for projects, but they are scattered, hard to discover,
 and come in inconsistent formats (PDF text, scanned images, photos behind QR codes). As a result:
 
@@ -28,11 +27,11 @@ quality checklist on each TOR.
 - **Mode A — public TOR matching (MVP):** works from publicly announced TORs alone; no agency
   cooperation needed.
 - **Mode B — agency draft-TOR flow (stretch / simulated):** agencies upload *draft* TORs to reach
-  qualified vendors early. Real agency adoption is outside our control this semester, so we build it
-  and demo it with a simulated agency account.
+  qualified vendors early. Real agency adoption is outside the team's control this semester, so this
+  mode is built and demonstrated with a simulated agency account.
 
-**Known unknown:** there is *no real customer with a clear picture of what they want* — everything
-below is hypothesis until validated (Sprint 1 has explicit validation deliverables, §7).
+**Key assumption:** no committed external customer has validated these requirements yet — everything
+below is treated as a hypothesis until validated (Sprint 1 has explicit validation deliverables, §7).
 
 ---
 
@@ -62,21 +61,21 @@ payments/contracts · contract-award analysis beyond a coarse status label · mo
 | S3 | General public / citizens of Bangkok | User (read-only) | Transparency: what is procured, prices, anomalies | Low–Med (media pressure amplifies) | Medium | Public dashboard, no login |
 | S4 | Journalists / anti-corruption watchdogs (e.g. ACT) | Key validation user | Pricing anomalies + quality scores as investigation leads | Low | High | High-impact users for dashboard validation; export/share later |
 | S5 | BMA leadership / Governor's office | Sponsor (hypothetical) | Transparency agenda, public trust | High | Medium | The real "customer" if this were deployed; dashboard is their showcase |
-| S6 | Data source owners (BMA agency websites/announcement pages) | Supplier / operational chokepoint | Their pages are our only Mode-A input; a format change or block kills ingestion | **High (operational)** | Low | Isolate behind adapters; respect ToS; keep manual upload as the always-works fallback |
+| S6 | Data source owners (BMA agency websites/announcement pages) | Supplier / operational chokepoint | These pages are the only Mode-A input; a format change or block halts ingestion | **High (operational)** | Low | Isolate behind adapters; respect ToS; keep manual upload as the always-available fallback |
 | S7 | Regulators (Public Procurement Act B.E. 2560, PDPA) | Constraint | Lawful reuse of procurement data; PII in profiles AND inside TOR documents | High | Low | PDPA consent; PII redaction in displayed extractions; takedown/correction workflow |
 
 ### Delivery stakeholders (course context — kept separate from product analysis)
 
 | # | Stakeholder | Stake | Strategy |
 |---|-----------|-------|----------|
-| D1 | Course instructor / TA | Grading vs rubric; acts as customer proxy | Deliverables on time; validate assumptions with them; **evaluation form Thursday** |
-| D2 | Student team (us) | Ship within one semester; learn Scrum | Jira sprints, Discord standups, enforce scope cuts |
+| D1 | Course instructor / TA | Grading against rubric; acts as customer proxy | Deliverables on time; validate assumptions with them |
+| D2 | Student development team | Deliver within one semester; apply Scrum | Jira sprints, Discord standups, enforce scope cuts |
 
 **Power/interest summary:** manage closely S2, S5, D1 · keep satisfied S7, S6 (operationally) ·
 keep informed S1, S4 · monitor S3.
 
 **Conflict to watch:** anomaly flags and quality scores serve S3/S4/S5 but can embarrass individual
-agencies (S2) — the same officers whose data we need. Frame outputs as "statistical anomaly" and
+agencies (S2) — the same officers whose data the platform depends on. Frame outputs as "statistical anomaly" and
 "specification completeness," never as accusations of wrongdoing.
 
 ---
@@ -88,7 +87,7 @@ agencies (S2) — the same officers whose data we need. Frame outputs as "statis
 - **P2 — "Khun Somchai", procurement officer at a BMA district office.** Publishes TORs as scanned
   PDFs. Wants qualified bidders, minimal extra work.
 - **P3 — "Ploy", data journalist.** Wants per-agency spending views and anomaly leads.
-- **P4 — Admin (our team).** Keeps ingestion healthy, corrects bad extractions.
+- **P4 — Admin (platform operator).** Keeps ingestion healthy, corrects bad extractions.
 
 ---
 
@@ -147,7 +146,7 @@ Format: As a `<role>`, I want `<capability>` so that `<benefit>`. Acceptance cri
 
 ## 6. Functional Requirements
 
-Requirements are split **MVP** vs **Stretch** (audit finding: don't present stretch work as core).
+Requirements are split **MVP** vs **Stretch** so core scope is not conflated with aspirational work.
 
 ### FR-A: TOR Ingestion (MVP)
 - **FR-A1** Accept TOR input via file upload (PDF/JPG/PNG) and by URL.
@@ -204,8 +203,9 @@ Requirements are split **MVP** vs **Stretch** (audit finding: don't present stre
   announcement; each transition records timestamp, source, and actor (supports US-07 history).
 
 ### FR-F: AI Quality Checklist (Should — ship after extraction is solid)
-Reframed from "AI audit" (cross-check finding: judging vendor-locking/corruption needs domain
-expertise + historical data we don't have; overclaiming is a defamation risk).
+Deliberately scoped as a specification-quality checklist rather than an "AI audit": judging
+vendor-locking or corruption requires domain expertise and historical data beyond this project's
+scope, and overclaiming carries defamation risk.
 - **FR-F1** Heuristic, explainable checklist per TOR: budget present? deadline present and
   plausible (≥ X days)? scope specific (length/section heuristics)? qualifications stated with
   rationale? budget within peer-group norm (reuses FR-E2 rule)?
@@ -237,17 +237,17 @@ expertise + historical data we don't have; overclaiming is a defamation risk).
 | Feature | Stories | MoSCoW | Impact | Effort | Notes |
 |---------|---------|--------|--------|--------|-------|
 | TOR upload/URL ingestion + OCR extraction | US-05, US-12 | **Must** | High | High | Foundation. Vertex AI heavy lifting; benchmark accuracy first (NFR-1) |
-| Minimal admin review/correction queue | US-15 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR will fail; without it garbage goes live |
+| Minimal admin review/correction queue | US-15 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR errors are expected; without review, incorrect data would be published |
 | Shared TOR detail page + search/filter | US-04, US-05 | **Must** | High | Med | First visible value; one page serves all roles |
-| Public dashboard: per-agency view + pricing plots + anomaly rule | US-08–US-10 | **Must** | High | Med | Demo-day wow + the transparency mission; anomaly rule per FR-E2 |
+| Public dashboard: per-agency view + pricing plots + anomaly rule | US-08–US-10 | **Must** | High | Med | High demonstration value; core transparency mission; anomaly rule per FR-E2 |
 | Vendor skill profiles | US-01 | **Must** | High | Med | Prereq for matching |
 | Matching engine + notifications (email/Discord) | US-02, US-03 | **Must** | High | Med–High | Core differentiator ("LinkedIn for TORs") |
 | AI quality checklist (heuristic) | US-06, US-11 | **Should** | High | Med | Differentiator; heuristic + explainable, after extraction is solid |
-| Draft-TOR flow (Mode B, simulated agency) | US-13 | **Should** | Med | Low–Med | Same pipeline + DRAFT flag; real agency adoption out of our control |
+| Draft-TOR flow (Mode B, simulated agency) | US-13 | **Should** | Med | Low–Med | Same pipeline + DRAFT flag; real agency adoption outside project control |
 | QR-image ingestion route | US-12 | **Should** | Med | Low | Thin layer over URL ingestion |
 | Bookmarks + status tracking | US-07 | **Could** | Med | Low | Needs FR-E5 status transitions |
 | Agency reach analytics | US-14 | **Could** | Low | Low | FR-C5 counters; cheap once notifications exist |
-| Automated scraping + source health | US-17 | **Could** | Med | High | Format-churn tarpit; corpus manually seeded for MVP |
+| Automated scraping + source health | US-17 | **Could** | Med | High | High maintenance cost from source-format changes; corpus manually seeded for MVP |
 | Taxonomy admin UI | US-16 | **Could** | Low | Low | JSON seed files first |
 | Bid submission / award analysis | — | **Won't (this semester)** | — | — | Coarse status labels only |
 
@@ -293,13 +293,13 @@ expertise + historical data we don't have; overclaiming is a defamation risk).
 | PDPA on vendor profiles | Med | Minimal PII, consent, delete/export (FR-D3) |
 
 **Open questions for the team / instructor:**
-1. Who is the graded "customer" — instructor as proxy, or a real user group we recruit?
-2. Any official BMA data source we may pull from, or is the corpus manually seeded all semester?
+1. Who is the graded "customer" — instructor as proxy, or a recruited real user group?
+2. Is there an official BMA data source available, or is the corpus manually seeded all semester?
 3. "Dashboard illustrates the TORs that pass" — pass = announced (vs draft), passed procurement
    approval, or passed the quality checklist? *(Assumed: status pipeline + checklist score shown
    together. Verify with instructor.)*
-4. How do we validate the quality checklist so it's defensible at demo (e.g. hand-score 10 TORs and
-   compare)?
+4. How should the quality checklist be validated so it is defensible at demo (e.g. hand-score 10
+   TORs and compare against the automated scores)?
 
 ---
 
@@ -307,5 +307,5 @@ expertise + historical data we don't have; overclaiming is a defamation risk).
 
 - **Scrum:** 1–2-week sprints, Jira board (epics ≈ FR groups), Discord async standups.
 - **Definition of Done:** code reviewed, tests pass, runs in shared Docker Compose, demoable.
-- **This week:** print the project evaluation form → bring Thursday · assign Sprint-1 validation
-  tasks (interviews, TOR corpus collection, extraction spike).
+- **Immediate next steps:** assign Sprint-1 validation tasks (interviews, TOR corpus collection,
+  extraction spike).

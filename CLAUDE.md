@@ -28,10 +28,12 @@ University group project (Software Design, Year 3): centralized platform for Ban
 
 ## Working style
 
-- Follow the engineering playbook at `D:\second-brain\docs\engineering-playbook.md` (no quick patches, no magic numbers, research-before-building for version-sensitive APIs, small verified loops, Conventional Commits, never claim fixed without running the real thing).
-- Skills to use here: `superpowers:brainstorming` before new features · `superpowers:test-driven-development` for implementation · `superpowers:systematic-debugging` for bugs · `frontend-design` + `dataviz` for the dashboard · `agent-browser` for live UI verification.
+- Plan before building for non-trivial work; fix root causes, not symptoms; no magic numbers — derive values from named constants, config, or env.
+- Check current library/framework documentation before implementing against version-sensitive APIs.
+- Small verified loops: implement → review → test → verify. One concern per commit; Conventional Commits (`type(scope): subject`).
+- Never claim a fix works without running the real thing (live app, real request against the API) — unit tests passing alone is not verification.
 - Definition of Done: reviewed, tests pass, runs in shared Docker Compose, demoable.
-- Run tests/builds inside containers, not on the host.
+- Run tests/builds inside containers, not on the host. Never commit secrets; `.env` stays untracked with a committed `.env.example`.
 
 ## Commands
 
