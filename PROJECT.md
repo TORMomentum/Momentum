@@ -143,9 +143,11 @@ browsing TORs uses the same public views as any citizen._
   *Accept: export respects active filters; includes extracted fields + source links; no PII beyond the displayed extractions.*
 
 ### Admin (D2/P4)
-- **US-13** As an admin, I want to ingest a TOR by uploading a file (PDF/JPG/PNG) or submitting a
-  URL, so the corpus can be seeded from public announcements.
-  *Accept: both paths produce a record in the extraction pipeline; duplicates resolve to one record (FR-A3).*
+- **US-13** As an admin, I want to ingest a TOR by uploading a file (PDF/JPG/PNG), submitting a
+  URL, or calling an authenticated ingestion API endpoint, so the corpus can be seeded from public
+  announcements manually or programmatically.
+  *Accept: all three paths produce a record in the same extraction pipeline; API requires admin
+  authentication; duplicates resolve to one record (FR-A3).*
 - **US-14** As an admin, I want a queue of failed/low-confidence extractions with the original
   document side-by-side, so I can correct fields before they go live.
   *Accept: below-threshold records held unpublished; edit + approve publishes them.*
@@ -161,8 +163,9 @@ browsing TORs uses the same public views as any citizen._
 Requirements are split **MVP** vs **Stretch** so core scope is not conflated with aspirational work.
 
 ### FR-A: TOR Ingestion (MVP)
-- **FR-A1** Accept TOR input via file upload (PDF/JPG/PNG) and by URL (admin-seeded from public
-  announcements).
+- **FR-A1** Accept TOR input via file upload (PDF/JPG/PNG), by URL, and via an authenticated REST
+  ingestion endpoint (admin-seeded from public announcements). All routes feed the same pipeline;
+  the API route is what future automation (FR-A-S1 scraping) would plug into.
 - **FR-A2** Store the original raw document immutably in object storage (MinIO; audit trail; never
   delete raw). Metadata in MongoDB; bytes NOT in MongoDB documents.
 - **FR-A3** Deduplicate: the same TOR arriving via multiple routes resolves to one record.
@@ -255,7 +258,7 @@ scope, and overclaiming carries defamation risk.
 
 | Feature | Stories | MoSCoW | Impact | Effort | Notes |
 |---------|---------|--------|--------|--------|-------|
-| TOR upload/URL ingestion + OCR extraction | US-05, US-13 | **Must** | High | High | Foundation. Vertex AI heavy lifting; benchmark accuracy first (NFR-1) |
+| TOR upload/URL/API ingestion + OCR extraction | US-05, US-13 | **Must** | High | High | Foundation. Vertex AI heavy lifting; benchmark accuracy first (NFR-1) |
 | Minimal admin review/correction queue | US-14 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR errors are expected; without review, incorrect data would be published |
 | Shared TOR detail page + search/filter | US-04, US-05 | **Must** | High | Med | First visible value; one page serves all roles |
 | Public dashboard: per-agency view + pricing plots + anomaly rule | US-08–US-10 | **Must** | High | Med | High demonstration value; core transparency mission; anomaly rule per FR-E2 |
