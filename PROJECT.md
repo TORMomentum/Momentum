@@ -1,6 +1,6 @@
 # TOR Radar BKK — BMA TOR Platform
 
-> University group project — Software Design.
+> Product specification & Phase-1 delivery plan.
 > Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, Vertex AI.
 > _v2 — revised after internal review; 22 findings addressed._
 
@@ -43,7 +43,7 @@ anomalies) · AI quality checklist (heuristic, explainable) · Thai-language UI.
 offices. Ingested records are matched against it; non-BMA records are rejected or tagged
 out-of-scope. (National e-GP data is NOT assumed — it mixes non-Bangkok entities.)
 
-**Out of scope (this semester):** other provinces · agency-facing upload or draft-TOR portal (the
+**Out of scope (Phase 1):** other provinces · agency-facing upload or draft-TOR portal (the
 platform reads public announcements; agencies are a data source, not platform users) · QR-code
 ingestion · bid submission through the platform · payments/contracts · contract-award analysis
 beyond a coarse status label · mobile native apps · non-Thai UI.
@@ -69,12 +69,12 @@ beyond a coarse status label · mobile native apps · non-Thai UI.
   profiles and inside TOR documents. Mitigation: PDPA consent, PII minimization in displayed
   extractions, takedown/correction workflow.
 
-### Delivery stakeholders (course context — kept separate from product analysis)
+### Delivery stakeholders (kept separate from product analysis)
 
 | # | Stakeholder | Stake | Strategy |
 |---|-----------|-------|----------|
-| D1 | Course instructor / TA | Grading against rubric; acts as customer proxy | Deliverables on time; validate assumptions with them |
-| D2 | Student development team | Deliver within one semester; apply Scrum | Jira sprints, Discord standups, enforce scope cuts |
+| D1 | Project sponsor (acts as customer proxy) | Accepts phase deliverables against agreed criteria | Deliverables on time; validate assumptions with the sponsor |
+| D2 | Delivery team | Ship Phase 1 within the 15-week window; run Scrum | Jira sprints, Discord standups, enforce scope cuts |
 
 **Power/interest summary:** manage closely D1, S5 · keep satisfied S2 (operationally — the data
 source) · keep informed S1, S4 · monitor S3.
@@ -276,12 +276,12 @@ scope, and overclaiming carries defamation risk.
   rule-based reasons (fully explainable); extracted fields carry a confidence score and a link to
   the source document for verification.
 - **NFR-7** The web app UI is in Thai (extracted fields displayed as-is; an English UI is out of
-  scope this semester).
+  Phase-1 scope).
 - **NFR-8** Security baseline: passwords hashed (bcrypt/argon2), HTTPS on any deployed
   environment, role-based authorization on all admin and API routes, rate limiting on the
   ingestion API, dependency vulnerability audit in CI.
-- **NFR-9** Sized for the course demo: corpus of hundreds of TORs and tens of concurrent users. No
-  uptime guarantee or horizontal-scaling claim is made this semester.
+- **NFR-9** Sized for the Phase-1 pilot: corpus of hundreds of TORs and tens of concurrent users.
+  No uptime guarantee or horizontal-scaling claim is made in Phase 1.
 
 ---
 
@@ -300,12 +300,12 @@ scope, and overclaiming carries defamation risk.
 | CSV export of filtered TOR list | US-12 | **Could** | Med | Low | FR-E6; serves researchers/journalists; PII-minimized |
 | Automated scraping + source health | US-16 | **Could** | Med | High | High maintenance cost from source-format changes; corpus manually seeded for MVP |
 | Taxonomy admin UI | US-15 | **Could** | Low | Low | JSON seed files first |
-| Bid submission / award analysis | — | **Won't (this semester)** | — | — | Coarse status labels only |
+| Bid submission / award analysis | — | **Won't (Phase 1)** | — | — | Coarse status labels only |
 
 **Sprint plan (Must-first; each sprint demoable):**
-1. **Sprint 1:** requirement validation (interview 2–3 real freelancers + instructor-as-customer;
-   revised backlog = graded deliverable) · collect 10–20 real BMA TORs · extraction spike +
-   accuracy benchmark (NFR-1) · repo/CI/Docker skeleton.
+1. **Sprint 1:** requirement validation (interview 2–3 real freelancers + the sponsor as customer
+   proxy; revised backlog = the phase-gate deliverable) · collect 10–20 real BMA TORs · extraction
+   spike + accuracy benchmark (NFR-1) · repo/CI/Docker skeleton.
 2. **Sprint 2:** ingestion (upload/URL) → extraction → **minimal review queue** → published
    structured TORs + shared detail page.
 3. **Sprint 3:** public dashboard (agency view, pricing plots, FR-E2 anomaly rule) + search/filter.
@@ -333,8 +333,8 @@ scope, and overclaiming carries defamation risk.
 ## 9. Cost Breakdown
 
 Costs fall into two categories: **direct (cash) costs** (§9.1) and **effort (labor) costs** (§9.2).
-For a student project the labor is unpaid, but it is the dominant real cost and is budgeted in
-person-hours; an imputed commercial value is shown for comparison.
+Labor is the dominant real cost of the project; it is budgeted in person-hours and priced at a
+blended internal rate for its commercial value.
 
 ### 9.1 Direct (cash) costs
 
@@ -343,7 +343,7 @@ Docker). Paid usage is limited to cloud AI calls and optional hosting. Estimates
 demo-scale corpus of ~500 documents × ~10 pages and must be re-verified against current provider
 pricing before budgeting.
 
-| Item | Plan / rate | Semester estimate |
+| Item | Plan / rate | Phase-1 estimate |
 |------|-------------|-------------------|
 | MongoDB Atlas | M0 free tier (512 MB — sufficient for metadata) | ฿0 |
 | MinIO (raw document storage) | Open source, self-hosted in Docker Compose | ฿0 |
@@ -351,11 +351,11 @@ pricing before budgeting.
 | Vertex AI — Gemini (field extraction, checklist assist) | Flash tier, per-token (e.g. Flash-Lite ~US$0.10/M input, ~US$0.40/M output) | Single-digit US$ at ~500 extractions |
 | AI development headroom | Benchmark loops and re-runs multiply usage | Budget 3–5× the two rows above (~US$30–60 ceiling); a new GCP account's free-trial credit (US$300) covers this if available |
 | Email notifications | Nodemailer via SMTP or Resend free tier | ฿0 at demo volume (verify current free-tier limits) |
-| Hosting (dev + class demo) | Local Docker Compose | ฿0 |
+| Hosting (dev + pilot demo) | Local Docker Compose | ฿0 |
 | Hosting (optional public demo) | One small cloud VM or Cloud Run free tier | ~US$5–10/month if used |
 | Domain (optional) | — | ~US$10/year if used |
 
-**Cash bottom line:** ~US$0–30 for the semester using free tiers and trial credits; worst case
+**Cash bottom line:** ~US$0–30 for Phase 1 using free tiers and trial credits; worst case
 ~US$50–80 with paid AI headroom and a public VM. Pricing sources: Google Cloud Document AI and
 Gemini pricing pages (cloud.google.com/document-ai/pricing, ai.google.dev/gemini-api/docs/pricing)
 — re-check before committing a budget; rates change.
@@ -363,7 +363,7 @@ Gemini pricing pages (cloud.google.com/document-ai/pricing, ai.google.dev/gemini
 ### 9.2 Effort (labor) costs
 
 **Capacity assumption (named, adjustable):** team of 5 × ~10 h/week × ~15 working weeks ≈ **750
-person-hours** for the semester. Percentages below allocate that capacity; hours are planning
+person-hours** for the phase. Percentages below allocate that capacity; hours are planning
 estimates to be refined at each sprint planning and tracked in Jira against actuals.
 
 | Activity | Covers | Share | Est. hours |
@@ -377,8 +377,8 @@ estimates to be refined at each sprint planning and tracked in Jira against actu
 | Testing | Unit/integration tests in CI, manual test passes, bug fixing | 11% | ~80 |
 | Deployment & DevOps | Docker Compose, CI setup, demo hosting | 5% | ~40 |
 | Optimization & polish | Performance (NFR-3), responsive fixes, demo hardening | 4% | ~30 |
-| Reports & documentation | Course deliverables, README/docs, final presentation | 7% | ~50 |
-| Maintenance & consultation | Bug triage during demo period, instructor/TA meetings, Scrum ceremonies | 4% | ~30 |
+| Reports & documentation | Milestone reports, README/technical docs, stakeholder presentation | 7% | ~50 |
+| Maintenance & consultation | Bug triage during the pilot period, sponsor reviews, Scrum ceremonies | 4% | ~30 |
 | **Total** | | 100% | **~790** |
 
 *(Total slightly exceeds the 750 h capacity — that is the point: scope pressure is visible up
@@ -386,8 +386,8 @@ front, and the Sprint-5 Could/Should items are the release valve.)*
 
 **Imputed commercial value (illustrative only):** at an assumed blended junior-developer rate of
 ฿R/hour, project labor ≈ 790 × R. Example: R = ฿300 → ≈ ฿237,000. The rate is an assumption, not
-a market quote — replace R with a sourced local rate if the evaluation requires a defensible
-figure. Actual cash labor cost this semester: ฿0 (student team).
+a market quote — replace R with a sourced local rate where a defensible figure is required. Labor
+is an internal, non-cash cost in Phase 1; the imputed figure represents its commercial value.
 
 ---
 
@@ -395,20 +395,21 @@ figure. Actual cash labor cost this semester: ฿0 (student team).
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| **No real customer** — requirements are hypotheses | High | Sprint 1 validation deliverables: interview script, ≥ 3 interviews (freelancers + instructor proxy), revised backlog with confirmed acceptance criteria |
+| **No committed customer yet** — requirements are hypotheses | High | Sprint 1 validation deliverables: interview script, ≥ 3 interviews (freelancers + sponsor proxy), revised backlog with confirmed acceptance criteria |
 | Thai OCR on scanned/photographed TORs is poor | High | Sprint-1 accuracy benchmark on real TORs; confidence threshold + review queue; never promise full automation |
 | No official machine-readable TOR feed; scraping fragile | High | MVP corpus manually seeded via upload/URL; scraping = Could behind adapters; announcement pages treated as an operational chokepoint |
-| MVP still too large for one semester | High | Must set = Sprints 1–4 only; Sprint 5 entirely Should/cuttable; enforce at sprint reviews |
+| MVP still too large for the delivery window | High | Must set = Sprints 1–4 only; Sprint 5 entirely Should/cuttable; enforce at sprint reviews |
 | Quality score reads as accusation → defamation risk | Med | Heuristic checklist framing, explainable reasons, "not a legal judgment" label (FR-F2); anomaly ≠ suspicious wording (FR-E2) |
 | PII inside TOR documents (names, phones, signatures) | Med | FR-B5 redaction/minimization + takedown workflow |
 | PDPA on vendor profiles | Med | Minimal PII, consent, delete/export (FR-D3) |
 
-**Open questions for the team / instructor:**
-1. Who is the graded "customer" — instructor as proxy, or a recruited real user group?
-2. Is there an official BMA data source available, or is the corpus manually seeded all semester?
+**Open questions for the team / sponsor:**
+1. Who is the acceptance "customer" — the sponsor as proxy, or a recruited real user group?
+2. Is there an official BMA data source available, or is the corpus manually seeded throughout
+   Phase 1?
 3. "Dashboard illustrates the TORs that pass" — pass = passed procurement approval, or passed the
    quality checklist? *(Assumed: status pipeline + checklist score shown together. Verify with
-   instructor.)*
+   the sponsor.)*
 4. How should the quality checklist be validated so it is defensible at demo (e.g. hand-score 10
    TORs and compare against the automated scores)?
 
