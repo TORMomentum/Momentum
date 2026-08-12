@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Introduction
+## 1. Intro
 
 Bangkok Metropolitan Administration (BMA) agencies publish procurement TORs (Terms of Reference) for public projects, but the documents are scattered across agency announcement pages and arrive in inconsistent formats — text PDFs, scanned images, photographs. There is no machine-readable feed at the document-content level.
 
@@ -52,7 +52,7 @@ Trust and safety are requirements, not afterthoughts: PDPA-aligned handling (con
 
 **Why this stack:** Next.js (frontend) · Node/Express (REST API) · MongoDB Atlas (extracted metadata — flexible schema fits inconsistent TORs) · MinIO (immutable raw documents) · Vertex AI (Thai OCR / Gemini extraction) · Docker Compose + CI.
 
-## 4. Demo / UI Mockups
+## 4. Demo or UI Mockups
 
 Wireframes (rendered in the slide deck; a working demo ships at the end of every sprint from Sprint 2):
 
