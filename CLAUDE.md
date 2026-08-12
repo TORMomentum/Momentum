@@ -44,4 +44,7 @@ _(fill in as the repo grows — no code yet)_
 
 ```
 docker compose up          # full stack (once compose exists)
+python tools/jira_seed.py  # (re)seed Jira issues — needs JIRA_EMAIL + JIRA_TOKEN env vars, never hardcode tokens
 ```
+
+Jira: project **TOR** at momentumm.atlassian.net (team-managed Scrum, six dated 2-week sprints, epics ≈ FR groups, phase labels + priorities + story points). Jira is the operational truth for sprint contents; PROJECT.md §7 is the summary.

@@ -321,12 +321,23 @@ are logged in Jira per activity and compared to the phase budget at every gate. 
 over budget is visible weeks early — the correction is dropping Could scope or spending reserve
 weeks, never squeezing test/deployment at the end. Finishing the build at week 8 with a 4-week
 reserve is the plan's main schedule-risk defense.
-2. **Sprint 2:** ingestion (upload/URL) → extraction → **minimal review queue** → published
-   structured TORs + shared detail page.
-3. **Sprint 3:** public dashboard (agency view, pricing plots, FR-E2 anomaly rule) + search/filter.
-4. **Sprint 4:** profiles + matching + email notifications.
-5. **Sprint 5:** quality checklist + bookmarks/status tracking + polish/demo prep.
-   *(Everything in Sprint 5 is Should/Could — cuttable without breaking the product.)*
+**Sprint runway (2-week sprints, operational truth in Jira project TOR):**
+
+1. **Sprint 1 — Inception/Elaboration (Aug 13–27, active):** validation interviews (done) ·
+   10–20-TOR corpus · extraction accuracy benchmark (phase gate) · CI/Docker skeleton ·
+   architecture & data-model design (ADR, schema, API contract) · Thai UI wireframes ·
+   taxonomy/agency seed JSONs.
+2. **Sprint 2 — Build core (Aug 27–Sep 10):** ingestion (upload/URL/API) → extraction pipeline
+   with two-tier confidence → **minimal review queue** → published structured TORs + shared detail
+   page.
+3. **Sprint 3 — Dashboard (Sep 10–24):** public dashboard (agency view, pricing plots, FR-E2
+   anomaly rule) + search/filter.
+4. **Sprint 4 — Match + freeze (Sep 24–Oct 8):** profiles + auth + matching + email notifications;
+   quality checklist (Should — first cut if slipping). **Feature freeze at sprint end (week 8).**
+5. **Sprint 5 — Harden (Oct 8–22):** full-stack test pass, performance (NFR-3), security audit
+   (NFR-8), bug burn-down; Could items (bookmarks/archive, CSV export) only if green.
+6. **Sprint 6 — Demo (Oct 22–Nov 5):** demo script + dry-run, documentation, stakeholder
+   presentation, schedule buffer.
 
 ---
 
@@ -440,7 +451,9 @@ represent its commercial value.
 
 ## 11. Team Process
 
-- **Scrum:** 1–2-week sprints, Jira board (epics ≈ FR groups), Discord async standups.
+- **Scrum:** 2-week sprints (six, dated in Jira project **TOR**), Jira board (epics ≈ FR groups),
+  Discord async standups.
 - **Definition of Done:** code reviewed, tests pass, runs in shared Docker Compose, demoable.
-- **Immediate next steps:** assign Sprint-1 validation tasks (interviews, TOR corpus collection,
-  extraction spike).
+- **Current status:** Sprint 1 is active in Jira (Aug 13–27). Validation interviews are complete;
+  in flight: TOR corpus collection, extraction accuracy benchmark (the phase gate), CI/Docker
+  skeleton, architecture design, and UI wireframes.
