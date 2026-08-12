@@ -1,0 +1,355 @@
+<title>TOR Radar — UI Preview</title>
+<style>
+  :root{
+    --stage:#10151C; --stage-glow:#1A2230; --stage-ink:#E9E7DF; --stage-soft:#8B94A3;
+    --paper:#FBFAF6; --card:#FFFFFF; --tint:#F2EFE7; --line:#E3E0D6;
+    --ink:#20252D; --soft:#5A6472;
+    --gold:#A87E2F; --teal:#216A63; --warn:#9E4A3C;
+    --mark-a:#0E8A74; --mark-b:#B8842D; /* chart marks, validated on light card */
+  }
+  :root[data-theme="light"]{ --stage:#E9E6DD; --stage-glow:#F4F1E8; --stage-ink:#20252D; --stage-soft:#5A6472; }
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --stage:#E9E6DD; --stage-glow:#F4F1E8; --stage-ink:#20252D; --stage-soft:#5A6472; } }
+
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--stage); color:var(--stage-ink);
+    font:15px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; overflow-x:hidden;}
+  .bg{position:fixed; inset:0; z-index:-1;
+    background:radial-gradient(1100px 700px at 70% 12%, var(--stage-glow), transparent 65%),
+               radial-gradient(800px 600px at 15% 85%, var(--stage-glow), transparent 60%), var(--stage);}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 5vw;}
+
+  /* hero */
+  header{min-height:92vh; display:flex; flex-direction:column; justify-content:center; gap:2.4rem;}
+  .eyebrow{font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--stage-soft);}
+  .eyebrow b{color:var(--gold);}
+  h1{font-family:"Palatino Linotype", Palatino, Georgia, serif; font-weight:500;
+    font-size:clamp(2.4rem,5.4vw,4rem); line-height:1.08; margin:0; max-width:20ch; text-wrap:balance;}
+  h1 em{font-style:normal; color:var(--gold);}
+  .sub{color:var(--stage-soft); max-width:56ch; font-size:1.05rem;}
+  .hero-stage{perspective:1400px;}
+  .hero-tilt{transform:rotateY(-13deg) rotateX(6deg); transform-style:preserve-3d; transition:transform .25s ease-out;}
+  @media (prefers-reduced-motion: no-preference){
+    .float{animation:float 7s ease-in-out infinite;}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  }
+
+  /* scenes */
+  .scene{min-height:100vh; display:flex; align-items:center; padding:9vh 0;}
+  .scene .inner{display:flex; gap:3.5rem; align-items:center; flex-wrap:wrap; width:100%;}
+  .scene .copy{flex:1 1 300px; min-width:280px;}
+  .scene .stage3d{flex:2 1 520px; perspective:1400px; min-width:0;}
+  .kicker{font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:600;}
+  h2{font-family:"Palatino Linotype", Palatino, Georgia, serif; font-weight:500;
+    font-size:clamp(1.5rem,2.8vw,2.1rem); margin:.5rem 0 .8rem; text-wrap:balance;}
+  .copy p{color:var(--stage-soft); max-width:44ch;}
+  .copy ul{color:var(--stage-soft); padding-left:1.1rem; margin:.6rem 0;}
+  .copy li{margin:.3rem 0;}
+
+  .panel{transform-style:preserve-3d; transition:transform .9s cubic-bezier(.2,.7,.2,1), opacity .9s;
+    box-shadow:0 40px 80px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.30); border-radius:10px;}
+  .scene .panel{opacity:0;}
+  .scene.l .panel{transform:rotateY(16deg) rotateX(5deg) translateX(-60px);}
+  .scene.r .panel{transform:rotateY(-16deg) rotateX(5deg) translateX(60px);}
+  .scene.in .panel{opacity:1; transform:rotateY(var(--ry,-6deg)) rotateX(2deg) translateX(0);}
+  .scene.l .panel{--ry:6deg;}
+  @media (prefers-reduced-motion: reduce){
+    .scene .panel, .hero-tilt{transform:none !important; opacity:1 !important; animation:none !important;}
+  }
+
+  /* screen chrome */
+  .screen{background:var(--paper); color:var(--ink); border-radius:10px; overflow:hidden; font-size:.8rem;}
+  .chrome{display:flex; align-items:center; gap:.5rem; padding:.55rem .8rem;
+    background:var(--tint); border-bottom:1px solid var(--line); color:var(--soft); font-size:.7rem;}
+  .chrome .dots{display:flex; gap:.28rem;}
+  .chrome .dots i{width:.55rem; height:.55rem; border-radius:50%; background:var(--line); display:block;}
+  .chrome .url{flex:1; background:var(--card); border:1px solid var(--line); border-radius:99px;
+    padding:.15rem .8rem; font-family:Consolas,monospace; font-size:.66rem;}
+  .body{padding:1rem 1.1rem;}
+
+  .tag{display:inline-flex; align-items:center; gap:.3rem; font-size:.64rem; letter-spacing:.06em;
+    text-transform:uppercase; padding:.16rem .55rem; border-radius:3px; font-weight:600;}
+  .tag.teal{background:var(--teal); color:#fff;}
+  .tag.gold{background:var(--gold); color:#fff;}
+  .tag.warn{background:var(--warn); color:#fff;}
+  .tag.ghost{border:1px solid var(--soft); color:var(--soft);}
+
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin:.8rem 0;}
+  .tile{background:var(--card); border:1px solid var(--line); border-radius:6px; padding:.6rem .7rem;}
+  .tile b{font-family:Consolas,monospace; font-size:1.15rem; font-variant-numeric:tabular-nums; display:block;}
+  .tile span{color:var(--soft); font-size:.64rem; letter-spacing:.06em; text-transform:uppercase;}
+
+  .filters{display:flex; gap:.4rem; flex-wrap:wrap; margin:.5rem 0 .8rem;}
+  .chip{border:1px solid var(--line); background:var(--card); color:var(--soft);
+    border-radius:99px; padding:.18rem .7rem; font-size:.66rem;}
+  .chip.on{border-color:var(--teal); color:var(--teal); font-weight:600;}
+
+  .charts{display:grid; grid-template-columns:3fr 2fr; gap:.8rem;}
+  .chartcard{background:var(--card); border:1px solid var(--line); border-radius:6px; padding:.7rem .8rem;}
+  .chartcard h4{margin:0 0 .1rem; font-size:.76rem;}
+  .chartcard .note{color:var(--soft); font-size:.62rem; margin-bottom:.4rem;}
+  .legend{display:flex; gap:.9rem; font-size:.64rem; color:var(--soft); margin-top:.35rem;}
+  .legend i{display:inline-block; width:.55rem; height:.55rem; border-radius:50%; margin-right:.3rem; vertical-align:-1px;}
+  svg text{font:600 .55rem "Segoe UI",sans-serif; fill:var(--soft);}
+  svg .val{font-family:Consolas,monospace;}
+  .dot{transition:r .15s;} .dot:hover{r:7;}
+  .barrow{display:flex; align-items:center; gap:.5rem; margin:.42rem 0; font-size:.68rem;}
+  .barrow .name{width:9.5rem; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .barrow .track{flex:1; height:8px; border-radius:4px; background:var(--tint); overflow:hidden;}
+  .barrow .fill{height:100%; border-radius:4px; background:var(--mark-a);}
+  .barrow .v{font-family:Consolas,monospace; color:var(--soft); width:4.4rem; text-align:right; font-variant-numeric:tabular-nums;}
+
+  .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:.5rem .9rem; margin:.7rem 0;}
+  .frow{border-bottom:1px solid var(--line); padding:.3rem 0;}
+  .frow span{display:block; color:var(--soft); font-size:.62rem; letter-spacing:.06em; text-transform:uppercase;}
+  .frow b{font-size:.82rem;}
+  .frow .conf{font-family:Consolas,monospace; font-size:.62rem; color:var(--soft);}
+  .score{display:flex; gap:.9rem; align-items:center; background:var(--tint); border:1px solid var(--line);
+    border-radius:6px; padding:.7rem .9rem; margin:.7rem 0;}
+  .score .n{font-family:Consolas,monospace; font-size:1.6rem; color:var(--teal);}
+  .btn{display:inline-block; background:var(--teal); color:#fff; border-radius:5px; padding:.42rem .9rem;
+    font-weight:600; font-size:.72rem;}
+  .btn.ghost{background:transparent; color:var(--teal); border:1px solid var(--teal);}
+  .hist{border-left:2px solid var(--line); margin:.6rem 0 0 .3rem; padding-left:.8rem; font-size:.68rem; color:var(--soft);}
+  .hist div{margin:.3rem 0;}
+  .hist b{color:var(--ink);}
+
+  .mailhead{border-bottom:1px solid var(--line); padding-bottom:.5rem; margin-bottom:.6rem; font-size:.7rem; color:var(--soft);}
+  .mailhead b{color:var(--ink); font-size:.85rem; display:block; margin-top:.2rem;}
+  .match{display:flex; align-items:center; gap:.8rem; margin:.6rem 0;}
+  .match .pct{font-family:Consolas,monospace; font-size:1.7rem; color:var(--teal);}
+  .reasons{display:flex; gap:.4rem; flex-wrap:wrap; margin:.5rem 0;}
+  .reasons .chip{border-color:var(--teal); color:var(--teal);}
+
+  .queue td{padding:.4rem .5rem; border-bottom:1px solid var(--line); font-size:.7rem;}
+  .queue{width:100%; border-collapse:collapse;}
+  .queue th{text-align:left; font-size:.6rem; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--soft); padding:.3rem .5rem; border-bottom:1.5px solid var(--ink);}
+  .queue .n{font-family:Consolas,monospace; text-align:right; font-variant-numeric:tabular-nums;}
+
+  footer{padding:8vh 0 10vh; color:var(--stage-soft); font-size:.78rem;}
+  footer .rule{border-top:1px solid rgba(139,148,163,.25); padding-top:1rem; display:flex;
+    justify-content:space-between; gap:1rem; flex-wrap:wrap;}
+  a{color:var(--gold);}
+  :focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  @media (max-width:760px){ .tiles{grid-template-columns:1fr 1fr;} .charts{grid-template-columns:1fr;} }
+</style>
+
+<div class="bg"></div>
+
+<header class="wrap">
+  <div>
+    <div class="eyebrow"><b>TOR Radar</b> · UI preview · Team Momentum</div>
+    <h1 style="margin-top:1rem">Every Bangkok TOR, <em>readable at a glance</em></h1>
+    <p class="sub">High-fidelity mockups of the three surfaces that matter: the public dashboard,
+    the TOR detail page, and the match email. Sample data throughout — the working demo ships sprint by sprint.</p>
+  </div>
+  <div class="hero-stage">
+    <div class="hero-tilt float" id="heroTilt">
+      <div class="screen" style="max-width:880px">
+        <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">torradar.bkk/dashboard</span>
+          <span class="tag teal">ข้อมูลอัปเดต 12 ส.ค. 2569 · 14:05</span></div>
+        <div class="body">
+          <div class="filters">
+            <span class="chip on">ทุกหน่วยงาน</span><span class="chip">หมวด: ไอที</span>
+            <span class="chip">งบ ≥ ฿500k</span><span class="chip">12 เดือนล่าสุด</span><span class="chip">สถานะ: ประกาศ</span>
+          </div>
+          <div class="tiles">
+            <div class="tile"><b>1,248</b><span>TOR ในระบบ</span></div>
+            <div class="tile"><b>฿2.4B</b><span>งบประมาณรวม</span></div>
+            <div class="tile"><b>52</b><span>หน่วยงาน กทม.</span></div>
+            <div class="tile"><b>17</b><span>จุดผิดปกติทางสถิติ</span></div>
+          </div>
+          <div class="charts">
+            <div class="chartcard">
+              <h4>งบประมาณต่อโครงการ — หมวดพัฒนาระบบไอที</h4>
+              <div class="note">ข้อมูลตัวอย่าง · จุดสีทอง = ผิดปกติทางสถิติ (นอกช่วง 1.5×IQR ของกลุ่มเทียบ)</div>
+              <svg viewBox="0 0 420 150" role="img" aria-label="Scatter of sample project budgets over time; two statistical anomalies highlighted">
+                <line x1="34" y1="10" x2="34" y2="126" stroke="var(--line)"/>
+                <line x1="34" y1="126" x2="410" y2="126" stroke="var(--line)"/>
+                <line x1="34" y1="88" x2="410" y2="88" stroke="var(--tint)"/>
+                <line x1="34" y1="50" x2="410" y2="50" stroke="var(--tint)"/>
+                <text x="28" y="130" text-anchor="end" class="val">0</text>
+                <text x="28" y="91" text-anchor="end" class="val">2M</text>
+                <text x="28" y="53" text-anchor="end" class="val">4M</text>
+                <text x="60" y="142">ต.ค.</text><text x="150" y="142">ม.ค.</text>
+                <text x="240" y="142">เม.ย.</text><text x="330" y="142">ก.ค.</text>
+                <circle class="dot" cx="62" cy="108" r="4.5" fill="var(--mark-a)"><title>฿0.9M · สำนัก ก.</title></circle>
+                <circle class="dot" cx="88" cy="98" r="4.5" fill="var(--mark-a)"><title>฿1.4M · สำนัก ข.</title></circle>
+                <circle class="dot" cx="118" cy="112" r="4.5" fill="var(--mark-a)"><title>฿0.7M · เขต ค.</title></circle>
+                <circle class="dot" cx="150" cy="95" r="4.5" fill="var(--mark-a)"><title>฿1.6M · สำนัก ง.</title></circle>
+                <circle class="dot" cx="178" cy="104" r="4.5" fill="var(--mark-a)"><title>฿1.1M · เขต จ.</title></circle>
+                <circle class="dot" cx="205" cy="90" r="4.5" fill="var(--mark-a)"><title>฿1.9M · สำนัก ฉ.</title></circle>
+                <circle class="dot" cx="236" cy="100" r="4.5" fill="var(--mark-a)"><title>฿1.3M · เขต ช.</title></circle>
+                <circle class="dot" cx="262" cy="108" r="4.5" fill="var(--mark-a)"><title>฿0.9M · เขต ซ.</title></circle>
+                <circle class="dot" cx="292" cy="94" r="4.5" fill="var(--mark-a)"><title>฿1.7M · สำนัก ฌ.</title></circle>
+                <circle class="dot" cx="322" cy="102" r="4.5" fill="var(--mark-a)"><title>฿1.2M · เขต ญ.</title></circle>
+                <circle class="dot" cx="352" cy="110" r="4.5" fill="var(--mark-a)"><title>฿0.8M · เขต ฎ.</title></circle>
+                <circle class="dot" cx="196" cy="30" r="5.5" fill="var(--mark-b)" stroke="var(--card)" stroke-width="2"><title>฿5.2M · ผิดปกติทางสถิติ</title></circle>
+                <text x="206" y="27" fill="var(--mark-b)">฿5.2M · ผิดปกติทางสถิติ</text>
+                <circle class="dot" cx="338" cy="42" r="5.5" fill="var(--mark-b)" stroke="var(--card)" stroke-width="2"><title>฿4.4M · ผิดปกติทางสถิติ</title></circle>
+                <text x="288" y="60" fill="var(--mark-b)">฿4.4M</text>
+              </svg>
+              <div class="legend"><span><i style="background:var(--mark-a)"></i>โครงการในกลุ่มเทียบ</span>
+                <span><i style="background:var(--mark-b)"></i>ผิดปกติทางสถิติ</span></div>
+            </div>
+            <div class="chartcard">
+              <h4>งบประมาณรวม รายหน่วยงาน (12 เดือน)</h4>
+              <div class="note">ข้อมูลตัวอย่าง · 5 อันดับแรก</div>
+              <div class="barrow"><span class="name">สำนักการโยธา</span><div class="track"><div class="fill" style="width:92%"></div></div><span class="v">฿612M</span></div>
+              <div class="barrow"><span class="name">สำนักการระบายน้ำ</span><div class="track"><div class="fill" style="width:74%"></div></div><span class="v">฿489M</span></div>
+              <div class="barrow"><span class="name">สำนักสิ่งแวดล้อม</span><div class="track"><div class="fill" style="width:52%"></div></div><span class="v">฿344M</span></div>
+              <div class="barrow"><span class="name">สำนักการจราจรฯ</span><div class="track"><div class="fill" style="width:38%"></div></div><span class="v">฿251M</span></div>
+              <div class="barrow"><span class="name">สำนักการแพทย์</span><div class="track"><div class="fill" style="width:29%"></div></div><span class="v">฿192M</span></div>
+            </div>
+          </div>
+          <div class="note" style="color:var(--soft); font-size:.62rem; margin-top:.5rem">
+            หมายเหตุความครอบคลุม: ตัวเลขสะท้อนเอกสารที่นำเข้าระบบ ไม่ใช่การจัดซื้อทั้งหมดของ กทม. · "ผิดปกติทางสถิติ" ไม่ใช่ข้อกล่าวหา — ดูวิธีคำนวณ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="scene r wrap">
+  <div class="inner">
+    <div class="copy">
+      <div class="kicker">Surface 02 · vendor &amp; public</div>
+      <h2>TOR detail — one page, every fact, with receipts</h2>
+      <p>Every extracted field carries its confidence; below-threshold records wear the unverified
+      tag and never feed anomaly stats or match emails until verified. The immutable original is
+      always one click away.</p>
+      <ul>
+        <li>Quality-checklist score with its exact rule-based reasons</li>
+        <li>Extraction provenance: timestamp + model on every record</li>
+        <li>Status history: announced → closed → awarded</li>
+      </ul>
+    </div>
+    <div class="stage3d">
+      <div class="panel">
+        <div class="screen">
+          <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">torradar.bkk/tor/2569-0412</span></div>
+          <div class="body">
+            <div style="display:flex; justify-content:space-between; gap:.6rem; align-items:start; flex-wrap:wrap">
+              <div>
+                <div style="font-size:.62rem; color:var(--soft)">หน้าแรก / สำนักการโยธา / TOR-2569-0412</div>
+                <b style="font-size:1rem">จ้างพัฒนาระบบบริหารจัดการคลังวัสดุ (ระยะที่ 1)</b>
+              </div>
+              <span class="tag warn">unverified extraction</span>
+            </div>
+            <div class="fgrid">
+              <div class="frow"><span>งบประมาณ</span><b>฿1,500,000</b> <span class="conf">conf 0.97</span></div>
+              <div class="frow"><span>ปิดรับข้อเสนอ</span><b>30 ก.ย. 2569</b> <span class="conf">conf 0.93</span></div>
+              <div class="frow"><span>หมวดหมู่</span><b>พัฒนาระบบไอที</b> <span class="conf">conf 0.88</span></div>
+              <div class="frow"><span>หน่วยงาน</span><b>สำนักการโยธา กทม.</b> <span class="conf">conf 0.99</span></div>
+              <div class="frow" style="grid-column:1/-1"><span>คุณสมบัติผู้ยื่นข้อเสนอ</span>
+                <b>จดทะเบียนนิติบุคคล ≥ ฿1M · ผลงานภาครัฐ ≥ 1 โครงการ (≥ ฿750k) · มีบุคลากรด้าน GIS</b>
+                <span class="conf">conf 0.71 — ต่ำกว่าเกณฑ์ จึงติดป้าย unverified</span></div>
+            </div>
+            <div class="score"><span class="n">7/10</span>
+              <div style="font-size:.68rem"><b>คะแนนคุณภาพสเปก (AI-generated)</b><br>
+                <span style="color:var(--soft)">✓ ระบุงบประมาณ · ✓ กำหนดเวลาสมเหตุสมผล (49 วัน) · ✗ ขอบเขตงานสั้นกว่าเกณฑ์ (2 หน้า)</span></div></div>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+              <span class="btn">เอกสารต้นฉบับ (ไม่แก้ไข) ↗</span>
+              <span class="btn ghost">บันทึก TOR นี้</span>
+            </div>
+            <div class="hist">
+              <div><b>ประกาศ</b> · 12 ส.ค. 2569 · re-ingestion</div>
+              <div>extracted 12 Aug 2026 · Gemini (Vertex AI) · แก้ไขล่าสุดโดยผู้ดูแล —</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene l wrap">
+  <div class="inner">
+    <div class="copy">
+      <div class="kicker">Surface 03 · vendor inbox</div>
+      <h2>Match email — the reason, not just the alert</h2>
+      <p>Sent within five minutes of publication in the pilot environment. States exactly which
+      qualifications lined up and the budget fit, so the vendor judges fit before opening a
+      40-page document. Frequency, minimum score, and filters are the vendor's to set.</p>
+    </div>
+    <div class="stage3d">
+      <div class="panel">
+        <div class="screen" style="max-width:520px; margin-left:auto">
+          <div class="chrome"><span class="dots"><i></i><i></i><i></i></span>
+            <span style="flex:1">อีเมลแจ้งเตือน — กล่องขาเข้า</span></div>
+          <div class="body">
+            <div class="mailhead">TOR Radar &lt;alerts@torradar.bkk&gt; → nok.dev@example.com
+              <b>TOR ใหม่ตรงกับโปรไฟล์ของคุณ — จ้างพัฒนาระบบคลังวัสดุ ฿1.5M</b></div>
+            <div class="match"><span class="pct">87%</span>
+              <div style="font-size:.7rem; color:var(--soft)">คะแนนความตรงกับโปรไฟล์<br><b style="color:var(--ink)">"Nok" — Full-stack (Next.js, GIS)</b></div></div>
+            <div style="font-size:.68rem; color:var(--soft)">เหตุผลที่ระบบจับคู่:</div>
+            <div class="reasons">
+              <span class="chip">ทักษะ: Next.js ✓</span><span class="chip">ทักษะ: GIS ✓</span>
+              <span class="chip">งบ ฿1.5M อยู่ในช่วงที่ตั้งไว้ ✓</span>
+            </div>
+            <div style="font-size:.72rem; margin:.5rem 0"><b>ปิดรับข้อเสนอใน 18 วัน</b> · สำนักการโยธา กทม.</div>
+            <span class="btn">ดูรายละเอียด TOR</span>
+            <div style="font-size:.6rem; color:var(--soft); margin-top:.7rem; border-top:1px solid var(--line); padding-top:.5rem">
+              ตั้งค่าการแจ้งเตือน: ความถี่ (ทันที/สรุปรายวัน) · คะแนนขั้นต่ำ · หมวดหมู่ · ยกเลิกรับอีเมล<br>
+              ผลการจับคู่สร้างโดย AI — โปรดตรวจสอบกับเอกสารต้นฉบับ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene r wrap">
+  <div class="inner">
+    <div class="copy">
+      <div class="kicker">Surface 04 · admin</div>
+      <h2>Review queue — only the worst records, side by side</h2>
+      <p>Two-tier policy in action: everything publishes, but very-low-confidence or
+      sanity-check-failing records land here for priority correction. Every fix becomes a few-shot
+      example that makes the extractor sharper — the corpus competitors can't copy.</p>
+    </div>
+    <div class="stage3d">
+      <div class="panel">
+        <div class="screen">
+          <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">torradar.bkk/admin/queue</span>
+            <span class="tag gold">admin</span></div>
+          <div class="body">
+            <b style="font-size:.85rem">คิวตรวจสอบ — เฉพาะรายการความเชื่อมั่นต่ำ/ผิดปกติ</b>
+            <div style="color:var(--soft); font-size:.64rem; margin:.2rem 0 .6rem">
+              นโยบายสองระดับ: ทุกรายการเผยแพร่อัตโนมัติ · ป้าย unverified เมื่อต่ำกว่า T_high · เข้าคิวเมื่อต่ำกว่า T_low หรือไม่ผ่าน sanity check</div>
+            <table class="queue">
+              <tr><th>เอกสาร</th><th>เหตุผล</th><th class="n">conf</th><th></th></tr>
+              <tr><td>TOR-2569-0418 · เขตบางรัก</td><td><span class="tag warn">ไม่พบงบประมาณ</span></td><td class="n">0.41</td><td><span class="btn ghost" style="font-size:.62rem">แก้ไข</span></td></tr>
+              <tr><td>TOR-2569-0421 · สำนักการแพทย์</td><td><span class="tag warn">กำหนดส่ง 2 วัน — ผิดปกติ</span></td><td class="n">0.55</td><td><span class="btn ghost" style="font-size:.62rem">แก้ไข</span></td></tr>
+              <tr><td>TOR-2569-0423 · เขตดอนเมือง</td><td><span class="tag ghost">OCR อ่านภาพถ่ายไม่ชัด</span></td><td class="n">0.38</td><td><span class="btn ghost" style="font-size:.62rem">แก้ไข</span></td></tr>
+            </table>
+            <div style="font-size:.62rem; color:var(--soft); margin-top:.5rem">
+              แก้ไขแล้ว → ระบบเก็บคู่ (เอกสาร → ค่าที่ถูก) เป็นตัวอย่าง few-shot ให้ AI แม่นขึ้น (FR-G2)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <div class="rule">
+    <span>TOR Radar · Team Momentum — wireframe-level mockups, <b>sample data only</b></span>
+    <span>Flows per US-02/03/05/08/14 · PROJECT.md is the source of truth</span>
+  </div>
+</footer>
+
+<script>
+  const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!rm){
+    const tilt = document.getElementById('heroTilt');
+    addEventListener('mousemove', e=>{
+      const x=(e.clientX/innerWidth-0.5), y=(e.clientY/innerHeight-0.5);
+      tilt.style.transform=`rotateY(${-13+x*6}deg) rotateX(${6-y*5}deg)`;
+    },{passive:true});
+  }
+  const io = new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting) e.target.classList.add('in');
+  }),{threshold:0.25});
+  document.querySelectorAll('.scene').forEach(s=>io.observe(s));
+</script>
