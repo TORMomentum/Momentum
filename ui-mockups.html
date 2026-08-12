@@ -31,7 +31,25 @@
   @media (prefers-reduced-motion: no-preference){
     .float{animation:float 7s ease-in-out infinite;}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+    header .rise{opacity:0; transform:translateY(22px); animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards;}
+    header .rise:nth-child(2){animation-delay:.15s}
+    .hero-stage{opacity:0; animation:rise .9s cubic-bezier(.2,.7,.2,1) .35s forwards;}
+    @keyframes rise{to{opacity:1; transform:translateY(0)}}
+    .dot{transform:scale(0); transform-origin:center; transform-box:fill-box;
+      transition:transform .45s cubic-bezier(.2,.7,.3,1.3) var(--d,0s), r .15s;}
+    .in .dot, .anim-in .dot{transform:scale(1);}
+    .dot:nth-of-type(1){--d:.05s}.dot:nth-of-type(2){--d:.1s}.dot:nth-of-type(3){--d:.15s}
+    .dot:nth-of-type(4){--d:.2s}.dot:nth-of-type(5){--d:.25s}.dot:nth-of-type(6){--d:.3s}
+    .dot:nth-of-type(7){--d:.35s}.dot:nth-of-type(8){--d:.4s}.dot:nth-of-type(9){--d:.45s}
+    .dot:nth-of-type(10){--d:.5s}.dot:nth-of-type(11){--d:.55s}.dot:nth-of-type(12){--d:.7s}
+    .dot:nth-of-type(13){--d:.85s}
+    .anom-ring{animation:pulse 2.4s ease-out infinite; transform-origin:center; transform-box:fill-box;}
+    @keyframes pulse{0%{opacity:.7; transform:scale(1)}70%{opacity:0; transform:scale(2.1)}100%{opacity:0; transform:scale(2.1)}}
+    .barrow .fill{width:0; transition:width 1.1s cubic-bezier(.2,.7,.2,1) .25s;}
+    .in .barrow .fill, .anim-in .barrow .fill{width:var(--w);}
+    .tile b{transition:opacity .3s;}
   }
+  @media (prefers-reduced-motion: reduce){ .barrow .fill{width:var(--w);} }
 
   /* scenes */
   .scene{min-height:100vh; display:flex; align-items:center; padding:9vh 0;}
@@ -136,12 +154,15 @@
 
 <div class="bg"></div>
 
-<header class="wrap">
+<header class="wrap" id="hero">
   <div>
-    <div class="eyebrow"><b>TOR Radar</b> · UI preview · Team Momentum</div>
-    <h1 style="margin-top:1rem">Every Bangkok TOR, <em>readable at a glance</em></h1>
-    <p class="sub">High-fidelity mockups of the three surfaces that matter: the public dashboard,
-    the TOR detail page, and the match email. Sample data throughout — the working demo ships sprint by sprint.</p>
+    <div class="rise">
+      <div class="eyebrow"><b>TOR Radar</b> · UI preview · Team Momentum</div>
+      <h1 style="margin-top:1rem">Every Bangkok TOR, <em>readable at a glance</em></h1>
+    </div>
+    <p class="sub rise">High-fidelity mockups of the surfaces that matter: the public dashboard,
+    the TOR detail page, the match email, and the admin queue. Sample data throughout — the working
+    demo ships sprint by sprint.</p>
   </div>
   <div class="hero-stage">
     <div class="hero-tilt float" id="heroTilt">
@@ -154,10 +175,10 @@
             <span class="chip">งบ ≥ ฿500k</span><span class="chip">12 เดือนล่าสุด</span><span class="chip">สถานะ: ประกาศ</span>
           </div>
           <div class="tiles">
-            <div class="tile"><b>1,248</b><span>TOR ในระบบ</span></div>
-            <div class="tile"><b>฿2.4B</b><span>งบประมาณรวม</span></div>
-            <div class="tile"><b>52</b><span>หน่วยงาน กทม.</span></div>
-            <div class="tile"><b>17</b><span>จุดผิดปกติทางสถิติ</span></div>
+            <div class="tile"><b data-count="1248">1,248</b><span>TOR ในระบบ</span></div>
+            <div class="tile"><b data-count="2.4" data-prefix="฿" data-suffix="B" data-dec="1">฿2.4B</b><span>งบประมาณรวม</span></div>
+            <div class="tile"><b data-count="52">52</b><span>หน่วยงาน กทม.</span></div>
+            <div class="tile"><b data-count="17">17</b><span>จุดผิดปกติทางสถิติ</span></div>
           </div>
           <div class="charts">
             <div class="chartcard">
@@ -184,8 +205,10 @@
                 <circle class="dot" cx="292" cy="94" r="4.5" fill="var(--mark-a)"><title>฿1.7M · สำนัก ฌ.</title></circle>
                 <circle class="dot" cx="322" cy="102" r="4.5" fill="var(--mark-a)"><title>฿1.2M · เขต ญ.</title></circle>
                 <circle class="dot" cx="352" cy="110" r="4.5" fill="var(--mark-a)"><title>฿0.8M · เขต ฎ.</title></circle>
+                <circle class="anom-ring" cx="196" cy="30" r="6" fill="none" stroke="var(--mark-b)" stroke-width="1.5"/>
                 <circle class="dot" cx="196" cy="30" r="5.5" fill="var(--mark-b)" stroke="var(--card)" stroke-width="2"><title>฿5.2M · ผิดปกติทางสถิติ</title></circle>
                 <text x="206" y="27" fill="var(--mark-b)">฿5.2M · ผิดปกติทางสถิติ</text>
+                <circle class="anom-ring" cx="338" cy="42" r="6" fill="none" stroke="var(--mark-b)" stroke-width="1.5"/>
                 <circle class="dot" cx="338" cy="42" r="5.5" fill="var(--mark-b)" stroke="var(--card)" stroke-width="2"><title>฿4.4M · ผิดปกติทางสถิติ</title></circle>
                 <text x="288" y="60" fill="var(--mark-b)">฿4.4M</text>
               </svg>
@@ -195,11 +218,11 @@
             <div class="chartcard">
               <h4>งบประมาณรวม รายหน่วยงาน (12 เดือน)</h4>
               <div class="note">ข้อมูลตัวอย่าง · 5 อันดับแรก</div>
-              <div class="barrow"><span class="name">สำนักการโยธา</span><div class="track"><div class="fill" style="width:92%"></div></div><span class="v">฿612M</span></div>
-              <div class="barrow"><span class="name">สำนักการระบายน้ำ</span><div class="track"><div class="fill" style="width:74%"></div></div><span class="v">฿489M</span></div>
-              <div class="barrow"><span class="name">สำนักสิ่งแวดล้อม</span><div class="track"><div class="fill" style="width:52%"></div></div><span class="v">฿344M</span></div>
-              <div class="barrow"><span class="name">สำนักการจราจรฯ</span><div class="track"><div class="fill" style="width:38%"></div></div><span class="v">฿251M</span></div>
-              <div class="barrow"><span class="name">สำนักการแพทย์</span><div class="track"><div class="fill" style="width:29%"></div></div><span class="v">฿192M</span></div>
+              <div class="barrow"><span class="name">สำนักการโยธา</span><div class="track"><div class="fill" style="--w:92%"></div></div><span class="v">฿612M</span></div>
+              <div class="barrow"><span class="name">สำนักการระบายน้ำ</span><div class="track"><div class="fill" style="--w:74%"></div></div><span class="v">฿489M</span></div>
+              <div class="barrow"><span class="name">สำนักสิ่งแวดล้อม</span><div class="track"><div class="fill" style="--w:52%"></div></div><span class="v">฿344M</span></div>
+              <div class="barrow"><span class="name">สำนักการจราจรฯ</span><div class="track"><div class="fill" style="--w:38%"></div></div><span class="v">฿251M</span></div>
+              <div class="barrow"><span class="name">สำนักการแพทย์</span><div class="track"><div class="fill" style="--w:29%"></div></div><span class="v">฿192M</span></div>
             </div>
           </div>
           <div class="note" style="color:var(--soft); font-size:.62rem; margin-top:.5rem">
@@ -352,4 +375,24 @@
     if(e.isIntersecting) e.target.classList.add('in');
   }),{threshold:0.25});
   document.querySelectorAll('.scene').forEach(s=>io.observe(s));
+
+  // hero: trigger dot/bar animations + stat count-up shortly after load
+  const hero = document.getElementById('hero');
+  const fmt = (v,dec)=> dec>0 ? v.toFixed(dec) : Math.round(v).toLocaleString('en-US');
+  function countUp(el){
+    const target=parseFloat(el.dataset.count), dec=+(el.dataset.dec||0);
+    const pre=el.dataset.prefix||'', suf=el.dataset.suffix||'', t0=performance.now(), dur=1100;
+    function tick(t){
+      const p=Math.min(1,(t-t0)/dur), ease=1-Math.pow(1-p,3);
+      el.textContent=pre+fmt(target*ease,dec)+suf;
+      if(p<1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  addEventListener('load', ()=>{
+    setTimeout(()=>{
+      hero.classList.add('anim-in');
+      if(!rm) hero.querySelectorAll('[data-count]').forEach(countUp);
+    }, rm?0:450);
+  });
 </script>
