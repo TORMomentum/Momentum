@@ -260,16 +260,28 @@ scope, and overclaiming carries defamation risk.
 
 ### Non-functional
 - **NFR-1** Thai OCR/extraction accuracy is the critical path. Sprint 1 deliverable: measure
-  field-level accuracy on 10–20 real BMA TORs; set the FR-B3 confidence threshold from that data.
-  No fixed accuracy promise until measured.
-- **NFR-2** Original documents retained immutably; every displayed record links to its source.
-- **NFR-3** Public pages load < 3 s on mobile; responsive.
+  field-level accuracy on 10–20 real BMA TORs; set both FR-B3 confidence thresholds (T_low,
+  T_high) from that data. No fixed accuracy promise until measured.
+- **NFR-2** Original documents retained immutably — never edited in place — and every displayed
+  record links to its source. An accepted PDPA takedown request (FR-B5) restricts access to the
+  document with an audit-trail entry; it does not silently alter or delete the stored original.
+- **NFR-3** Public pages target < 3 s load on mobile (verified against the demo deployment with
+  the seeded corpus); responsive layout.
 - **NFR-4** Dockerized (compose) for dev parity; CI runs tests on PR; secrets via env files not
   committed (`.env` in `.gitignore`).
-- **NFR-5** PDPA compliance for profile PII AND document PII (FR-B5/FR-D3).
-- **NFR-6** All AI outputs explainable and labeled as AI-generated.
+- **NFR-5** PDPA-aligned data handling: explicit consent, PII minimization, export and deletion
+  implemented (FR-B5/FR-D3). This is engineering alignment with PDPA principles — no formal legal
+  compliance certification is claimed.
+- **NFR-6** All AI-derived content labeled as AI-generated. Checklist outputs include their exact
+  rule-based reasons (fully explainable); extracted fields carry a confidence score and a link to
+  the source document for verification.
 - **NFR-7** The web app UI is in Thai (extracted fields displayed as-is; an English UI is out of
   scope this semester).
+- **NFR-8** Security baseline: passwords hashed (bcrypt/argon2), HTTPS on any deployed
+  environment, role-based authorization on all admin and API routes, rate limiting on the
+  ingestion API, dependency vulnerability audit in CI.
+- **NFR-9** Sized for the course demo: corpus of hundreds of TORs and tens of concurrent users. No
+  uptime guarantee or horizontal-scaling claim is made this semester.
 
 ---
 
