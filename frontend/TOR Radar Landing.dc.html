@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Anuphan:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{margin:0;background:#0c0c0b;font-family:'IBM Plex Sans Thai',system-ui,sans-serif;color:#f5f2ea}
+a{color:#e8b435;text-decoration:none}a:hover{color:#f2cd6e}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,180,53,.5)}50%{box-shadow:0 0 0 14px rgba(232,180,53,0)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(10px)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+::selection{background:#e8b435;color:#111}
+</style>
+</helmet>
+<div style="position:relative;background:#0c0c0b;color:#f5f2ea;overflow:hidden">
+<canvas ref="{{ canvasRef }}" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none"></canvas>
+
+<header style="position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:26px;padding:0 40px;height:64px;background:linear-gradient(rgba(12,12,11,.85),rgba(12,12,11,0));backdrop-filter:blur(2px)">
+  <div style="display:flex;align-items:center;gap:10px;font:800 16px 'Anuphan',sans-serif;letter-spacing:.02em">TOR RADAR<span style="font:500 10px 'IBM Plex Mono',monospace;color:#e8b435;border:1px solid #e8b435;padding:2px 6px;border-radius:3px">BKK</span></div>
+  <nav style="display:flex;gap:24px;font:11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.6);letter-spacing:.08em;margin-left:14px">
+    <a href="#how" style="white-space:nowrap;color:rgba(255,255,255,.6)">HOW IT WORKS</a><a href="#data" style="white-space:nowrap;color:rgba(255,255,255,.6)">DATA</a><a href="#quality" style="white-space:nowrap;color:rgba(255,255,255,.6)">QUALITY</a>
+  </nav>
+  <div style="margin-left:auto;display:flex;gap:12px;align-items:center">
+    <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55)">เข้าสู่ระบบ</span>
+    <span style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;background:#f5f2ea;color:#111;padding:9px 18px;border-radius:4px;cursor:pointer" style-hover="background:#e8b435">ลงทะเบียนผู้ประกอบการ</span>
+  </div>
+</header>
+
+<section data-screen-label="Hero" style="position:relative;z-index:10;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 40px 60px">
+  <div style="font:500 11px 'IBM Plex Mono',monospace;color:#e8b435;letter-spacing:.2em;margin-bottom:22px">ISSUE NO. 2569-08 · BANGKOK PROCUREMENT, MADE VISIBLE</div>
+  <h1 style="margin:0;font:800 min(8.5vw,110px)/1.22 'Anuphan',sans-serif;letter-spacing:-.02em">การจัดซื้อ กทม.<br><span style="color:transparent;-webkit-text-stroke:1.5px rgba(245,242,234,.85)">มองเห็นได้</span><br>ตรวจสอบได้</h1>
+  <div style="display:flex;gap:40px;align-items:flex-end;margin-top:36px;flex-wrap:wrap">
+    <p style="margin:0;max-width:460px;font-size:15px;line-height:1.8;color:rgba(255,255,255,.65)">แพลตฟอร์มรวม TOR จากประกาศสาธารณะของกรุงเทพมหานคร — สกัดข้อมูลด้วย AI จับคู่ให้ผู้ประกอบการตามทักษะ และเปิดข้อมูลราคาให้ประชาชนตรวจสอบ</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <span style="white-space:nowrap;font:600 14px 'IBM Plex Sans Thai',sans-serif;background:#e8b435;color:#111;padding:14px 26px;border-radius:4px;cursor:pointer" style-hover="transform:translateY(-2px)"><a href="TOR Radar App.dc.html" style="color:#0c0c0b;text-decoration:none">สำรวจแดชบอร์ด →</a></span>
+      <span style="white-space:nowrap;font:600 14px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(255,255,255,.35);padding:14px 26px;border-radius:4px;cursor:pointer" style-hover="border-color:#e8b435;color:#e8b435">รับการแจ้งเตือน TOR</span>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:28px;left:40px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);letter-spacing:.16em;animation:bob 2.2s ease-in-out infinite">SCROLL TO CONTINUE ↓</div>
+  <div style="position:absolute;bottom:28px;right:40px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);text-align:right;line-height:1.8">LIVE CORPUS · <span style="color:#e8b435;animation:blink 1.6s infinite">●</span> 487 TORs<br>DATA LAST UPDATED 12 AUG 2026</div>
+</section>
+
+<div style="position:relative;z-index:10;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);background:#0c0c0b;overflow:hidden;padding:12px 0;white-space:nowrap">
+  <div style="display:inline-flex;gap:48px;animation:marquee 22s linear infinite;font:500 12px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.5);letter-spacing:.1em">
+    <span>487 TOR INGESTED</span><span>◆</span><span>฿1.28B TRACKED</span><span>◆</span><span>42 BMA AGENCIES</span><span>◆</span><span style="color:#e8b435">12 STATISTICAL ANOMALIES</span><span>◆</span><span>EMAIL MATCH ≤ 5 MIN</span><span>◆</span><span>487 TOR INGESTED</span><span>◆</span><span>฿1.28B TRACKED</span><span>◆</span><span>42 BMA AGENCIES</span><span>◆</span><span style="color:#e8b435">12 STATISTICAL ANOMALIES</span><span>◆</span><span>EMAIL MATCH ≤ 5 MIN</span><span>◆</span>
+  </div>
+</div>
+
+<section data-screen-label="Stats" style="position:relative;z-index:10;background:#0c0c0b;padding:90px 40px 70px">
+  <div data-rv style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12)">
+    <div style="padding:34px 26px 34px 0;border-right:1px solid rgba(255,255,255,.12)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.45);letter-spacing:.14em">[ TOR ทั้งหมด ]</div><div style="font:600 64px/1.15 'IBM Plex Mono',monospace"><span data-count="487">0</span></div><div style="font-size:12px;color:rgba(255,255,255,.45)">ฉบับ จากประกาศสาธารณะ</div></div>
+    <div style="padding:34px 26px;border-right:1px solid rgba(255,255,255,.12)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.45);letter-spacing:.14em">[ งบประมาณรวม ]</div><div style="font:600 64px/1.15 'IBM Plex Mono',monospace">฿<span data-count="1284">0</span>M</div><div style="font-size:12px;color:rgba(255,255,255,.45)">ตามราคากลางที่ประกาศ</div></div>
+    <div style="padding:34px 26px;border-right:1px solid rgba(255,255,255,.12)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.45);letter-spacing:.14em">[ หน่วยงาน ]</div><div style="font:600 64px/1.15 'IBM Plex Mono',monospace"><span data-count="42">0</span></div><div style="font-size:12px;color:rgba(255,255,255,.45)">สำนัก / สำนักงานเขต</div></div>
+    <div style="padding:34px 0 34px 26px"><div style="font:500 10px 'IBM Plex Mono',monospace;color:#e8b435;letter-spacing:.14em">[ ความผิดปกติทางสถิติ ]</div><div style="font:600 64px/1.15 'IBM Plex Mono',monospace;color:#e8b435"><span data-count="12">0</span></div><div style="font-size:12px;color:rgba(255,255,255,.45)">เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา</div></div>
+  </div>
+</section>
+
+<section id="how" data-screen-label="How it works" style="position:relative;z-index:10;background:#0c0c0b;padding:40px 40px 100px">
+  <div data-rv style="display:flex;align-items:baseline;gap:18px;margin-bottom:46px"><span style="font:500 11px 'IBM Plex Mono',monospace;color:#e8b435;letter-spacing:.18em">01 — 03</span><h2 style="margin:0;font:700 min(5vw,54px)/1.28 'Anuphan',sans-serif">เอกสารกระจัดกระจาย<br><span style="color:rgba(255,255,255,.4)">→ ข้อมูลที่ใช้งานได้</span></h2></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+    <div data-rv style="border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:30px 28px;background:rgba(255,255,255,.02);transition:transform .35s,border-color .35s" style-hover="transform:translateY(-8px);border-color:#e8b435">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);letter-spacing:.14em;margin-bottom:18px">[ 01 · INGEST ]</div>
+      <div style="font:700 20px 'Anuphan',sans-serif;margin-bottom:12px">รวบรวมทุกฟอร์แมต</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.8;color:rgba(255,255,255,.6)">PDF, สแกน, ภาพถ่ายจากประกาศสาธารณะ — เก็บต้นฉบับถาวรแบบแก้ไขไม่ได้ พร้อมลิงก์กลับแหล่งที่มาเสมอ</p>
+      <div style="margin-top:20px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.35)">UPLOAD · URL · API → SAME PIPELINE</div>
+    </div>
+    <div data-rv style="border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:30px 28px;background:rgba(255,255,255,.02);transition:transform .35s,border-color .35s" style-hover="transform:translateY(-8px);border-color:#e8b435">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);letter-spacing:.14em;margin-bottom:18px">[ 02 · EXTRACT ]</div>
+      <div style="font:700 20px 'Anuphan',sans-serif;margin-bottom:12px">AI สกัดโครงสร้าง</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.8;color:rgba(255,255,255,.6)">OCR ภาษาไทย + สกัดงบประมาณ ขอบเขต คุณสมบัติ กำหนดยื่นซอง — ทุกฟิลด์มีคะแนนความมั่นใจและป้าย "unverified" เมื่อไม่แน่ใจ</p>
+      <div style="margin-top:20px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.35)">CONFIDENCE-TIERED · HUMAN REVIEW QUEUE</div>
+    </div>
+    <div data-rv style="border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:30px 28px;background:rgba(255,255,255,.02);transition:transform .35s,border-color .35s" style-hover="transform:translateY(-8px);border-color:#e8b435">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);letter-spacing:.14em;margin-bottom:18px">[ 03 · MATCH ]</div>
+      <div style="font:700 20px 'Anuphan',sans-serif;margin-bottom:12px">จับคู่และแจ้งเตือน</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.8;color:rgba(255,255,255,.6)">โปรไฟล์ทักษะ × TOR ใหม่ — อีเมลถึงผู้ประกอบการภายใน 5 นาที พร้อมเหตุผลว่าทำไมงานนี้ถึงตรงกับคุณ</p>
+      <div style="margin-top:20px;font:10px 'IBM Plex Mono',monospace;color:#7fb8a4">✉ MATCH 92% · TOP-3 SKILL REASONS</div>
+    </div>
+  </div>
+</section>
+
+<section id="data" data-screen-label="Anomaly plot" style="position:relative;z-index:10;background:#0c0c0b;border-top:1px solid rgba(255,255,255,.12);padding:100px 40px">
+  <div data-rv style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;margin-bottom:40px">
+    <h2 style="margin:0;font:700 min(5vw,54px)/1.28 'Anuphan',sans-serif">ราคาที่<span style="color:#e8b435"> โดดจากกลุ่ม</span><br>มองเห็นได้ทันที</h2>
+    <div style="font:11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.45);text-align:right;line-height:1.9">เทียบภายในกลุ่ม (หมวด × ช่วงเวลา) · n ≥ 8<br>ธง = นอกช่วง 1.5×IQR · "ความผิดปกติทางสถิติ" ไม่ใช่ข้อกล่าวหา</div>
+  </div>
+  <div data-rv style="position:relative;height:340px;border-left:1px solid rgba(255,255,255,.2);border-bottom:1px solid rgba(255,255,255,.2);margin:0 8px 30px 54px">
+    <span style="position:absolute;left:-48px;top:-5px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">฿10M</span>
+    <span style="position:absolute;left:-48px;top:165px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">฿5M</span>
+    <span style="position:absolute;left:-48px;bottom:-5px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">฿0</span>
+    <div style="position:absolute;left:0;right:0;top:170px;border-top:1px dashed rgba(255,255,255,.1)"></div>
+    <div style="position:absolute;left:0;right:0;top:85px;border-top:1px dashed rgba(255,255,255,.1)"></div>
+    <sc-for list="{{ plotDots }}" as="d" hint-placeholder-count="14">
+      <div style="position:absolute;left:{{ d.x }};bottom:{{ d.y }};width:12px;height:12px;border-radius:50%;background:{{ d.color }};cursor:pointer;transition:transform .2s" style-hover="transform:scale(1.9)" title="{{ d.tip }}"></div>
+    </sc-for>
+    <div style="position:absolute;left:58%;bottom:80%;width:16px;height:16px;border-radius:50%;background:#e8b435;animation:pulse 2s infinite;cursor:pointer" title="฿9,400,000 · สูงกว่ากลุ่มเทียบ 3.1×IQR"></div>
+    <div style="position:absolute;left:61.5%;bottom:86%;font:11px 'IBM Plex Mono',monospace;color:#e8b435;white-space:nowrap">[ ANOMALY ] ฿9.4M · 3.1×IQR เหนือกลุ่มเทียบ</div>
+    <div style="position:absolute;left:5%;bottom:-28px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">ก่อสร้าง</div>
+    <div style="position:absolute;left:30%;bottom:-28px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">ระบายน้ำ</div>
+    <div style="position:absolute;left:55%;bottom:-28px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">ไอที/ซอฟต์แวร์</div>
+    <div style="position:absolute;left:80%;bottom:-28px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4)">จ้างเหมาบริการ</div>
+  </div>
+  <div data-rv style="font:11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);margin-top:44px">HOVER A DOT · 1 จุด = 1 TOR · ข้อมูลตัวอย่างจาก corpus นำร่อง</div>
+</section>
+
+<section id="quality" data-screen-label="Quality checklist" style="position:relative;z-index:10;background:#0c0c0b;border-top:1px solid rgba(255,255,255,.12);padding:100px 40px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
+    <div data-rv>
+      <div style="font:500 11px 'IBM Plex Mono',monospace;color:#e8b435;letter-spacing:.18em;margin-bottom:18px">[ AI QUALITY CHECKLIST ]</div>
+      <h2 style="margin:0 0 20px;font:700 min(4.4vw,48px)/1.3 'Anuphan',sans-serif">TOR เขียนดีแค่ไหน<br><span style="color:rgba(255,255,255,.4)">AI ตรวจให้ก่อนตัดสินใจยื่น</span></h2>
+      <p style="margin:0;font-size:14.5px;line-height:1.9;color:rgba(255,255,255,.6);max-width:480px">เช็กลิสต์แบบอธิบายได้: งบประมาณระบุไหม กำหนดเวลาสมเหตุสมผลไหม ขอบเขตเฉพาะเจาะจงไหม — ทุกคะแนนมาพร้อมเหตุผลตามกฎ ไม่ใช่กล่องดำ และไม่ใช่คำตัดสินทางกฎหมาย</p>
+    </div>
+    <div data-rv style="border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#0c0c0b;padding:34px 32px">
+      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:22px"><span style="font:600 74px/1 'IBM Plex Mono',monospace"><span data-count="85" data-decimal="1">0</span></span><span style="font:12px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.45)">/ 10 · SPEC QUALITY</span></div>
+      <div style="display:flex;flex-direction:column;gap:13px;font-size:13.5px;line-height:1.6">
+        <div style="display:flex;gap:10px"><span style="color:#7fb8a4;font-weight:700">✓</span><span>ระบุงบประมาณชัดเจน (฿4,850,000)</span></div>
+        <div style="display:flex;gap:10px"><span style="color:#7fb8a4;font-weight:700">✓</span><span>กำหนดยื่นซอง 14 วัน ≥ เกณฑ์ขั้นต่ำ</span></div>
+        <div style="display:flex;gap:10px"><span style="color:#7fb8a4;font-weight:700">✓</span><span>ขอบเขตงานระบุ deliverable 6 รายการ</span></div>
+        <div style="display:flex;gap:10px"><span style="color:#e8b435;font-weight:700">△</span><span>คุณสมบัติ "ทุนจดทะเบียน ≥ ฿1M" ไม่มีเหตุผลประกอบ</span></div>
+      </div>
+      <div style="margin-top:22px;font:10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.35);line-height:1.7">AI-GENERATED SPECIFICATION-QUALITY CHECK<br>NOT A LEGAL OR CORRUPTION JUDGMENT</div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="CTA" style="position:relative;z-index:10;background:#0c0c0b;border-top:1px solid rgba(255,255,255,.12);padding:120px 40px;text-align:center">
+  <div data-rv>
+    <h2 style="margin:0 0 26px;font:800 min(7vw,84px)/1.25 'Anuphan',sans-serif">งานที่ใช่ ไม่ควร<br><span style="color:transparent;-webkit-text-stroke:1.5px rgba(245,242,234,.85)">หลุดมือ</span> อีกต่อไป</h2>
+    <p style="margin:0 auto 36px;max-width:520px;font-size:15px;line-height:1.8;color:rgba(255,255,255,.6)">สร้างโปรไฟล์ทักษะครั้งเดียว — ให้ TOR ที่ตรงกับคุณวิ่งมาหาเอง ภายใน 5 นาทีหลังประกาศ</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <span style="white-space:nowrap;font:600 15px 'IBM Plex Sans Thai',sans-serif;background:#e8b435;color:#111;padding:16px 34px;border-radius:4px;cursor:pointer" style-hover="transform:translateY(-2px)">ลงทะเบียนฟรี</span>
+      <span style="white-space:nowrap;font:600 15px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(255,255,255,.35);padding:16px 34px;border-radius:4px;cursor:pointer" style-hover="border-color:#e8b435;color:#e8b435"><a href="TOR Radar App.dc.html" style="color:inherit;text-decoration:none">ดูแดชบอร์ดสาธารณะ</a></span>
+    </div>
+  </div>
+</section>
+
+<footer style="position:relative;z-index:10;background:#0c0c0b;border-top:1px solid rgba(255,255,255,.12);padding:34px 40px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font:10.5px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);line-height:1.8">
+  <div>TOR RADAR BKK · แพลตฟอร์มอิสระ ไม่ใช่หน่วยงานของ กทม.<br>ข้อมูลจากประกาศสาธารณะเท่านั้น · เนื้อหาสกัดโดย AI มีป้ายกำกับเสมอ</div>
+  <div style="text-align:right">PDPA-ALIGNED · PII MINIMIZED · TAKEDOWN WORKFLOW<br>ISSUE NO. 2569-08 · BUILT FOR TRANSPARENCY</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.canvasRef = React.createRef();
+    this._mouse = { x: 0, y: 0 };
+    this._raf = null;
+  }
+  renderVals() {
+    const dots = [];
+    const cols = [7, 32, 57, 82];
+    const seed = [0.18,0.31,0.24,0.12,0.27,0.2,0.15,0.34,0.22,0.29,0.11,0.25,0.19,0.3,0.16,0.26];
+    for (let i = 0; i < 16; i++) {
+      const c = cols[i % 4] + (i * 2.3) % 9;
+      dots.push({ x: c + '%', y: (seed[i] * 100) + '%', color: '#f5f2ea', tip: '฿' + (1 + seed[i] * 12).toFixed(1) + 'M · ในช่วงปกติของกลุ่มเทียบ' });
+    }
+    dots.push({ x: '14%', y: '68%', color: '#e8b435', tip: '฿7.1M · สูงกว่ากลุ่มเทียบ 2.4×IQR — ความผิดปกติทางสถิติ' });
+    return { canvasRef: this.canvasRef, plotDots: dots };
+  }
+  componentDidMount() {
+    this._waitThree = setInterval(() => {
+      if (window.THREE && this.canvasRef.current) { clearInterval(this._waitThree); this.initThree(); }
+    }, 60);
+    this.initReveals();
+    this.initCounters();
+  }
+  initReveals() {
+    const els = document.querySelectorAll('[data-rv]');
+    els.forEach(el => { el.style.opacity = '0'; el.style.transform = 'translateY(44px)'; el.style.transition = 'opacity .8s cubic-bezier(.2,.6,.2,1), transform .8s cubic-bezier(.2,.6,.2,1)'; });
+    this._io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; this._io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    els.forEach(el => this._io.observe(el));
+  }
+  initCounters() {
+    this._cio = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el = e.target, target = parseFloat(el.dataset.count), dec = el.dataset.decimal ? 1 : 0;
+        const t0 = performance.now(), dur = 1600;
+        const tick = (t) => {
+          const p = Math.min(1, (t - t0) / dur), ease = 1 - Math.pow(1 - p, 3);
+          let v = target * ease;
+          el.textContent = dec ? (v / 10).toFixed(1) : Math.round(v).toLocaleString();
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        this._cio.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('[data-count]').forEach(el => this._cio.observe(el));
+  }
+  initThree() {
+    const THREE = window.THREE, canvas = this.canvasRef.current;
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 2.2, 8);
+    const group = new THREE.Group();
+    scene.add(group);
+    // particle disc: TORs on the radar
+    const N = 700, pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const r = Math.sqrt(Math.random()) * 5.2, a = Math.random() * Math.PI * 2;
+      pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = (Math.random() - 0.5) * 0.25; pos[i * 3 + 2] = Math.sin(a) * r;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xf5f2ea, size: 0.035, transparent: true, opacity: 0.75 }));
+    group.add(pts);
+    // amber anomalies
+    const M = 12, apos = new Float32Array(M * 3);
+    for (let i = 0; i < M; i++) {
+      const r = 1 + Math.random() * 4, a = Math.random() * Math.PI * 2;
+      apos[i * 3] = Math.cos(a) * r; apos[i * 3 + 1] = 0.35 + Math.random() * 0.5; apos[i * 3 + 2] = Math.sin(a) * r;
+    }
+    const ageo = new THREE.BufferGeometry();
+    ageo.setAttribute('position', new THREE.BufferAttribute(apos, 3));
+    const amat = new THREE.PointsMaterial({ color: 0xe8b435, size: 0.14, transparent: true, opacity: 0.95 });
+    const apts = new THREE.Points(ageo, amat);
+    group.add(apts);
+    // radar rings
+    for (let i = 1; i <= 4; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(i * 1.3, 0.006, 8, 128), new THREE.MeshBasicMaterial({ color: 0xf5f2ea, transparent: true, opacity: 0.12 }));
+      ring.rotation.x = Math.PI / 2;
+      group.add(ring);
+    }
+    // radar sweep
+    const sweepGeo = new THREE.PlaneGeometry(5.2, 0.02);
+    sweepGeo.translate(2.6, 0, 0);
+    const sweep = new THREE.Mesh(sweepGeo, new THREE.MeshBasicMaterial({ color: 0xe8b435, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    sweep.rotation.x = -Math.PI / 2;
+    group.add(sweep);
+    group.rotation.x = 0.12;
+    const onMouse = (e) => { this._mouse.x = (e.clientX / innerWidth - 0.5) * 2; this._mouse.y = (e.clientY / innerHeight - 0.5) * 2; };
+    const onResize = () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); };
+    addEventListener('mousemove', onMouse);
+    addEventListener('resize', onResize);
+    onResize();
+    this._cleanup = () => { removeEventListener('mousemove', onMouse); removeEventListener('resize', onResize); renderer.dispose(); };
+    const clock = new THREE.Clock();
+    const loop = () => {
+      this._raf = requestAnimationFrame(loop);
+      const t = clock.getElapsedTime();
+      const scrollP = Math.min(1, scrollY / (innerHeight * 1.4));
+      group.rotation.y = t * 0.06;
+      sweep.rotation.z = -t * 0.9;
+      amat.size = 0.12 + Math.sin(t * 3) * 0.04;
+      group.rotation.x += ((0.12 + scrollP * 0.9) - group.rotation.x) * 0.05;
+      camera.position.z += ((8 - scrollP * 2.5) - camera.position.z) * 0.05;
+      camera.position.x += (this._mouse.x * 0.9 - camera.position.x) * 0.04;
+      camera.position.y += ((2.2 - this._mouse.y * 0.7) - camera.position.y) * 0.04;
+      camera.lookAt(0, 0, 0);
+      const fade = Math.max(0, 1 - scrollY / (innerHeight * 1.1));
+      canvas.style.opacity = String(0.25 + fade * 0.75);
+      renderer.render(scene, camera);
+    };
+    loop();
+  }
+  componentWillUnmount() {
+    clearInterval(this._waitThree);
+    if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._io) this._io.disconnect();
+    if (this._cio) this._cio.disconnect();
+    if (this._cleanup) this._cleanup();
+  }
+}
+</script>
+</body>
+</html>
