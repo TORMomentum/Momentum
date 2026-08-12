@@ -332,6 +332,12 @@ scope, and overclaiming carries defamation risk.
 
 ## 9. Cost Breakdown
 
+Costs fall into two categories: **direct (cash) costs** (§9.1) and **effort (labor) costs** (§9.2).
+For a student project the labor is unpaid, but it is the dominant real cost and is budgeted in
+person-hours; an imputed commercial value is shown for comparison.
+
+### 9.1 Direct (cash) costs
+
 All application software is open source (Next.js, Express, MongoDB Community drivers, MinIO,
 Docker). Paid usage is limited to cloud AI calls and optional hosting. Estimates below assume a
 demo-scale corpus of ~500 documents × ~10 pages and must be re-verified against current provider
@@ -349,10 +355,39 @@ pricing before budgeting.
 | Hosting (optional public demo) | One small cloud VM or Cloud Run free tier | ~US$5–10/month if used |
 | Domain (optional) | — | ~US$10/year if used |
 
-**Bottom line:** ~US$0–30 for the semester using free tiers and trial credits; worst case
+**Cash bottom line:** ~US$0–30 for the semester using free tiers and trial credits; worst case
 ~US$50–80 with paid AI headroom and a public VM. Pricing sources: Google Cloud Document AI and
 Gemini pricing pages (cloud.google.com/document-ai/pricing, ai.google.dev/gemini-api/docs/pricing)
 — re-check before committing a budget; rates change.
+
+### 9.2 Effort (labor) costs
+
+**Capacity assumption (named, adjustable):** team of 5 × ~10 h/week × ~15 working weeks ≈ **750
+person-hours** for the semester. Percentages below allocate that capacity; hours are planning
+estimates to be refined at each sprint planning and tracked in Jira against actuals.
+
+| Activity | Covers | Share | Est. hours |
+|----------|--------|-------|-----------|
+| Requirements & data sourcing | Validation interviews, TOR corpus collection, agency-list seeding | 8% | ~60 |
+| UI/UX design | Wireframes, Thai UI copy, design review | 8% | ~60 |
+| Backend development | API, ingestion pipeline, matching engine, email notifications, auth | 21% | ~160 |
+| Frontend development | Dashboard, TOR browse/detail, profiles, admin queue | 18% | ~135 |
+| AI integration | OCR/extraction integration, Sprint-1 accuracy benchmark, prompt/few-shot tuning | 13% | ~100 |
+| Data analysis | Anomaly rule calibration, checklist validation (hand-scored comparison) | 6% | ~45 |
+| Testing | Unit/integration tests in CI, manual test passes, bug fixing | 11% | ~80 |
+| Deployment & DevOps | Docker Compose, CI setup, demo hosting | 5% | ~40 |
+| Optimization & polish | Performance (NFR-3), responsive fixes, demo hardening | 4% | ~30 |
+| Reports & documentation | Course deliverables, README/docs, final presentation | 7% | ~50 |
+| Maintenance & consultation | Bug triage during demo period, instructor/TA meetings, Scrum ceremonies | 4% | ~30 |
+| **Total** | | 100% | **~790** |
+
+*(Total slightly exceeds the 750 h capacity — that is the point: scope pressure is visible up
+front, and the Sprint-5 Could/Should items are the release valve.)*
+
+**Imputed commercial value (illustrative only):** at an assumed blended junior-developer rate of
+฿R/hour, project labor ≈ 790 × R. Example: R = ฿300 → ≈ ฿237,000. The rate is an assumption, not
+a market quote — replace R with a sourced local rate if the evaluation requires a defensible
+figure. Actual cash labor cost this semester: ฿0 (student team).
 
 ---
 
