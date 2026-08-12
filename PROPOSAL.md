@@ -92,15 +92,13 @@ Automated source scraping behind per-source adapters · taxonomy admin UI · dra
 
 ## 6. Team & Roles
 
-Five-person delivery team; roles denote accountability — everyone ships code.
+Three-person delivery team; roles denote accountability — everyone ships code.
 
 | Role | Owns | Member |
 |---|---|---|
-| Project lead / Scrum master | Backlog, sprint cadence, sponsor communication | _[name]_ |
-| Backend & AI engineer | Express API, ingestion pipeline, Vertex AI extraction, accuracy benchmark | _[name]_ |
-| Frontend engineer | Next.js dashboard, TOR browse/detail, Thai UI | _[name]_ |
-| Data & matching engineer | Matching engine, anomaly rule, quality checklist, taxonomy | _[name]_ |
-| QA / DevOps engineer | CI, Docker Compose, MinIO/Atlas, test coverage, deployment | _[name]_ |
+| Project lead / full-stack engineer | Backlog, sprint cadence, sponsor communication, shared implementation | _[name]_ |
+| Backend / AI / data engineer | Express API, ingestion pipeline, Vertex AI extraction, accuracy benchmark, matching/anomaly logic | _[name]_ |
+| Frontend / QA / DevOps engineer | Next.js dashboard, TOR browse/detail, Thai UI, CI, Docker Compose, test coverage, deployment | _[name]_ |
 
 Process: 1–2-week iterations per the phase plan (§5.1) · Jira (epics ≈ requirement groups) · Discord standups · Definition of Done = reviewed, tests pass, runs in shared Docker Compose, demoable.
 
@@ -122,29 +120,30 @@ All application software is open source; cash exposure is AI usage plus optional
 
 ### 7.2 Effort (labor) — the dominant real cost
 
-Capacity: **5 people × ~13 h/week × 12 weeks ≈ 780 person-hours**, front-loaded toward the 8-week
-build. Allocation totals ~790 h — deliberately over-subscribed so scope pressure is visible up
-front; Could items and the week-9–12 reserve are the release valve.
+Capacity: **3 people × ~13 h/week × 12 weeks ≈ 468 person-hours**, front-loaded toward the 8-week
+build. Allocation totals ~468 h. This is a tighter budget; Could items and the week-9–12 reserve are
+the release valve if Must/Should scope starts consuming more than its phase budget.
 
 | Activity | Hours | Share |
 |---|---:|---:|
-| Backend development (API, ingestion, matching, notifications, auth) | ~160 | 21% |
-| Frontend development (dashboard, browse/detail, profiles, admin) | ~135 | 18% |
-| AI integration (extraction, benchmark, prompt/few-shot tuning) | ~100 | 13% |
-| Testing (CI suites, manual passes, bug fixing) | ~80 | 11% |
-| Requirements & data sourcing (interviews, TOR corpus, agency list) | ~60 | 8% |
-| UI/UX design (wireframes, Thai UI copy) | ~60 | 8% |
-| Reports & documentation (milestones, technical docs, presentation) | ~50 | 7% |
-| Data analysis (anomaly calibration, checklist validation) | ~45 | 6% |
-| Deployment & DevOps (Compose, CI, pilot hosting) | ~40 | 5% |
-| Optimization & polish · maintenance & sponsor reviews | ~60 | 8% |
+| Backend development (API, ingestion, matching, notifications, auth) | ~94 | 20% |
+| Frontend development (dashboard, browse/detail, profiles, admin) | ~80 | 17% |
+| AI integration (extraction, benchmark, prompt/few-shot tuning) | ~56 | 12% |
+| Testing (CI suites, manual passes, bug fixing) | ~47 | 10% |
+| Requirements & data sourcing (interviews, TOR corpus, agency list) | ~37 | 8% |
+| UI/UX design (wireframes, Thai UI copy) | ~37 | 8% |
+| Reports & documentation (milestones, technical docs, presentation) | ~28 | 6% |
+| Data analysis (anomaly calibration, checklist validation) | ~28 | 6% |
+| Deployment & DevOps (Compose, CI, pilot hosting) | ~23 | 5% |
+| Optimization & polish · maintenance & sponsor reviews | ~38 | 8% |
+| **Total** | **~468** | **100%** |
 
 ### 7.3 Commercial value of the scope
 
-Two views of the same 790 hours (rates are stated assumptions, not market quotes):
+Two views of the same 468 hours (rates are stated assumptions, not market quotes):
 
-- **Internal cost view:** 790 h × ฿600/h base engineer rate ≈ **฿474,000**.
-- **Commercial contract view:** priced as a vendor fixed-price engagement at a loaded billing rate (overhead, project management, QA, risk buffer, warranty, margin — typically 1.7–2.5× base): 790 h × ฿1,200–1,500 ≈ **฿0.95M–1.2M**. This scope is plausibly a **~฿1M contract** at Bangkok-market vendor pricing.
+- **Internal cost view:** 468 h × ฿600/h base engineer rate ≈ **฿280,800**.
+- **Commercial contract view:** priced as a vendor fixed-price engagement at a loaded billing rate (overhead, project management, QA, risk buffer, warranty, margin — typically 1.7–2.5× base): 468 h × ฿1,200–1,500 ≈ **฿0.56M–0.70M** at Bangkok-market vendor pricing.
 
 Labor is an internal, non-cash cost in Phase 1; the figures represent its commercial value.
 

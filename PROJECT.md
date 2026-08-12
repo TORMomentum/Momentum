@@ -377,37 +377,36 @@ Gemini pricing pages (cloud.google.com/document-ai/pricing, ai.google.dev/gemini
 
 ### 9.2 Effort (labor) costs
 
-**Capacity assumption (named, adjustable):** team of 5 × ~13 h/week × 12 weeks ≈ **780
+**Capacity assumption (named, adjustable):** team of 3 × ~13 h/week × 12 weeks ≈ **468
 person-hours**, front-loaded toward the 8-week build (weeks 9–12 taper to review/hardening).
 Percentages below allocate that capacity; hours are planning estimates to be refined at each
 sprint planning and tracked in Jira against actuals.
 
 | Activity | Covers | Share | Est. hours |
 |----------|--------|-------|-----------|
-| Requirements & data sourcing | Validation interviews, TOR corpus collection, agency-list seeding | 8% | ~60 |
-| UI/UX design | Wireframes, Thai UI copy, design review | 8% | ~60 |
-| Backend development | API, ingestion pipeline, matching engine, email notifications, auth | 21% | ~160 |
-| Frontend development | Dashboard, TOR browse/detail, profiles, admin queue | 18% | ~135 |
-| AI integration | OCR/extraction integration, Sprint-1 accuracy benchmark, prompt/few-shot tuning | 13% | ~100 |
-| Data analysis | Anomaly rule calibration, checklist validation (hand-scored comparison) | 6% | ~45 |
-| Testing | Unit/integration tests in CI, manual test passes, bug fixing | 11% | ~80 |
-| Deployment & DevOps | Docker Compose, CI setup, demo hosting | 5% | ~40 |
-| Optimization & polish | Performance (NFR-3), responsive fixes, demo hardening | 4% | ~30 |
-| Reports & documentation | Milestone reports, README/technical docs, stakeholder presentation | 7% | ~50 |
-| Maintenance & consultation | Bug triage during the pilot period, sponsor reviews, Scrum ceremonies | 4% | ~30 |
-| **Total** | | 100% | **~790** |
+| Requirements & data sourcing | Validation interviews, TOR corpus collection, agency-list seeding | 8% | ~37 |
+| UI/UX design | Wireframes, Thai UI copy, design review | 8% | ~37 |
+| Backend development | API, ingestion pipeline, matching engine, email notifications, auth | 20% | ~94 |
+| Frontend development | Dashboard, TOR browse/detail, profiles, admin queue | 17% | ~80 |
+| AI integration | OCR/extraction integration, Sprint-1 accuracy benchmark, prompt/few-shot tuning | 12% | ~56 |
+| Data analysis | Anomaly rule calibration, checklist validation (hand-scored comparison) | 6% | ~28 |
+| Testing | Unit/integration tests in CI, manual test passes, bug fixing | 10% | ~47 |
+| Deployment & DevOps | Docker Compose, CI setup, demo hosting | 5% | ~23 |
+| Optimization & polish | Performance (NFR-3), responsive fixes, demo hardening | 4% | ~19 |
+| Reports & documentation | Milestone reports, README/technical docs, stakeholder presentation | 6% | ~28 |
+| Maintenance & consultation | Bug triage during the pilot period, sponsor reviews, Scrum ceremonies | 4% | ~19 |
+| **Total** | | 100% | **~468** |
 
-*(Total slightly exceeds the 780 h capacity — that is the point: scope pressure is visible up
-front, and the Could/Should items plus the week-9–12 reserve are the release valve.)*
+*(This is a tighter 3-person budget. Could items and the week-9–12 reserve remain the release
+valve if the Must/Should scope starts consuming more than its phase budget.)*
 
-**Imputed labor value and commercial price (illustrative only):** two views of the same 790 hours:
+**Imputed labor value and commercial price (illustrative only):** two views of the same 468 hours:
 
-- **Internal cost view:** hours × base engineer rate. Example: 790 × ฿600/h ≈ **฿474,000**.
+- **Internal cost view:** hours × base engineer rate. Example: 468 × ฿600/h ≈ **฿280,800**.
 - **Commercial contract view:** what this scope would cost as a fixed-price engagement from a
   software vendor — hours × *loaded* billing rate, where the loaded rate carries overhead, project
   management, quality assurance, risk buffer, warranty support, and margin (typically 1.7–2.5× the
-  base rate). Example: 790 × ฿1,200–1,500/h ≈ **฿0.95M–1.2M** — i.e., this scope is plausibly a
-  **~฿1M contract** at Bangkok-market vendor pricing.
+  base rate). Example: 468 × ฿1,200–1,500/h ≈ **฿0.56M–0.70M** at Bangkok-market vendor pricing.
 
 All rates are stated assumptions, not market quotes — source local vendor quotes where a
 defensible figure is required. Labor is an internal, non-cash cost in Phase 1; the figures above
