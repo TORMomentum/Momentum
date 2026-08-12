@@ -108,20 +108,21 @@ def issue_type_ids(project: dict) -> dict:
     return types
 
 
-def existing_summaries() -> set:
-    out, start = set(), 0
+def search(jql: str) -> list:
+    issues, token = [], None
     while True:
-        r = call(
-            "POST",
-            "/rest/api/3/search/jql",
-            {"jql": f'project = "{PROJECT}"', "fields": ["summary"],
-             "maxResults": 100, "startAt": start},
-        )
-        for it in r.get("issues", []):
-            out.add(it["fields"]["summary"])
-        if start + 100 >= r.get("total", 0):
-            return out
-        start += 100
+        body = {"jql": jql, "fields": ["summary"], "maxResults": 100}
+        if token:
+            body["nextPageToken"] = token
+        r = call("POST", "/rest/api/3/search/jql", body)
+        issues += r.get("issues", [])
+        token = r.get("nextPageToken")
+        if not token or r.get("isLast", True):
+            return issues
+
+
+def existing_summaries() -> set:
+    return {i["fields"]["summary"] for i in search(f'project = "{PROJECT}"')}
 
 
 def create(fields: dict) -> str:
@@ -253,10 +254,8 @@ def main():
     for code, summary, desc, labels in EPICS:
         title = f"{code}: {summary}"
         if title in done:
-            found = call("POST", "/rest/api/3/search/jql",
-                         {"jql": f'project = "{PROJECT}" AND summary ~ "\\"{title}\\""',
-                          "fields": ["summary"], "maxResults": 5})
-            epic_keys[code] = found["issues"][0]["key"]
+            found = search(f'project = "{PROJECT}" AND summary ~ "\\"{title}\\""')
+            epic_keys[code] = found[0]["key"]
             print(f"= epic exists {epic_keys[code]}  {title}")
             continue
         key = create({
