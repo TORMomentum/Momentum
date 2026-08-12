@@ -384,8 +384,8 @@ estimates to be refined at each sprint planning and tracked in Jira against actu
 *(Total slightly exceeds the 750 h capacity — that is the point: scope pressure is visible up
 front, and the Sprint-5 Could/Should items are the release valve.)*
 
-**Imputed commercial value (illustrative only):** at an assumed blended junior-developer rate of
-฿R/hour, project labor ≈ 790 × R. Example: R = ฿300 → ≈ ฿237,000. The rate is an assumption, not
+**Imputed commercial value (illustrative only):** at an assumed blended software-engineer rate of
+฿R/hour, project labor ≈ 790 × R. Example: R = ฿600 → ≈ ฿474,000. The rate is an assumption, not
 a market quote — replace R with a sourced local rate where a defensible figure is required. Labor
 is an internal, non-cash cost in Phase 1; the imputed figure represents its commercial value.
 
