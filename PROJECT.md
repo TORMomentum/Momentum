@@ -130,7 +130,8 @@ Format: As a `<role>`, I want `<capability>` so that `<benefit>`. Acceptance cri
 _No agency user stories: BMA officers are a data source, not platform users (§2). An officer
 browsing TORs uses the same public views as any citizen._
 - **US-08** As a citizen, I want a public dashboard (no login) showing TORs per BMA agency.
-  *Accept: agency list with TOR count + total budget, filterable by date range.*
+  *Accept: agency list with TOR count + total budget, filterable by date range; "data last
+  updated" timestamp + coverage note visible (FR-E1).*
 - **US-09** As a citizen, I want pricing plots with statistical anomalies highlighted.
   *Accept: scatter/box plot of budget grouped by category (and agency); points flagged by the documented anomaly rule (FR-E2); flagged points labeled "statistical anomaly."*
 - **US-10** As a journalist or researcher, I want to filter the dashboard by agency, period, and
@@ -219,7 +220,10 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
   against).
 
 ### FR-E: Public Dashboard & Visualization (MVP)
-- **FR-E1** Public (no-login) dashboard: TOR counts + total budget per BMA agency over time.
+- **FR-E1** Public (no-login) dashboard: TOR counts + total budget per BMA agency over time. The
+  dashboard always shows a **"data last updated"** timestamp (time of the latest successful
+  ingestion) and a coverage note that figures reflect the ingested corpus, not necessarily all BMA
+  procurement.
 - **FR-E2** Pricing plots with a **documented anomaly rule**: compare budgets only within
   (category × time-window) peer groups; require a minimum peer-group size (e.g. n ≥ 8) before
   flagging; flag = outside 1.5×IQR (or z > 3) of the peer group; label "statistical anomaly," never
@@ -228,7 +232,9 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
   browsable indefinitely — the dashboard doubles as a historical archive (raw documents are never
   deleted, NFR-2).
 - **FR-E4** **Shared TOR detail page** (single feature serving vendors, public, and journalists):
-  structured fields + original-document link + quality-checklist result + status history.
+  structured fields + original-document link + quality-checklist result + status history + per-record
+  extraction provenance ("extracted <timestamp> by <AI model/version>", per NFR-6; re-extraction or
+  admin correction updates the timestamp).
 - **FR-E5** Status transitions: status changes come from admin action or re-ingestion of an updated
   announcement; each transition records timestamp, source, and actor (supports US-07 history).
 - **FR-E6** (Could) CSV export of the currently filtered TOR list: extracted fields + source links,

@@ -26,7 +26,7 @@ University group project (Software Design, Year 3): centralized Thai-language pl
 - **Low-confidence extractions auto-publish TAGGED, never clean:** two-tier policy (FR-B3/FR-G1) — medium confidence publishes with an "unverified extraction" tag; only very-low/suspicious records also hit the admin review queue. Below-threshold fields never feed anomaly stats or match notifications until verified. Both thresholds come from the Sprint-1 accuracy benchmark, not from a guess.
 - **Anomaly wording:** "statistical anomaly" / "specification-quality check" — never "suspicious" or corruption claims (FR-E2, FR-F2; defamation risk).
 - **PDPA:** consent at signup, export/delete, PII minimized in displayed extractions (FR-B5, FR-D3).
-- **All AI outputs labeled AI-generated + explainable** (NFR-6).
+- **All AI outputs labeled AI-generated + explainable** (NFR-6); every TOR shows extraction provenance (timestamp + model), and the dashboard always shows "data last updated" + a coverage note (FR-E1/FR-E4) — never imply the corpus is complete or live.
 - **MVP discipline:** Must = Sprints 1–4; Sprint 5 is entirely cuttable. Don't build Stretch (scraping, taxonomy UI) before Must is done.
 
 ## Working style
