@@ -384,10 +384,18 @@ estimates to be refined at each sprint planning and tracked in Jira against actu
 *(Total slightly exceeds the 750 h capacity — that is the point: scope pressure is visible up
 front, and the Sprint-5 Could/Should items are the release valve.)*
 
-**Imputed commercial value (illustrative only):** at an assumed blended software-engineer rate of
-฿R/hour, project labor ≈ 790 × R. Example: R = ฿600 → ≈ ฿474,000. The rate is an assumption, not
-a market quote — replace R with a sourced local rate where a defensible figure is required. Labor
-is an internal, non-cash cost in Phase 1; the imputed figure represents its commercial value.
+**Imputed labor value and commercial price (illustrative only):** two views of the same 790 hours:
+
+- **Internal cost view:** hours × base engineer rate. Example: 790 × ฿600/h ≈ **฿474,000**.
+- **Commercial contract view:** what this scope would cost as a fixed-price engagement from a
+  software vendor — hours × *loaded* billing rate, where the loaded rate carries overhead, project
+  management, quality assurance, risk buffer, warranty support, and margin (typically 1.7–2.5× the
+  base rate). Example: 790 × ฿1,200–1,500/h ≈ **฿0.95M–1.2M** — i.e., this scope is plausibly a
+  **~฿1M contract** at Bangkok-market vendor pricing.
+
+All rates are stated assumptions, not market quotes — source local vendor quotes where a
+defensible figure is required. Labor is an internal, non-cash cost in Phase 1; the figures above
+represent its commercial value.
 
 ---
 
