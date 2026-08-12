@@ -225,17 +225,18 @@
 <!-- 7 · TIMELINE -->
 <section class="slide">
   <div class="eyebrow"><span><b>Timeline &amp; roadmap</b> · 15 weeks, 5 sprints</span><span>7 / 9</span></div>
-  <h2>Validate first, <span class="tick">demo every sprint</span></h2>
+  <h2>Iterative + sequential: <span class="tick">sprints inside phase gates</span></h2>
   <div class="sprint-row">
-    <div class="sprint gate"><b>S1 · Validate</b><small>wk 1–3</small>Interviews → revised backlog · TOR corpus · <b>accuracy benchmark</b> · CI/Docker</div>
-    <div class="sprint"><b>S2 · Ingest</b><small>wk 4–6</small>Upload/URL/API → extraction → review queue → detail page</div>
-    <div class="sprint"><b>S3 · Show</b><small>wk 7–9</small>Public dashboard · pricing plots · anomaly rule · search</div>
-    <div class="sprint"><b>S4 · Match</b><small>wk 10–12</small>Profiles · matching engine · email notifications</div>
-    <div class="sprint cut"><b>S5 · Polish</b><small>wk 13–15</small>Checklist · bookmarks/archive · hardening — <b>fully cuttable</b></div>
+    <div class="sprint gate"><b>S1 · Validate</b><small>wk 1–3 · Inception → Elaboration</small>Interviews → revised backlog · TOR corpus · <b>accuracy benchmark</b> · CI/Docker</div>
+    <div class="sprint"><b>S2 · Ingest</b><small>wk 4–6 · Elaboration → Construction</small>Upload/URL/API → extraction → review queue → detail page</div>
+    <div class="sprint"><b>S3 · Show</b><small>wk 7–9 · Construction</small>Public dashboard · pricing plots · anomaly rule · search</div>
+    <div class="sprint"><b>S4 · Match</b><small>wk 10–12 · Construction</small>Profiles · matching engine · email notifications</div>
+    <div class="sprint cut"><b>S5 · Polish</b><small>wk 13–15 · Transition</small>Checklist · bookmarks/archive · hardening — <b>fully cuttable</b></div>
   </div>
   <div class="cols">
-    <div class="callout"><b>Phase gate (S1):</b> if extraction accuracy is insufficient, the plan changes before
-      further build. Must-set = Sprints 1–4; Sprint 5 is the scope release valve.</div>
+    <div class="callout"><b>Cost control by phase gate:</b> the effort budget is partitioned per phase; Jira actuals
+      are compared at every gate, so overrun is visible weeks early — and the fix is cutting Sprint-5 scope,
+      never squeezing test at the end. If S1 extraction accuracy is insufficient, the plan changes before further build.</div>
     <div class="card"><b>Beyond Phase 1</b><p class="muted" style="margin:.4rem 0 0">Source scraping behind adapters ·
       taxonomy admin UI · draft-TOR consultation tracking · beyond-Bangkok — only after the pilot validates.</p></div>
   </div>

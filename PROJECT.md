@@ -306,6 +306,23 @@ scope, and overclaiming carries defamation risk.
 1. **Sprint 1:** requirement validation (interview 2–3 real freelancers + the sponsor as customer
    proxy; revised backlog = the phase-gate deliverable) · collect 10–20 real BMA TORs · extraction
    spike + accuracy benchmark (NFR-1) · repo/CI/Docker skeleton.
+
+**Process model — iterative + sequential (RUP-style phases over Scrum sprints):** the sprints are
+time-boxed iterations; a sequential phase structure sits on top, with a gate at each phase end.
+Discipline effort shifts across phases (the classic RUP "hump chart"), which is what makes cost
+controllable and progress explainable to the sponsor:
+
+| Phase | Sprints (weeks) | Effort emphasis | Exit gate |
+|---|---|---|---|
+| **Inception** | S1 (1–2) | Business modeling + requirements (interviews, scope, risks) | Revised backlog approved by sponsor |
+| **Elaboration** | S1–S2 (2–6) | Requirements taper; analysis/design + implementation rise — prove the riskiest piece first (Thai OCR pipeline) | Accuracy benchmark done; executable ingestion→extraction skeleton |
+| **Construction** | S2–S4 (4–12) | Implementation + test dominant; a demoable increment every sprint | Must-set features complete |
+| **Transition** | S5 (13–15) | Test + deployment dominant (hardening, pilot rollout) | Pilot demo accepted |
+
+**Cost-control mechanism:** the §9.2 effort budget is partitioned across these phases; actual hours
+are logged in Jira per activity and compared to the phase budget at every gate. A phase trending
+over budget is visible weeks early — the correction is cutting Sprint-5 scope, never squeezing
+test/deployment at the end.
 2. **Sprint 2:** ingestion (upload/URL) → extraction → **minimal review queue** → published
    structured TORs + shared detail page.
 3. **Sprint 3:** public dashboard (agency view, pricing plots, FR-E2 anomaly rule) + search/filter.

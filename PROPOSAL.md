@@ -74,6 +74,14 @@ Wireframes (rendered in the slide deck; a working demo ships at the end of every
 
 Must-set = Sprints 1–4. Sprint 5 is the scope release valve, enforced at every sprint review.
 
+**Process model — iterative + sequential:** Scrum sprints are the iterations; RUP-style phases sit
+on top with a gate at each phase end — **Inception** (S1: requirements/validation) → **Elaboration**
+(S1–S2: prove the riskiest piece, the Thai OCR pipeline) → **Construction** (S2–S4: demoable
+increment every sprint) → **Transition** (S5: hardening + pilot). Discipline effort shifts per
+phase; the §7.2 effort budget is partitioned accordingly and compared against Jira actuals at every
+gate, so cost overrun is visible weeks early and the sponsor always knows which phase the project
+is in and what the gate deliverable is.
+
 ### 5.2 Validation gate (Sprint 1 — go/no-go)
 
 - **Extraction benchmark:** field-level accuracy measured on 10–20 real BMA TORs. No accuracy is promised before this measurement; both confidence thresholds derive from it. **This is the critical path — if extraction quality is insufficient, the plan changes before further build.**
