@@ -2,7 +2,7 @@
 
 University group project (Software Design, Year 3): centralized Thai-language platform for Bangkok (BMA) procurement TORs — ingest any format, AI-extract, match to vendor skill profiles, notify by email, public transparency dashboard with pricing-anomaly visualization.
 
-**Read [PROJECT.md](PROJECT.md) first** — it is the single source of truth for problem statement, stakeholders, user stories (US-01…15), functional requirements (FR-A…G), MoSCoW feature analysis, cost breakdown, sprint plan, and risks. Do not re-derive requirements; extend that file when they change.
+**Read [PROJECT.md](PROJECT.md) first** — it is the single source of truth for problem statement, stakeholders, user stories (US-01…16), functional requirements (FR-A…G), MoSCoW feature analysis, cost breakdown, sprint plan, and risks. Do not re-derive requirements; extend that file when they change.
 
 ## Stack (decided — do not substitute)
 

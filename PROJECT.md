@@ -121,26 +121,33 @@ Format: As a `<role>`, I want `<capability>` so that `<benefit>`. Acceptance cri
 - **US-07** As a vendor, I want to bookmark TORs and see their coarse status (announced / closed /
   awarded), so I can follow opportunities. *Accept: bookmark list; status history with timestamps.*
 
-### Public / journalist (S3, S4)
+### Public / journalist / researcher (S3, S4)
+
+_No agency user stories: BMA officers are a data source, not platform users (§2). An officer
+browsing TORs uses the same public views as any citizen._
 - **US-08** As a citizen, I want a public dashboard (no login) showing TORs per BMA agency.
   *Accept: agency list with TOR count + total budget, filterable by date range.*
 - **US-09** As a citizen, I want pricing plots with statistical anomalies highlighted.
   *Accept: scatter/box plot of budget grouped by category (and agency); points flagged by the documented anomaly rule (FR-E2); flagged points labeled "statistical anomaly."*
-- **US-10** As a journalist, I want to filter the dashboard by agency, period, and category and see
-  totals/trends. *Accept: filters compose; totals update; simple trend line per period.*
-- **US-11** As a journalist, I want each TOR's quality-checklist score with reasons, so I can find
-  leads on badly specified procurements. *Accept: same surface as US-06; score methodology page linked.*
+- **US-10** As a journalist or researcher, I want to filter the dashboard by agency, period, and
+  category and see totals/trends. *Accept: filters compose; totals update; simple trend line per period.*
+- **US-11** As a journalist or researcher, I want each TOR's quality-checklist score with reasons,
+  so I can find leads on badly specified procurements.
+  *Accept: same surface as US-06; score methodology page linked.*
+- **US-12** As a researcher, I want to export the currently filtered TOR list as CSV, so I can
+  analyze the data with my own tools. *(Could — ships only if the Must set is done.)*
+  *Accept: export respects active filters; includes extracted fields + source links; no PII beyond the displayed extractions.*
 
 ### Admin (D2/P4)
-- **US-12** As an admin, I want to ingest a TOR by uploading a file (PDF/JPG/PNG) or submitting a
+- **US-13** As an admin, I want to ingest a TOR by uploading a file (PDF/JPG/PNG) or submitting a
   URL, so the corpus can be seeded from public announcements.
   *Accept: both paths produce a record in the extraction pipeline; duplicates resolve to one record (FR-A3).*
-- **US-13** As an admin, I want a queue of failed/low-confidence extractions with the original
+- **US-14** As an admin, I want a queue of failed/low-confidence extractions with the original
   document side-by-side, so I can correct fields before they go live.
   *Accept: below-threshold records held unpublished; edit + approve publishes them.*
-- **US-14** As an admin, I want to manage the taxonomy (skill tags, categories, canonical BMA agency
+- **US-15** As an admin, I want to manage the taxonomy (skill tags, categories, canonical BMA agency
   list), so matching and the Bangkok-only filter stay consistent. *Accept: seeded from JSON; editable in UI (stretch).*
-- **US-15** As an admin, I want ingestion-source health monitoring, so a silently broken source
+- **US-16** As an admin, I want ingestion-source health monitoring, so a silently broken source
   doesn't create a coverage gap. *(Stretch — only relevant once scraping (FR-A-S1) exists.)*
 
 ---
@@ -160,7 +167,7 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
 
 ### FR-A-S: Ingestion (Stretch)
 - **FR-A-S1** Scraping/polling of configured BMA announcement pages, one adapter per source, with
-  per-source health status (pairs with US-15). MVP corpus is manually seeded instead.
+  per-source health status (pairs with US-16). MVP corpus is manually seeded instead.
 
 ### FR-B: Extraction & Normalization (MVP)
 - **FR-B1** OCR Thai + English from scanned/image documents (Vertex AI Document AI / Gemini vision).
@@ -199,6 +206,8 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
   structured fields + original-document link + quality-checklist result + status history.
 - **FR-E5** Status transitions: status changes come from admin action or re-ingestion of an updated
   announcement; each transition records timestamp, source, and actor (supports US-07 history).
+- **FR-E6** (Could) CSV export of the currently filtered TOR list: extracted fields + source links,
+  PII-minimized per FR-B5 (supports US-12).
 
 ### FR-F: AI Quality Checklist (Should — ship after extraction is solid)
 Deliberately scoped as a specification-quality checklist rather than an "AI audit": judging
@@ -236,16 +245,17 @@ scope, and overclaiming carries defamation risk.
 
 | Feature | Stories | MoSCoW | Impact | Effort | Notes |
 |---------|---------|--------|--------|--------|-------|
-| TOR upload/URL ingestion + OCR extraction | US-05, US-12 | **Must** | High | High | Foundation. Vertex AI heavy lifting; benchmark accuracy first (NFR-1) |
-| Minimal admin review/correction queue | US-13 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR errors are expected; without review, incorrect data would be published |
+| TOR upload/URL ingestion + OCR extraction | US-05, US-13 | **Must** | High | High | Foundation. Vertex AI heavy lifting; benchmark accuracy first (NFR-1) |
+| Minimal admin review/correction queue | US-14 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR errors are expected; without review, incorrect data would be published |
 | Shared TOR detail page + search/filter | US-04, US-05 | **Must** | High | Med | First visible value; one page serves all roles |
 | Public dashboard: per-agency view + pricing plots + anomaly rule | US-08–US-10 | **Must** | High | Med | High demonstration value; core transparency mission; anomaly rule per FR-E2 |
 | Vendor skill profiles | US-01 | **Must** | High | Med | Prereq for matching |
 | Matching engine + email notifications | US-02, US-03 | **Must** | High | Med–High | Core differentiator — skill/preference matching with match explanations |
 | AI quality checklist (heuristic) | US-06, US-11 | **Should** | High | Med | Differentiator; heuristic + explainable, after extraction is solid |
 | Bookmarks + status tracking | US-07 | **Could** | Med | Low | Needs FR-E5 status transitions |
-| Automated scraping + source health | US-15 | **Could** | Med | High | High maintenance cost from source-format changes; corpus manually seeded for MVP |
-| Taxonomy admin UI | US-14 | **Could** | Low | Low | JSON seed files first |
+| CSV export of filtered TOR list | US-12 | **Could** | Med | Low | FR-E6; serves researchers/journalists; PII-minimized |
+| Automated scraping + source health | US-16 | **Could** | Med | High | High maintenance cost from source-format changes; corpus manually seeded for MVP |
+| Taxonomy admin UI | US-15 | **Could** | Low | Low | JSON seed files first |
 | Bid submission / award analysis | — | **Won't (this semester)** | — | — | Coarse status labels only |
 
 **Sprint plan (Must-first; each sprint demoable):**
