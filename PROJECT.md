@@ -118,8 +118,12 @@ Format: As a `<role>`, I want `<capability>` so that `<benefit>`. Acceptance cri
   *Accept: TOR detail page (shared with all roles, see FR-E4) shows all extracted fields + original file.*
 - **US-06** As a vendor, I want to see the TOR's quality-checklist result, so I can avoid poorly
   specified projects. *Accept: score + ≥ 3 concrete checklist reasons displayed.*
-- **US-07** As a vendor, I want to bookmark TORs and see their coarse status (announced / closed /
-  awarded), so I can follow opportunities. *Accept: bookmark list; status history with timestamps.*
+- **US-07** As a vendor, I want to bookmark TORs, see their coarse status (announced / closed /
+  awarded), and privately mark ones I pursued as won or completed, so I can follow opportunities
+  and keep a personal archive of past projects. *(Personal tracking part is Could.)*
+  *Accept: bookmark list; status history with timestamps; self-reported pursue/won/completed marks
+  are private to the vendor, move completed items to a personal archive view, and are never shown
+  publicly or presented as verified awards.*
 
 ### Public / journalist / researcher (S3, S4)
 
@@ -194,6 +198,10 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
 - **FR-D1** Registration/login (email + OAuth). Roles: vendor, admin, anonymous public.
 - **FR-D2** Skill profile CRUD with taxonomy tags + free-text portfolio.
 - **FR-D3** PDPA: explicit consent at signup, data export, account deletion.
+- **FR-D4** (Could) Personal project tracking on bookmarks: vendor marks a TOR pursuing / won /
+  completed; completed items move to a personal archive view. Self-reported and private — never
+  displayed publicly, never treated as a verified award (the platform has no bid data to verify
+  against).
 
 ### FR-E: Public Dashboard & Visualization (MVP)
 - **FR-E1** Public (no-login) dashboard: TOR counts + total budget per BMA agency over time.
@@ -201,7 +209,9 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
   (category × time-window) peer groups; require a minimum peer-group size (e.g. n ≥ 8) before
   flagging; flag = outside 1.5×IQR (or z > 3) of the peer group; label "statistical anomaly," never
   "suspicious." Groups too small to compare are shown unflagged.
-- **FR-E3** Filters: agency, category, date range, budget range, status.
+- **FR-E3** Filters: agency, category, date range, budget range, status. Closed/awarded TORs stay
+  browsable indefinitely — the dashboard doubles as a historical archive (raw documents are never
+  deleted, NFR-2).
 - **FR-E4** **Shared TOR detail page** (single feature serving vendors, public, and journalists):
   structured fields + original-document link + quality-checklist result + status history.
 - **FR-E5** Status transitions: status changes come from admin action or re-ingestion of an updated
@@ -252,7 +262,7 @@ scope, and overclaiming carries defamation risk.
 | Vendor skill profiles | US-01 | **Must** | High | Med | Prereq for matching |
 | Matching engine + email notifications | US-02, US-03 | **Must** | High | Med–High | Core differentiator — skill/preference matching with match explanations |
 | AI quality checklist (heuristic) | US-06, US-11 | **Should** | High | Med | Differentiator; heuristic + explainable, after extraction is solid |
-| Bookmarks + status tracking | US-07 | **Could** | Med | Low | Needs FR-E5 status transitions |
+| Bookmarks + status tracking + personal project archive | US-07 | **Could** | Med | Low | Needs FR-E5 status transitions; archive marks self-reported + private (FR-D4) |
 | CSV export of filtered TOR list | US-12 | **Could** | Med | Low | FR-E6; serves researchers/journalists; PII-minimized |
 | Automated scraping + source health | US-16 | **Could** | Med | High | High maintenance cost from source-format changes; corpus manually seeded for MVP |
 | Taxonomy admin UI | US-15 | **Could** | Low | Low | JSON seed files first |
