@@ -27,7 +27,7 @@ Phase-1 product build: centralized Thai-language platform for Bangkok (BMA) proc
 - **Anomaly wording:** "statistical anomaly" / "specification-quality check" — never "suspicious" or corruption claims (FR-E2, FR-F2; defamation risk).
 - **PDPA:** consent at signup, export/delete, PII minimized in displayed extractions (FR-B5, FR-D3). Say "PDPA-aligned", never "PDPA-compliant" — no legal certification claimed (NFR-5). Takedown = access restriction with audit trail, never silent edit/delete of the original (NFR-2).
 - **All AI outputs labeled AI-generated + explainable** (NFR-6); every TOR shows extraction provenance (timestamp + model), and the dashboard always shows "data last updated" + a coverage note (FR-E1/FR-E4) — never imply the corpus is complete or live.
-- **MVP discipline:** Must = Sprints 1–4; Sprint 5 is entirely cuttable. Don't build Stretch (scraping, taxonomy UI) before Must is done.
+- **MVP discipline:** 12-week window, feature-freeze target at week 8; weeks 9–12 are Transition/reserve (test/hardening only). Could items (bookmarks/archive, CSV export) cut first; never build Stretch (scraping, taxonomy UI) before Must is done.
 
 ## Working style
 

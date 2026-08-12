@@ -93,7 +93,7 @@
   matches them to vendors by skill, and opens the data to the public — pricing anomalies included.</p>
   <div class="cols" style="margin-top:2rem; max-width:820px">
     <div><span class="big">1</span><div class="stat-label">city — Bangkok (BMA) only</div></div>
-    <div><span class="big">15 wk</span><div class="stat-label">Phase-1 delivery window</div></div>
+    <div><span class="big">8+4 wk</span><div class="stat-label">build + review reserve</div></div>
     <div><span class="big">~฿1M</span><div class="stat-label">commercial value of scope</div></div>
   </div>
   <div class="foot"><span>TOR Radar — Phase-1 proposal</span><span>github.com/TORMomentum/Momentum</span></div>
@@ -225,19 +225,20 @@
 
 <!-- 7 · TIMELINE -->
 <section class="slide">
-  <div class="eyebrow"><span><b>Timeline &amp; roadmap</b> · 15 weeks, 5 sprints</span><span>7 / 9</span></div>
-  <h2>Iterative + sequential: <span class="tick">sprints inside phase gates</span></h2>
+  <div class="eyebrow"><span><b>Timeline &amp; roadmap</b> · 12-week window, feature-complete wk 8</span><span>7 / 9</span></div>
+  <h2>Build in 8, <span class="tick">4 weeks of reserve</span> for review &amp; hardening</h2>
   <div class="sprint-row">
-    <div class="sprint gate"><b>S1 · Validate</b><small>wk 1–3 · Inception → Elaboration</small>Interviews → revised backlog · TOR corpus · <b>accuracy benchmark</b> · CI/Docker</div>
-    <div class="sprint"><b>S2 · Ingest</b><small>wk 4–6 · Elaboration → Construction</small>Upload/URL/API → extraction → review queue → detail page</div>
-    <div class="sprint"><b>S3 · Show</b><small>wk 7–9 · Construction</small>Public dashboard · pricing plots · anomaly rule · search</div>
-    <div class="sprint"><b>S4 · Match</b><small>wk 10–12 · Construction</small>Profiles · matching engine · email notifications</div>
-    <div class="sprint cut"><b>S5 · Polish</b><small>wk 13–15 · Transition</small>Checklist · bookmarks/archive · hardening — <b>fully cuttable</b></div>
+    <div class="sprint gate"><b>I1 · Inception</b><small>wk 1</small>Customer interviews → approved backlog · corpus starts · CI/Docker skeleton</div>
+    <div class="sprint gate"><b>E1 · Elaboration</b><small>wk 2–3</small>Riskiest first: <b>accuracy benchmark</b> → thresholds · walking skeleton ingest→extract</div>
+    <div class="sprint"><b>C1 · Construct</b><small>wk 4–5</small>Ingestion pipeline · review queue · TOR detail page</div>
+    <div class="sprint"><b>C2 · Construct</b><small>wk 6–7</small>Dashboard + anomaly + search ∥ profiles + matching + email</div>
+    <div class="sprint"><b>C3 · Freeze</b><small>wk 8</small>Checklist · integration · <b>feature-complete gate</b></div>
+    <div class="sprint cut"><b>T · Reserve</b><small>wk 9–12 · Transition</small>UAT · bugfix · perf pass · demo rehearsal — Could items only if ahead</div>
   </div>
   <div class="cols">
-    <div class="callout"><b>Cost control by phase gate:</b> the effort budget is partitioned per phase; Jira actuals
-      are compared at every gate, so overrun is visible weeks early — and the fix is cutting Sprint-5 scope,
-      never squeezing test at the end. If S1 extraction accuracy is insufficient, the plan changes before further build.</div>
+    <div class="callout"><b>Cost control by phase gate:</b> effort budget partitioned per phase, Jira actuals compared
+      at every gate — overrun visible weeks early; the fix is cutting Could scope or spending reserve, never squeezing
+      test at the end. If the wk-3 benchmark shows insufficient accuracy, the plan changes before further build.</div>
     <div class="card"><b>Beyond Phase 1</b><p class="muted" style="margin:.4rem 0 0">Source scraping behind adapters ·
       taxonomy admin UI · draft-TOR consultation tracking · beyond-Bangkok — only after the pilot validates.</p></div>
   </div>
@@ -255,7 +256,7 @@
     <div class="card"><span class="tag teal">data</span><p style="margin:.5rem 0 .2rem"><b>Data &amp; matching engineer</b></p><p class="muted" style="margin:0">Matching · anomaly rule · checklist · taxonomy</p><p class="muted" style="margin:.4rem 0 0"><i>[name]</i></p></div>
     <div class="card"><span class="tag teal">qa·devops</span><p style="margin:.5rem 0 .2rem"><b>QA / DevOps engineer</b></p><p class="muted" style="margin:0">CI · Compose · MinIO/Atlas · tests · deploy</p><p class="muted" style="margin:.4rem 0 0"><i>[name]</i></p></div>
   </div>
-  <p class="muted" style="margin-top:1.2rem">Everyone ships code. Scrum, 3-week sprints · Jira · Discord standups ·
+  <p class="muted" style="margin-top:1.2rem">Everyone ships code. Scrum, 1–2-week iterations · Jira · Discord standups ·
   Definition of Done: reviewed, tested, runs in shared Docker Compose, demoable.</p>
   <div class="foot"><span>TOR Radar — Phase-1 proposal</span><span>Source: PROJECT.md §11</span></div>
 </section>
@@ -279,7 +280,7 @@
     <div>
       <p class="stat-label">Effort — the real cost</p>
       <span class="big">790 h</span>
-      <div class="stat-label">5 people × 10 h/wk × 15 wk (~750 h capacity, over-subscribed by design)</div>
+      <div class="stat-label">5 people × ~13 h/wk × 12 wk (~780 h capacity, over-subscribed by design)</div>
       <table style="margin-top:.7rem; font-size:.83rem">
         <tr><td>Build (backend · frontend · AI)</td><td class="n">50%</td></tr>
         <tr><td>Verify (testing · DevOps · optimization)</td><td class="n">19%</td></tr>

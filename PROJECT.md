@@ -74,7 +74,7 @@ beyond a coarse status label · mobile native apps · non-Thai UI.
 | # | Stakeholder | Stake | Strategy |
 |---|-----------|-------|----------|
 | D1 | Project sponsor (acts as customer proxy) | Accepts phase deliverables against agreed criteria | Deliverables on time; validate assumptions with the sponsor |
-| D2 | Delivery team | Ship Phase 1 within the 15-week window; run Scrum | Jira sprints, Discord standups, enforce scope cuts |
+| D2 | Delivery team | Ship Phase 1 feature-complete by week 8 of a 12-week window; run Scrum | Jira sprints, Discord standups, enforce scope cuts |
 
 **Power/interest summary:** manage closely D1, S5 · keep satisfied S2 (operationally — the data
 source) · keep informed S1, S4 · monitor S3.
@@ -302,27 +302,25 @@ scope, and overclaiming carries defamation risk.
 | Taxonomy admin UI | US-15 | **Could** | Low | Low | JSON seed files first |
 | Bid submission / award analysis | — | **Won't (Phase 1)** | — | — | Coarse status labels only |
 
-**Sprint plan (Must-first; each sprint demoable):**
-1. **Sprint 1:** requirement validation (interview 2–3 real freelancers + the sponsor as customer
-   proxy; revised backlog = the phase-gate deliverable) · collect 10–20 real BMA TORs · extraction
-   spike + accuracy benchmark (NFR-1) · repo/CI/Docker skeleton.
+**Delivery plan — iterative + sequential (RUP phases over Scrum iterations).** Calendar window is
+**12 weeks** from kickoff; the plan targets **feature-complete at week 8**, holding weeks 9–12 as a
+deliberate Transition/reserve block (review, test, hardening — and schedule risk absorption).
+Every iteration ends in a demo.
 
-**Process model — iterative + sequential (RUP-style phases over Scrum sprints):** the sprints are
-time-boxed iterations; a sequential phase structure sits on top, with a gate at each phase end.
-Discipline effort shifts across phases (the classic RUP "hump chart"), which is what makes cost
-controllable and progress explainable to the sponsor:
-
-| Phase | Sprints (weeks) | Effort emphasis | Exit gate |
-|---|---|---|---|
-| **Inception** | S1 (1–2) | Business modeling + requirements (interviews, scope, risks) | Revised backlog approved by sponsor |
-| **Elaboration** | S1–S2 (2–6) | Requirements taper; analysis/design + implementation rise — prove the riskiest piece first (Thai OCR pipeline) | Accuracy benchmark done; executable ingestion→extraction skeleton |
-| **Construction** | S2–S4 (4–12) | Implementation + test dominant; a demoable increment every sprint | Must-set features complete |
-| **Transition** | S5 (13–15) | Test + deployment dominant (hardening, pilot rollout) | Pilot demo accepted |
+| Phase | Weeks | Iteration | Delivers | Exit gate |
+|---|---|---|---|---|
+| **Inception** | 1 | I1 | Customer/sponsor interviews → revised backlog · start 10–20-TOR corpus collection · repo/CI/Docker skeleton | Backlog approved by sponsor |
+| **Elaboration** | 2–3 | E1 | Riskiest piece first: extraction spike + accuracy benchmark (NFR-1) → both confidence thresholds · walking skeleton ingest → extract → store | Benchmark done; plan re-cut if accuracy insufficient |
+| **Construction** | 4–5 | C1 | Ingestion (upload/URL/API) → extraction pipeline → review queue → published TORs + shared detail page | Sprint demo |
+| **Construction** | 6–7 | C2 | Two parallel tracks: public dashboard + anomaly rule + search · profiles + matching + email notifications | Sprint demo |
+| **Construction** | 8 | C3 | Quality checklist · integration · **feature freeze** | Feature-complete gate (target) |
+| **Transition / reserve** | 9–12 | T1–T2 | UAT, bug fixing, performance pass (NFR-3), docs, demo rehearsal. Could-items (bookmarks/archive, CSV export) only if ahead of schedule | Pilot demo accepted |
 
 **Cost-control mechanism:** the §9.2 effort budget is partitioned across these phases; actual hours
 are logged in Jira per activity and compared to the phase budget at every gate. A phase trending
-over budget is visible weeks early — the correction is cutting Sprint-5 scope, never squeezing
-test/deployment at the end.
+over budget is visible weeks early — the correction is dropping Could scope or spending reserve
+weeks, never squeezing test/deployment at the end. Finishing the build at week 8 with a 4-week
+reserve is the plan's main schedule-risk defense.
 2. **Sprint 2:** ingestion (upload/URL) → extraction → **minimal review queue** → published
    structured TORs + shared detail page.
 3. **Sprint 3:** public dashboard (agency view, pricing plots, FR-E2 anomaly rule) + search/filter.
@@ -379,9 +377,10 @@ Gemini pricing pages (cloud.google.com/document-ai/pricing, ai.google.dev/gemini
 
 ### 9.2 Effort (labor) costs
 
-**Capacity assumption (named, adjustable):** team of 5 × ~10 h/week × ~15 working weeks ≈ **750
-person-hours** for the phase. Percentages below allocate that capacity; hours are planning
-estimates to be refined at each sprint planning and tracked in Jira against actuals.
+**Capacity assumption (named, adjustable):** team of 5 × ~13 h/week × 12 weeks ≈ **780
+person-hours**, front-loaded toward the 8-week build (weeks 9–12 taper to review/hardening).
+Percentages below allocate that capacity; hours are planning estimates to be refined at each
+sprint planning and tracked in Jira against actuals.
 
 | Activity | Covers | Share | Est. hours |
 |----------|--------|-------|-----------|
@@ -398,8 +397,8 @@ estimates to be refined at each sprint planning and tracked in Jira against actu
 | Maintenance & consultation | Bug triage during the pilot period, sponsor reviews, Scrum ceremonies | 4% | ~30 |
 | **Total** | | 100% | **~790** |
 
-*(Total slightly exceeds the 750 h capacity — that is the point: scope pressure is visible up
-front, and the Sprint-5 Could/Should items are the release valve.)*
+*(Total slightly exceeds the 780 h capacity — that is the point: scope pressure is visible up
+front, and the Could/Should items plus the week-9–12 reserve are the release valve.)*
 
 **Imputed labor value and commercial price (illustrative only):** two views of the same 790 hours:
 
@@ -423,7 +422,7 @@ represent its commercial value.
 | **No committed customer yet** — requirements are hypotheses | High | Sprint 1 validation deliverables: interview script, ≥ 3 interviews (freelancers + sponsor proxy), revised backlog with confirmed acceptance criteria |
 | Thai OCR on scanned/photographed TORs is poor | High | Sprint-1 accuracy benchmark on real TORs; confidence threshold + review queue; never promise full automation |
 | No official machine-readable TOR feed; scraping fragile | High | MVP corpus manually seeded via upload/URL; scraping = Could behind adapters; announcement pages treated as an operational chokepoint |
-| MVP still too large for the delivery window | High | Must set = Sprints 1–4 only; Sprint 5 entirely Should/cuttable; enforce at sprint reviews |
+| MVP still too large for the delivery window | High | Feature-freeze target at week 8 with a 4-week Transition reserve; Could items cut first; enforce at every sprint review |
 | Quality score reads as accusation → defamation risk | Med | Heuristic checklist framing, explainable reasons, "not a legal judgment" label (FR-F2); anomaly ≠ suspicious wording (FR-E2) |
 | PII inside TOR documents (names, phones, signatures) | Med | FR-B5 redaction/minimization + takedown workflow |
 | PDPA on vendor profiles | Med | Minimal PII, consent, delete/export (FR-D3) |

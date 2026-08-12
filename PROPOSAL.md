@@ -62,25 +62,25 @@ Wireframes (rendered in the slide deck; a working demo ships at the end of every
 
 ## 5. Timeline & Roadmap
 
-### 5.1 Phase-1 delivery — 15 weeks, 5 sprints (Scrum · Jira · sprint-end demos)
+### 5.1 Phase-1 delivery — 12-week window, feature-complete at week 8
 
-| Sprint | Weeks | Delivers |
-|---|---|---|
-| 1 — Validate | 1–3 | ≥3 customer-proxy interviews with revised backlog (phase-gate deliverable) · 10–20 real BMA TOR corpus · extraction accuracy benchmark → sets both confidence thresholds · repo/CI/Docker skeleton |
-| 2 — Ingest & extract | 4–6 | Ingestion (upload/URL/API) → extraction → review queue → published structured TORs + shared detail page |
-| 3 — Show | 7–9 | Public dashboard: agency views, pricing plots, anomaly rule, search/filter |
-| 4 — Match | 10–12 | Vendor profiles, matching engine, email notifications |
-| 5 — Polish | 13–15 | Quality checklist, bookmarks + personal archive, pilot hardening, final demo — *entirely cuttable without breaking the product* |
+Iterative + sequential (RUP phases over Scrum iterations), with a gate at each phase end and a
+demo at each iteration end. The build targets **week 8**; **weeks 9–12 are a deliberate
+Transition/reserve block** — review, test, hardening, and schedule-risk absorption.
 
-Must-set = Sprints 1–4. Sprint 5 is the scope release valve, enforced at every sprint review.
+| Phase | Weeks | Delivers | Exit gate |
+|---|---|---|---|
+| Inception | 1 | Customer/sponsor interviews → revised backlog · TOR corpus collection starts · repo/CI/Docker skeleton | Backlog approved |
+| Elaboration | 2–3 | Riskiest piece first: extraction accuracy benchmark → confidence thresholds · walking skeleton ingest → extract → store | Benchmark done; plan re-cut if accuracy insufficient |
+| Construction C1 | 4–5 | Ingestion → extraction pipeline → review queue → published TORs + detail page | Demo |
+| Construction C2 | 6–7 | Parallel tracks: dashboard + anomaly + search · profiles + matching + email | Demo |
+| Construction C3 | 8 | Quality checklist · integration · **feature freeze** | Feature-complete |
+| Transition / reserve | 9–12 | UAT, bug fixing, performance pass, docs, demo rehearsal; Could items only if ahead | Pilot accepted |
 
-**Process model — iterative + sequential:** Scrum sprints are the iterations; RUP-style phases sit
-on top with a gate at each phase end — **Inception** (S1: requirements/validation) → **Elaboration**
-(S1–S2: prove the riskiest piece, the Thai OCR pipeline) → **Construction** (S2–S4: demoable
-increment every sprint) → **Transition** (S5: hardening + pilot). Discipline effort shifts per
-phase; the §7.2 effort budget is partitioned accordingly and compared against Jira actuals at every
-gate, so cost overrun is visible weeks early and the sponsor always knows which phase the project
-is in and what the gate deliverable is.
+The §7.2 effort budget is partitioned per phase and compared against Jira actuals at every gate —
+overrun is visible weeks early, and the correction is cutting Could scope or spending reserve,
+never squeezing test at the end. The sponsor always knows the current phase and its gate
+deliverable.
 
 ### 5.2 Validation gate (Sprint 1 — go/no-go)
 
@@ -102,7 +102,7 @@ Five-person delivery team; roles denote accountability — everyone ships code.
 | Data & matching engineer | Matching engine, anomaly rule, quality checklist, taxonomy | _[name]_ |
 | QA / DevOps engineer | CI, Docker Compose, MinIO/Atlas, test coverage, deployment | _[name]_ |
 
-Process: 3-week sprints · Jira (epics ≈ requirement groups) · Discord standups · Definition of Done = reviewed, tests pass, runs in shared Docker Compose, demoable.
+Process: 1–2-week iterations per the phase plan (§5.1) · Jira (epics ≈ requirement groups) · Discord standups · Definition of Done = reviewed, tests pass, runs in shared Docker Compose, demoable.
 
 ## 7. Cost Breakdown
 
@@ -122,7 +122,9 @@ All application software is open source; cash exposure is AI usage plus optional
 
 ### 7.2 Effort (labor) — the dominant real cost
 
-Capacity: **5 people × ~10 h/week × 15 weeks ≈ 750 person-hours.** Allocation totals ~790 h — deliberately over-subscribed so scope pressure is visible up front; Sprint-5 items are the release valve.
+Capacity: **5 people × ~13 h/week × 12 weeks ≈ 780 person-hours**, front-loaded toward the 8-week
+build. Allocation totals ~790 h — deliberately over-subscribed so scope pressure is visible up
+front; Could items and the week-9–12 reserve are the release valve.
 
 | Activity | Hours | Share |
 |---|---:|---:|
