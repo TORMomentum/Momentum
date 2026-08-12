@@ -148,9 +148,12 @@ browsing TORs uses the same public views as any citizen._
   announcements manually or programmatically.
   *Accept: all three paths produce a record in the same extraction pipeline; API requires admin
   authentication; duplicates resolve to one record (FR-A3).*
-- **US-14** As an admin, I want a queue of failed/low-confidence extractions with the original
-  document side-by-side, so I can correct fields before they go live.
-  *Accept: below-threshold records held unpublished; edit + approve publishes them.*
+- **US-14** As an admin, I want a queue of only the very-low-confidence or suspicious extractions
+  with the original document side-by-side, so I can prioritize correcting the worst records
+  without wading through every merely-imperfect one.
+  *Accept: only records below T_low or failing sanity checks appear in the queue (FR-B3);
+  medium-confidence records carry the "unverified" tag but stay out of the queue; edit + approve
+  clears the tag and lets the fields feed anomaly stats and matching.*
 - **US-15** As an admin, I want to manage the taxonomy (skill tags, categories, canonical BMA agency
   list), so matching and the Bangkok-only filter stay consistent. *Accept: seeded from JSON; editable in UI (stretch).*
 - **US-16** As an admin, I want ingestion-source health monitoring, so a silently broken source
@@ -181,9 +184,18 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
 - **FR-B2** Extract structured fields: title, agency, budget (฿), category, scope summary, required
   qualifications, submission deadline, contact, status (coarse labels only: announced / closed /
   awarded).
-- **FR-B3** Per-field confidence score. Records below threshold go to the admin review queue
-  (FR-G1) — never auto-published. Threshold set empirically AFTER measuring extraction accuracy on
-  a 10–20-document benchmark set (see NFR-1); full automation is not promised.
+- **FR-B3** Per-field confidence score with a two-tier policy. All records auto-publish:
+  - **High confidence (≥ T_high):** published clean; fields feed everything.
+  - **Medium confidence (T_low–T_high):** published with a visible **"unverified extraction"** tag
+    and source-document link; below-threshold fields are excluded from the anomaly rule (FR-E2)
+    and match notifications until verified, so OCR errors cannot create false anomaly flags or
+    false matches. Not queued — admin can correct from the TOR page at any time.
+  - **Very low / suspicious (< T_low, or sanity-check hit: missing critical fields such as
+    budget/agency/deadline, implausible values):** published tagged as above AND routed to the
+    admin review queue (FR-G1) for priority correction.
+
+  Both thresholds set empirically AFTER measuring extraction accuracy on a 10–20-document
+  benchmark set (see NFR-1); full automation is not promised.
 - **FR-B4** Normalize extracted qualifications into the shared skill taxonomy used by profiles.
 - **FR-B5** PII handling inside TOR documents: displayed extractions minimize personal data (e.g.
   officer personal phone numbers, signatures); original documents remain available via source link;
@@ -235,7 +247,8 @@ scope, and overclaiming carries defamation risk.
 
 ### FR-G: Admin (MVP-minimal)
 - **FR-G1** Review queue (minimal version ships WITH ingestion in Sprint 2, not at the end):
-  list of held records, side-by-side original vs extracted fields, edit + approve.
+  list of very-low-confidence/suspicious records only (FR-B3 tier 3), side-by-side original vs
+  extracted fields, edit + approve (clears the "unverified" tag).
 - **FR-G2** Corrections are stored and reusable as few-shot examples for the extractor.
 - **FR-G3** Taxonomy + canonical agency list seeded from JSON files; admin UI to edit = stretch.
 
@@ -259,7 +272,7 @@ scope, and overclaiming carries defamation risk.
 | Feature | Stories | MoSCoW | Impact | Effort | Notes |
 |---------|---------|--------|--------|--------|-------|
 | TOR upload/URL/API ingestion + OCR extraction | US-05, US-13 | **Must** | High | High | Foundation. Vertex AI heavy lifting; benchmark accuracy first (NFR-1) |
-| Minimal admin review/correction queue | US-14 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR errors are expected; without review, incorrect data would be published |
+| Minimal admin review/correction queue | US-14 | **Must** | Med | Med | Ships WITH ingestion (Sprint 2) — OCR errors are expected; review clears "unverified" tags so fields can feed anomaly stats and matching |
 | Shared TOR detail page + search/filter | US-04, US-05 | **Must** | High | Med | First visible value; one page serves all roles |
 | Public dashboard: per-agency view + pricing plots + anomaly rule | US-08–US-10 | **Must** | High | Med | High demonstration value; core transparency mission; anomaly rule per FR-E2 |
 | Vendor skill profiles | US-01 | **Must** | High | Med | Prereq for matching |
