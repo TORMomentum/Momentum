@@ -14,9 +14,10 @@
   *{box-sizing:border-box}
   body{margin:0; background:var(--stage); color:var(--stage-ink);
     font:15px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; overflow-x:hidden;}
-  .bg{position:fixed; inset:0; z-index:-1;
+  .bg{position:fixed; inset:0; z-index:-2;
     background:radial-gradient(1100px 700px at 70% 12%, var(--stage-glow), transparent 65%),
                radial-gradient(800px 600px at 15% 85%, var(--stage-glow), transparent 60%), var(--stage);}
+  #gl{position:fixed; inset:0; z-index:-1; width:100%; height:100%; display:block; opacity:.85;}
   .wrap{max-width:1160px; margin:0 auto; padding:0 5vw;}
 
   /* hero */
@@ -29,28 +30,29 @@
   .sub{color:var(--stage-soft); max-width:56ch; font-size:1.05rem;}
   .hero-stage{perspective:1400px;}
   .hero-tilt{transform:rotateY(-13deg) rotateX(6deg); transform-style:preserve-3d; transition:transform .25s ease-out;}
-  @media (prefers-reduced-motion: no-preference){
-    .float{animation:float 7s ease-in-out infinite;}
-    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-    header .rise{opacity:0; transform:translateY(22px); animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards;}
-    header .rise:nth-child(2){animation-delay:.15s}
-    .hero-stage{opacity:0; animation:rise .9s cubic-bezier(.2,.7,.2,1) .35s forwards;}
-    @keyframes rise{to{opacity:1; transform:translateY(0)}}
-    .dot{transform:scale(0); transform-origin:center; transform-box:fill-box;
-      transition:transform .45s cubic-bezier(.2,.7,.3,1.3) var(--d,0s), r .15s;}
-    .in .dot, .anim-in .dot{transform:scale(1);}
-    .dot:nth-of-type(1){--d:.05s}.dot:nth-of-type(2){--d:.1s}.dot:nth-of-type(3){--d:.15s}
-    .dot:nth-of-type(4){--d:.2s}.dot:nth-of-type(5){--d:.25s}.dot:nth-of-type(6){--d:.3s}
-    .dot:nth-of-type(7){--d:.35s}.dot:nth-of-type(8){--d:.4s}.dot:nth-of-type(9){--d:.45s}
-    .dot:nth-of-type(10){--d:.5s}.dot:nth-of-type(11){--d:.55s}.dot:nth-of-type(12){--d:.7s}
-    .dot:nth-of-type(13){--d:.85s}
-    .anom-ring{animation:pulse 2.4s ease-out infinite; transform-origin:center; transform-box:fill-box;}
-    @keyframes pulse{0%{opacity:.7; transform:scale(1)}70%{opacity:0; transform:scale(2.1)}100%{opacity:0; transform:scale(2.1)}}
-    .barrow .fill{width:0; transition:width 1.1s cubic-bezier(.2,.7,.2,1) .25s;}
-    .in .barrow .fill, .anim-in .barrow .fill{width:var(--w);}
-    .tile b{transition:opacity .3s;}
+  .float{animation:float 7s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  header .rise{opacity:0; transform:translateY(26px); animation:rise .85s cubic-bezier(.2,.7,.2,1) forwards;}
+  header .rise:nth-child(2){animation-delay:.18s}
+  .hero-stage{opacity:0; animation:rise 1s cubic-bezier(.2,.7,.2,1) .4s forwards;}
+  @keyframes rise{to{opacity:1; transform:translateY(0)}}
+  .dot{transform:scale(0); transform-origin:center; transform-box:fill-box;
+    transition:transform .5s cubic-bezier(.2,.7,.3,1.35) var(--d,0s), r .15s;}
+  .in .dot, .anim-in .dot{transform:scale(1);}
+  .dot:nth-of-type(1){--d:.05s}.dot:nth-of-type(2){--d:.1s}.dot:nth-of-type(3){--d:.15s}
+  .dot:nth-of-type(4){--d:.2s}.dot:nth-of-type(5){--d:.25s}.dot:nth-of-type(6){--d:.3s}
+  .dot:nth-of-type(7){--d:.35s}.dot:nth-of-type(8){--d:.4s}.dot:nth-of-type(9){--d:.45s}
+  .dot:nth-of-type(10){--d:.5s}.dot:nth-of-type(11){--d:.55s}.dot:nth-of-type(12){--d:.7s}
+  .dot:nth-of-type(13){--d:.85s}
+  .anom-ring{animation:pulse 2.4s ease-out infinite; transform-origin:center; transform-box:fill-box;}
+  @keyframes pulse{0%{opacity:.7; transform:scale(1)}70%{opacity:0; transform:scale(2.1)}100%{opacity:0; transform:scale(2.1)}}
+  .barrow .fill{width:0; transition:width 1.2s cubic-bezier(.2,.7,.2,1) .25s;}
+  .in .barrow .fill, .anim-in .barrow .fill{width:var(--w);}
+  /* reduced motion: keep one-shot reveals, drop the infinite loops */
+  @media (prefers-reduced-motion: reduce){
+    .float{animation:none;}
+    .anom-ring{animation:none; opacity:0;}
   }
-  @media (prefers-reduced-motion: reduce){ .barrow .fill{width:var(--w);} }
 
   /* scenes */
   .scene{min-height:100vh; display:flex; align-items:center; padding:9vh 0;}
@@ -71,9 +73,6 @@
   .scene.r .panel{transform:rotateY(-16deg) rotateX(5deg) translateX(60px);}
   .scene.in .panel{opacity:1; transform:rotateY(var(--ry,-6deg)) rotateX(2deg) translateX(0);}
   .scene.l .panel{--ry:6deg;}
-  @media (prefers-reduced-motion: reduce){
-    .scene .panel, .hero-tilt{transform:none !important; opacity:1 !important; animation:none !important;}
-  }
 
   /* screen chrome */
   .screen{background:var(--paper); color:var(--ink); border-radius:10px; overflow:hidden; font-size:.8rem;}
@@ -154,6 +153,7 @@
 </style>
 
 <div class="bg"></div>
+<canvas id="gl" aria-hidden="true"></canvas>
 
 <header class="wrap" id="hero">
   <div>
@@ -364,14 +364,11 @@
 </footer>
 
 <script>
-  const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(!rm){
-    const tilt = document.getElementById('heroTilt');
-    addEventListener('mousemove', e=>{
-      const x=(e.clientX/innerWidth-0.5), y=(e.clientY/innerHeight-0.5);
-      tilt.style.transform=`rotateY(${-13+x*6}deg) rotateX(${6-y*5}deg)`;
-    },{passive:true});
-  }
+  const tilt = document.getElementById('heroTilt');
+  addEventListener('mousemove', e=>{
+    const x=(e.clientX/innerWidth-0.5), y=(e.clientY/innerHeight-0.5);
+    tilt.style.transform=`rotateY(${-13+x*7}deg) rotateX(${6-y*6}deg)`;
+  },{passive:true});
   const io = new IntersectionObserver(es=>es.forEach(e=>{
     if(e.isIntersecting) e.target.classList.add('in');
   }),{threshold:0.25});
@@ -384,7 +381,7 @@
     const target=parseFloat(el.dataset.count), dec=+(el.dataset.dec||0);
     const pre=el.dataset.prefix||'', suf=el.dataset.suffix||'', t0=performance.now(), dur=1100;
     function tick(t){
-      const p=Math.min(1,(t-t0)/dur), ease=1-Math.pow(1-p,3);
+      const p=Math.min(1,Math.max(0,(t-t0)/dur)), ease=1-Math.pow(1-p,3);
       el.textContent=pre+fmt(target*ease,dec)+suf;
       if(p<1) requestAnimationFrame(tick);
     }
@@ -393,7 +390,96 @@
   addEventListener('load', ()=>{
     setTimeout(()=>{
       hero.classList.add('anim-in');
-      if(!rm) hero.querySelectorAll('[data-count]').forEach(countUp);
-    }, rm?0:450);
+      hero.querySelectorAll('[data-count]').forEach(countUp);
+    }, 500);
   });
+
+  // ---- WebGL particle field (no libraries) ----
+  (function(){
+    const cv = document.getElementById('gl');
+    const gl = cv.getContext('webgl', {alpha:true, antialias:true});
+    if(!gl){ cv.remove(); return; }
+
+    const VS = `
+      attribute vec3 aPos;
+      attribute float aSeed;
+      uniform float uT, uAsp, uScroll;
+      uniform vec2 uRot;
+      varying float vDepth, vSeed;
+      void main(){
+        vec3 p = aPos;
+        p.y += sin(p.x*1.4 + uT*.7 + aSeed*6.283)*.28
+             + cos(p.z*1.7 + uT*.5)*.22;
+        float ry = uRot.x*.55 + uT*.03 + uScroll*1.2;
+        float rx = -.42 + uRot.y*.35 + uScroll*.4;
+        mat3 Ry = mat3(cos(ry),0.,-sin(ry), 0.,1.,0., sin(ry),0.,cos(ry));
+        mat3 Rx = mat3(1.,0.,0., 0.,cos(rx),sin(rx), 0.,-sin(rx),cos(rx));
+        p = Rx * Ry * p;
+        p.z -= 4.2;
+        float f = 2.2;
+        gl_Position = vec4(p.x*f/uAsp, p.y*f, -p.z*.05, -p.z);
+        vDepth = clamp((-p.z-2.2)/4.5, 0., 1.);
+        vSeed = aSeed;
+        gl_PointSize = mix(3.4, 1.1, vDepth) * (1. + .4*sin(uT + aSeed*40.));
+      }`;
+    const FS = `
+      precision mediump float;
+      varying float vDepth, vSeed;
+      void main(){
+        vec2 d = gl_PointCoord - .5;
+        float a = smoothstep(.5, .12, length(d));
+        vec3 teal = vec3(.17,.63,.55), gold = vec3(.78,.58,.24);
+        vec3 c = mix(teal, gold, step(.82, fract(vSeed*7.31)));
+        gl_FragColor = vec4(c, a * mix(.75,.15,vDepth));
+      }`;
+    function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o;}
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER,VS));
+    gl.attachShader(pr, sh(gl.FRAGMENT_SHADER,FS));
+    gl.linkProgram(pr); gl.useProgram(pr);
+
+    const NX=90, NZ=42, N=NX*NZ;
+    const pos = new Float32Array(N*3), seed = new Float32Array(N);
+    let i=0;
+    for(let x=0;x<NX;x++) for(let z=0;z<NZ;z++){
+      pos[i*3]   = (x/(NX-1)-.5)*9.0;
+      pos[i*3+1] = 0;
+      pos[i*3+2] = (z/(NZ-1)-.5)*5.2;
+      seed[i] = Math.abs(Math.sin(i*12.9898)*43758.5453)%1;
+      i++;
+    }
+    function buf(data, loc, size){
+      const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+      gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0);
+    }
+    buf(pos, gl.getAttribLocation(pr,'aPos'), 3);
+    buf(seed, gl.getAttribLocation(pr,'aSeed'), 1);
+    const uT=gl.getUniformLocation(pr,'uT'), uAsp=gl.getUniformLocation(pr,'uAsp'),
+          uRotU=gl.getUniformLocation(pr,'uRot'), uScr=gl.getUniformLocation(pr,'uScroll');
+
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    let mx=0, my=0, tx=0, ty=0;
+    addEventListener('mousemove',e=>{tx=e.clientX/innerWidth-.5; ty=e.clientY/innerHeight-.5;},{passive:true});
+    function resize(){
+      const d=Math.min(devicePixelRatio||1,2);
+      cv.width=innerWidth*d; cv.height=innerHeight*d;
+      gl.viewport(0,0,cv.width,cv.height);
+    }
+    addEventListener('resize',resize); resize();
+
+    const rmGL = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let t0=performance.now();
+    function frame(now){
+      const t=(now-t0)/1000;
+      mx+=(tx-mx)*.05; my+=(ty-my)*.05;
+      const sc = scrollY/Math.max(1,document.body.scrollHeight-innerHeight);
+      gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform1f(uT,t); gl.uniform1f(uAsp,cv.width/cv.height);
+      gl.uniform2f(uRotU,mx,my); gl.uniform1f(uScr,sc);
+      gl.drawArrays(gl.POINTS,0,N);
+      if(!rmGL) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
 </script>
