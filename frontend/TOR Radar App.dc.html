@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -15,94 +15,151 @@ body{margin:0;background:#ffffff;font-family:'IBM Plex Sans Thai',system-ui,sans
 a{color:#1d63d8;text-decoration:none}a:hover{color:#3b82f6}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(180,83,9,.45)}50%{box-shadow:0 0 0 12px rgba(180,83,9,0)}}
 ::selection{background:#1d63d8;color:#fff}
+select,input{outline:none;font-family:'IBM Plex Sans Thai',system-ui,sans-serif}
+input[type=range]{accent-color:#1d63d8}
+input[type=range].dual{pointer-events:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:transparent;cursor:grab;pointer-events:auto}
+input[type=range]::-webkit-slider-thumb:active{cursor:grabbing}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:transparent;border:0;cursor:grab;pointer-events:auto}
+@keyframes wave{0%{background-position-x:0}100%{background-position-x:28px}}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.45) rotate(-8deg)}70%{transform:scale(.92)}100%{transform:scale(1)}}
 </style>
 </helmet>
 <div style="min-height:100vh;background:#ffffff;color:#12233c">
 <header style="display:flex;align-items:center;gap:28px;padding:0 36px;height:62px;border-bottom:1px solid rgba(18,35,60,.18);position:sticky;top:0;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);z-index:20">
-  <a href="TOR Radar Landing.dc.html" style="display:flex;align-items:center;gap:10px;font:800 15px 'Anuphan',sans-serif;color:#12233c">TOR RADAR<span style="font:500 10px 'IBM Plex Mono',monospace;color:#1d63d8;border:1px solid #1d63d8;padding:2px 6px;border-radius:3px">BKK</span></a>
+  <a href="TOR Radar Landing.dc.html" style="font:800 15px 'Anuphan',sans-serif;color:#12233c">TOR RADAR</a>
   <nav style="display:flex;gap:26px;font:12px 'IBM Plex Mono',monospace;letter-spacing:.06em">
-    <span onClick="{{ goDash }}" style="cursor:pointer;padding:22px 0;color:{{ dashC }};border-bottom:2px solid {{ dashB }}">แดชบอร์ด</span>
-    <span onClick="{{ goSearch }}" style="cursor:pointer;padding:22px 0;color:{{ searchC }};border-bottom:2px solid {{ searchB }}">ค้นหา TOR</span>
-    <span onClick="{{ goProfile }}" style="cursor:pointer;padding:22px 0;color:{{ profileC }};border-bottom:2px solid {{ profileB }}">โปรไฟล์ของฉัน</span>
+    <span onClick="{{ goDash }}" style="--dc-style-1:{{ dashC }};--dc-style-2:{{ dashB }};cursor:pointer;padding:22px 0;color:var(--dc-style-1);border-bottom:2px solid var(--dc-style-2)">แดชบอร์ด</span>
+    <span onClick="{{ goSearch }}" style="--dc-style-3:{{ searchC }};--dc-style-4:{{ searchB }};cursor:pointer;padding:22px 0;color:var(--dc-style-3);border-bottom:2px solid var(--dc-style-4)">ค้นหา TOR</span>
+    <sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goProfile }}" style="--dc-style-5:{{ profileC }};--dc-style-6:{{ profileB }};cursor:pointer;padding:22px 0;color:var(--dc-style-5);border-bottom:2px solid var(--dc-style-6)">โปรไฟล์ของฉัน</span></sc-if>
   </nav>
-  <div style="margin-left:auto;display:flex;align-items:center;gap:10px"><span style="font:10px 'IBM Plex Mono',monospace;color:#0e7a5f">● MATCH ALERTS ON</span><span style="width:32px;height:32px;border-radius:50%;background:#2b6e5a;display:grid;place-items:center;font-weight:700;font-size:13px">น</span></div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}"><span style="font:10px 'IBM Plex Mono',monospace;color:#0e7a5f;white-space:nowrap">● MATCH ALERTS ON</span><span onClick="{{ toggleLogin }}" title="ออกจากระบบ (demo)" style="width:32px;height:32px;border-radius:50%;background:#2b6e5a;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer">น</span></sc-if>
+    <sc-if value="{{ loggedOut }}" hint-placeholder-val="{{ true }}"><span onClick="{{ toggleLogin }}" style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;font-weight:600;color:#12233c;cursor:pointer">เข้าสู่ระบบ</span><span onClick="{{ toggleLogin }}" style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#fff;padding:8px 16px;border-radius:4px;cursor:pointer" style-hover="background:#1746a0">ลงทะเบียนผู้ประกอบการ</span></sc-if>
+  </div>
 </header>
 
 <sc-if value="{{ showDash }}" hint-placeholder-val="{{ true }}">
 <main data-screen-label="Dashboard" style="padding:34px 36px 60px">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:26px">
-    <h1 style="margin:0;font:700 30px 'Anuphan',sans-serif">ภาพรวมการจัดซื้อจัดจ้าง กทม.</h1>
+    <h1 style="margin:0;font:700 30px 'Anuphan',sans-serif">ภาพรวมการจัดซื้อจัดจ้างภาครัฐ</h1>
     <div style="font:10.5px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);text-align:right;line-height:1.8">DATA LAST UPDATED 12 AUG 2026 · 09:42<br>ครอบคลุมเฉพาะเอกสารที่นำเข้าระบบ</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px">
-    <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);padding:6px 12px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">หน่วยงาน: ทั้งหมด ▾</span>
-    <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);padding:6px 12px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">หมวดหมู่: ทั้งหมด ▾</span>
-    <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);padding:6px 12px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">ช่วงเวลา: 12 เดือน ▾</span>
-    <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);padding:6px 12px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">สถานะ: ทั้งหมด ▾</span>
+    <select onChange="{{ onDashAgency }}" value="{{ dashAgency }}" style="font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);background:#fff;padding:6px 12px;border-radius:99px;cursor:pointer">
+      <option value="all">หน่วยงาน: ทั้งหมด</option><option>กรมทางหลวง</option><option>กรมชลประทาน</option><option>สพฐ. กระทรวงศึกษาธิการ</option><option>เทศบาลนครเชียงใหม่</option><option>เมืองพัทยา</option><option>กรมควบคุมมลพิษ</option>
+    </select>
+    <select onChange="{{ onDashCat }}" value="{{ dashCat }}" style="font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);background:#fff;padding:6px 12px;border-radius:99px;cursor:pointer">
+      <option value="all">หมวดหมู่: ทั้งหมด</option><option>ก่อสร้าง</option><option>ชลประทาน</option><option>ไอที/ซอฟต์แวร์</option><option>จ้างเหมาบริการ</option>
+    </select>
+    <select style="font:11px 'IBM Plex Mono',monospace;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.75);background:#fff;padding:6px 12px;border-radius:99px;cursor:pointer">
+      <option>ช่วงเวลา: 12 เดือน</option><option>6 เดือน</option><option>3 เดือน</option>
+    </select>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(18,35,60,.18);border-bottom:1px solid rgba(18,35,60,.18);margin-bottom:28px">
-    <div style="padding:22px 20px 22px 0;border-right:1px solid rgba(18,35,60,.18)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em">[ TOR ทั้งหมด ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace">487</div><div style="font-size:11px;color:rgba(18,35,60,.62)">ฉบับ</div></div>
-    <div style="padding:22px 20px;border-right:1px solid rgba(18,35,60,.18)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em">[ งบประมาณรวม ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace">฿1.28B</div><div style="font-size:11px;color:rgba(18,35,60,.62)">ตามราคากลางที่ประกาศ</div></div>
-    <div style="padding:22px 20px;border-right:1px solid rgba(18,35,60,.18)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em">[ หน่วยงาน ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace">42</div><div style="font-size:11px;color:rgba(18,35,60,.62)">สำนัก / สำนักงานเขต</div></div>
-    <div style="padding:22px 0 22px 20px"><div style="font:500 10px 'IBM Plex Mono',monospace;color:#b45309;letter-spacing:.12em">[ ความผิดปกติทางสถิติ ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace;color:#1d63d8">12</div><div style="font-size:11px;color:rgba(18,35,60,.62)">เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา</div></div>
+    <div style="padding:22px 20px 22px 0;border-right:1px solid rgba(18,35,60,.18)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em">[ TOR ทั้งหมด ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace">{{ statTor }}</div><div style="font-size:11px;color:rgba(18,35,60,.62)">ฉบับ</div></div>
+    <div style="padding:22px 20px;border-right:1px solid rgba(18,35,60,.18)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em">[ งบประมาณรวม ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace">{{ statBudget }}</div><div style="font-size:11px;color:rgba(18,35,60,.62)">ตามราคากลางที่ประกาศ</div></div>
+    <div style="padding:22px 20px;border-right:1px solid rgba(18,35,60,.18)"><div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em">[ หน่วยงาน ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace">{{ statAgency }}</div><div style="font-size:11px;color:rgba(18,35,60,.62)">หน่วยงานรัฐทั่วประเทศ</div></div>
+    <div style="padding:22px 0 22px 20px"><div style="font:500 10px 'IBM Plex Mono',monospace;color:#b45309;letter-spacing:.12em">[ ความผิดปกติทางสถิติ ]</div><div style="font:600 44px/1.15 'IBM Plex Mono',monospace;color:#b45309">{{ statAnomaly }}</div><div style="font-size:11px;color:rgba(18,35,60,.62)">เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:0">
     <div style="border-right:1px solid rgba(18,35,60,.18);padding-right:28px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px"><h2 style="margin:0;font:600 16px 'Anuphan',sans-serif">TOR ตามหน่วยงาน</h2><span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">จำนวน · งบรวม</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px"><h2 style="margin:0;font:600 16px 'Anuphan',sans-serif">TOR ตามหน่วยงาน</h2><span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">คลิกแท่งเพื่อกรอง</span></div>
       <div style="display:flex;flex-direction:column;gap:13px">
         <sc-for list="{{ agencies }}" as="a" hint-placeholder-count="6">
-          <div style="cursor:pointer" style-hover="opacity:.8"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;gap:12px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</span><span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)">{{ a.stat }}</span></div><div style="height:6px;background:rgba(18,35,60,.08)"><div style="width:{{ a.w }};height:6px;background:#1d63d8"></div></div></div>
+          <div onClick="{{ a.go }}" style="--dc-style-7:{{ a.op }};cursor:pointer;opacity:var(--dc-style-7);transition:opacity .2s" style-hover="opacity:.75"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;gap:12px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</span><span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)">{{ a.stat }}</span></div><div style="height:6px;background:rgba(18,35,60,.08)"><div style="--dc-style-8:{{ a.w }};width:var(--dc-style-8);height:6px;background:#1d63d8"></div></div></div>
         </sc-for>
       </div>
-      <div style="margin-top:16px;font:11px 'IBM Plex Mono',monospace;color:#1d63d8;cursor:pointer">ดูทั้ง 42 หน่วยงาน →</div>
+      <div onClick="{{ goSearch }}" style="margin-top:16px;font:11px 'IBM Plex Mono',monospace;color:#1d63d8;cursor:pointer">ดู TOR ทั้งหมดในหน้าค้นหา →</div>
     </div>
     <div style="padding-left:28px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><h2 style="margin:0;font:600 16px 'Anuphan',sans-serif">งบประมาณตามหมวดหมู่</h2><span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">1 จุด = 1 TOR · กลุ่มเทียบ n ≥ 8</span></div>
-      <div style="position:relative;height:260px;border-left:1px solid rgba(18,35,60,.2);border-bottom:1px solid rgba(18,35,60,.2);margin:20px 8px 4px 46px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><h2 style="margin:0;font:600 16px 'Anuphan',sans-serif">งบประมาณตามหมวดหมู่</h2><span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">1 จุด = 1 TOR · คลิกจุดสีส้มเพื่อดูรายละเอียด</span></div>
+      <div style="position:relative;height:260px;border-left:1px solid rgba(18,35,60,.3);border-bottom:1px solid rgba(18,35,60,.3);margin:20px 8px 4px 46px">
         <span style="position:absolute;left:-44px;top:-4px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">฿10M</span>
         <span style="position:absolute;left:-44px;top:124px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">฿5M</span>
         <span style="position:absolute;left:-44px;bottom:-4px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">฿0</span>
-        <div style="position:absolute;left:0;right:0;top:130px;border-top:1px dashed rgba(18,35,60,.18)"></div>
-        <div style="position:absolute;left:0;right:0;top:65px;border-top:1px dashed rgba(18,35,60,.18)"></div>
+        <div style="position:absolute;left:0;right:0;top:130px;border-top:1px dashed rgba(18,35,60,.15)"></div>
+        <div style="position:absolute;left:0;right:0;top:65px;border-top:1px dashed rgba(18,35,60,.15)"></div>
         <sc-for list="{{ plotDots }}" as="d" hint-placeholder-count="14">
-          <div style="position:absolute;left:{{ d.x }};bottom:{{ d.y }};width:9px;height:9px;border-radius:50%;background:{{ d.color }};cursor:pointer;transition:transform .2s" style-hover="transform:scale(1.8)" title="{{ d.tip }}"></div>
+          <div onClick="{{ d.go }}" style="--dc-style-9:{{ d.x }};--dc-style-10:{{ d.y }};--dc-style-11:{{ d.size }};--dc-style-12:{{ d.size }};--dc-style-13:{{ d.color }};position:absolute;left:var(--dc-style-9);bottom:var(--dc-style-10);width:var(--dc-style-11);height:var(--dc-style-12);border-radius:50%;background:var(--dc-style-13);cursor:pointer;transition:transform .2s" style-hover="transform:scale(1.8)" title="{{ d.tip }}"></div>
         </sc-for>
-        <div style="position:absolute;left:58%;bottom:80%;width:13px;height:13px;border-radius:50%;background:#b45309;animation:pulse 2s infinite;cursor:pointer" title="฿9,400,000 · สูงกว่ากลุ่มเทียบ 3.1×IQR"></div>
         <div style="position:absolute;left:62%;bottom:87%;font:10px 'IBM Plex Mono',monospace;color:#b45309;white-space:nowrap">[ ANOMALY ] ฿9.4M · 3.1×IQR</div>
         <div style="position:absolute;left:5%;bottom:-24px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">ก่อสร้าง</div>
-        <div style="position:absolute;left:30%;bottom:-24px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">ระบายน้ำ</div>
+        <div style="position:absolute;left:30%;bottom:-24px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">ชลประทาน</div>
         <div style="position:absolute;left:55%;bottom:-24px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">ไอที/ซอฟต์แวร์</div>
         <div style="position:absolute;left:80%;bottom:-24px;font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">จ้างเหมาบริการ</div>
       </div>
-      <div style="margin-top:42px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.7">"ความผิดปกติทางสถิติ" = นอกช่วง 1.5×IQR ของกลุ่มเทียบ (หมวด × ช่วงเวลา) — ไม่ใช่ข้อกล่าวหา · กลุ่ม n &lt; 8 ไม่ถูกตั้งธง · hover จุดเพื่อดูรายละเอียด</div>
+      <div style="margin-top:42px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.7">"ความผิดปกติทางสถิติ" = นอกช่วง 1.5×IQR ของกลุ่มเทียบ (หมวด × ช่วงเวลา) — ไม่ใช่ข้อกล่าวหา · กลุ่ม n &lt; 8 ไม่ถูกตั้งธง</div>
     </div>
   </div>
 </main>
 </sc-if>
 
 <sc-if value="{{ showSearch }}" hint-placeholder-val="{{ false }}">
-<main data-screen-label="Search" style="display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 62px)">
+<main data-screen-label="Search" style="display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 62px)">
   <div style="border-right:1px solid rgba(18,35,60,.18);padding:26px 24px;display:flex;flex-direction:column;gap:22px">
-    <div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.14em">[ ตัวกรอง ]</div>
-    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">หน่วยงาน</div><div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:rgba(18,35,60,.7)"><span style="cursor:pointer">☑ สำนักการโยธา</span><span style="cursor:pointer">☑ สำนักงานเขตจตุจักร</span><span style="cursor:pointer">☐ สำนักการระบายน้ำ</span><span style="cursor:pointer">☐ สำนักการศึกษา</span></div></div>
-    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">หมวดหมู่</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="font-size:11px;background:#1d63d8;color:#ffffff;padding:4px 10px;border-radius:99px;font-weight:600;cursor:pointer">ไอที/ซอฟต์แวร์</span><span style="font-size:11px;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.7);padding:4px 10px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8">ก่อสร้าง</span><span style="font-size:11px;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.7);padding:4px 10px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8">GIS</span><span style="font-size:11px;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.7);padding:4px 10px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8">จ้างเหมาบริการ</span></div></div>
-    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">กำหนดยื่นซอง</div><div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:rgba(18,35,60,.7)"><span style="cursor:pointer">◉ ยังเปิดรับ</span><span style="cursor:pointer">○ ภายใน 7 วัน</span><span style="cursor:pointer">○ ทั้งหมด</span></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.14em">[ ตัวกรอง ]</span><span onClick="{{ clearFilters }}" style="font:10px 'IBM Plex Mono',monospace;color:#1d63d8;cursor:pointer">ล้างทั้งหมด</span></div>
+    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">หน่วยงาน</div><div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+      <sc-for list="{{ agencyFilters }}" as="f" hint-placeholder-count="4"><span onClick="{{ f.toggle }}" style="--dc-style-14:{{ f.color }};cursor:pointer;color:var(--dc-style-14)">{{ f.mark }} {{ f.name }}</span></sc-for>
+    </div></div>
+    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">งบประมาณ (฿)</div>
+      <div style="position:relative;height:28px;margin:4px 8px 2px">
+        <svg width="0" height="0" style="position:absolute"><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"></feGaussianBlur><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" result="g"></feColorMatrix><feComposite in="SourceGraphic" in2="g" operator="atop"></feComposite></filter></defs></svg>
+        <div style="position:absolute;left:0;right:0;top:11px;height:6px;border-radius:3px;background:rgba(18,35,60,.12)"></div>
+        <div style="position:absolute;inset:0;filter:url(#goo)">
+          <div style="--dc-style-15:{{ minPct }};--dc-style-16:{{ maxPct }};position:absolute;top:10px;height:8px;left:var(--dc-style-15);right:var(--dc-style-16);background:#1d63d8;transition:left .3s cubic-bezier(.22,1.4,.36,1),right .3s cubic-bezier(.22,1.4,.36,1)"></div>
+          <div style="--dc-style-17:{{ minPct }};--dc-style-18:{{ minBall }};--dc-style-19:{{ minBall }};position:absolute;top:50%;left:var(--dc-style-17);width:var(--dc-style-18);height:var(--dc-style-19);border-radius:50%;background:#1d63d8;transform:translate(-50%,-50%);transition:width .35s cubic-bezier(.34,1.56,.64,1),height .35s cubic-bezier(.34,1.56,.64,1),left .3s cubic-bezier(.22,1.4,.36,1)"></div>
+          <div style="--dc-style-20:{{ maxPct }};--dc-style-21:{{ maxBall }};--dc-style-22:{{ maxBall }};position:absolute;top:50%;right:var(--dc-style-20);width:var(--dc-style-21);height:var(--dc-style-22);border-radius:50%;background:#1d63d8;transform:translate(50%,-50%);transition:width .35s cubic-bezier(.34,1.56,.64,1),height .35s cubic-bezier(.34,1.56,.64,1),right .3s cubic-bezier(.22,1.4,.36,1)"></div>
+        </div>
+        <div style="--dc-style-23:{{ minPct }};--dc-style-24:{{ minHole }};--dc-style-25:{{ minHole }};position:absolute;top:50%;left:var(--dc-style-23);width:var(--dc-style-24);height:var(--dc-style-25);border-radius:50%;background:#fff;transform:translate(-50%,-50%);transition:width .35s cubic-bezier(.34,1.56,.64,1),height .35s cubic-bezier(.34,1.56,.64,1),left .3s cubic-bezier(.22,1.4,.36,1);pointer-events:none"></div>
+        <div style="--dc-style-26:{{ maxPct }};--dc-style-27:{{ maxHole }};--dc-style-28:{{ maxHole }};position:absolute;top:50%;right:var(--dc-style-26);width:var(--dc-style-27);height:var(--dc-style-28);border-radius:50%;background:#fff;transform:translate(50%,-50%);transition:width .35s cubic-bezier(.34,1.56,.64,1),height .35s cubic-bezier(.34,1.56,.64,1),right .3s cubic-bezier(.22,1.4,.36,1);pointer-events:none"></div>
+        <input type="range" min="500000" max="9400000" step="100000" value="{{ minBudget }}" onInput="{{ onMinBudget }}" onMouseEnter="{{ hoverMinOn }}" onMouseLeave="{{ hoverMinOff }}" onTouchStart="{{ hoverMinOn }}" onTouchEnd="{{ hoverMinOff }}" style="position:absolute;inset:0;width:100%;cursor:pointer;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;height:28px;margin:0">
+        <input type="range" min="500000" max="9400000" step="100000" value="{{ maxBudget }}" onInput="{{ onBudget }}" onMouseEnter="{{ hoverMaxOn }}" onMouseLeave="{{ hoverMaxOff }}" onTouchStart="{{ hoverMaxOn }}" onTouchEnd="{{ hoverMaxOff }}" style="position:absolute;inset:0;width:100%;cursor:pointer;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;height:28px;margin:0">
+      </div>
+      <div style="display:flex;justify-content:space-between;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)"><span>฿500K</span><span style="color:#1d63d8;font-weight:600">{{ minBudgetLabel }} — {{ maxBudgetLabel }}</span><span>฿9.4M</span></div>
+    </div>
+    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">หมวดหมู่</div><div style="display:flex;flex-wrap:wrap;gap:6px">
+      <sc-for list="{{ catFilters }}" as="c" hint-placeholder-count="4"><span onClick="{{ c.toggle }}" style="--dc-style-29:{{ c.bg }};--dc-style-30:{{ c.border }};--dc-style-31:{{ c.color }};font-size:11px;background:var(--dc-style-29);border:1px solid var(--dc-style-30);color:var(--dc-style-31);padding:4px 10px;border-radius:99px;cursor:pointer;font-weight:600">{{ c.name }}</span></sc-for>
+    </div></div>
+    <div><div style="font-size:12px;font-weight:600;margin-bottom:8px">สถานะ</div><div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+      <span onClick="{{ setStatusOpen }}" style="--dc-style-32:{{ stOpenC }};cursor:pointer;color:var(--dc-style-32)">{{ stOpenM }} ยังเปิดรับ</span>
+      <span onClick="{{ setStatusAll }}" style="--dc-style-33:{{ stAllC }};cursor:pointer;color:var(--dc-style-33)">{{ stAllM }} ทั้งหมด (รวมปิดแล้ว)</span>
+    </div></div>
     <div style="margin-top:auto;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.55);line-height:1.7">RESULTS &lt; 2S · SEEDED CORPUS</div>
   </div>
   <div style="padding:26px 32px">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
-      <div style="flex:1;min-width:280px;display:flex;align-items:center;gap:10px;border:1px solid rgba(18,35,60,.35);border-radius:6px;padding:11px 16px;font-size:13px;color:rgba(18,35,60,.65)">⌕ ค้นหา เช่น "ระบบสารสนเทศ" "ปรับปรุงถนน"…</div>
-      <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)">[ 124 ผลลัพธ์ ]</span>
+      <input value="{{ query }}" onInput="{{ onQuery }}" placeholder="⌕ ค้นหา เช่น ระบบสารสนเทศ, ปรับปรุงถนน…" style="flex:1;min-width:280px;border:1px solid rgba(18,35,60,.35);border-radius:6px;padding:11px 16px;font-size:13px;color:#12233c;background:#fff">
+      <span style="white-space:nowrap;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)">[ {{ resultCount }} ผลลัพธ์ ]</span>
     </div>
+    <sc-if value="{{ loggedOut }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border:1px solid rgba(29,99,216,.35);background:rgba(29,99,216,.06);border-radius:6px;padding:13px 18px;margin-bottom:18px">
+      <div style="font-size:12.5px;color:rgba(18,35,60,.8)">คุณกำลังดูแบบสาธารณะ — ลงทะเบียนเพื่อรับคะแนนจับคู่ (MATCH %) และแจ้งเตือนอีเมลภายใน 5 นาที</div>
+      <span onClick="{{ toggleLogin }}" style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#fff;padding:8px 16px;border-radius:4px;cursor:pointer" style-hover="background:#1746a0">ลงทะเบียนฟรี</span>
+    </div>
+    </sc-if>
     <div style="display:flex;flex-direction:column">
       <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
-        <div onClick="{{ openDetail }}" style="display:grid;grid-template-columns:1fr 150px 130px;gap:18px;padding:16px 10px;border-top:1px solid rgba(18,35,60,.18);align-items:center;cursor:pointer;transition:background .2s" style-hover="background:rgba(29,99,216,.06)">
-          <div><div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;flex-wrap:wrap"><span style="white-space:nowrap;font:600 10px 'IBM Plex Mono',monospace;background:{{ r.badgeBg }};border:1px solid {{ r.badgeBorder }};color:{{ r.badgeColor }};padding:2px 7px;border-radius:3px">{{ r.badge }}</span><span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">{{ r.id }}</span></div><div style="font-size:14px;font-weight:600">{{ r.title }}</div><div style="font-size:11.5px;color:rgba(18,35,60,.65);margin-top:3px">{{ r.meta }}</div></div>
-          <div style="font:600 15px 'IBM Plex Mono',monospace;color:{{ r.priceColor }}">{{ r.price }}</div>
-          <div style="font-size:12px;color:rgba(18,35,60,.7)">ยื่นภายใน<br><span style="font:600 12px 'IBM Plex Mono',monospace;color:#12233c">{{ r.deadline }}</span></div>
+        <div onClick="{{ r.open }}" style="--dc-style-34:{{ gridCols }};--dc-style-35:{{ r.op }};display:grid;grid-template-columns:var(--dc-style-34);gap:18px;padding:16px 10px;border-top:1px solid rgba(18,35,60,.14);align-items:center;cursor:pointer;transition:background .2s;opacity:var(--dc-style-35)" style-hover="background:rgba(29,99,216,.05)">
+          <div><div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;flex-wrap:wrap"><span style="--dc-style-36:{{ r.badgeBg }};--dc-style-37:{{ r.badgeBorder }};--dc-style-38:{{ r.badgeColor }};white-space:nowrap;font:600 10px 'IBM Plex Mono',monospace;background:var(--dc-style-36);border:1px solid var(--dc-style-37);color:var(--dc-style-38);padding:2px 7px;border-radius:3px">{{ r.badge }}</span><span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">{{ r.id }}</span></div><div style="font-size:14px;font-weight:600">{{ r.title }}</div><div style="font-size:11.5px;color:rgba(18,35,60,.65);margin-top:3px">{{ r.meta }}</div></div>
+          <div style="--dc-style-39:{{ r.priceColor }};font:600 15px 'IBM Plex Mono',monospace;color:var(--dc-style-39)">{{ r.price }}</div>
+          <div style="font-size:12px;color:rgba(18,35,60,.8)">{{ r.deadlineLabel }}<br><span style="font:600 12px 'IBM Plex Mono',monospace;color:#12233c">{{ r.deadline }}</span></div>
+          <sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <span onClick="{{ r.star }}" title="เคยทำงานลักษณะนี้ (ส่วนตัว — ช่วยให้ AI จับคู่แม่นขึ้น ไม่มีผลต่อการค้นหา)" style="--dc-style-40:{{ r.starBg }};--dc-style-41:{{ r.starAnim }};display:grid;place-items:center;width:30px;height:30px;border-radius:50%;cursor:pointer;background:var(--dc-style-40);animation:var(--dc-style-41);transition:background .2s,transform .2s" style-hover="background:rgba(180,83,9,.12);transform:scale(1.12)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="{{ r.starFill }}" stroke="{{ r.starStroke }}" stroke-width="2" stroke-linejoin="round" style="transition:fill .2s,stroke .2s"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+            </span>
+            <span onClick="{{ r.book }}" title="บุ๊กมาร์ก — เก็บไว้ดูภายหลัง" style="--dc-style-42:{{ r.bookBg }};--dc-style-43:{{ r.bookAnim }};display:grid;place-items:center;width:30px;height:30px;border-radius:50%;cursor:pointer;background:var(--dc-style-42);animation:var(--dc-style-43);transition:background .2s,transform .2s" style-hover="background:rgba(29,99,216,.12);transform:scale(1.12)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="{{ r.bookFill }}" stroke="{{ r.bookStroke }}" stroke-width="2" stroke-linejoin="round" style="transition:fill .2s,stroke .2s"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>
+            </span>
+          </div>
+          </sc-if>
         </div>
       </sc-for>
-      <div style="border-top:1px solid rgba(18,35,60,.18);padding:14px 10px;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">คลิกรายการเพื่อดูรายละเอียด · หน้า 1 / 25</div>
+      <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+        <div style="border-top:1px solid rgba(18,35,60,.14);padding:44px 10px;text-align:center;font-size:13px;color:rgba(18,35,60,.6)">ไม่พบ TOR ที่ตรงกับตัวกรอง — <span onClick="{{ clearFilters }}" style="color:#1d63d8;cursor:pointer">ล้างตัวกรอง</span></div>
+      </sc-if>
+      <div style="border-top:1px solid rgba(18,35,60,.14);padding:14px 10px;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">คลิกรายการเพื่อดูรายละเอียด</div>
     </div>
   </div>
 </main>
@@ -112,42 +169,37 @@ a{color:#1d63d8;text-decoration:none}a:hover{color:#3b82f6}
 <main data-screen-label="TOR Detail" style="display:grid;grid-template-columns:1.55fr 1fr;min-height:calc(100vh - 62px)">
   <div style="padding:32px 36px;border-right:1px solid rgba(18,35,60,.18)">
     <div onClick="{{ goSearch }}" style="font:11px 'IBM Plex Mono',monospace;color:#1d63d8;cursor:pointer;margin-bottom:18px">← กลับไปผลการค้นหา</div>
-    <div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em;margin-bottom:12px">TOR-2569-0812-041 · <span style="color:#0e7a5f">เปิดรับข้อเสนอ</span> · ประกาศ 11 ส.ค. 2569</div>
-    <h1 style="margin:0 0 8px;font:700 26px/1.35 'Anuphan',sans-serif">จ้างพัฒนาระบบสารสนเทศภูมิศาสตร์ (GIS) เพื่อบริหารจัดการน้ำท่วมพื้นที่กรุงเทพฯ</h1>
-    <div style="font-size:13px;color:rgba(18,35,60,.55);margin-bottom:24px">สำนักการระบายน้ำ กรุงเทพมหานคร</div>
+    <div style="font:500 10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);letter-spacing:.12em;margin-bottom:12px">{{ dId }} · <span style="--dc-style-44:{{ dStatusColor }};color:var(--dc-style-44)">{{ dStatus }}</span> · ประกาศ {{ dPosted }}</div>
+    <h1 style="margin:0 0 8px;font:700 26px/1.5 'Anuphan',sans-serif">{{ dTitle }}</h1>
+    <div style="font-size:13px;color:rgba(18,35,60,.68);margin-bottom:24px">{{ dAgency }}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(18,35,60,.18)">
-      <div style="padding:16px 16px 16px 0;border-bottom:1px solid rgba(18,35,60,.18);border-right:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ งบประมาณ ]</div><div style="font:600 22px 'IBM Plex Mono',monospace">฿4,850,000</div><div style="font-size:10.5px;color:rgba(18,35,60,.62)">ในช่วงปกติของกลุ่มเทียบ (GIS × Q3/2569)</div></div>
-      <div style="padding:16px 0 16px 16px;border-bottom:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ กำหนดยื่นซอง ]</div><div style="font:600 22px 'IBM Plex Mono',monospace">25 ส.ค. 2569</div><div style="font-size:10.5px;color:rgba(18,35,60,.62)">เหลืออีก 13 วัน</div></div>
-      <div style="padding:16px 16px 16px 0;border-bottom:1px solid rgba(18,35,60,.18);border-right:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ หมวดหมู่ ]</div><div style="font-size:14px;font-weight:600">ไอที/ซอฟต์แวร์ · GIS</div></div>
-      <div style="padding:16px 0 16px 16px;border-bottom:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ ติดต่อ ]</div><div style="font-size:14px;font-weight:600">ฝ่ายพัสดุ สำนักการระบายน้ำ</div><div style="font-size:10.5px;color:rgba(18,35,60,.62)">PII ถูกลดทอนตามนโยบาย</div></div>
+      <div style="padding:16px 16px 16px 0;border-bottom:1px solid rgba(18,35,60,.18);border-right:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ งบประมาณ ]</div><div style="--dc-style-45:{{ dPriceColor }};font:600 22px 'IBM Plex Mono',monospace;color:var(--dc-style-45)">{{ dPrice }}</div><div style="font-size:10.5px;color:rgba(18,35,60,.62)">{{ dPriceNote }}</div></div>
+      <div style="padding:16px 0 16px 16px;border-bottom:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ กำหนดยื่นซอง ]</div><div style="font:600 22px 'IBM Plex Mono',monospace">{{ dDeadline }}</div><div style="font-size:10.5px;color:rgba(18,35,60,.62)">{{ dDeadlineNote }}</div></div>
+      <div style="padding:16px 16px 16px 0;border-right:1px solid rgba(18,35,60,.18)"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ หมวดหมู่ ]</div><div style="font-size:14px;font-weight:600">{{ dCat }}</div></div>
+      <div style="padding:16px 0 16px 16px"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:5px">[ ติดต่อ ]</div><div style="font-size:14px;font-weight:600">{{ dContact }}</div><div style="font-size:10.5px;color:rgba(18,35,60,.62)">PII ถูกลดทอนตามนโยบาย</div></div>
     </div>
-    <div style="margin-top:24px"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:10px">[ ขอบเขตงาน — สรุปโดย AI ]</div>
-    <p style="margin:0;font-size:13.5px;line-height:1.8;color:rgba(18,35,60,.8)">พัฒนาระบบ GIS แสดงผลจุดเสี่ยงน้ำท่วมแบบเรียลไทม์ เชื่อมต่อข้อมูลเซ็นเซอร์ระดับน้ำ 380 จุด และกล้อง CCTV ของสำนักการระบายน้ำ · จัดทำแดชบอร์ดผู้บริหารและ API สาธารณะ · อบรมเจ้าหน้าที่ 40 คน · ระยะเวลาดำเนินงาน 240 วัน</p></div>
+    <div style="margin-top:24px;border-top:1px solid rgba(18,35,60,.18);padding-top:20px"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:10px">[ ขอบเขตงาน — สรุปโดย AI ]</div>
+    <p style="margin:0;font-size:13.5px;line-height:1.8;color:rgba(18,35,60,.85)">{{ dScope }}</p></div>
     <div style="margin-top:24px"><div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:10px">[ คุณสมบัติผู้ยื่นข้อเสนอ ]</div>
-    <div style="display:flex;flex-wrap:wrap;gap:7px"><span style="font-size:12px;background:rgba(14,122,95,.1);border:1px solid #2b6e5a;color:#0e7a5f;padding:5px 12px;border-radius:99px">✓ GIS / แผนที่ดิจิทัล</span><span style="font-size:12px;background:rgba(14,122,95,.1);border:1px solid #2b6e5a;color:#0e7a5f;padding:5px 12px;border-radius:99px">✓ พัฒนาเว็บแอปพลิเคชัน</span><span style="font-size:12px;background:rgba(14,122,95,.1);border:1px solid #2b6e5a;color:#0e7a5f;padding:5px 12px;border-radius:99px">✓ ผลงานภาครัฐ ≥ 1 โครงการ</span><span style="font-size:12px;border:1px solid rgba(18,35,60,.35);color:rgba(18,35,60,.7);padding:5px 12px;border-radius:99px">ทุนจดทะเบียน ≥ ฿1M</span></div>
-    <div style="margin-top:10px;font:10px 'IBM Plex Mono',monospace;color:#0e7a5f">✓ = ตรงกับโปรไฟล์ของคุณ (MATCH 92%)</div></div>
-    <div style="margin-top:26px;border-top:1px solid rgba(18,35,60,.18);padding-top:14px;font:9.5px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.7">EXTRACTED 2026-08-11 14:03 · GEMINI-2.5-FLASH · CONFIDENCE 0.94<br>เนื้อหาสกัดโดย AI — ตรวจสอบกับเอกสารต้นฉบับเสมอ · สถานะ: ประกาศ → เปิดรับ (11 ส.ค.)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:7px">
+      <sc-for list="{{ dQuals }}" as="q" hint-placeholder-count="4"><span style="--dc-style-46:{{ q.bg }};--dc-style-47:{{ q.border }};--dc-style-48:{{ q.color }};font-size:12px;background:var(--dc-style-46);border:1px solid var(--dc-style-47);color:var(--dc-style-48);padding:5px 12px;border-radius:99px">{{ q.text }}</span></sc-for>
+    </div>
+    <sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}"><div style="margin-top:10px;font:10px 'IBM Plex Mono',monospace;color:#0e7a5f">✓ = ตรงกับโปรไฟล์ของคุณ ({{ dMatch }})</div></sc-if>
+    <sc-if value="{{ loggedOut }}" hint-placeholder-val="{{ false }}"><div style="margin-top:10px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)"><span onClick="{{ toggleLogin }}" style="color:#1d63d8;cursor:pointer">ลงทะเบียน</span> เพื่อดูว่าทักษะของคุณตรงกับ TOR นี้แค่ไหน</div></sc-if></div>
+    <div style="margin-top:26px;border-top:1px solid rgba(18,35,60,.18);padding-top:14px;font:9.5px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.7">EXTRACTED {{ dExtracted }} · CONFIDENCE {{ dConf }}<br>เนื้อหาสกัดโดย AI — ตรวจสอบกับเอกสารต้นฉบับเสมอ</div>
   </div>
-  <div style="padding:32px 30px;background:#ffffff">
-    <div style="display:flex;gap:10px;margin-bottom:26px"><span style="white-space:nowrap;flex:1;text-align:center;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#ffffff;padding:11px 0;border-radius:4px;cursor:pointer" style-hover="transform:translateY(-1px)">เปิดเอกสารต้นฉบับ ↗</span><span style="white-space:nowrap;text-align:center;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.3);padding:11px 18px;border-radius:4px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">☆ บันทึก</span></div>
+  <div style="padding:32px 30px;background:#f4f7fb">
+    <div style="display:flex;gap:10px;margin-bottom:26px"><span style="white-space:nowrap;flex:1;text-align:center;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#fff;padding:11px 0;border-radius:4px;cursor:pointer" style-hover="background:#1746a0">เปิดเอกสารต้นฉบับ ↗</span><span onClick="{{ toggleSave }}" style="--dc-style-49:{{ saveBorder }};--dc-style-50:{{ saveColor }};white-space:nowrap;text-align:center;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;border:1px solid var(--dc-style-49);color:var(--dc-style-50);padding:11px 18px;border-radius:4px;cursor:pointer">{{ saveLabel }}</span></div>
     <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:14px">[ AI QUALITY CHECKLIST ]</div>
-    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px"><span style="font:600 50px/1 'IBM Plex Mono',monospace">8.5</span><span style="font:12px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62)">/ 10 · SPEC QUALITY</span></div>
-    <div style="font-size:10.5px;color:rgba(18,35,60,.62);margin-bottom:20px">การตรวจความครบถ้วนของข้อกำหนดโดย AI — ไม่ใช่คำตัดสินทางกฎหมาย · <a href="#" style="font-size:10.5px">วิธีคำนวณ →</a></div>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px"><span style="font:600 50px/1 'IBM Plex Mono',monospace">{{ dQuality }}</span><span style="font:12px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62)">/ 10 · SPEC QUALITY</span></div>
+    <div style="font-size:10.5px;color:rgba(18,35,60,.62);margin-bottom:20px">การตรวจความครบถ้วนของข้อกำหนดโดย AI — ไม่ใช่คำตัดสินทางกฎหมาย</div>
     <div style="display:flex;flex-direction:column;gap:12px;font-size:12.5px;line-height:1.5">
-      <div style="display:flex;gap:10px"><span style="color:#0e7a5f;font-weight:700">✓</span><span>ระบุงบประมาณชัดเจน (฿4,850,000)</span></div>
-      <div style="display:flex;gap:10px"><span style="color:#0e7a5f;font-weight:700">✓</span><span>กำหนดยื่นซอง 14 วัน ≥ เกณฑ์ขั้นต่ำ 7 วัน</span></div>
-      <div style="display:flex;gap:10px"><span style="color:#0e7a5f;font-weight:700">✓</span><span>ขอบเขตงานระบุ deliverable 6 รายการ, 240 วัน</span></div>
-      <div style="display:flex;gap:10px"><span style="color:#0e7a5f;font-weight:700">✓</span><span>งบอยู่ในช่วงปกติของกลุ่มเทียบ</span></div>
-      <div style="display:flex;gap:10px"><span style="color:#b45309;font-weight:700">△</span><span>"ทุนจดทะเบียน ≥ ฿1M" ไม่มีเหตุผลประกอบ</span></div>
+      <sc-for list="{{ dChecks }}" as="c" hint-placeholder-count="5"><div style="display:flex;gap:10px"><span style="--dc-style-51:{{ c.color }};color:var(--dc-style-51);font-weight:700">{{ c.mark }}</span><span>{{ c.text }}</span></div></sc-for>
     </div>
     <div style="margin-top:26px;border-top:1px solid rgba(18,35,60,.18);padding-top:20px">
       <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:12px">[ เอกสารต้นฉบับ ]</div>
-      <div style="border:1px dashed rgba(18,35,60,.35);border-radius:6px;height:170px;display:grid;place-items:center;background:repeating-linear-gradient(45deg,rgba(18,35,60,.02),rgba(18,35,60,.02) 8px,transparent 8px,transparent 16px)"><div style="text-align:center;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.8">PDF PREVIEW<br>ประกาศสำนักการระบายน้ำ<br>ที่ กท 1005/2569 · 12 หน้า</div></div>
+      <div style="border:1px dashed rgba(18,35,60,.35);border-radius:6px;height:150px;display:grid;place-items:center"><div style="text-align:center;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.8">PDF PREVIEW<br>{{ dDocRef }}</div></div>
       <div style="margin-top:10px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">SHA-256 VERIFIED · เก็บถาวรไม่แก้ไข</div>
-    </div>
-    <div style="margin-top:22px;background:rgba(14,122,95,.08);border:1px solid #2b6e5a;border-radius:6px;padding:14px 16px">
-      <div style="font:600 11px 'IBM Plex Mono',monospace;color:#0e7a5f;margin-bottom:5px">✉ แจ้งเตือนแล้ว 12 ผู้ประกอบการ</div>
-      <div style="font-size:11px;color:rgba(18,35,60,.55)">อีเมลส่งภายใน 5 นาทีหลังเผยแพร่ พร้อมเหตุผลการจับคู่</div>
     </div>
   </div>
 </main>
@@ -156,88 +208,270 @@ a{color:#1d63d8;text-decoration:none}a:hover{color:#3b82f6}
 <sc-if value="{{ showProfile }}" hint-placeholder-val="{{ false }}">
 <main data-screen-label="Vendor Profile" style="max-width:880px;margin:0 auto;padding:38px 36px 70px">
   <div style="display:flex;align-items:center;gap:18px;margin-bottom:30px">
-    <span style="width:64px;height:64px;border-radius:50%;background:#2b6e5a;display:grid;place-items:center;font:700 26px 'Anuphan',sans-serif">น</span>
+    <span style="width:64px;height:64px;border-radius:50%;background:#2b6e5a;color:#fff;display:grid;place-items:center;font:700 26px 'Anuphan',sans-serif">น</span>
     <div><h1 style="margin:0;font:700 26px 'Anuphan',sans-serif">คุณนก วิภาดา</h1><div style="font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)">FREELANCE FULL-STACK · สมาชิกตั้งแต่ มี.ค. 2569 · <span style="color:#0e7a5f">PROFILE 90% COMPLETE</span></div></div>
-    <span style="margin-left:auto;white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.3);padding:9px 18px;border-radius:4px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">แก้ไขโปรไฟล์</span>
   </div>
-  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;margin-bottom:18px;background:#ffffff">
-    <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:14px">[ ทักษะ — จาก TAXONOMY กลาง ]</div>
+  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;margin-bottom:18px;background:#f4f7fb">
+    <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:14px">[ ทักษะ — จาก TAXONOMY กลาง · คลิกเพื่อเปิด/ปิด ]</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
-      <span style="font-size:12.5px;background:#1d63d8;color:#ffffff;font-weight:600;padding:6px 14px;border-radius:99px">Next.js</span>
-      <span style="font-size:12.5px;background:#1d63d8;color:#ffffff;font-weight:600;padding:6px 14px;border-radius:99px">GIS / แผนที่ดิจิทัล</span>
-      <span style="font-size:12.5px;background:#1d63d8;color:#ffffff;font-weight:600;padding:6px 14px;border-radius:99px">พัฒนาเว็บแอปพลิเคชัน</span>
-      <span style="font-size:12.5px;background:#1d63d8;color:#ffffff;font-weight:600;padding:6px 14px;border-radius:99px">Node.js / API</span>
-      <span style="font-size:12.5px;border:1px dashed rgba(18,35,60,.55);color:rgba(18,35,60,.6);padding:6px 14px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">+ เพิ่มทักษะ</span>
+      <sc-for list="{{ skills }}" as="s" hint-placeholder-count="5"><span onClick="{{ s.toggle }}" style="--dc-style-52:{{ s.bg }};--dc-style-53:{{ s.border }};--dc-style-54:{{ s.color }};font-size:12.5px;background:var(--dc-style-52);border:1px solid var(--dc-style-53);color:var(--dc-style-54);font-weight:600;padding:6px 14px;border-radius:99px;cursor:pointer">{{ s.name }}</span></sc-for>
+      <span onClick="{{ toggleAddSkill }}" style="font-size:12.5px;border:1px dashed rgba(18,35,60,.4);color:rgba(18,35,60,.7);padding:6px 14px;border-radius:99px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">+ เพิ่มทักษะ</span>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px">
+    <sc-if value="{{ addingSkill }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <input value="{{ newSkill }}" onInput="{{ onNewSkill }}" onKeyDown="{{ onNewSkillKey }}" placeholder="พิมพ์ชื่อทักษะ เช่น React Native…" style="flex:1;border:1px solid rgba(18,35,60,.35);border-radius:6px;padding:9px 14px;font-size:12.5px;color:#12233c;background:#fff">
+      <span onClick="{{ addSkill }}" style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#fff;padding:9px 16px;border-radius:4px;cursor:pointer" style-hover="background:#1746a0">เพิ่ม</span>
+      <span onClick="{{ toggleAddSkill }}" style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.35);padding:9px 14px;border-radius:4px;cursor:pointer">ยกเลิก</span>
+    </div>
+    </sc-if>
+    <div style="margin-top:12px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.55)">ทักษะที่เปิดใช้: {{ skillCount }} · มีผลต่อการจับคู่ทันที</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px;border-top:1px solid rgba(18,35,60,.14);padding-top:20px">
       <div><div style="font-size:12px;font-weight:600;margin-bottom:6px">ช่วงงบประมาณที่สนใจ</div><div style="font:600 16px 'IBM Plex Mono',monospace">฿500K — ฿5M</div></div>
-      <div><div style="font-size:12px;font-weight:600;margin-bottom:6px">ผลงานภาครัฐ</div><div style="font-size:13px;color:rgba(18,35,60,.7)">ระบบจองคิวออนไลน์ สำนักงานเขตห้วยขวาง (2568)</div></div>
+      <div><div style="font-size:12px;font-weight:600;margin-bottom:6px">ผลงานภาครัฐ</div><div style="font-size:13px;color:rgba(18,35,60,.75)">ระบบจองคิวออนไลน์ เทศบาลนครขอนแก่น (2568)</div></div>
     </div>
   </div>
-  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;margin-bottom:18px;background:#ffffff">
+  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;margin-bottom:18px;background:#f4f7fb">
     <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:14px">[ การแจ้งเตือน ]</div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
-      <div><div style="font-size:13.5px;font-weight:600;margin-bottom:4px">ความถี่อีเมล</div><div style="font-size:11.5px;color:rgba(18,35,60,.65)">คะแนนจับคู่ขั้นต่ำ 70% · เฉพาะหมวดที่เลือก</div></div>
+      <div><div style="font-size:13.5px;font-weight:600;margin-bottom:4px">ความถี่อีเมล</div><div style="font-size:11.5px;color:rgba(18,35,60,.65)">คะแนนจับคู่ขั้นต่ำ {{ minMatch }}% · เฉพาะหมวดที่เลือก</div></div>
       <div style="display:flex;border:1px solid rgba(18,35,60,.35);border-radius:6px;overflow:hidden">
-        <span onClick="{{ setImmediate }}" style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;padding:9px 18px;cursor:pointer;background:{{ immBg }};color:{{ immC }}">ทันที</span>
-        <span onClick="{{ setDigest }}" style="white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;padding:9px 18px;cursor:pointer;background:{{ digBg }};color:{{ digC }}">สรุปรายวัน</span>
+        <span onClick="{{ setImmediate }}" style="--dc-style-55:{{ immBg }};--dc-style-56:{{ immC }};white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;padding:9px 18px;cursor:pointer;background:var(--dc-style-55);color:var(--dc-style-56)">ทันที</span>
+        <span onClick="{{ setDigest }}" style="--dc-style-57:{{ digBg }};--dc-style-58:{{ digC }};white-space:nowrap;font:600 12px 'IBM Plex Sans Thai',sans-serif;padding:9px 18px;cursor:pointer;background:var(--dc-style-57);color:var(--dc-style-58)">สรุปรายวัน</span>
       </div>
     </div>
+    <div style="margin-top:16px"><input type="range" min="50" max="95" step="5" value="{{ minMatch }}" onInput="{{ onMinMatch }}" style="width:100%;cursor:pointer"><div style="display:flex;justify-content:space-between;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)"><span>50%</span><span style="color:#1d63d8;font-weight:600">ขั้นต่ำ {{ minMatch }}%</span><span>95%</span></div></div>
   </div>
-  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;background:#ffffff">
-    <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:14px">[ TOR ที่บันทึกไว้ ]</div>
+  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;margin-bottom:18px;background:#f4f7fb">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px"><svg width="13" height="13" viewBox="0 0 24 24" fill="#e8930c" stroke="#e8930c" stroke-width="2" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg><span style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em">[ เคยทำงานลักษณะนี้ — ส่วนตัว ]</span></div>
+    <sc-if value="{{ hasStarred }}" hint-placeholder-val="{{ false }}">
     <div style="display:flex;flex-direction:column">
-      <div onClick="{{ openDetail }}" style="display:flex;justify-content:space-between;gap:14px;padding:13px 8px;border-top:1px solid rgba(18,35,60,.1);cursor:pointer;align-items:center" style-hover="background:rgba(29,99,216,.06)"><div><div style="font-size:13.5px;font-weight:600">จ้างพัฒนาระบบ GIS เพื่อบริหารจัดการน้ำท่วม</div><div style="font-size:11px;color:rgba(18,35,60,.65)">สำนักการระบายน้ำ · MATCH 92%</div></div><span style="white-space:nowrap;font:10px 'IBM Plex Mono',monospace;color:#0e7a5f">เปิดรับ · 13 วัน</span></div>
-      <div style="display:flex;justify-content:space-between;gap:14px;padding:13px 8px;border-top:1px solid rgba(18,35,60,.1);align-items:center;opacity:.6"><div><div style="font-size:13.5px;font-weight:600">จ้างพัฒนาแอปรายงานปัญหาเมือง</div><div style="font-size:11px;color:rgba(18,35,60,.65)">สำนักยุทธศาสตร์ฯ · MATCH 78%</div></div><span style="white-space:nowrap;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65)">ปิดรับแล้ว</span></div>
+      <sc-for list="{{ starredList }}" as="st" hint-placeholder-count="2">
+        <div onClick="{{ st.open }}" style="display:flex;justify-content:space-between;gap:14px;padding:13px 8px;border-top:1px solid rgba(18,35,60,.12);cursor:pointer;align-items:center" style-hover="background:rgba(29,99,216,.05)"><div><div style="font-size:13.5px;font-weight:600">{{ st.title }}</div><div style="font-size:11px;color:rgba(18,35,60,.65)">{{ st.agency }}</div></div><svg width="15" height="15" viewBox="0 0 24 24" fill="#e8930c" stroke="#e8930c" stroke-width="2" stroke-linejoin="round" style="flex:none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg></div>
+      </sc-for>
     </div>
-    <div style="margin-top:12px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.55)">สถานะ "ชนะ/เสร็จสิ้น" ที่คุณบันทึกเป็นข้อมูลส่วนตัว — ไม่แสดงต่อสาธารณะ</div>
+    </sc-if>
+    <sc-if value="{{ noStarred }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:14px 8px;font-size:12.5px;color:rgba(18,35,60,.6)">ยังไม่มี — กดไอคอนดาวในหน้าค้นหาเพื่อบอกว่าเคยทำงานลักษณะนี้</div>
+    </sc-if>
+    <div style="margin-top:12px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.55)">ข้อมูลส่วนตัว — ใช้ปรับปรุงการจับคู่ของ AI เท่านั้น ไม่แสดงต่อสาธารณะ</div>
   </div>
-  <div style="margin-top:20px;font:10.5px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">PDPA: <a href="#" style="font-size:10.5px">ส่งออกข้อมูลของฉัน</a> · <a href="#" style="font-size:10.5px">ลบบัญชี</a> · ความยินยอมให้ไว้เมื่อ 12 มี.ค. 2569</div>
+  <div style="border:1px solid rgba(18,35,60,.2);border-radius:8px;padding:26px 28px;background:#f4f7fb">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px"><svg width="12" height="12" viewBox="0 0 24 24" fill="#1d63d8" stroke="#1d63d8" stroke-width="2" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg><span style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em">[ บุ๊กมาร์ก — TOR ที่กำลังดู ]</span></div>
+    <sc-if value="{{ hasBooked }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <sc-for list="{{ bookedList }}" as="bk" hint-placeholder-count="2">
+        <div onClick="{{ bk.open }}" style="display:flex;justify-content:space-between;gap:14px;padding:13px 8px;border-top:1px solid rgba(18,35,60,.12);cursor:pointer;align-items:center" style-hover="background:rgba(29,99,216,.05)"><div><div style="font-size:13.5px;font-weight:600">{{ bk.title }}</div><div style="font-size:11px;color:rgba(18,35,60,.65)">{{ bk.agency }}</div></div><span style="--dc-style-59:{{ bk.stC }};white-space:nowrap;font:10px 'IBM Plex Mono',monospace;color:var(--dc-style-59)">{{ bk.stT }}</span></div>
+      </sc-for>
+    </div>
+    </sc-if>
+    <sc-if value="{{ noBooked }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:14px 8px;font-size:12.5px;color:rgba(18,35,60,.6)">ยังไม่มี — กดไอคอนบุ๊กมาร์กในหน้าค้นหาเพื่อเก็บ TOR ไว้ดูภายหลัง</div>
+    </sc-if>
+    <div style="margin-top:12px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.55)">บุ๊กมาร์กเป็นข้อมูลส่วนตัว — ไม่แสดงต่อสาธารณะ</div>
+  </div>
+  <div style="margin-top:20px;font:10.5px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">PDPA: <a href="#">ส่งออกข้อมูลของฉัน</a> · <a href="#">ลบบัญชี</a> · ความยินยอมให้ไว้เมื่อ 12 มี.ค. 2569</div>
 </main>
 </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state = { tab: 'dash', freq: 'immediate' };
-  renderVals() {
-    const t = this.state.tab, on = '#12233c', off = 'rgba(18,35,60,.55)', bar = '#1d63d8', none = 'transparent';
-    const agencies = [
-      { name: 'สำนักการโยธา', stat: '86 · ฿412M', w: '100%' },
-      { name: 'สำนักการระบายน้ำ', stat: '61 · ฿298M', w: '72%' },
-      { name: 'สำนักการศึกษา', stat: '54 · ฿176M', w: '43%' },
-      { name: 'สำนักงานเขตจตุจักร', stat: '38 · ฿94M', w: '23%' },
-      { name: 'สำนักงานเขตบางรัก', stat: '29 · ฿71M', w: '17%' },
-      { name: 'สำนักสิ่งแวดล้อม', stat: '27 · ฿63M', w: '15%' },
+  state = {
+    tab: 'dash', loggedIn: false, freq: 'immediate', minMatch: 70, saved: true,
+    dashAgency: 'all', dashCat: 'all',
+    query: '', minBudget: 500000, maxBudget: 9400000, statusOpen: true,
+    agencySel: {}, catSel: {}, hoverMin: false, hoverMax: false,
+    starSel: {}, bookSel: {},
+    skillOn: { 'Next.js': true, 'GIS / แผนที่ดิจิทัล': true, 'พัฒนาเว็บแอปพลิเคชัน': true, 'Node.js / API': true, 'ความปลอดภัยไซเบอร์': false },
+    addingSkill: false, newSkill: '',
+    detailIdx: 0,
+  };
+  data() {
+    return [
+      { id: 'TOR-2569-0812-041', title: 'จ้างพัฒนาระบบสารสนเทศภูมิศาสตร์ (GIS) เพื่อบริหารจัดการน้ำท่วม', agency: 'กรมชลประทาน', cat: 'ไอที/ซอฟต์แวร์ · GIS', catKey: 'ไอที/ซอฟต์แวร์', budget: 4850000, posted: '11 ส.ค. 2569', deadline: '25 ส.ค. 2569', open: true, match: 92, quality: '8.5', conf: '0.94', anomaly: false, unverified: false,
+        scope: 'พัฒนาระบบ GIS แสดงผลจุดเสี่ยงน้ำท่วมแบบเรียลไทม์ เชื่อมต่อข้อมูลเซ็นเซอร์ระดับน้ำ 380 จุด · จัดทำแดชบอร์ดผู้บริหารและ API สาธารณะ · อบรมเจ้าหน้าที่ 40 คน · ระยะเวลา 240 วัน',
+        contact: 'ฝ่ายพัสดุ กรมชลประทาน', docRef: 'ประกาศกรมชลประทาน · 12 หน้า', priceNote: 'ในช่วงปกติของกลุ่มเทียบ (GIS × Q3/2569)', deadlineNote: 'เหลืออีก 13 วัน',
+        quals: [{ t: 'GIS / แผนที่ดิจิทัล', ok: true }, { t: 'พัฒนาเว็บแอปพลิเคชัน', ok: true }, { t: 'ผลงานภาครัฐ ≥ 1 โครงการ', ok: true }, { t: 'ทุนจดทะเบียน ≥ ฿1M', ok: false }],
+        checks: [{ m: '✓', c: '#0e7a5f', t: 'ระบุงบประมาณชัดเจน (฿4,850,000)' }, { m: '✓', c: '#0e7a5f', t: 'กำหนดยื่นซอง 14 วัน ≥ เกณฑ์ขั้นต่ำ 7 วัน' }, { m: '✓', c: '#0e7a5f', t: 'ขอบเขตงานระบุ deliverable 6 รายการ, 240 วัน' }, { m: '✓', c: '#0e7a5f', t: 'งบอยู่ในช่วงปกติของกลุ่มเทียบ' }, { m: '△', c: '#b45309', t: '"ทุนจดทะเบียน ≥ ฿1M" ไม่มีเหตุผลประกอบ' }] },
+      { id: 'TOR-2569-0811-038', title: 'จ้างเหมาปรับปรุงเว็บไซต์และระบบจองคิวออนไลน์ เทศบาลนครเชียงใหม่', agency: 'เทศบาลนครเชียงใหม่', cat: 'ไอที/ซอฟต์แวร์', catKey: 'ไอที/ซอฟต์แวร์', budget: 1200000, posted: '11 ส.ค. 2569', deadline: '19 ส.ค. 2569', open: true, match: null, quality: '6.0', conf: '0.58', anomaly: false, unverified: true,
+        scope: 'ปรับปรุงเว็บไซต์หลักและระบบจองคิวออนไลน์ · รองรับมือถือ · ย้ายข้อมูลจากระบบเดิม (สกัดจากภาพถ่ายเอกสาร — ตรวจสอบกับต้นฉบับ)',
+        contact: 'สำนักปลัดเทศบาล', docRef: 'ประกาศเทศบาลนครเชียงใหม่ · สแกน 6 หน้า', priceNote: 'ค่าจากเอกสารสแกน — ยังไม่ยืนยัน', deadlineNote: 'เหลืออีก 7 วัน',
+        quals: [{ t: 'พัฒนาเว็บแอปพลิเคชัน', ok: true }, { t: 'ระบบจองคิว/CRM', ok: false }],
+        checks: [{ m: '△', c: '#b45309', t: 'สกัดจากภาพถ่าย — งบประมาณยังไม่ยืนยัน' }, { m: '✓', c: '#0e7a5f', t: 'กำหนดยื่นซองระบุชัดเจน' }, { m: '△', c: '#b45309', t: 'ขอบเขตงานระบุกว้าง ไม่มี deliverable ชัดเจน' }] },
+      { id: 'TOR-2569-0810-029', title: 'จ้างพัฒนาแอปพลิเคชันรายงานปัญหาเมือง (Smart City Integration)', agency: 'เมืองพัทยา', cat: 'ไอที/ซอฟต์แวร์', catKey: 'ไอที/ซอฟต์แวร์', budget: 2300000, posted: '10 ส.ค. 2569', deadline: '22 ส.ค. 2569', open: true, match: 78, quality: '9.0', conf: '0.96', anomaly: false, unverified: false,
+        scope: 'พัฒนาแอปมือถือรับแจ้งปัญหาเมือง เชื่อมระบบ Smart City เดิม · แดชบอร์ดติดตามสถานะ · SLA รายงานผล 72 ชม. · ระยะเวลา 180 วัน',
+        contact: 'สำนักยุทธศาสตร์ เมืองพัทยา', docRef: 'ประกาศเมืองพัทยา · 15 หน้า', priceNote: 'ในช่วงปกติของกลุ่มเทียบ', deadlineNote: 'เหลืออีก 10 วัน',
+        quals: [{ t: 'พัฒนาแอปมือถือ', ok: false }, { t: 'พัฒนาเว็บแอปพลิเคชัน', ok: true }, { t: 'API Integration', ok: true }],
+        checks: [{ m: '✓', c: '#0e7a5f', t: 'ระบุงบประมาณชัดเจน (฿2,300,000)' }, { m: '✓', c: '#0e7a5f', t: 'ขอบเขตงาน + SLA ชัดเจน' }, { m: '✓', c: '#0e7a5f', t: 'กำหนดยื่นซอง 12 วัน' }] },
+      { id: 'TOR-2569-0808-017', title: 'จ้างจัดทำระบบจัดเก็บเอกสารอิเล็กทรอนิกส์ พร้อมสแกนเอกสารย้อนหลัง', agency: 'กรมควบคุมมลพิษ', cat: 'ไอที/ซอฟต์แวร์', catKey: 'ไอที/ซอฟต์แวร์', budget: 9400000, posted: '8 ส.ค. 2569', deadline: '18 ส.ค. 2569', open: true, match: null, quality: '4.5', conf: '0.91', anomaly: true, unverified: false,
+        scope: 'จัดทำระบบ e-Document พร้อมสแกนเอกสารย้อนหลัง 500,000 หน้า · ระยะเวลา 120 วัน',
+        contact: 'ฝ่ายพัสดุ กรมควบคุมมลพิษ', docRef: 'ประกาศกรมควบคุมมลพิษ · 9 หน้า', priceNote: 'สูงกว่ากลุ่มเทียบ 3.1×IQR — ความผิดปกติทางสถิติ', deadlineNote: 'เหลืออีก 6 วัน',
+        quals: [{ t: 'ระบบจัดการเอกสาร', ok: false }, { t: 'บริการสแกนเอกสาร', ok: false }],
+        checks: [{ m: '◆', c: '#b45309', t: 'งบสูงกว่ากลุ่มเทียบ 3.1×IQR (กลุ่ม: e-Document × Q3/2569, n=14)' }, { m: '△', c: '#b45309', t: 'กำหนดยื่นซอง 10 วัน ค่อนข้างสั้นเทียบขนาดงาน' }, { m: '△', c: '#b45309', t: 'ไม่ระบุ spec ฮาร์ดแวร์สแกน' }, { m: '✓', c: '#0e7a5f', t: 'ระบุจำนวนหน้าเอกสารชัดเจน' }] },
+      { id: 'TOR-2569-0722-004', title: 'จ้างบำรุงรักษาระบบกล้อง CCTV ทางหลวงสายหลัก', agency: 'กรมทางหลวง', cat: 'จ้างเหมาบริการ', catKey: 'จ้างเหมาบริการ', budget: 3750000, posted: '22 ก.ค. 2569', deadline: '5 ส.ค. 2569', open: false, match: null, quality: '7.5', conf: '0.95', anomaly: false, unverified: false,
+        scope: 'บำรุงรักษากล้อง CCTV 320 จุดตามทางหลวงสายหลัก · SLA ซ่อม 48 ชม. · ระยะเวลา 12 เดือน',
+        contact: 'ฝ่ายพัสดุ กรมทางหลวง', docRef: 'ประกาศกรมทางหลวง · 10 หน้า', priceNote: 'ในช่วงปกติของกลุ่มเทียบ', deadlineNote: 'ปิดรับแล้ว',
+        quals: [{ t: 'งานบำรุงรักษา CCTV', ok: false }, { t: 'ผลงานภาครัฐ ≥ 2 โครงการ', ok: false }],
+        checks: [{ m: '✓', c: '#0e7a5f', t: 'ระบุ SLA และจำนวนจุดชัดเจน' }, { m: '✓', c: '#0e7a5f', t: 'งบอยู่ในช่วงปกติ' }] },
     ];
+  }
+  addSkill() {
+    const name = this.state.newSkill.trim();
+    if (!name) return;
+    this.setState(st => ({ skillOn: { ...st.skillOn, [name]: true }, newSkill: '', addingSkill: false }));
+  }
+  fmtM(n) { return n >= 1000000 ? '฿' + (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + 'M' : '฿' + Math.round(n / 1000) + 'K'; }
+  renderVals() {
+    const s = this.state, all = this.data(), li = s.loggedIn;
+    const t = s.tab, on = '#12233c', off = 'rgba(18,35,60,.55)', bar = '#1d63d8', none = 'transparent';
+    // ---- search filtering ----
+    const agencyNames = ['กรมทางหลวง', 'กรมชลประทาน', 'เทศบาลนครเชียงใหม่', 'เมืองพัทยา', 'กรมควบคุมมลพิษ'];
+    const catNames = ['ก่อสร้าง', 'ชลประทาน', 'ไอที/ซอฟต์แวร์', 'จ้างเหมาบริการ'];
+    const agOn = Object.keys(s.agencySel).filter(k => s.agencySel[k]);
+    const catOn = Object.keys(s.catSel).filter(k => s.catSel[k]);
+    const q = s.query.trim();
+    const filtered = all.filter(r =>
+      (agOn.length === 0 || agOn.includes(r.agency)) &&
+      (catOn.length === 0 || catOn.includes(r.catKey)) &&
+      r.budget <= s.maxBudget && r.budget >= s.minBudget &&
+      (!s.statusOpen || r.open) &&
+      (!q || r.title.includes(q) || r.agency.includes(q)));
+    const results = filtered.map(r => {
+      const idx = all.indexOf(r);
+      let b;
+      if (r.anomaly) b = { badge: '◆ STATISTICAL ANOMALY', bg: '#b45309', bd: '#b45309', c: '#fff' };
+      else if (r.unverified) b = { badge: '⚠ UNVERIFIED EXTRACTION', bg: 'transparent', bd: '#b45309', c: '#b45309' };
+      else if (!r.open) b = { badge: 'ปิดรับแล้ว', bg: 'transparent', bd: 'rgba(18,35,60,.35)', c: 'rgba(18,35,60,.6)' };
+      else if (li && r.match) b = { badge: 'MATCH ' + r.match + '%', bg: '#2b6e5a', bd: '#2b6e5a', c: '#fff' };
+      else b = { badge: 'เปิดรับข้อเสนอ', bg: 'transparent', bd: 'rgba(18,35,60,.35)', c: 'rgba(18,35,60,.75)' };
+      return {
+        badge: b.badge, badgeBg: b.bg, badgeBorder: b.bd, badgeColor: b.c,
+        id: r.id, title: r.title,
+        meta: r.agency + ' · ประกาศ ' + r.posted + ' · QUALITY ' + r.quality + '/10',
+        price: '฿' + r.budget.toLocaleString() + (r.unverified ? '*' : ''),
+        priceColor: r.anomaly ? '#b45309' : (r.unverified ? 'rgba(18,35,60,.65)' : '#12233c'),
+        deadlineLabel: r.open ? 'ยื่นภายใน' : 'ปิดรับ', deadline: r.deadline,
+        op: r.open ? '1' : '.55',
+        open: () => { this.setState({ tab: 'detail', detailIdx: idx }); scrollTo(0, 0); },
+        starFill: s.starSel[r.id] ? '#e8930c' : 'none', starStroke: s.starSel[r.id] ? '#e8930c' : 'rgba(18,35,60,.5)',
+        starBg: s.starSel[r.id] ? 'rgba(232,147,12,.14)' : 'transparent', starAnim: s.starSel[r.id] ? 'pop .45s cubic-bezier(.34,1.56,.64,1)' : 'none',
+        bookFill: s.bookSel[r.id] ? '#1d63d8' : 'none', bookStroke: s.bookSel[r.id] ? '#1d63d8' : 'rgba(18,35,60,.5)',
+        bookBg: s.bookSel[r.id] ? 'rgba(29,99,216,.12)' : 'transparent', bookAnim: s.bookSel[r.id] ? 'pop .45s cubic-bezier(.34,1.56,.64,1)' : 'none',
+        star: (e) => { e.stopPropagation(); this.setState(st => ({ starSel: { ...st.starSel, [r.id]: !st.starSel[r.id] } })); },
+        book: (e) => { e.stopPropagation(); this.setState(st => ({ bookSel: { ...st.bookSel, [r.id]: !st.bookSel[r.id] } })); },
+      };
+    });
+    // ---- dashboard (filters shape stats) ----
+    const agAll = [
+      { name: 'กรมทางหลวง', n: 86, b: 412, w: '100%' }, { name: 'กรมชลประทาน', n: 61, b: 298, w: '72%' },
+      { name: 'สพฐ. กระทรวงศึกษาธิการ', n: 54, b: 176, w: '43%' }, { name: 'เทศบาลนครเชียงใหม่', n: 38, b: 94, w: '23%' },
+      { name: 'เมืองพัทยา', n: 29, b: 71, w: '17%' }, { name: 'กรมควบคุมมลพิษ', n: 27, b: 63, w: '15%' },
+    ];
+    const agencies = agAll.map(a => ({
+      name: a.name, stat: a.n + ' · ฿' + a.b + 'M', w: a.w,
+      op: (s.dashAgency === 'all' || s.dashAgency === a.name) ? '1' : '.35',
+      go: () => this.setState({ dashAgency: s.dashAgency === a.name ? 'all' : a.name }),
+    }));
+    const agSel = s.dashAgency !== 'all' ? agAll.find(a => a.name === s.dashAgency) : null;
+    const statTor = agSel ? String(agSel.n) : '487';
+    const statBudget = agSel ? '฿' + agSel.b + 'M' : '฿1.28B';
+    const statAgency = agSel ? '1' : '128';
+    const statAnomaly = agSel ? (agSel.name === 'กรมควบคุมมลพิษ' ? '2' : '1') : '12';
+    // dashboard plot
     const dots = [];
     const cols = [7, 32, 57, 82];
-    const seed = [0.18,0.31,0.24,0.12,0.27,0.2,0.15,0.34,0.22,0.29,0.11,0.25,0.19,0.3,0.16,0.26];
-    for (let i = 0; i < 16; i++) {
-      dots.push({ x: (cols[i % 4] + (i * 2.3) % 9) + '%', y: (seed[i] * 100) + '%', color: '#12233c', tip: '฿' + (1 + seed[i] * 12).toFixed(1) + 'M · ในช่วงปกติของกลุ่มเทียบ' });
-    }
-    dots.push({ x: '14%', y: '68%', color: '#b45309', tip: '฿7.1M · สูงกว่ากลุ่มเทียบ 2.4×IQR — ความผิดปกติทางสถิติ' });
-    const results = [
-      { badge: 'MATCH 92%', badgeBg: '#2b6e5a', badgeBorder: '#2b6e5a', badgeColor: '#fff', id: 'TOR-2569-0812-041', title: 'จ้างพัฒนาระบบสารสนเทศภูมิศาสตร์ (GIS) เพื่อบริหารจัดการน้ำท่วม', meta: 'สำนักการระบายน้ำ · ประกาศ 11 ส.ค. 2569 · QUALITY 8.5/10', price: '฿4,850,000', priceColor: '#12233c', deadline: '25 ส.ค. 2569' },
-      { badge: '⚠ UNVERIFIED EXTRACTION', badgeBg: 'transparent', badgeBorder: '#b45309', badgeColor: '#b45309', id: 'TOR-2569-0811-038', title: 'จ้างเหมาปรับปรุงเว็บไซต์และระบบจองคิวออนไลน์ สำนักงานเขตจตุจักร', meta: 'สำนักงานเขตจตุจักร · สแกนจากภาพถ่าย — ตรวจสอบกับต้นฉบับ · QUALITY 6.0/10', price: '฿1,200,000*', priceColor: 'rgba(18,35,60,.65)', deadline: '19 ส.ค. 2569' },
-      { badge: 'MATCH 78%', badgeBg: '#2b6e5a', badgeBorder: '#2b6e5a', badgeColor: '#fff', id: 'TOR-2569-0810-029', title: 'จ้างพัฒนาแอปพลิเคชันรายงานปัญหาเมือง (Traffy Fondue Integration)', meta: 'สำนักยุทธศาสตร์และประเมินผล · ประกาศ 10 ส.ค. 2569 · QUALITY 9.0/10', price: '฿2,300,000', priceColor: '#12233c', deadline: '22 ส.ค. 2569' },
-      { badge: '◆ STATISTICAL ANOMALY', badgeBg: '#1d63d8', badgeBorder: '#1d63d8', badgeColor: '#ffffff', id: 'TOR-2569-0808-017', title: 'จ้างจัดทำระบบจัดเก็บเอกสารอิเล็กทรอนิกส์ พร้อมสแกนเอกสารย้อนหลัง', meta: 'สำนักงานเขตบางรัก · สูงกว่ากลุ่มเทียบ 3.1×IQR · QUALITY 4.5/10', price: '฿9,400,000', priceColor: '#b45309', deadline: '18 ส.ค. 2569' },
-    ];
-    const imm = this.state.freq === 'immediate';
+    const seed = [0.18, 0.31, 0.24, 0.12, 0.27, 0.2, 0.15, 0.34, 0.22, 0.29, 0.11, 0.25, 0.19, 0.3, 0.16, 0.26];
+    for (let i = 0; i < 16; i++) dots.push({ x: (cols[i % 4] + (i * 2.3) % 9) + '%', y: (seed[i] * 100) + '%', size: '9px', color: '#12233c', tip: '฿' + (1 + seed[i] * 12).toFixed(1) + 'M · ในช่วงปกติของกลุ่มเทียบ', go: () => {} });
+    dots.push({ x: '14%', y: '68%', size: '12px', color: '#b45309', tip: '฿7.1M · สูงกว่ากลุ่มเทียบ 2.4×IQR — คลิกเพื่อดู', go: () => { this.setState({ tab: 'detail', detailIdx: 3 }); scrollTo(0, 0); } });
+    dots.push({ x: '58%', y: '80%', size: '13px', color: '#b45309', tip: '฿9.4M · สูงกว่ากลุ่มเทียบ 3.1×IQR — คลิกเพื่อดู', go: () => { this.setState({ tab: 'detail', detailIdx: 3 }); scrollTo(0, 0); } });
+    // ---- detail ----
+    const d = all[s.detailIdx];
+    const dQuals = d.quals.map(ql => (li && ql.ok)
+      ? { text: '✓ ' + ql.t, bg: 'rgba(14,122,95,.1)', border: '#0e7a5f', color: '#0e7a5f' }
+      : { text: ql.t, bg: 'transparent', border: 'rgba(18,35,60,.35)', color: 'rgba(18,35,60,.8)' });
+    // ---- filters UI ----
+    const agencyFilters = agencyNames.map(n => ({
+      name: n, mark: s.agencySel[n] ? '☑' : '☐', color: s.agencySel[n] ? '#1d63d8' : 'rgba(18,35,60,.8)',
+      toggle: () => this.setState(st => ({ agencySel: { ...st.agencySel, [n]: !st.agencySel[n] } })),
+    }));
+    const catFilters = catNames.map(n => ({
+      name: n,
+      bg: s.catSel[n] ? '#1d63d8' : 'transparent', border: s.catSel[n] ? '#1d63d8' : 'rgba(18,35,60,.35)', color: s.catSel[n] ? '#fff' : 'rgba(18,35,60,.8)',
+      toggle: () => this.setState(st => ({ catSel: { ...st.catSel, [n]: !st.catSel[n] } })),
+    }));
+    // ---- profile ----
+    const skills = Object.keys(s.skillOn).map(k => ({
+      name: s.skillOn[k] ? k : '+ ' + k,
+      bg: s.skillOn[k] ? '#1d63d8' : 'transparent', border: s.skillOn[k] ? '#1d63d8' : 'rgba(18,35,60,.35)', color: s.skillOn[k] ? '#fff' : 'rgba(18,35,60,.7)',
+      toggle: () => this.setState(st => ({ skillOn: { ...st.skillOn, [k]: !st.skillOn[k] } })),
+    }));
+    const imm = s.freq === 'immediate';
     return {
+      loggedIn: li, loggedOut: !li,
+      toggleLogin: () => this.setState(st => ({ loggedIn: !st.loggedIn, tab: st.loggedIn && st.tab === 'profile' ? 'dash' : st.tab })),
       showDash: t === 'dash', showSearch: t === 'search', showDetail: t === 'detail', showProfile: t === 'profile',
       goDash: () => this.setState({ tab: 'dash' }),
       goSearch: () => this.setState({ tab: 'search' }),
       goProfile: () => this.setState({ tab: 'profile' }),
-      openDetail: () => { this.setState({ tab: 'detail' }); scrollTo(0, 0); },
+      openDetail0: () => { this.setState({ tab: 'detail', detailIdx: 0 }); scrollTo(0, 0); },
       dashC: t === 'dash' ? on : off, dashB: t === 'dash' ? bar : none,
       searchC: (t === 'search' || t === 'detail') ? on : off, searchB: (t === 'search' || t === 'detail') ? bar : none,
       profileC: t === 'profile' ? on : off, profileB: t === 'profile' ? bar : none,
-      agencies, plotDots: dots, results,
-      setImmediate: () => this.setState({ freq: 'immediate' }),
-      setDigest: () => this.setState({ freq: 'digest' }),
-      immBg: imm ? '#1d63d8' : 'transparent', immC: imm ? '#ffffff' : 'rgba(18,35,60,.6)',
-      digBg: imm ? 'transparent' : '#1d63d8', digC: imm ? 'rgba(18,35,60,.6)' : '#ffffff',
+      // dashboard
+      dashAgency: s.dashAgency, dashCat: s.dashCat,
+      onDashAgency: (e) => this.setState({ dashAgency: e.target.value }),
+      onDashCat: (e) => this.setState({ dashCat: e.target.value }),
+      statTor, statBudget, statAgency, statAnomaly, agencies, plotDots: dots,
+      // search
+      query: s.query, onQuery: (e) => this.setState({ query: e.target.value }),
+      maxBudget: s.maxBudget, maxBudgetLabel: this.fmtM(s.maxBudget),
+      minBudget: s.minBudget, minBudgetLabel: this.fmtM(s.minBudget),
+      minPct: (((s.minBudget - 500000) / 8900000) * 100) + '%',
+      maxPct: (100 - ((s.maxBudget - 500000) / 8900000) * 100) + '%',
+      minBall: s.hoverMin ? '28px' : '15px', maxBall: s.hoverMax ? '28px' : '15px',
+      minHole: s.hoverMin ? '13px' : '0px', maxHole: s.hoverMax ? '13px' : '0px',
+      hoverMinOn: () => this.setState({ hoverMin: true }), hoverMinOff: () => this.setState({ hoverMin: false }),
+      hoverMaxOn: () => this.setState({ hoverMax: true }), hoverMaxOff: () => this.setState({ hoverMax: false }),
+      onBudget: (e) => { const v = +e.target.value; this.setState(st => ({ maxBudget: Math.max(v, st.minBudget) })); },
+      onMinBudget: (e) => { const v = +e.target.value; this.setState(st => ({ minBudget: Math.min(v, st.maxBudget) })); },
+      agencyFilters, catFilters,
+      setStatusOpen: () => this.setState({ statusOpen: true }), setStatusAll: () => this.setState({ statusOpen: false }),
+      stOpenM: s.statusOpen ? '◉' : '○', stAllM: s.statusOpen ? '○' : '◉',
+      stOpenC: s.statusOpen ? '#1d63d8' : 'rgba(18,35,60,.8)', stAllC: s.statusOpen ? 'rgba(18,35,60,.8)' : '#1d63d8',
+      clearFilters: () => this.setState({ query: '', minBudget: 500000, maxBudget: 9400000, statusOpen: false, agencySel: {}, catSel: {} }),
+      results, resultCount: results.length, noResults: results.length === 0,
+      gridCols: li ? '1fr 150px 130px 64px' : '1fr 150px 130px',
+      // detail
+      dId: d.id, dTitle: d.title, dAgency: d.agency, dCat: d.cat, dContact: d.contact,
+      dStatus: d.open ? 'เปิดรับข้อเสนอ' : 'ปิดรับแล้ว', dStatusColor: d.open ? '#0e7a5f' : 'rgba(18,35,60,.6)',
+      dPosted: d.posted, dPrice: '฿' + d.budget.toLocaleString(), dPriceColor: d.anomaly ? '#b45309' : '#12233c', dPriceNote: d.priceNote,
+      dDeadline: d.deadline, dDeadlineNote: d.deadlineNote, dScope: d.scope, dQuals,
+      dMatch: d.match ? 'MATCH ' + d.match + '%' : 'ยังไม่มีคะแนน', dQuality: d.quality, dConf: d.conf,
+      dExtracted: '2026-08-' + d.posted.slice(0, 2) + ' 14:03', dChecks: d.checks.map(c => ({ mark: c.m, color: c.c, text: c.t })), dDocRef: d.docRef,
+      toggleSave: () => this.setState(st => ({ saved: !st.saved })),
+      saveLabel: s.saved ? '★ บันทึกแล้ว' : '☆ บันทึก',
+      saveBorder: s.saved ? '#1d63d8' : 'rgba(18,35,60,.35)', saveColor: s.saved ? '#1d63d8' : '#12233c',
+      // profile
+      skills, skillCount: Object.values(s.skillOn).filter(Boolean).length,
+      addingSkill: s.addingSkill, newSkill: s.newSkill,
+      toggleAddSkill: () => this.setState(st => ({ addingSkill: !st.addingSkill, newSkill: '' })),
+      onNewSkill: (e) => this.setState({ newSkill: e.target.value }),
+      onNewSkillKey: (e) => { if (e.key === 'Enter') this.addSkill(); },
+      addSkill: () => this.addSkill(),
+      minMatch: s.minMatch, onMinMatch: (e) => this.setState({ minMatch: +e.target.value }),
+      setImmediate: () => this.setState({ freq: 'immediate' }), setDigest: () => this.setState({ freq: 'digest' }),
+      immBg: imm ? '#1d63d8' : 'transparent', immC: imm ? '#fff' : 'rgba(18,35,60,.6)',
+      digBg: imm ? 'transparent' : '#1d63d8', digC: imm ? 'rgba(18,35,60,.6)' : '#fff',
+      ...(() => {
+        const mk = (sel) => all.filter(r => sel[r.id]).map(r => ({
+          title: r.title, agency: r.agency,
+          stT: r.open ? 'เปิดรับ · ' + r.deadlineNote.replace('เหลืออีก ', '') : 'ปิดรับแล้ว',
+          stC: r.open ? '#0e7a5f' : 'rgba(18,35,60,.6)',
+          open: () => { this.setState({ tab: 'detail', detailIdx: all.indexOf(r) }); scrollTo(0, 0); },
+        }));
+        const st = mk(s.starSel), bk = mk(s.bookSel);
+        return { starredList: st, hasStarred: st.length > 0, noStarred: st.length === 0, bookedList: bk, hasBooked: bk.length > 0, noBooked: bk.length === 0 };
+      })(),
     };
   }
 }
