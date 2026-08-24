@@ -1,8 +1,18 @@
 # Software Requirements Specification — TOR Radar BKK
 
-**Team Momentum · Phase 1 · SRS v0.3 (draft)**
-Structure follows **ISO/IEC/IEEE 29148:2018** (SRS clause), with IEEE 830 section naming kept where
-the team is already familiar with it.
+**Team Momentum · Phase 1 · SRS v0.4 (draft)**
+Structure follows **ISO/IEC/IEEE 29148:2018** (SRS clause), using the IEEE 830 / Wiegers section
+names the team already writes to (Overall Description · External Interface Requirements · System
+Features · Other Nonfunctional Requirements · Analysis Models).
+
+### Revision history
+
+| Name | Date | Reason for change | Version |
+|---|---|---|---|
+| Initial draft | 2026-08-24 | First SRS derived from PROJECT.md | 0.1 |
+| 29148 restructure | 2026-08-24 | Requirement attributes, verification, traceability | 0.2 |
+| Cross-check pass | 2026-08-24 | Codex critique + audit-of-the-fixes folded in | 0.3 |
+| Template merge | 2026-08-24 | Wiegers sections added: user documentation, NFR categories, analysis models (use-case diagram + two fully dressed use cases), feature summary | 0.4 |
 
 > **Sources of truth, in order of weight:**
 > 1. [PROJECT.md](PROJECT.md) v2 — scope, requirements, plan (highest weight; conflicts resolve here).
@@ -24,10 +34,13 @@ the team is already familiar with it.
 1. [Introduction](#1-introduction)
 2. [Product Overview](#2-product-overview)
 3. [External Interface Requirements](#3-external-interface-requirements)
-4. [Requirements](#4-requirements)
+4. [Requirements](#4-requirements) — system features, data, nonfunctional, AI-specific, constraints
 5. [Verification](#5-verification)
 6. [Traceability](#6-traceability)
 7. [Supporting Information](#7-supporting-information)
+- [Appendix A: Glossary](#appendix-a-glossary)
+- [Appendix B: Analysis Models](#appendix-b-analysis-models) — use-case diagram + fully dressed use cases
+- [Appendix C: Document History](#appendix-c-document-history)
 
 ---
 
@@ -59,13 +72,25 @@ award analysis beyond a coarse status label; ship a native mobile app or a non-T
 entirely from public announcements, requiring no cooperation, account, or integration from any
 agency.
 
-### 1.3 Product Perspective
+### 1.3 Intended Audience and Reading Suggestions
+| Reader | Read first | Then |
+|---|---|---|
+| Developer (backend / frontend / AI) | §4 Requirements — especially the normative subsections §4.2.1 (confidence policy), §4.5.1 (anomaly rule), §4.6.1 (quality checks) | §3 interfaces, §4.11 constraints, Appendix B use cases for the end-to-end flows |
+| Tester / QA | §5 Verification (methods, environments, key activities, story acceptance criteria) | §4 for the requirement each test targets; Appendix B alternative flows for negative cases |
+| Sponsor / product owner | §1 Introduction and §2 Product Overview | §7.1 priority summary, §7.3 open issues, §7.4 risks |
+| Course evaluator | §1, §2, then §4 | §6 traceability matrices, Appendix B analysis models |
+| New team member | §1.2 Scope and §2.3 Operational Concept | Appendix A glossary, then §4 |
+
+Everything in this document is a hypothesis until the Sprint-1 validation interviews confirm it
+(§1.8 A5) — read it as the current best statement of intent, not as a signed-off contract.
+
+### 1.4 Product Perspective
 A new, standalone system. Not an extension of an existing product and not integrated with any BMA
 IT system. External dependencies: Vertex AI (Document AI + Gemini) for OCR/extraction, and the
 continued public availability of BMA announcement pages as the upstream data source (a constraint,
 not an integration). National e-GP is explicitly **not** a source — it mixes non-Bangkok entities.
 
-### 1.4 Product Functions
+### 1.5 Product Functions
 1. Ingest TOR documents through three routes into one pipeline; store raw files immutably;
    deduplicate; validate Bangkok scope.
 2. OCR and extract structured fields with per-field confidence under a two-tier publish policy.
@@ -77,7 +102,7 @@ not an integration). National e-GP is explicitly **not** a source — it mixes n
 7. Provide an admin review queue for very-low-confidence records, plus taxonomy and agency-list
    management.
 
-### 1.5 User Characteristics
+### 1.6 User Characteristics
 | Class | Maps to | Characteristics | Access |
 |---|---|---|---|
 | Vendor / freelance professional | S1, P1 ("Nok") | Builds a skill profile; consumes matches and search; technical literacy varies widely | Authenticated (vendor role) |
@@ -86,7 +111,7 @@ not an integration). National e-GP is explicitly **not** a source — it mixes n
 | Admin / platform operator | S5, P4 | Seeds corpus, corrects extractions, manages taxonomy | Authenticated (admin role) |
 | BMA procurement officer | S2, P2 ("Khun Somchai") | **Not a platform user.** Their published documents are the input; if they browse, they use the public views | Anonymous only |
 
-### 1.6 Limitations
+### 1.7 Limitations
 - Phase-1 pilot scale only: hundreds of TORs, tens of concurrent users. No uptime guarantee, no
   horizontal-scaling claim (NFR-9).
 - No extraction-accuracy figure is promised before the Sprint-1 benchmark measures it (NFR-1).
@@ -96,7 +121,7 @@ not an integration). National e-GP is explicitly **not** a source — it mixes n
 - Outputs are never accusations: "statistical anomaly" and "specification-quality check" only
   (FR-E2, FR-F2).
 
-### 1.7 Assumptions and Dependencies
+### 1.8 Assumptions and Dependencies
 | # | Assumption / dependency | If it fails |
 |---|---|---|
 | A1 | BMA announcement pages stay publicly accessible in roughly their current form | Fall back to manual upload/URL seeding; scraping stays Stretch (FR-A-S1) |
@@ -105,13 +130,13 @@ not an integration). National e-GP is explicitly **not** a source — it mixes n
 | A4 | Vertex AI pricing/free tiers approximately as budgeted | Reduce benchmark re-runs; cap AI headroom spend |
 | A5 | Every requirement here is a **hypothesis** until Sprint-1 validation interviews confirm it | Backlog revised at the Inception gate |
 
-### 1.8 Definitions
+### 1.9 Definitions
 See [Appendix A: Glossary](#appendix-a-glossary).
 
-### 1.9 Acronyms
+### 1.10 Acronyms
 BMA · TOR · OCR · PDPA · PII · MVP · MoSCoW · IQR · SRS · DoD · RTM.
 
-### 1.10 Document Conventions
+### 1.11 Document Conventions
 - **Requirement ID:** `FR-<group><n>` (functional), `NFR-<n>` (non-functional), `US-<n>` (user
   story). IDs are stable across document versions.
 - **Every requirement carries four attributes** (per ISO/IEC/IEEE 29148 — necessary, singular,
@@ -127,7 +152,7 @@ BMA · TOR · OCR · PDPA · PII · MVP · MoSCoW · IQR · SRS · DoD · RTM.
 - **MVP** = required for the week-8 feature-complete gate. **Stretch** = not committed in Phase 1.
 - "The system shall…" phrasing; one testable statement per requirement.
 
-### 1.11 References
+### 1.12 References
 1. [PROJECT.md](PROJECT.md) — TOR Radar BKK product specification & Phase-1 delivery plan, v2.
 2. [TOR-Radar-Proposal.md](TOR-Radar-Proposal.md) — course project proposal, v0.1 (+ slide deck).
 3. [CLAUDE.md](CLAUDE.md) — repository engineering rules.
@@ -167,6 +192,21 @@ and deduplication → OCR + field extraction with per-field confidence → confi
 publish path (clean / tagged "unverified" / tagged **and** queued) → record published to the shared
 detail page and dashboard → verified fields feed the anomaly rule and the matching engine →
 matched vendors receive an explained email.
+
+### 2.4 User Documentation
+Delivered with the system, all in Thai (NFR-7):
+
+| Document | Audience | Content |
+|---|---|---|
+| Dashboard methodology page | Public, journalists | How the anomaly rule works (§4.5.1), what the coverage note means, what "statistical anomaly" does and does not claim. Linked from every flagged point and every checklist result (FR-F2b) |
+| Extraction & confidence note | All readers of a TOR page | What the "unverified extraction" tag means, why some fields are excluded from statistics, how to report a bad extraction |
+| Vendor onboarding help | Vendors | Building a skill profile, how matching and match scores work, tuning notification preferences |
+| Admin runbook | Admin / operators | Ingesting by upload, URL, and API; working the review queue; editing the taxonomy and agency seed files; re-running the accuracy benchmark |
+| PDPA & takedown notice | All users | Consent, export, deletion, and the takedown/correction request route (FR-B5b, FR-D3) |
+| README + Docker Compose guide | Team, evaluators | Running the stack, running tests in containers, environment variables (`.env.example`) |
+
+Inline help accompanies every form field that feeds matching, and every error message states what
+the user can do next.
 
 ---
 
@@ -208,6 +248,24 @@ email.
 
 Each subsection lists the requirement text followed by its attributes. Grouping (A–G) and wording
 follow PROJECT.md §6; the bracketed capability name is the proposal's grouping.
+
+### 4.0 System Features at a glance
+
+| # | Feature | Description | Priority | Functional requirements | User stories |
+|---|---|---|---|---|---|
+| F1 | TOR ingestion | Accepts publicly announced TORs by upload, URL, or authenticated API into one pipeline; stores the original immutably; deduplicates; enforces Bangkok-only scope | Must (High) | FR-A1, FR-A2a, FR-A2b, FR-A3, FR-A4 | US-13 |
+| F2 | Thai reading & normalization | OCR of Thai/English scans and photographs; extraction of the nine structured fields; normalization of qualifications into the shared taxonomy | Must (High) | FR-B1, FR-B2, FR-B4 | US-05, US-13 |
+| F3 | Confidence & review | Per-field confidence with the two-tier publish policy; "unverified extraction" tag; admin review queue for the worst records; corrections stored as extractor examples | Must (High) | FR-B3, FR-G1, FR-G2 | US-14 |
+| F4 | Search & discovery | Composable filters over agency, category, budget range, deadline, status, with the archive always browsable | Must (High) | FR-E3 | US-04, US-10 |
+| F5 | Matching & notification | Scores each published TOR against vendor profiles; emails matched vendors with the reason; user-controlled notification preferences | Must (High) | FR-C1, FR-C2, FR-C3 | US-02, US-03 |
+| F6 | Profiles & auth | Email/OAuth sign-in with vendor, admin, and anonymous roles; skill-profile CRUD; PDPA consent, export, deletion | Must (High) | FR-D1, FR-D2, FR-D3 | US-01 |
+| F7 | Public transparency dashboard | No-login per-agency counts and budgets, trend line, pricing plots with the documented peer-group anomaly rule, freshness and coverage disclosure, status history | Must (High) | FR-E1a, FR-E1b, FR-E1c, FR-E2, FR-E4, FR-E5 | US-08, US-09, US-10 |
+| F8 | Specification-quality checklist | Five rule-based checks per TOR, reported as a score with its exact reasons and an AI-generated label, linked to a methodology page | Should (Medium) | FR-F1, FR-F2a, FR-F2b, FR-F3 | US-06, US-11 |
+| F9 | Admin tooling | Review queue, field correction and approval, JSON-seeded taxonomy and canonical agency list | Must, minimal (Medium) | FR-G1, FR-G2, FR-G3 | US-14, US-15 |
+| F10 | PII & takedown handling | PII minimization in displayed extractions; takedown/correction workflow that restricts access with an audit trail | Must (Medium) | FR-B5a, FR-B5b | — (NFR-5 driven) |
+| F11 | Bookmarks & personal archive | Private bookmark list and self-reported pursued/won/completed marks | Could (Low) | FR-D4a, FR-D4b | US-07 |
+| F12 | CSV export | Export of the currently filtered list, PII-minimized | Could (Low) | FR-E6 | US-12 |
+| F13 | Automated source ingestion | Scraping adapters per announcement page with admin-visible source health | Stretch (Low) | FR-A-S1 | US-16 |
 
 ### 4.1 FR-A — TOR Ingestion  *[Ingestion Engine]*
 
@@ -335,20 +393,56 @@ Entity outline only; the physical schema is a Sprint-1 design artifact.
 | **Canonical agency list** | BMA bureaus + district offices — JSON-seeded; drives FR-A4 |
 | **Correction record** | Original vs. corrected field values; reused as few-shot examples (FR-G2) |
 
-### 4.9 Quality-of-Service Requirements (non-functional)
+### 4.9 Other Nonfunctional Requirements
 
-| ID | Requirement | Category | Verify |
+IDs are unchanged from PROJECT.md; the grouping below is presentational.
+
+#### 4.9.1 Performance
+| ID | Requirement | Verify |
+|---|---|---|
+| **NFR-3** | Public pages shall load in < 3 s on mobile against the demo deployment with the seeded corpus, and the layout shall be responsive. Search and filter results shall return in < 2 s on that corpus. | T |
+| **NFR-9** | The system is sized for the Phase-1 pilot — hundreds of TORs, tens of concurrent users. No uptime guarantee or horizontal-scaling claim is made. | A |
+
+#### 4.9.2 Safety (of the published claim)
+The hazard here is reputational, not physical: a wrong number or a careless word on a public
+procurement dashboard can defame a named agency.
+
+| ID | Requirement | Verify |
+|---|---|---|
+| **NFR-1** | Thai OCR/extraction accuracy is the critical path: field-level accuracy shall be measured on 10–20 real BMA TORs in Sprint 1, and both FR-B3 thresholds derived from that measurement. No accuracy figure is promised before it is measured. | A |
+| **NFR-6** | All AI-derived content shall be labelled AI-generated. Checklist output shall include its exact rule-based reasons; extracted fields shall carry a confidence score and a source-document link. | I |
+| **NFR-10** | Anomaly and checklist output shall use "statistical anomaly" and "specification-quality check" wording exclusively; "suspicious", "corrupt", or any accusation of wrongdoing shall not appear in user-facing text. *(Derived from FR-E2/FR-F2 and the PROJECT.md §3 conflict note; promoted to an NFR because it applies system-wide.)* | I |
+
+#### 4.9.3 Security
+| ID | Requirement | Verify |
+|---|---|---|
+| **NFR-8** | Security baseline — each clause is verified separately: **(a)** passwords stored hashed with bcrypt or argon2; **(b)** HTTPS on every deployed environment; **(c)** role-based authorization enforced on every admin and API route; **(d)** rate limiting on the ingestion API; **(e)** dependency vulnerability audit runs in CI. | T, I |
+| **NFR-2** | Original documents shall be retained immutably and never edited in place; every displayed record shall link to its source. An accepted PDPA takedown shall restrict access with an audit-trail entry, never silently alter or delete the stored original. | T, I |
+
+#### 4.9.4 Software Quality Attributes
+| Attribute | ID | Requirement | Verify |
 |---|---|---|---|
-| **NFR-1** | Thai OCR/extraction accuracy is the critical path: field-level accuracy shall be measured on 10–20 real BMA TORs in Sprint 1, and both FR-B3 thresholds derived from that measurement. No accuracy figure is promised before it is measured. | Accuracy / risk | A |
-| **NFR-2** | Original documents shall be retained immutably and never edited in place; every displayed record shall link to its source. An accepted PDPA takedown shall restrict access with an audit-trail entry, never silently alter or delete the stored original. | Integrity | T, I |
-| **NFR-3** | Public pages shall load in < 3 s on mobile against the demo deployment with the seeded corpus; layout shall be responsive. Search/filter results shall return in < 2 s on that corpus. | Performance | T |
-| **NFR-4** | The system shall run under Docker Compose for dev/CI parity; CI shall run tests on every PR; secrets shall live in untracked `.env` files with a committed `.env.example`. | Process / infra | I, D |
-| **NFR-5** | Data handling shall be **PDPA-aligned**: explicit consent, PII minimization, export and deletion (FR-B5, FR-D3). No formal legal-compliance certification is claimed — the phrase "PDPA-compliant" shall not be used. | Compliance | I |
-| **NFR-6** | All AI-derived content shall be labelled AI-generated. Checklist output shall include its exact rule-based reasons; extracted fields shall carry a confidence score and a source-document link. | Transparency | I |
-| **NFR-7** | The UI shall be in Thai; extracted values are displayed as-is. English UI is out of Phase-1 scope. | Localization | I |
-| **NFR-8** | Security baseline — each clause is verified separately: **(a)** passwords stored hashed with bcrypt or argon2; **(b)** HTTPS on every deployed environment; **(c)** role-based authorization enforced on every admin and API route; **(d)** rate limiting on the ingestion API; **(e)** dependency vulnerability audit runs in CI. | Security | T, I |
-| **NFR-9** | The system is sized for the Phase-1 pilot — hundreds of TORs, tens of concurrent users. No uptime guarantee or horizontal-scaling claim is made. | Capacity | A |
-| **NFR-10** | Anomaly and checklist output shall use "statistical anomaly" and "specification-quality check" wording exclusively; "suspicious", "corrupt", or any accusation of wrongdoing shall not appear in user-facing text. *(Derived from FR-E2/FR-F2 and the PROJECT.md §3 conflict note; promoted to an NFR because it applies system-wide.)* | Legal / reputational | I |
+| Usability / localization | **NFR-7** | The UI shall be in Thai; extracted values are displayed as-is. English UI is out of Phase-1 scope. | I |
+| Explainability | **NFR-6** | (see §4.9.2) Every AI output is labelled and traceable to its source document. | I |
+| Maintainability / portability | **NFR-4** | The system shall run under Docker Compose for dev/CI parity; CI shall run tests on every PR; secrets shall live in untracked `.env` files with a committed `.env.example`. | I, D |
+| Reliability | **NFR-4a** | A failed ingestion or extraction shall leave the raw document stored and the record marked failed with a stated reason — it shall never silently drop the document or publish a half-extracted record. | T, D |
+| Compliance | **NFR-5** | Data handling shall be **PDPA-aligned**: explicit consent, PII minimization, export and deletion (FR-B5, FR-D3). No formal legal-compliance certification is claimed — the phrase "PDPA-compliant" shall not be used. | I |
+
+#### 4.9.5 Business Rules
+Policy decisions that constrain behaviour across features. Each is enforced in code review
+(CLAUDE.md restates them) and testable independently.
+
+| ID | Rule |
+|---|---|
+| **BR-1** | **Bangkok only.** Every ingested record is validated against the canonical BMA agency list; non-BMA records are rejected or tagged out of scope (FR-A4). National e-GP is not a data source. |
+| **BR-2** | **Agencies are a data source, never users.** No agency accounts, no draft-TOR portal, no agency-facing upload flow — at any priority level. |
+| **BR-3** | **Every record publishes; none is silently withheld.** Confidence decides the tag and the queue, not whether the public sees the record (FR-B3). |
+| **BR-4** | **Below-threshold fields never feed statistics or matching** until an admin verifies them — a reading error must not be able to create a public flag or a false match. |
+| **BR-5** | **The raw document is immutable.** A takedown restricts access and writes an audit entry; the stored original is never edited or deleted (NFR-2). |
+| **BR-6** | **No corpus-completeness claim.** The dashboard always shows "data last updated" and the coverage note (FR-E1b). |
+| **BR-7** | **Self-reported vendor marks stay private.** Pursued/won/completed marks are never shown publicly and never presented as verified awards (FR-D4b) — the platform holds no bid data to verify against. |
+| **BR-8** | **No magic numbers.** Thresholds (`T_low`, `T_high`, `PEER_MIN_N`, `MIN_BID_WINDOW_DAYS`, match threshold) come from measurement or named configuration, never from an inline literal. |
+| **BR-9** | **Feature freeze at week 8.** After the Sprint-4 gate, weeks 9–12 accept hardening and test work only; Could items are cut before Must scope slips. |
 
 ### 4.10 AI-Specific Requirements
 Called out separately because AI behaviour, not just AI code, is a requirement surface here.
@@ -535,9 +629,169 @@ requirements, two numbering schemes — this is the bridge.
 | **MoSCoW** | Must / Should / Could / Won't prioritization |
 | **DoD** | Definition of Done: reviewed, tests pass, runs in shared Docker Compose, demoable |
 
-## Appendix B: Document History
+## Appendix B: Analysis Models
+
+### B.1 Use-case diagram
+
+```mermaid
+flowchart LR
+  vendor([Vendor / freelancer])
+  public([Citizen])
+  press([Journalist / researcher])
+  admin([Admin / operator])
+  ai[[Vertex AI OCR + extraction]]
+  mail[[Email service]]
+
+  subgraph TOR Radar BKK
+    UC1(UC-1 Ingest and publish a TOR)
+    UC2(UC-2 Match a TOR and notify vendors)
+    UC3(UC-3 Review and correct a low-confidence extraction)
+    UC4(UC-4 Browse and filter TORs)
+    UC5(UC-5 View the public dashboard and anomalies)
+    UC6(UC-6 Manage a vendor profile and preferences)
+    UC7(UC-7 Request a takedown or correction)
+  end
+
+  admin --> UC1
+  admin --> UC3
+  UC1 --> ai
+  UC1 -.includes.-> UC2
+  UC2 --> mail
+  vendor --> UC4
+  vendor --> UC6
+  vendor --> UC7
+  public --> UC5
+  press --> UC5
+  press --> UC4
+```
+
+*BMA procurement officers appear nowhere as actors — by decision (BR-2) they are a data source, and
+if they browse they act as citizens.*
+
+### B.2 Fully dressed use case — UC-1: Ingest and publish a TOR
+
+**Primary actor:** Admin (platform operator).
+**Scope:** TOR Radar BKK, Phase 1. **Level:** user goal.
+
+**Stakeholders and interests**
+- *Admin:* wants a public announcement turned into a structured, searchable record without hand-typing
+  fields, and wants to be told when the reading is doubtful rather than discovering it later.
+- *Vendor:* wants the record's budget, deadline, and qualifications to be right, because a match
+  notification will be generated from them.
+- *Citizen / journalist:* wants the published figure to be traceable to the original document and
+  wants unverified numbers kept out of the statistics.
+- *BMA agency (data source, not a user):* wants its published document represented accurately and
+  never characterized as suspicious.
+
+**Preconditions**
+- The admin is authenticated with the admin role.
+- The document is a publicly announced BMA TOR in PDF, JPG, or PNG.
+- The canonical BMA agency list and the skill taxonomy are seeded (FR-G3).
+- `T_low` and `T_high` have been derived from the Sprint-1 benchmark (NFR-1).
+
+**Success guarantee (postconditions)**
+- The original document is stored immutably in object storage and is reachable from the record.
+- Exactly one TOR record exists for this announcement, even if it was submitted more than once.
+- The record is published with a confidence tier, an extraction-provenance stamp, and — where
+  confidence is below `T_high` — a visible "unverified extraction" tag.
+- Fields at or above threshold are eligible to feed the anomaly rule and the matching engine;
+  below-threshold fields are not.
+
+**Main success scenario**
+1. The admin submits a TOR by file upload, by URL, or through the authenticated ingestion API.
+2. The system stores the original document in object storage and records its storage reference.
+3. The system checks the submission against existing records and finds no duplicate.
+4. The system runs Thai/English OCR on the document.
+5. The system extracts the nine structured fields and records a confidence score for each.
+6. The system matches the issuing agency against the canonical BMA agency list and confirms it is
+   within Bangkok jurisdiction.
+7. The system normalizes the extracted qualifications into the shared skill taxonomy.
+8. All critical fields score at or above `T_high`; the system publishes the record clean.
+9. The system stamps the record with the extraction timestamp and model version and displays it on
+   the shared TOR detail page and the dashboard.
+10. The system hands the published record to UC-2 (match and notify).
+
+**Extensions (alternative flows)**
+- **3a. Duplicate detected.** The system resolves the submission to the existing record, attaches the
+  new source reference, and reports "already ingested" to the admin. No second record is created.
+- **6a. Agency is not on the BMA list.** The system rejects or tags the record as out of scope and
+  tells the admin which agency string failed to match. The record never reaches the dashboard as a
+  Bangkok TOR.
+- **8a. Medium confidence** (`T_low` ≤ score < `T_high`). The system publishes the record with the
+  "unverified extraction" tag and excludes the below-threshold fields from statistics and matching.
+  The record is *not* queued; the admin may correct it from the TOR page at any time.
+- **8b. Very low confidence or a failed sanity check** (score < `T_low`, or a missing
+  budget/agency/deadline, or an implausible value). The system publishes the record tagged as in 8a
+  **and** places it in the admin review queue for priority correction (continues into UC-3).
+- **4a. OCR or extraction fails outright.** The system keeps the stored original, marks the record
+  failed with the stated reason, and surfaces it to the admin. It never discards the document and
+  never publishes a half-extracted record (NFR-4a).
+
+**Special requirements**
+- Every route produces the same pipeline behaviour — the API is the seam future scraping plugs into.
+- The ingestion API is rate-limited and role-checked (NFR-8c, NFR-8d).
+- Nothing in this flow may edit or delete the stored original (BR-5).
+
+**Open issues**
+- Whether the corpus stays manually seeded for all of Phase 1 (§7.3-2).
+
+### B.3 Fully dressed use case — UC-2: Match a TOR and notify vendors
+
+**Primary actor:** Vendor (as the beneficiary); triggered by the system on publication.
+**Scope:** TOR Radar BKK, Phase 1. **Level:** user goal.
+
+**Stakeholders and interests**
+- *Vendor:* wants to hear about a fitting TOR early enough to prepare a bid, and wants to see why it
+  matched so relevance can be judged in seconds.
+- *Admin:* wants notifications to stay trustworthy — a false match teaches vendors to ignore email.
+- *BMA agency (data source):* benefits indirectly from a wider pool of qualified bidders.
+
+**Preconditions**
+- A TOR record has been published (UC-1).
+- At least one vendor profile exists with taxonomy tags, category interests, and a budget range.
+- The match threshold is configured.
+
+**Success guarantee (postconditions)**
+- Every vendor whose score meets their own minimum receives exactly one notification for this TOR,
+  carrying the match reason.
+- A match record exists linking vendor and TOR with the score, the matched tags, and the send time.
+
+**Main success scenario**
+1. The system takes the newly published TOR and its verified fields.
+2. The system scores the TOR against each vendor profile on qualification tags, category interests,
+   and budget-range fit.
+3. The system selects vendors whose score meets both the system threshold and that vendor's own
+   configured minimum score and category filters.
+4. For each selected vendor set to immediate delivery, the system composes an email containing the
+   TOR summary, the top matched skill tags, the budget fit, the days remaining before the deadline,
+   and a link to the detail page.
+5. The system sends the email within five minutes of publication (demo target).
+6. The system records the match and the send timestamp.
+
+**Extensions (alternative flows)**
+- **1a. The TOR carries below-threshold critical fields.** Those fields are excluded from scoring; if
+  budget or qualifications are unusable, no notification is generated for this TOR until an admin
+  verifies it (BR-4). Silence is the correct behaviour — a guess is not.
+- **3a. The vendor's preference is a daily digest.** The match is queued and delivered in that day's
+  digest instead of immediately.
+- **3b. No vendor meets the threshold.** The TOR remains published and searchable; no email is sent.
+- **5a. Email delivery fails.** The system records the failure against the match record and retries;
+  a permanently failing address is surfaced to the admin rather than silently dropped.
+- **6a. The TOR is corrected after notification.** The correction is reflected on the detail page;
+  Phase 1 sends no retraction email (deliberate — the link always shows the current record).
+
+**Special requirements**
+- The email states the reason for the match; a bare "new TOR" alert does not satisfy FR-C2.
+- No notification may be built from a field that is tagged unverified (BR-4).
+
+**Open issues**
+- Whether a corrected TOR should re-notify vendors who were missed by the original extraction —
+  deferred past Phase 1.
+
+## Appendix C: Document History
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-08-24 | First draft, IEEE 830 shape, derived from PROJECT.md §1–11 |
 | v0.2 | 2026-08-24 | Restructured to ISO/IEC/IEEE 29148; added per-requirement attributes (priority/source/verification/sprint), §5 Verification, §6 traceability matrices incl. proposal FR01–FR20 mapping, §4.10 AI-specific requirements, NFR-10 wording constraint |
 | v0.3 | 2026-08-24 | Codex cross-check (critique + audit-of-the-critique) folded in: added the missing US-10 trend requirement (FR-E1c); split compound requirements into separately verifiable sub-IDs for ISO 29148 singularity (FR-A2a/b, FR-B5a/b, FR-D4a/b, FR-E1a–c, FR-F2a/b) and enumerated NFR-8's five security clauses (a–e) for clause-by-clause verification without giving each its own ID; made the anomaly rule (§4.5.1) and the five quality checks (§4.6.1) normative with named parameters; corrected the FR-D1 source trace and the proposal FR10 mapping; removed admin access to vendor-only features; fixed the FR-B5 sprint trace; strengthened FR-A-S1 source health; reframed CLAUDE.md as a restatement, not a scope source. Second pass (audit of the fixes): sub-ID convention stated in the header, proposal FR10 no longer over-mapped to sign-in, `§5 data` reference corrected to §4.8, version block synced to v0.3 |
+| v0.4 | 2026-08-24 | Merged in the Wiegers/IEEE-830 sections the team's previous SRS used and this one lacked: front revision history, §1.3 intended audience and reading suggestions, §2.4 user documentation, §4.0 feature-at-a-glance table (feature → priority → FRs → stories), §4.9 nonfunctional requirements regrouped into performance / safety / security / quality attributes / business rules (BR-1…BR-9, with NFR-4a added for failure behaviour), and Appendix B analysis models — use-case diagram plus fully dressed use cases for ingest-and-publish (UC-1) and match-and-notify (UC-2). Document history moved to Appendix C |
