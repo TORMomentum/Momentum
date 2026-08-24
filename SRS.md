@@ -1,6 +1,6 @@
 # Software Requirements Specification — TOR Radar BKK
 
-**Team Momentum · Phase 1 · SRS v0.2 (draft)**
+**Team Momentum · Phase 1 · SRS v0.3 (draft)**
 Structure follows **ISO/IEC/IEEE 29148:2018** (SRS clause), with IEEE 830 section naming kept where
 the team is already familiar with it.
 
@@ -12,7 +12,10 @@ the team is already familiar with it.
 >    it restates PROJECT.md decisions as code-review rules.
 >
 > Requirement IDs (`FR-A1…FR-G3`, `NFR-1…9`, `US-01…16`) are carried over from PROJECT.md
-> **unchanged** — never renumber. The proposal's `FR01–FR20` are mapped, not replaced (§6.2).
+> **unchanged** — never renumber. Where one PROJECT.md requirement bundled several testable
+> statements, this SRS adds **suffix sub-IDs** (`FR-A2a`, `FR-A2b`) so each is separately
+> verifiable; the parent number is preserved and, used bare (`FR-A2`), means all of its sub-IDs
+> collectively. The proposal's `FR01–FR20` are mapped, not replaced (§6.2).
 
 ---
 
@@ -189,7 +192,7 @@ None. Standard client hardware (browser) only.
 |---|---|---|---|
 | Vertex AI Document AI | Outbound | Thai/English OCR of scans and photographs | FR-B1 |
 | Vertex AI Gemini | Outbound | Field extraction, qualification normalization, checklist assist | FR-B2, FR-B4, FR-F1 |
-| MongoDB Atlas | Internal | Metadata, extracted fields, profiles, matches; Atlas Search for text search | §5 data |
+| MongoDB Atlas | Internal | Metadata, extracted fields, profiles, matches; Atlas Search for text search | §4.8 |
 | MinIO | Internal | Immutable raw-document storage | FR-A2 |
 | SMTP / Resend | Outbound | Match-notification delivery | FR-C2 |
 | OAuth provider | Outbound | Vendor sign-in alternative to email + password | FR-D1 |
@@ -457,7 +460,8 @@ requirements, two numbering schemes — this is the bridge.
 | FR07 confidence + unverified tag | FR-B3 (+ §4.2.1) | FR17 quality score + reasons | FR-F1, FR-F2a, FR-F2b (+ §4.6.1) |
 | FR08 taxonomy normalization | FR-B4 | FR18 taxonomy/agency admin | FR-G3 |
 | FR09 search/filter | FR-E3 | FR19 status history + archive | FR-E5, FR-E3 |
-| FR10 profile + sign-in + PDPA consent | FR-D1, FR-D2, FR-D3 | FR20 PII minimization + PDPA rights | FR-B5a, FR-B5b, FR-D3 |
+| FR10 profile + PDPA consent | FR-D2, FR-D3 | FR20 PII minimization + PDPA rights | FR-B5a, FR-B5b, FR-D3 |
+| *(proposal user story "sign up and sign in with email or a Google account" — no FR number)* | FR-D1 | | |
 
 ### 6.3 Requirement ↔ sprint (delivery trace)
 | Sprint | Window | Requirements delivered |
@@ -536,4 +540,4 @@ requirements, two numbering schemes — this is the bridge.
 |---|---|---|
 | v0.1 | 2026-08-24 | First draft, IEEE 830 shape, derived from PROJECT.md §1–11 |
 | v0.2 | 2026-08-24 | Restructured to ISO/IEC/IEEE 29148; added per-requirement attributes (priority/source/verification/sprint), §5 Verification, §6 traceability matrices incl. proposal FR01–FR20 mapping, §4.10 AI-specific requirements, NFR-10 wording constraint |
-| v0.3 | 2026-08-24 | Codex cross-check findings folded in: added the missing US-10 trend requirement (FR-E1c); split compound requirements for ISO 29148 singularity (FR-A2a/b, FR-B5a/b, FR-D4a/b, FR-E1a–c, FR-F2a/b, NFR-8 a–e); made the anomaly rule (§4.5.1) and the five quality checks (§4.6.1) normative with named parameters; corrected the FR-D1 source trace and the proposal FR10 mapping; removed admin access to vendor-only features; fixed the FR-B5 sprint trace; strengthened FR-A-S1 source health; reframed CLAUDE.md as a restatement, not a scope source |
+| v0.3 | 2026-08-24 | Codex cross-check (critique + audit-of-the-critique) folded in: added the missing US-10 trend requirement (FR-E1c); split compound requirements into separately verifiable sub-IDs for ISO 29148 singularity (FR-A2a/b, FR-B5a/b, FR-D4a/b, FR-E1a–c, FR-F2a/b) and enumerated NFR-8's five security clauses (a–e) for clause-by-clause verification without giving each its own ID; made the anomaly rule (§4.5.1) and the five quality checks (§4.6.1) normative with named parameters; corrected the FR-D1 source trace and the proposal FR10 mapping; removed admin access to vendor-only features; fixed the FR-B5 sprint trace; strengthened FR-A-S1 source health; reframed CLAUDE.md as a restatement, not a scope source. Second pass (audit of the fixes): sub-ID convention stated in the header, proposal FR10 no longer over-mapped to sign-in, `§5 data` reference corrected to §4.8, version block synced to v0.3 |
