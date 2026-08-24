@@ -1,6 +1,6 @@
 # Software Requirements Specification — TOR Radar BKK
 
-**Team Momentum · Phase 1 · SRS v0.4 (draft)**
+**Team Momentum · Phase 1 · SRS v0.5 (draft)**
 Structure follows **ISO/IEC/IEEE 29148:2018** (SRS clause), using the IEEE 830 / Wiegers section
 names the team already writes to (Overall Description · External Interface Requirements · System
 Features · Other Nonfunctional Requirements · Analysis Models).
@@ -13,6 +13,7 @@ Features · Other Nonfunctional Requirements · Analysis Models).
 | 29148 restructure | 2026-08-24 | Requirement attributes, verification, traceability | 0.2 |
 | Cross-check pass | 2026-08-24 | Codex critique + audit-of-the-fixes folded in | 0.3 |
 | Template merge | 2026-08-24 | Wiegers sections added: user documentation, NFR categories, analysis models (use-case diagram + two fully dressed use cases), feature summary | 0.4 |
+| Merge audit | 2026-08-24 | Codex audit of the merged material: BR-3 scope, UC-2 vs FR-C alignment, FR-E4 feature placement, NFR-6 de-duplication, cross-reference fixes | 0.5 |
 
 > **Sources of truth, in order of weight:**
 > 1. [PROJECT.md](PROJECT.md) v2 — scope, requirements, plan (highest weight; conflicts resolve here).
@@ -53,7 +54,7 @@ TORs in any format, extracts and normalizes them with AI, matches them to vendor
 with email notification, and publishes a public transparency dashboard with pricing-anomaly
 visualization. Audience: the delivery team, the project sponsor (acting as customer proxy), and
 course evaluators. This document states **what** the system must do; design and implementation
-choices appear only as constraints (§4.7).
+choices appear only as constraints (§4.11).
 
 ### 1.2 Scope
 **Product name:** TOR Radar BKK.
@@ -77,7 +78,7 @@ agency.
 |---|---|---|
 | Developer (backend / frontend / AI) | §4 Requirements — especially the normative subsections §4.2.1 (confidence policy), §4.5.1 (anomaly rule), §4.6.1 (quality checks) | §3 interfaces, §4.11 constraints, Appendix B use cases for the end-to-end flows |
 | Tester / QA | §5 Verification (methods, environments, key activities, story acceptance criteria) | §4 for the requirement each test targets; Appendix B alternative flows for negative cases |
-| Sponsor / product owner | §1 Introduction and §2 Product Overview | §7.1 priority summary, §7.3 open issues, §7.4 risks |
+| Sponsor / product owner | §1 Introduction and §2 Product Overview | §7.1 priority summary, §7.2 risks, §7.3 open issues |
 | Course evaluator | §1, §2, then §4 | §6 traceability matrices, Appendix B analysis models |
 | New team member | §1.2 Scope and §2.3 Operational Concept | Appendix A glossary, then §4 |
 
@@ -256,10 +257,10 @@ follow PROJECT.md §6; the bracketed capability name is the proposal's grouping.
 | F1 | TOR ingestion | Accepts publicly announced TORs by upload, URL, or authenticated API into one pipeline; stores the original immutably; deduplicates; enforces Bangkok-only scope | Must (High) | FR-A1, FR-A2a, FR-A2b, FR-A3, FR-A4 | US-13 |
 | F2 | Thai reading & normalization | OCR of Thai/English scans and photographs; extraction of the nine structured fields; normalization of qualifications into the shared taxonomy | Must (High) | FR-B1, FR-B2, FR-B4 | US-05, US-13 |
 | F3 | Confidence & review | Per-field confidence with the two-tier publish policy; "unverified extraction" tag; admin review queue for the worst records; corrections stored as extractor examples | Must (High) | FR-B3, FR-G1, FR-G2 | US-14 |
-| F4 | Search & discovery | Composable filters over agency, category, budget range, deadline, status, with the archive always browsable | Must (High) | FR-E3 | US-04, US-10 |
+| F4 | Search, browse & shared TOR detail | Composable filters over agency, category, budget range, deadline, status with the archive always browsable, plus the one detail page that serves vendors, public, and journalists alike | Must (High) | FR-E3, FR-E4 | US-04, US-05, US-10 |
 | F5 | Matching & notification | Scores each published TOR against vendor profiles; emails matched vendors with the reason; user-controlled notification preferences | Must (High) | FR-C1, FR-C2, FR-C3 | US-02, US-03 |
 | F6 | Profiles & auth | Email/OAuth sign-in with vendor, admin, and anonymous roles; skill-profile CRUD; PDPA consent, export, deletion | Must (High) | FR-D1, FR-D2, FR-D3 | US-01 |
-| F7 | Public transparency dashboard | No-login per-agency counts and budgets, trend line, pricing plots with the documented peer-group anomaly rule, freshness and coverage disclosure, status history | Must (High) | FR-E1a, FR-E1b, FR-E1c, FR-E2, FR-E4, FR-E5 | US-08, US-09, US-10 |
+| F7 | Public transparency dashboard | No-login per-agency counts and budgets, trend line, pricing plots with the documented peer-group anomaly rule, freshness and coverage disclosure, status history | Must (High) | FR-E1a, FR-E1b, FR-E1c, FR-E2, FR-E5 | US-08, US-09, US-10 |
 | F8 | Specification-quality checklist | Five rule-based checks per TOR, reported as a score with its exact reasons and an AI-generated label, linked to a methodology page | Should (Medium) | FR-F1, FR-F2a, FR-F2b, FR-F3 | US-06, US-11 |
 | F9 | Admin tooling | Review queue, field correction and approval, JSON-seeded taxonomy and canonical agency list | Must, minimal (Medium) | FR-G1, FR-G2, FR-G3 | US-14, US-15 |
 | F10 | PII & takedown handling | PII minimization in displayed extractions; takedown/correction workflow that restricts access with an audit trail | Must (Medium) | FR-B5a, FR-B5b | — (NFR-5 driven) |
@@ -420,10 +421,12 @@ procurement dashboard can defame a named agency.
 | **NFR-2** | Original documents shall be retained immutably and never edited in place; every displayed record shall link to its source. An accepted PDPA takedown shall restrict access with an audit-trail entry, never silently alter or delete the stored original. | T, I |
 
 #### 4.9.4 Software Quality Attributes
+Explainability is a quality attribute of this system too, but it is owned by NFR-6 under Safety
+(§4.9.2) — it is listed there once and not restated here.
+
 | Attribute | ID | Requirement | Verify |
 |---|---|---|---|
 | Usability / localization | **NFR-7** | The UI shall be in Thai; extracted values are displayed as-is. English UI is out of Phase-1 scope. | I |
-| Explainability | **NFR-6** | (see §4.9.2) Every AI output is labelled and traceable to its source document. | I |
 | Maintainability / portability | **NFR-4** | The system shall run under Docker Compose for dev/CI parity; CI shall run tests on every PR; secrets shall live in untracked `.env` files with a committed `.env.example`. | I, D |
 | Reliability | **NFR-4a** | A failed ingestion or extraction shall leave the raw document stored and the record marked failed with a stated reason — it shall never silently drop the document or publish a half-extracted record. | T, D |
 | Compliance | **NFR-5** | Data handling shall be **PDPA-aligned**: explicit consent, PII minimization, export and deletion (FR-B5, FR-D3). No formal legal-compliance certification is claimed — the phrase "PDPA-compliant" shall not be used. | I |
@@ -436,7 +439,7 @@ Policy decisions that constrain behaviour across features. Each is enforced in c
 |---|---|
 | **BR-1** | **Bangkok only.** Every ingested record is validated against the canonical BMA agency list; non-BMA records are rejected or tagged out of scope (FR-A4). National e-GP is not a data source. |
 | **BR-2** | **Agencies are a data source, never users.** No agency accounts, no draft-TOR portal, no agency-facing upload flow — at any priority level. |
-| **BR-3** | **Every record publishes; none is silently withheld.** Confidence decides the tag and the queue, not whether the public sees the record (FR-B3). |
+| **BR-3** | **Every in-scope record publishes; none is withheld for being doubtful.** Once a record passes the BR-1 Bangkok check, confidence decides its tag and whether it is queued — never whether the public sees it (FR-B3). Rejection is a jurisdiction decision (FR-A4), never a quality one. |
 | **BR-4** | **Below-threshold fields never feed statistics or matching** until an admin verifies them — a reading error must not be able to create a public flag or a false match. |
 | **BR-5** | **The raw document is immutable.** A takedown restricts access and writes an audit entry; the stored original is never edited or deleted (NFR-2). |
 | **BR-6** | **No corpus-completeness claim.** The dashboard always shows "data last updated" and the coverage note (FR-E1b). |
@@ -752,16 +755,20 @@ if they browse they act as citizens.*
 - The match threshold is configured.
 
 **Success guarantee (postconditions)**
-- Every vendor whose score meets their own minimum receives exactly one notification for this TOR,
-  carrying the match reason.
+- Every vendor whose match score clears **both** the configurable system threshold (FR-C1) and their
+  own notification preferences — minimum score, category filter, budget filter (FR-C3) — receives
+  exactly one notification for this TOR, carrying the match reason. A vendor failing either gate
+  receives nothing.
 - A match record exists linking vendor and TOR with the score, the matched tags, and the send time.
 
 **Main success scenario**
 1. The system takes the newly published TOR and its verified fields.
 2. The system scores the TOR against each vendor profile on qualification tags, category interests,
    and budget-range fit.
-3. The system selects vendors whose score meets both the system threshold and that vendor's own
-   configured minimum score and category filters.
+3. The system selects vendors whose score meets the configurable system threshold and then applies
+   that vendor's own notification preferences — minimum match score, category filter, and budget
+   filter (FR-C3). Budget appears twice on purpose: as a scoring input in step 2 and as a vendor's
+   own hard filter here.
 4. For each selected vendor set to immediate delivery, the system composes an email containing the
    TOR summary, the top matched skill tags, the budget fit, the days remaining before the deadline,
    and a link to the detail page.
@@ -795,3 +802,4 @@ if they browse they act as citizens.*
 | v0.2 | 2026-08-24 | Restructured to ISO/IEC/IEEE 29148; added per-requirement attributes (priority/source/verification/sprint), §5 Verification, §6 traceability matrices incl. proposal FR01–FR20 mapping, §4.10 AI-specific requirements, NFR-10 wording constraint |
 | v0.3 | 2026-08-24 | Codex cross-check (critique + audit-of-the-critique) folded in: added the missing US-10 trend requirement (FR-E1c); split compound requirements into separately verifiable sub-IDs for ISO 29148 singularity (FR-A2a/b, FR-B5a/b, FR-D4a/b, FR-E1a–c, FR-F2a/b) and enumerated NFR-8's five security clauses (a–e) for clause-by-clause verification without giving each its own ID; made the anomaly rule (§4.5.1) and the five quality checks (§4.6.1) normative with named parameters; corrected the FR-D1 source trace and the proposal FR10 mapping; removed admin access to vendor-only features; fixed the FR-B5 sprint trace; strengthened FR-A-S1 source health; reframed CLAUDE.md as a restatement, not a scope source. Second pass (audit of the fixes): sub-ID convention stated in the header, proposal FR10 no longer over-mapped to sign-in, `§5 data` reference corrected to §4.8, version block synced to v0.3 |
 | v0.4 | 2026-08-24 | Merged in the Wiegers/IEEE-830 sections the team's previous SRS used and this one lacked: front revision history, §1.3 intended audience and reading suggestions, §2.4 user documentation, §4.0 feature-at-a-glance table (feature → priority → FRs → stories), §4.9 nonfunctional requirements regrouped into performance / safety / security / quality attributes / business rules (BR-1…BR-9, with NFR-4a added for failure behaviour), and Appendix B analysis models — use-case diagram plus fully dressed use cases for ingest-and-publish (UC-1) and match-and-notify (UC-2). Document history moved to Appendix C |
+| v0.5 | 2026-08-24 | Codex audit of the merge: BR-3 limited to in-scope records so it stops contradicting FR-A4's jurisdiction rejection; UC-2's success guarantee and selection step aligned with FR-C1/FR-C3 (system threshold *and* vendor preferences, budget filter restored); FR-E4 moved from the dashboard feature to the browse-and-detail feature, matching PROJECT.md §7; NFR-6 de-duplicated (owned by Safety, pointer only elsewhere); §4.7 and §7.4 cross-references corrected after the §1 renumbering |
