@@ -40,10 +40,13 @@ Phase-1 product build: centralized Thai-language platform for Bangkok (BMA) proc
 
 ## Commands
 
-_(fill in as the repo grows — no code yet)_
-
 ```
-docker compose up          # full stack (once compose exists)
+docker compose up          # full stack: web :3000, api :4000, mongo :27017, minio :9000/:9001
+npm install                # workspaces: apps/web (Next.js), apps/api (Express)
+npm run dev                # web + api dev servers (no Docker)
+npm test                   # vitest (all workspaces)
+npm run lint               # eslint (flat config, root)
+npm run build              # build all apps
 python tools/jira_seed.py  # (re)seed Jira issues — needs JIRA_EMAIL + JIRA_TOKEN env vars, never hardcode tokens
 ```
 
