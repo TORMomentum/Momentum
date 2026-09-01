@@ -1,29 +1,36 @@
-# TOR Radar BKK — BMA TOR Platform
+# TOR Radar — Thai Procurement TOR Platform
 
-> Product specification & Phase-1 delivery plan.
-> Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, Vertex AI.
-> _v2 — revised after internal review; 22 findings addressed._
+> Problem framing, stakeholders, user stories, prioritisation, cost, delivery plan, and risks.
+> Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, MinIO, Vertex AI.
+>
+> **Requirements live in [SRS.md](SRS.md) v2.0** — the testable statements, verification methods,
+> and traceability. **Architecture and structure live in
+> [superpowers/specs/](superpowers/specs/2026-09-01-tor-radar-foundation-intake-design.md).**
+> This document holds everything those two do not: why the project exists, who it serves, what
+> order it gets built in, and what it costs.
+>
+> _v3 (2026-09-01) — scope corrected to national, requirements delegated to the SRS._
 
 ---
 
 ## 1. Problem Statement
 
-Bangkok Metropolitan Administration (BMA) agencies publish
-procurement TORs (Terms of Reference) for projects, but they are scattered, hard to discover,
-and come in inconsistent formats (PDF text, scanned images, photographs). As a result:
+Thai government agencies publish procurement TORs (Terms of Reference) for
+projects, but they are scattered, hard to discover, and come in inconsistent formats (PDF text,
+scanned images, photographs). As a result:
 
 - Capable vendors and freelance professionals never see opportunities that match their skills.
 - Agencies struggle to reach qualified bidders for their TORs.
 - The public has no easy way to see what is being procured, at what price, or spot pricing anomalies.
 - TOR quality varies and there is no systematic quality check.
 
-**Vision:** a centralized, Thai-language platform, Bangkok-only scope, that (1) ingests publicly
-announced BMA TORs regardless of format, (2) extracts and normalizes the data with AI, (3) matches
+**Vision:** a centralized, Thai-language platform that (1) ingests publicly
+announced Thai government TORs regardless of format, (2) extracts and normalizes the data with AI, (3) matches
 TORs to registered vendors by qualification (skill profiles + stated preferences) and notifies them
 by email, (4) exposes a public transparency dashboard with pricing visualizations and
 statistical-anomaly detection, and (5) runs an AI-assisted quality checklist on each TOR.
 
-**Purpose (single sentence):** give vendors and the public easier access to Bangkok TORs, with
+**Purpose (single sentence):** give vendors and the public easier access to Thai procurement TORs, with
 skill/preference-based filtering, matching, and email notification — the platform works entirely
 from publicly announced TORs and requires no agency cooperation.
 
@@ -34,16 +41,19 @@ below is treated as a hypothesis until validated (Sprint 1 has explicit validati
 
 ## 2. Scope
 
-**In scope:** BMA/Bangkok TORs only · ingestion by file upload/URL (corpus seeded by the admin team
-from public announcements) · AI extraction with manual correction · vendor skill profiles +
+**In scope:** TORs published by Thai government agencies · ingestion by file upload, URL, and an
+authenticated intake API (corpus seeded by the admin team from public announcements) · AI extraction with manual correction · vendor skill profiles +
 matching + email notifications · public dashboard (per-agency view, pricing plots, statistical
 anomalies) · AI quality checklist (heuristic, explainable) · Thai-language UI.
 
-**Bangkok-only rule (explicit):** the system keeps a canonical list of BMA agencies and district
-offices. Ingested records are matched against it; non-BMA records are rejected or tagged
-out-of-scope. (National e-GP data is NOT assumed — it mixes non-Bangkok entities.)
+**Scope is national (corrected 2026-09-01).** The earlier Bangkok-only rule — which validated every
+record against a canonical BMA agency list and rejected or tagged non-BMA records — is withdrawn.
+SRS v2.0 §1.2 covers Thai government agencies, and its Appendix B lists national sources alongside
+the Bangkok one. Issuing agency is a plain extracted field; nothing is rejected for being outside
+Bangkok. The seeded corpus still starts with Bangkok sources, because that is where the team has
+material and contacts — that is a sequencing choice, not a scope rule.
 
-**Out of scope (Phase 1):** other provinces · agency-facing upload or draft-TOR portal (the
+**Out of scope (Phase 1):** agency-facing upload or draft-TOR portal (the
 platform reads public announcements; agencies are a data source, not platform users) · QR-code
 ingestion · bid submission through the platform · payments/contracts · contract-award analysis
 beyond a coarse status label · mobile native apps · non-Thai UI.
@@ -156,132 +166,57 @@ browsing TORs uses the same public views as any citizen._
   medium-confidence records carry the "unverified" tag but stay out of the queue; edit + approve
   clears the tag and lets the fields feed anomaly stats and matching.*
 - **US-15** As an admin, I want to manage the taxonomy (skill tags, categories, canonical BMA agency
-  list), so matching and the Bangkok-only filter stay consistent. *Accept: seeded from JSON; editable in UI (stretch).*
+  list), so matching and agency naming stay consistent. *Accept: seeded from JSON; editable in UI
+  (stretch). The agency list is a canonicalisation aid for display and filtering — it is not a gate,
+  and no record is rejected for being outside it (§2).*
 - **US-16** As an admin, I want ingestion-source health monitoring, so a silently broken source
   doesn't create a coverage gap. *(Stretch — only relevant once scraping (FR-A-S1) exists.)*
 
 ---
 
-## 6. Functional Requirements
+## 6. Requirements
 
-Requirements are split **MVP** vs **Stretch** so core scope is not conflated with aspirational work.
+Requirements are **not duplicated here.** They live in [SRS.md](SRS.md) v2.0 as testable statements
+with verification methods, acceptance criteria, and traceability. Duplicating them in two documents
+produced exactly the drift this section now exists to prevent: the v1 identifiers below were still
+being cited by tooling and agent rules weeks after the SRS renumbered them.
 
-### FR-A: TOR Ingestion (MVP)
-- **FR-A1** Accept TOR input via file upload (PDF/JPG/PNG), by URL, and via an authenticated REST
-  ingestion endpoint (admin-seeded from public announcements). All routes feed the same pipeline;
-  the API route is what future automation (FR-A-S1 scraping) would plug into.
-- **FR-A2** Store the original raw document immutably in object storage (MinIO; audit trail; never
-  delete raw). Metadata in MongoDB; bytes NOT in MongoDB documents.
-- **FR-A3** Deduplicate: the same TOR arriving via multiple routes resolves to one record.
-- **FR-A4** Bangkok-only validation: match issuing agency against the canonical BMA agency list;
-  reject or tag non-BMA records.
+**Where to look:**
 
-### FR-A-S: Ingestion (Stretch)
-- **FR-A-S1** Scraping/polling of configured BMA announcement pages, one adapter per source, with
-  per-source health status (pairs with US-16). MVP corpus is manually seeded instead.
+| You want | Read |
+| :---- | :---- |
+| What the system shall do, and how it will be judged correct | [SRS.md](SRS.md) §4, §5, §6 |
+| Which requirement serves which feature and user class | [SRS.md](SRS.md) §7 |
+| How it is built — structure, data model, seams, security, containers | [specs/2026-09-01 foundation and intake](superpowers/specs/2026-09-01-tor-radar-foundation-intake-design.md) |
+| Why it exists, who for, in what order, at what cost | this document |
 
-### FR-B: Extraction & Normalization (MVP)
-- **FR-B1** OCR Thai + English from scanned/image documents (Vertex AI Document AI / Gemini vision).
-- **FR-B2** Extract structured fields: title, agency, budget (฿), category, scope summary, required
-  qualifications, submission deadline, contact, status (coarse labels only: announced / closed /
-  awarded).
-- **FR-B3** Per-field confidence score with a two-tier policy. All records auto-publish:
-  - **High confidence (≥ T_high):** published clean; fields feed everything.
-  - **Medium confidence (T_low–T_high):** published with a visible **"unverified extraction"** tag
-    and source-document link; below-threshold fields are excluded from the anomaly rule (FR-E2)
-    and match notifications until verified, so OCR errors cannot create false anomaly flags or
-    false matches. Not queued — admin can correct from the TOR page at any time.
-  - **Very low / suspicious (< T_low, or sanity-check hit: missing critical fields such as
-    budget/agency/deadline, implausible values):** published tagged as above AND routed to the
-    admin review queue (FR-G1) for priority correction.
+**Identifier changes in SRS v2.0.** Anything still citing the left column is stale:
 
-  Both thresholds set empirically AFTER measuring extraction accuracy on a 10–20-document
-  benchmark set (see NFR-1); full automation is not promised.
-- **FR-B4** Normalize extracted qualifications into the shared skill taxonomy used by profiles.
-- **FR-B5** PII handling inside TOR documents: displayed extractions minimize personal data (e.g.
-  officer personal phone numbers, signatures); original documents remain available via source link;
-  a takedown/correction request workflow exists.
+| v1 (this document, superseded) | v2.0 (current) |
+| :---- | :---- |
+| `FR-A1`…`FR-A4` | `FR-A-1`…`FR-A-4` — and the Bangkok-only validation of `FR-A4` is withdrawn entirely |
+| `FR-B1`…`FR-B5` | `FR-B-1`…`FR-B-6` (`FR-B-6` splits out correction and takedown) |
+| `FR-C1`…`FR-C3` | `FR-C-1`…`FR-C-4` (`FR-C-4` forbids notifying on an unverified field) |
+| `FR-D1`…`FR-D4` | `FR-D-1`…`FR-D-3` (the personal project archive is not in v2.0) |
+| `FR-E1`…`FR-E6` | `FR-E-1`…`FR-E-7` |
+| `FR-F1`…`FR-F3` | `FR-F-1`…`FR-F-4`, with the five checks named C1–C5 in §4.6.1 |
+| `FR-G1`…`FR-G3` | `FR-G-1`…`FR-G-3` |
+| `NFR-1`…`NFR-9` | split into feature-level `NFR-F1`…`NFR-F7` and system-level `NFR-S1`…`NFR-S7` |
 
-### FR-C: Matching & Notification (MVP)
-- **FR-C1** Match engine: score each published TOR against vendor profiles on qualification tags,
-  category interests, and budget range; threshold configurable.
-- **FR-C2** Notify matched vendors via email with the match explanation. Demo target: delivery
-  ≤ 5 min after publish.
-- **FR-C3** Notification preferences: frequency (immediate/daily digest), minimum match score, and
-  filters (category, budget range).
+The twelve features `F1`–`F12` and the ten use cases `UC-1`–`UC-10` are new in v2.0 and are the
+vocabulary the MoSCoW table below now maps onto.
 
-### FR-D: Profiles & Auth (MVP)
-- **FR-D1** Registration/login (email + OAuth). Roles: vendor, admin, anonymous public.
-- **FR-D2** Skill profile CRUD with taxonomy tags + free-text portfolio.
-- **FR-D3** PDPA: explicit consent at signup, data export, account deletion.
-- **FR-D4** (Could) Personal project tracking on bookmarks: vendor marks a TOR pursuing / won /
-  completed; completed items move to a personal archive view. Self-reported and private — never
-  displayed publicly, never treated as a verified award (the platform has no bid data to verify
-  against).
+**Build order.** The SRS is a specification, not a plan; the work is cut into four slices, each with
+its own design spec, implementation plan, and build cycle:
 
-### FR-E: Public Dashboard & Visualization (MVP)
-- **FR-E1** Public (no-login) dashboard: TOR counts + total budget per BMA agency over time. The
-  dashboard always shows a **"data last updated"** timestamp (time of the latest successful
-  ingestion) and a coverage note that figures reflect the ingested corpus, not necessarily all BMA
-  procurement.
-- **FR-E2** Pricing plots with a **documented anomaly rule**: compare budgets only within
-  (category × time-window) peer groups; require a minimum peer-group size (e.g. n ≥ 8) before
-  flagging; flag = outside 1.5×IQR (or z > 3) of the peer group; label "statistical anomaly," never
-  "suspicious." Groups too small to compare are shown unflagged.
-- **FR-E3** Filters: agency, category, date range, budget range, status. Closed/awarded TORs stay
-  browsable indefinitely — the dashboard doubles as a historical archive (raw documents are never
-  deleted, NFR-2).
-- **FR-E4** **Shared TOR detail page** (single feature serving vendors, public, and journalists):
-  structured fields + original-document link + quality-checklist result + status history + per-record
-  extraction provenance ("extracted <timestamp> by <AI model/version>", per NFR-6; re-extraction or
-  admin correction updates the timestamp).
-- **FR-E5** Status transitions: status changes come from admin action or re-ingestion of an updated
-  announcement; each transition records timestamp, source, and actor (supports US-07 history).
-- **FR-E6** (Could) CSV export of the currently filtered TOR list: extracted fields + source links,
-  PII-minimized per FR-B5 (supports US-12).
+| Slice | Features | Delivers |
+| :---- | :---- | :---- |
+| 1 | F1 | Foundation and intake: config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens |
+| 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue |
+| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export |
+| 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown |
 
-### FR-F: AI Quality Checklist (Should — ship after extraction is solid)
-Deliberately scoped as a specification-quality checklist rather than an "AI audit": judging
-vendor-locking or corruption requires domain expertise and historical data beyond this project's
-scope, and overclaiming carries defamation risk.
-- **FR-F1** Heuristic, explainable checklist per TOR: budget present? deadline present and
-  plausible (≥ X days)? scope specific (length/section heuristics)? qualifications stated with
-  rationale? budget within peer-group norm (reuses FR-E2 rule)?
-- **FR-F2** Output = score + the exact checklist reasons; clearly labeled "AI-generated
-  specification-quality check — not a legal or corruption judgment."
-- **FR-F3** Checklist anomalies feed the dashboard anomaly view.
-
-### FR-G: Admin (MVP-minimal)
-- **FR-G1** Review queue (minimal version ships WITH ingestion in Sprint 2, not at the end):
-  list of very-low-confidence/suspicious records only (FR-B3 tier 3), side-by-side original vs
-  extracted fields, edit + approve (clears the "unverified" tag).
-- **FR-G2** Corrections are stored and reusable as few-shot examples for the extractor.
-- **FR-G3** Taxonomy + canonical agency list seeded from JSON files; admin UI to edit = stretch.
-
-### Non-functional
-- **NFR-1** Thai OCR/extraction accuracy is the critical path. Sprint 1 deliverable: measure
-  field-level accuracy on 10–20 real BMA TORs; set both FR-B3 confidence thresholds (T_low,
-  T_high) from that data. No fixed accuracy promise until measured.
-- **NFR-2** Original documents retained immutably — never edited in place — and every displayed
-  record links to its source. An accepted PDPA takedown request (FR-B5) restricts access to the
-  document with an audit-trail entry; it does not silently alter or delete the stored original.
-- **NFR-3** Public pages target < 3 s load on mobile (verified against the demo deployment with
-  the seeded corpus); responsive layout.
-- **NFR-4** Dockerized (compose) for dev parity; CI runs tests on PR; secrets via env files not
-  committed (`.env` in `.gitignore`).
-- **NFR-5** PDPA-aligned data handling: explicit consent, PII minimization, export and deletion
-  implemented (FR-B5/FR-D3). This is engineering alignment with PDPA principles — no formal legal
-  compliance certification is claimed.
-- **NFR-6** All AI-derived content labeled as AI-generated. Checklist outputs include their exact
-  rule-based reasons (fully explainable); extracted fields carry a confidence score and a link to
-  the source document for verification.
-- **NFR-7** The web app UI is in Thai (extracted fields displayed as-is; an English UI is out of
-  Phase-1 scope).
-- **NFR-8** Security baseline: passwords hashed (bcrypt/argon2), HTTPS on any deployed
-  environment, role-based authorization on all admin and API routes, rate limiting on the
-  ingestion API, dependency vulnerability audit in CI.
-- **NFR-9** Sized for the Phase-1 pilot: corpus of hundreds of TORs and tens of concurrent users.
-  No uptime guarantee or horizontal-scaling claim is made in Phase 1.
+Slice 1 comes first because every later slice reads records it writes.
 
 ---
 
@@ -353,6 +288,25 @@ reserve is the plan's main schedule-risk defense.
 | Notifications | Email (Nodemailer/Resend) | Match alerts |
 | Infra | Docker Compose; deploy target = one small VM or Cloud Run (decide Sprint 1); secrets via env vars | Dev parity + demo hosting |
 | Process | Scrum, Jira (epics ≈ FR groups), Discord | Sprints, board, comms |
+
+### 8.1 Repository structure
+
+Full rationale in the [foundation and intake design](superpowers/specs/2026-09-01-tor-radar-foundation-intake-design.md) §3; the shape is:
+
+```
+tor-radar/
+├── apps/web/     Next.js — app/ is routing only; UI code in src/ as views → features → entities → shared
+├── apps/api/     Express — modules/ per feature, ports/ interfaces, adapters/ implementations, workers/
+├── packages/     shared/ (types + Zod schemas) · seeds/ (taxonomy, categories, sources)
+├── docs/         SRS.md · PROJECT.md · superpowers/specs/
+└── mockups/      design-canvas source — reference, never built
+```
+
+Both apps are packaged **by feature, not by layer**, with domain-prefixed filenames
+(`intake.service.ts`), which keeps cohesion high and coupling low and makes removing a feature a
+single-folder operation. Four rules the structure enforces: only `*.repository.ts` touches the
+database; `modules/` depends on `ports/` and never on `adapters/`; every threshold lives in
+`core/config.ts`; a feature is one folder.
 
 ---
 

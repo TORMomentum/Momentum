@@ -314,6 +314,26 @@ NFR-S6 requires the system to run under Docker Compose. The skeleton's Dockerfil
 
 **Continuous integration.** The existing workflow runs lint, test, and build. A dependency audit step is added, failing on high-severity advisories, which is the enforcement NFR-S1 requires.
 
+### 5.8 Object storage, volumes, and configuration discipline
+
+These rules come from a previous build in which each of the failures below actually happened, and each one was invisible on a development host and only appeared in containers.
+
+**Never share a filesystem path between services.** A service that writes a file locally and stores only the path, expecting another service to read it, is relying on a shared filesystem that separate containers do not have. The pointer travels, the bytes do not, and the reader returns not-found while the writer insists the file exists. In this system the storage key is the only cross-service reference, and any service needing the bytes fetches them from object storage. Temporary files created during processing are local to the process that made them and are never referenced by another service.
+
+**Two endpoints, not one.** The address the API uses to reach MinIO inside the Compose network is not the address a browser can resolve. `MINIO_ENDPOINT` is internal, used for every server-side call; `MINIO_PUBLIC_URL` is the externally reachable origin used whenever a URL is handed to a browser. A URL signed with the internal endpoint reaches nothing from outside the network, and this failure is invisible until someone clicks a link.
+
+**Never persist a signed URL.** Signed URLs expire, so a stored one becomes a broken link at an unpredictable later date. Records store the storage key. A URL is generated at the moment it is needed, with a lifetime from `SIGNED_URL_TTL_SECONDS`, or the document is streamed through an API route that reads the key and applies the download headers from §5.6. FR-E-4's original-document link is produced this way, never saved.
+
+**Every service that touches storage carries its storage configuration.** The worker needs the same MinIO settings as the API. A Compose service missing that environment fails only on the path that reaches storage, which is rarely the first path exercised.
+
+**Volumes.** `mongo_data` and `minio_data` are named volumes mounted at the containers' data directories, so records and documents survive `docker compose down` and are removed only by `docker compose down -v`. FR-A-2 and NFR-S3 require stored originals to remain unaltered for the life of the system, which a container-local directory cannot promise. No bind mount of host paths is used for application data; source is mounted only in development, never in the images that are shipped.
+
+**No hard-coded values anywhere.** Every host, port, bucket, credential, model name, and threshold is read from configuration with an overridable default — `${VAR:-default}` in Compose, a validated field in `core/config.ts`. `localhost` appears in no source file. This is what makes the same images run unchanged on a teammate's machine, in CI, and on a deployed host; a literal that is correct in development is precisely the value that breaks the shipped system.
+
+**Names are meaningful, not generated.** Compose derives container names from the directory it happens to run in, which produces opaque names that differ per machine and make logs and `docker ps` hard to read. The Compose file therefore sets an explicit project `name: tor-radar`, and each service sets `container_name` — `tor-radar-web`, `tor-radar-api`, `tor-radar-worker`, `tor-radar-mongo`, `tor-radar-minio`. Volumes and the bucket follow the same rule: `tor-radar-mongo-data`, `tor-radar-minio-data`, bucket `tor-raw`.
+
+**Configuration added by this section:** `MINIO_PUBLIC_URL`, `SIGNED_URL_TTL_SECONDS`.
+
 ---
 
 ## 6. Verification
@@ -322,6 +342,7 @@ NFR-S6 requires the system to run under Docker Compose. The skeleton's Dockerfil
 | :---- | :---- | :---- |
 | Unit | Hashing, the dedupe decision, backoff arithmetic, job claiming | `vitest`, ports replaced with fakes |
 | Integration | Intake against a real database and object store | `vitest` against Mongo and MinIO in Compose |
+| Container reality | The §5.8 rules hold | A document uploaded through the running stack is fetched successfully from a browser using the returned link, and survives `docker compose down` followed by `up` |
 | Security | The controls in §5.6 hold | Automated tests that a private-range URL, a redirect into a private range, a content-type mismatch, and an operator-object filter parameter are each rejected |
 | Live | The requirement is actually met | `curl` upload against the running stack; confirm the object exists in MinIO and the record in Mongo; repeat the upload and confirm one record with two source references |
 
