@@ -267,6 +267,35 @@ NFR-S1 requires the intake API to enforce access level and to be rate-limited. S
 
 Thresholds belonging to later slices (`T_LOW`, `T_HIGH`, `PEER_MIN_N`, `PEER_WINDOW`, `ANOMALY_METHOD`, `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`, `MIN_BID_WINDOW_DAYS`) are declared in the same module with their open-issue status recorded, so no later slice introduces a literal.
 
+### 5.6 Security
+
+NFR-S1 states the security baseline; the controls below are how slice 1 meets it. Each is built with the feature it protects, not retrofitted.
+
+**Server-side request forgery, URL intake route.** The URL route causes the server to fetch an attacker-supplied address, which without controls reaches cloud metadata endpoints and internal services such as the database and object store. Every fetch therefore:
+
+- accepts `http` and `https` schemes only;
+- resolves the hostname and rejects the address if it falls in a loopback, private, link-local, or unique-local range, checked against the resolved address rather than the hostname string;
+- re-runs that check after each redirect and caps the redirect chain, so a host that resolves differently on the second lookup cannot slip through;
+- enforces a response size cap and a request timeout, both from `core/config.ts`.
+
+The fetch is performed by a single helper in `lib/http.ts`. No module issues an outbound request to a user-supplied address by any other route.
+
+**Declared content type is not trusted.** The `Content-Type` header and the file extension are attacker-controlled. The received stream's leading bytes are checked against the signatures for PDF, JPEG, and PNG, and a mismatch with `ALLOWED_MIME_TYPES` rejects the submission before anything is stored.
+
+**Serving an original document.** FR-E-4 links every record to its source file. User-supplied files served from the application origin permit stored cross-site scripting. Originals are therefore served with `Content-Disposition: attachment`, the verified content type, and `X-Content-Type-Options: nosniff`. Serving them from a separate origin is preferred and is recorded as the deployment default.
+
+**Database query construction.** Filter parameters are parsed by Zod schemas that accept primitives only, so an operator object such as `$gt` or `$where` cannot arrive through a query string. Repositories build filters field by field and never spread a request-derived object into a query.
+
+**Upload resource limits.** Uploads are streamed to storage and hashed in the same pass rather than buffered in memory. Multipart parsing caps file count, field count, and field size in addition to `MAX_UPLOAD_BYTES`. Rate limiting applies to all three intake routes, not only the API route.
+
+**Dependency audit.** CI runs a dependency audit on every pull request and fails on high-severity advisories, which is the enforcement NFR-S1 requires.
+
+**Logging.** Extracted field values and document contents are never written to logs. Log entries carry the record identifier and the storage key, both of which are safe to retain.
+
+**Transport.** Deployed environments serve over HTTPS (NFR-S1). Local Compose runs over HTTP on a private network; this difference is deliberate and is the only place the baseline is relaxed.
+
+**Configuration added by this section:** `FETCH_TIMEOUT_MS`, `FETCH_MAX_REDIRECTS`, `FETCH_MAX_BYTES`, `MULTIPART_MAX_FILES`, `MULTIPART_MAX_FIELD_BYTES`.
+
 ---
 
 ## 6. Verification
@@ -275,6 +304,7 @@ Thresholds belonging to later slices (`T_LOW`, `T_HIGH`, `PEER_MIN_N`, `PEER_WIN
 | :---- | :---- | :---- |
 | Unit | Hashing, the dedupe decision, backoff arithmetic, job claiming | `vitest`, ports replaced with fakes |
 | Integration | Intake against a real database and object store | `vitest` against Mongo and MinIO in Compose |
+| Security | The controls in §5.6 hold | Automated tests that a private-range URL, a redirect into a private range, a content-type mismatch, and an operator-object filter parameter are each rejected |
 | Live | The requirement is actually met | `curl` upload against the running stack; confirm the object exists in MinIO and the record in Mongo; repeat the upload and confirm one record with two source references |
 
 Unit tests passing is not sufficient evidence that a requirement is met. Acceptance for F1 (SRS §6) requires a TOR submitted by upload, by URL, and by API to produce one record; the API to refuse an unauthenticated caller; and a repeat submission to converge on the existing record. Each is demonstrated live before the slice is considered done.
