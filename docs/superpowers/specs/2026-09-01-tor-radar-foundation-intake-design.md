@@ -296,6 +296,24 @@ The fetch is performed by a single helper in `lib/http.ts`. No module issues an 
 
 **Configuration added by this section:** `FETCH_TIMEOUT_MS`, `FETCH_MAX_REDIRECTS`, `FETCH_MAX_BYTES`, `MULTIPART_MAX_FILES`, `MULTIPART_MAX_FIELD_BYTES`.
 
+### 5.7 Containers and the deployment shape
+
+NFR-S6 requires the system to run under Docker Compose. The skeleton's Dockerfiles predate the workspace layout in §3 and need reworking before `packages/shared` exists, because every problem below is silent rather than loud.
+
+**Workspace-aware builds.** Both images currently copy a single application manifest and run `npm install`, which cannot resolve a workspace dependency and does not use the root lockfile. Each image instead copies the root `package.json`, the root `package-lock.json`, and every workspace manifest, runs `npm ci`, and only then copies sources. Builds become reproducible and `@tor-radar/shared` resolves.
+
+**The API image compiles.** The API currently runs TypeScript through `tsx` at runtime. It becomes a two-stage build: compile with `tsc`, then run `node dist/server.js` in a runtime stage without development dependencies.
+
+**Next.js standalone output inside a monorepo.** `output: 'standalone'` is set, but `outputFileTracingRoot` is not. Next.js traces from the project directory by default and excludes files outside it, so a workspace import would be omitted from the standalone bundle without any build error. `outputFileTracingRoot` is therefore set to the repository root. This also relocates the emitted server to `.next/standalone/apps/web/server.js`, which the image's copy paths and start command must reflect.
+
+**The worker is its own service.** The worker and the HTTP server share one image and differ only by command. Running them as separate Compose services means restarting the API does not interrupt a job in flight, and the worker's failures are visible in its own logs. This does not contradict D5: the queue is still Mongo, with no additional queue service.
+
+**Compose services:** `web`, `api`, `worker`, `mongo`, `minio`. `mongo` and `minio` declare health checks, and `api` and `worker` wait on `service_healthy` rather than on container start, which removes the race where the API opens a connection before the database accepts one.
+
+**Container hardening.** Images run as a non-root user. The API exposes the existing `/health` endpoint as its container health check. `.dockerignore` already excludes `node_modules`, build output, `.git`, `.env`, and the mockups.
+
+**Continuous integration.** The existing workflow runs lint, test, and build. A dependency audit step is added, failing on high-severity advisories, which is the enforcement NFR-S1 requires.
+
 ---
 
 ## 6. Verification
@@ -321,6 +339,7 @@ The nine extracted fields are defined in the record shape but are not populated 
 
 ## 8. Documentation tasks this slice carries
 
+- Rework both Dockerfiles for the workspace layout, add the `worker` Compose service and health checks, set `outputFileTracingRoot`, and add the CI audit step (§5.7).
 - Rewrite `CLAUDE.md` against SRS v2.0: replace v1 requirement identifiers, remove the Bangkok-only rule, and record the structural decisions D1–D10 as the agent rules for this repository.
 - Update `PROJECT.md` where it states Bangkok-only scope.
 - Add a structure section to `README.md` describing the root layout and the four enforcement rules.
