@@ -47,15 +47,31 @@ async function checkVertex() {
   console.log(`  Vertex AI  ✓  ${model} @ ${location} replied: ${JSON.stringify(text)}`);
 }
 
+// 1x1 PNG — real content isn't the point; a non-403 proves the SA can call :process.
+const TINY_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==";
+
 async function checkDocAI() {
   const loc = process.env.DOCAI_LOCATION;
-  if (!loc) return console.log("  Document AI    skipped (DOCAI_LOCATION not set)");
+  const procId = process.env.DOCAI_PROCESSOR_ID;
+  if (!loc || !procId) return console.log("  Document AI    skipped (DOCAI_LOCATION / DOCAI_PROCESSOR_ID not set)");
   const client = await auth.getClient();
-  const url = `https://${loc}-documentai.googleapis.com/v1/projects/${project}/locations/${loc}/processors`;
-  const res = await client.request({ url });
-  const procs = res.data?.processors ?? [];
-  console.log(`  Document AI ✓  ${procs.length} processor(s) in ${loc}`);
-  for (const p of procs) console.log(`               - ${p.type}  ${p.name.split("/").pop()}  (${p.state})`);
+  // documentai.apiUser can :process but not processors.list — exercise the real path.
+  const url = `https://${loc}-documentai.googleapis.com/v1/projects/${project}/locations/${loc}/processors/${procId}:process`;
+  try {
+    await client.request({
+      url,
+      method: "POST",
+      data: { rawDocument: { content: TINY_PNG, mimeType: "image/png" }, skipHumanReview: true },
+    });
+    console.log(`  Document AI ✓  processor ${procId} @ ${loc} processed a request`);
+  } catch (err) {
+    // 400 INVALID_ARGUMENT (image too small) still means auth + processor are fine.
+    if (err?.response?.status === 400) {
+      console.log(`  Document AI ✓  processor ${procId} @ ${loc} reachable (rejected the 1px test doc, as expected)`);
+      return;
+    }
+    throw err;
+  }
 }
 
 console.log(`Checking GCP access for project "${project}" ...`);
