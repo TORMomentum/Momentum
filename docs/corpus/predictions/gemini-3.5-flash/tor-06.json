@@ -1,13 +1,12 @@
 {
   "id": "tor-06",
-  "extracted_at": "2026-09-02T16:27:24.342Z",
+  "extracted_at": "2026-09-02T17:04:27.114Z",
   "model": "gemini-3.5-flash",
   "location": "global",
   "usage": {
     "promptTokenCount": 9012,
     "candidatesTokenCount": 917,
     "totalTokenCount": 12016,
-    "cachedContentTokenCount": 8904,
     "trafficType": "ON_DEMAND",
     "promptTokensDetails": [
       {
@@ -17,16 +16,6 @@
       {
         "modality": "TEXT",
         "tokenCount": 1564
-      }
-    ],
-    "cacheTokensDetails": [
-      {
-        "modality": "TEXT",
-        "tokenCount": 1545
-      },
-      {
-        "modality": "IMAGE",
-        "tokenCount": 7359
       }
     ],
     "candidatesTokensDetails": [

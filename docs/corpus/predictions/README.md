@@ -2,87 +2,47 @@
 
 `<model>/tor-NN.json` — what `tools/extract_spike.mjs` pulled from each corpus PDF.
 One Gemini call per PDF (native PDF input, no separate Document AI OCR pass).
-Each field comes back as `{ value, confidence (0..1), evidence }`; `agency_bma_valid`
-is computed by the script against `tools/bma-agencies.json`, not by the model.
+Each field is `{ value, confidence (0..1), evidence }`; `agency_bma_valid` is
+computed by the script against `tools/bma-agencies.json`, not by the model.
+`_extra/` = the same on the image-only scans.
 
-Regenerate: `npm run spike:extract` (reads `GEMINI_MODEL` / `VERTEX_LOCATION` from `.env`).
+Regenerate: `npm run spike:extract` (+ `-- --dir _extra` for the scans), then
+`npm run score:extract` for `../BENCHMARK.md`.
 
-## Run 1 — gemini-3.5-flash @ global, 2026-09-02
+## gemini-3.5-flash @ global — 15 docs, ~US$0.07 total (≈ US$0.005/doc)
 
-10/10 docs extracted. ~69k input + ~10k output tokens total (~US$0.05 for the set,
-≈ US$0.005/doc — comfortably inside the PROJECT.md §9 AI budget).
+Comfortably inside the PROJECT.md §9 AI budget.
 
-### What worked
+### Digital corpus (n=10)
 
-| field | result |
-|---|---|
-| `budget_thb` | **10/10 exact**, incl. all 4 docs where the budget is genuinely absent → `null` (never grabbed the หลักประกันการเสนอราคา figure, incl. tor-06's 2,965,700 with confidence 1.0) |
-| `agency` | 10/10 correct entity (minor "… กรุงเทพมหานคร" suffix variance) |
-| `agency_bma_valid` | 10/10 (all true — script check) |
-| `status` | 10/10 incl. `cancelled` for the ยกเลิก notice (tor-02) |
-| `category` | 10/10 to the coarse label |
+- `agency`, `budget_thb`, `category`, `status`, `procurement_method`,
+  `announcement_date`: **100%** (after normalisation — see `../BENCHMARK.md`).
+  `budget_thb` includes 5 docs where the amount is genuinely absent → all
+  correctly `null`; the model never picks up the หลักประกันการเสนอราคา figure.
+- `title`: 9/10 (one doc where the model returned the literal shorter header).
+- `submission_deadline`: 9/10 — the miss is `tor-02`, a *cancellation* notice
+  where the model invented a date at confidence ~0.9.
 
-### Real problems found
+### Scanned spot-checks (n=5)
 
-1. **Hallucinated date — tor-02.** `submission_deadline` came back `2016-03-09`
-   (confidence 0.9) when the doc is a *cancellation* with no bid date. Two faults:
-   inventing a value, and a BE→CE slip (๒๕๖๙ read as 2016, not 2026). This is
-   exactly what the FR-B3 T_low tier + sanity checks must catch — and confidence
-   0.9 means the model won't self-flag it. **Add a rule: `cancelled` ⇒
-   `submission_deadline` must be null.**
-2. **Thai digits not normalized.** tor-03/05/07/08/09 titles kept ๓ / ๑๙ / ๕/๑
-   instead of Arabic. The prompt asks for conversion; the model is inconsistent.
-   Cheap post-process, or a firmer instruction.
-3. **`procurement_method` not canonical.** Always returns
-   `"ประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"` vs the `e-bidding` label — a
-   normalization gap (FR-B4), not an extraction error.
-4. **JSON-mode flakiness.** ~1 call in 10 prepends chatter ("ได้เล…") despite
-   `responseMimeType: application/json`. Script retries up to 3× and slices the
-   `{…}`; worth reporting upstream / trying a stricter schema.
+- `title`, `agency`, `category`, `status`: strong — including `_extra/tor-16`
+  whose PDF text layer is corrupt (the model read the image, ignored the garbage).
+- `budget_thb`: the weak spot. `_extra/tor-16`'s ราคากลาง (true 17,295,845.84)
+  comes back as `17,295,895.84` — one digit off, at confidence 1.0. `_extra/tor-06`
+  returned a figure where the spot-check label has none.
+- `submission_deadline`: every scan produced a high-confidence date; every
+  spot-check gold (pages 1–3) is `null`. Some of these may be real values on a
+  later page — the field is gated to the review queue either way.
 
-### Caveats
+## What this means
 
-- The `rough field match` % the script prints (~78%) is **misleading** —
-  most "misses" are #2/#3 above (formatting, not wrong data). Real field
-  accuracy on this run is ~95%+. Proper scoring with normalization is TOR-22.
-- No `submission_deadline` is populated in any corpus label (all draft-stage
-  docs), so that field's precision is only tested via the tor-02 hallucination.
+1. **Thai OCR is not the blocker.** Character recognition on scanned Thai is
+   solid across agencies and layouts.
+2. **Numbers and dates are the risk** — non-deterministic digit slips on large
+   `budget_thb` values, unstable พ.ศ.→ค.ศ. conversion, and over-eager date
+   extraction, all at high confidence.
+3. **Model confidence does not tell right from wrong** (`../BENCHMARK.md`) — mean
+   ~0.96 whether the answer is correct or not.
 
-## Run 2 — scanned docs, gemini-3.5-flash @ global, 2026-09-02
-
-`_extra/` subdir: 5 image-only BMA scans (`_extra/tor-{03,06,11,16,17}`),
-spot-check labels in `../labels/_extra/` (verified from rendered pages 1–3 only;
-budget/deadline marked `unverified` where they'd sit on later pages).
-
-**This answers the NFR-1 question: Thai OCR on scans is not the blocker.**
-
-| field | scanned result |
-|---|---|
-| `title` | **5/5** verbatim, incl. the doc whose PDF text layer is corrupt (`_extra/tor-16`) — the model read the image, not the broken text |
-| `agency` | 5/5 correct entity (model volunteers the district from the scope even when the header only says "กรุงเทพมหานคร") |
-| `category` / `status` | 5/5 each, incl. `cancelled` |
-
-### Where scanned docs break
-
-1. **Numbers are non-deterministic and wrong.** `_extra/tor-16`'s ราคากลาง (true
-   **17,295,845.84**) came back as `17,295,895.84` on one run and `13,295,885.84`
-   on the next — both at confidence 1.0. A money field that changes between runs
-   and is wrong either way ⇒ FR-B3 must gate `budget_thb` hard, or add a
-   tens-of-millions digit re-read / โปรยตัวหนังสือ cross-check.
-2. **`submission_deadline` over-extracted — 0/5.** Every scan got a high-confidence
-   date; every spot-check gold is `null`. Either these เอกสารประกวดราคา state a bid
-   date on a page we didn't label, or the model fills the field regardless.
-   Confidence ~1.0 either way ⇒ the model's confidence on this field is not
-   calibrated. **Full-page labelling of the scanned set is needed to tell
-   hallucination from a label gap — that is the TOR-21 work still outstanding.**
-3. **BE→CE conversion unstable.** Same ๒๕๖๙ read as 2016 on one run, 2026 on the
-   next. Do the arithmetic in post-processing, not in the model.
-4. `reference_no` OCR slip: `_extra/tor-03` header "๓/๒๕๖๗" read as `1/2567`.
-
-### Net
-
-Extraction quality on scans ≈ on digital for text fields; the regressions are all
-**numeric precision + a deadline-field hallucination**, not character recognition.
-That shifts the TOR-22 threshold design: per-field, not one global T — `budget_thb`
-and date fields need much tighter gating (and a second-pass check) than `title` /
-`agency` / `category` / `status`.
+→ FR-B3 gates deterministic-rules-first: `budget_thb` and date fields from an
+OCR'd document never reach the "clean" tier regardless of confidence.

@@ -164,7 +164,7 @@ const cs = confSplit(digital.points);
 
 let md = `# Extraction accuracy benchmark — TOR-18 phase gate
 
-Model: **${MODEL}** @ \`${process.env.VERTEX_LOCATION || "global"}\` · scored ${new Date().toISOString().slice(0, 10)} · regenerate with \`npm run score:extract\`.
+Model: **${MODEL}** @ \`${process.env.VERTEX_LOCATION || "global"}\` · scored ${new Date().toLocaleDateString("sv")} · regenerate with \`npm run score:extract\`.
 
 Both sides normalised before comparison (Thai digits → Arabic, พ.ศ. → ค.ศ., procurement-method wording collapsed, whitespace-insensitive). \`required_qualifications\` and \`scope_summary\` are reviewed by hand, not string-scored — the labels are deliberately terse and the model returns a more detailed superset in all 15 docs.
 

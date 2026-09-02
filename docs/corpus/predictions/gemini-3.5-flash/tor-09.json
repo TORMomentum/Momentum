@@ -1,6 +1,6 @@
 {
   "id": "tor-09",
-  "extracted_at": "2026-09-02T16:28:19.550Z",
+  "extracted_at": "2026-09-02T17:05:43.552Z",
   "model": "gemini-3.5-flash",
   "location": "global",
   "usage": {
@@ -10,12 +10,12 @@
     "trafficType": "ON_DEMAND",
     "promptTokensDetails": [
       {
-        "modality": "TEXT",
-        "tokenCount": 1564
-      },
-      {
         "modality": "IMAGE",
         "tokenCount": 2660
+      },
+      {
+        "modality": "TEXT",
+        "tokenCount": 1564
       }
     ],
     "candidatesTokensDetails": [

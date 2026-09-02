@@ -1,6 +1,6 @@
 # Extraction accuracy benchmark — TOR-18 phase gate
 
-Model: **gemini-3.5-flash** @ `global` · scored 2026-09-02 · regenerate with `npm run score:extract`.
+Model: **gemini-3.5-flash** @ `global` · scored 2026-09-03 · regenerate with `npm run score:extract`.
 
 Both sides normalised before comparison (Thai digits → Arabic, พ.ศ. → ค.ศ., procurement-method wording collapsed, whitespace-insensitive). `required_qualifications` and `scope_summary` are reviewed by hand, not string-scored — the labels are deliberately terse and the model returns a more detailed superset in all 15 docs.
 
@@ -11,24 +11,24 @@ Both sides normalised before comparison (Thai digits → Arabic, พ.ศ. → �
 | `agency` | 100% | 10 correct · 0 correct-null · 0 wrong |
 | `budget_thb` | 100% | 5 correct · 5 correct-null · 0 wrong |
 | `category` | 100% | 10 correct · 0 correct-null · 0 wrong |
+| `announcement_date` | 100% | 1 correct · 9 correct-null · 0 wrong |
 | `status` | 100% | 10 correct · 0 correct-null · 0 wrong |
 | `procurement_method` | 100% | 10 correct · 0 correct-null · 0 wrong |
 | `title` | 90% | 9 correct · 0 correct-null · 1 wrong |
 | `submission_deadline` | 90% | 0 correct · 9 correct-null · 1 wrong |
-| `announcement_date` | 90% | 0 correct · 9 correct-null · 1 wrong |
 | `reference_no` | 90% | 0 correct · 9 correct-null · 1 wrong |
-| `contact` | 70% | 0 correct · 7 correct-null · 3 wrong |
+| `contact` | 80% | 0 correct · 8 correct-null · 2 wrong |
 
 ## Field accuracy — scanned spot-checks (n=5)
 
 | field | accuracy | breakdown |
 |---|---|---|
-| `title` | 100% | 5 correct · 0 correct-null · 0 wrong |
 | `agency` | 100% | 5 correct · 0 correct-null · 0 wrong |
 | `category` | 100% | 5 correct · 0 correct-null · 0 wrong |
 | `status` | 100% | 5 correct · 0 correct-null · 0 wrong |
 | `procurement_method` | 100% | 5 correct · 0 correct-null · 0 wrong |
 | `announcement_date` | 80% | 3 correct · 1 correct-null · 1 wrong |
+| `title` | 60% | 3 correct · 0 correct-null · 2 wrong |
 | `budget_thb` | 60% | 0 correct · 3 correct-null · 2 wrong |
 | `reference_no` | 60% | 2 correct · 1 correct-null · 2 wrong |
 | `contact` | 40% | 0 correct · 2 correct-null · 3 wrong |
@@ -36,19 +36,19 @@ Both sides normalised before comparison (Thai digits → Arabic, พ.ศ. → �
 
 ## Does model confidence predict correctness?
 
-Digital corpus, all scored fields, n=80:
+Digital corpus, all scored fields, n=79:
 
 | | mean model confidence | count |
 |---|---|---|
-| predictions that were **correct** | 0.957 | 66 |
-| predictions that were **wrong** | 0.964 | 14 |
+| predictions that were **correct** | 0.965 | 67 |
+| predictions that were **wrong** | 0.971 | 12 |
 
 | model confidence bucket | n | correct | precision |
 |---|---|---|---|
-| 1.00 | 40 | 33 | 83% |
-| 0.95–0.99 | 22 | 17 | 77% |
-| 0.90–0.94 | 13 | 12 | 92% |
-| 0.80–0.89 | 5 | 4 | 80% |
+| 1.00 | 44 | 37 | 84% |
+| 0.95–0.99 | 18 | 15 | 83% |
+| 0.90–0.94 | 15 | 13 | 87% |
+| 0.80–0.89 | 2 | 2 | 100% |
 | 0.00–0.79 | 0 | 0 | – |
 
 **Finding:** the model reports ~0.9–1.0 confidence for almost everything, and its
@@ -59,32 +59,32 @@ self-confidence alone is **not** a usable gate.
 
 **title**
 - tor-08: pred="การจ้างก่อสร้างปรับปรุงซอยสุขาภิบาลบางระมาด ๕/๑" gold="ประกวดราคาจ้างก่อสร้างปรับปรุงซอยสุขาภิบาลบางระมาด 5/1 ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+- [scan] tor-06: pred="ประกวดราคาจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)" gold="ประกวดราคาจ้างจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+- [scan] tor-11: pred="ประกวดราคาจ้างบำรุงรักษาระบบคอมพิวเตอร์ศูนย์ข้อมูลด้านเศรษฐกิจการคลังและส่งเสริมการลงทุนในเขตพื้นที่กรุงเทพมหานคร ประจำปีงบประมาณ พ.ศ. 2567 ด้วยวิธีการประกวดราคาอิเล็กทรอนิกส์ (e-bidding)" gold="ประกวดราคาจ้างบำรุงรักษาระบบคอมพิวเตอร์ศูนย์ข้อมูลด้านเศรษฐกิจการคลังและส่งเสริมการลงทุนในเขตพื้นที่กรุงเทพมหานคร ประจำปีงบประมาณ พ.ศ. 2567 ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
 
 **budget_thb**
 - [scan] tor-06: pred=1200000 gold=null
-- [scan] tor-16: pred=13295885.84 gold=17295845.84
+- [scan] tor-16: pred=17295895.84 gold=17295845.84
 
 **submission_deadline**
-- tor-02: pred="2016-03-09" gold=null
+- tor-02: pred="2026-03-09" gold=null
 - [scan] tor-03: pred="2023-12-06" gold=null
 - [scan] tor-06: pred="2024-09-16" gold=null
 - [scan] tor-11: pred="2023-09-27" gold=null
 - [scan] tor-17: pred="2016-03-09" gold=null
 
 **announcement_date**
-- tor-02: pred="2016-03-05" gold="2026-03-05"
 - [scan] tor-17: pred="2016-03-05" gold="2026-03-05"
 
 **contact**
-- tor-02: pred="สำนักงานเขตจตุจักร" gold=null
 - tor-05: pred="โรงเรียนวิชูทิศ ที่อยู่ 4095/1 ซอยประชาสงเคราะห์ 13 ถนนประชาสงเคราะห์ แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 โทรศัพท์ 0 2246 1551 โทรสาร 0 2246 1551 เว็บไซต์ www.wichutit.ac.th" gold="โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร 10400 โทร 0 2246 1551 โทรสาร 0 2246 1551 เว็บไซต์ www.wichutit.ac.th"
 - tor-09: pred="โทรศัพท์หมายเลข ๐-๒๔๔๑-๔๙๗๓ ต่อ ๕๕๐๗ หรือเว็บไซต์ www.bangkok.go.th/thawiwatthana" gold="สำนักงานเขตทวีวัฒนา โทร 0-2441-4973 ต่อ 5507; www.bangkok.go.th/thawiwatthana; www.gprocurement.go.th"
-- [scan] tor-06: pred="โทรศัพท์หมายเลข 023544206, เว็บไซต์ www.bangkok.go.th/ratchathewi" gold=null
-- [scan] tor-16: pred="www.bangkok.go.th/thonburi หรือ www.gprocurement.go.th" gold="www.bangkok.go.th/thonburi; www.gprocurement.go.th"
+- [scan] tor-06: pred="โทรศัพท์หมายเลข 023544206, เว็บไซต์ www.bangkok.go.th/ratchathewi หรือ www.gprocurement.go.th" gold=null
+- [scan] tor-16: pred="เว็บไซต์ www.bangkok.go.th/thonburi หรือ www.gprocurement.go.th" gold="www.bangkok.go.th/thonburi; www.gprocurement.go.th"
 - [scan] tor-17: pred="สำนักงานเขตจตุจักร" gold=null
 
 **reference_no**
-- tor-02: pred="3/2559" gold="3/2569 (ประกาศเดิมที่ถูกยกเลิก ลงวันที่ 26 กุมภาพันธ์ 2569)"
+- tor-02: pred="3/2569" gold="3/2569 (ประกาศเดิมที่ถูกยกเลิก ลงวันที่ 26 กุมภาพันธ์ 2569)"
 - [scan] tor-03: pred="1/2567" gold="3/2567"
 - [scan] tor-17: pred="3/2559" gold="3/2569 (ประกาศเดิมที่ถูกยกเลิก)"
 

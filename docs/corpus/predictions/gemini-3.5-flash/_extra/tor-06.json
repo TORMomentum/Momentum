@@ -1,106 +1,95 @@
 {
   "id": "tor-06",
-  "extracted_at": "2026-09-02T16:43:02.984Z",
+  "extracted_at": "2026-09-02T17:07:19.082Z",
   "model": "gemini-3.5-flash",
   "location": "global",
   "usage": {
     "promptTokenCount": 9012,
-    "candidatesTokenCount": 1017,
-    "totalTokenCount": 11489,
-    "cachedContentTokenCount": 7770,
+    "candidatesTokenCount": 965,
+    "totalTokenCount": 11965,
     "trafficType": "ON_DEMAND",
     "promptTokensDetails": [
       {
-        "modality": "TEXT",
-        "tokenCount": 1564
-      },
-      {
         "modality": "IMAGE",
         "tokenCount": 7448
-      }
-    ],
-    "cacheTokensDetails": [
-      {
-        "modality": "IMAGE",
-        "tokenCount": 6422
       },
       {
         "modality": "TEXT",
-        "tokenCount": 1348
+        "tokenCount": 1564
       }
     ],
     "candidatesTokensDetails": [
       {
         "modality": "TEXT",
-        "tokenCount": 1017
+        "tokenCount": 965
       }
     ],
-    "thoughtsTokenCount": 1460
+    "thoughtsTokenCount": 1988
   },
   "agency_bma_valid": true,
   "fields": {
     "title": {
-      "value": "ประกวดราคาจ้างจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
-      "confidence": 0.95,
-      "evidence": "ประกวดราคาจ้างจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+      "value": "ประกวดราคาจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+      "confidence": 1,
+      "evidence": "ประกวดราคาจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
     },
     "agency": {
       "value": "สำนักงานเขตราชเทวี กรุงเทพมหานคร",
-      "confidence": 0.95,
-      "evidence": "สำนักงานเขตราชเทวี... กรุงเทพมหานคร"
+      "confidence": 1,
+      "evidence": "สำนักงานเขตราชเทวี"
     },
     "budget_thb": {
       "value": 1200000,
-      "confidence": 0.95,
-      "evidence": "ราคากลางของงานจ้างในการประกวดราคาครั้งนี้ เป็นเงินทั้งสิ้น 1,200,000.00 บาท (หนึ่งล้านสองแสนบาทถ้วน)"
+      "confidence": 1,
+      "evidence": "เป็นเงินทั้งสิ้น ๑,๒๐๐,๐๐๐.๐๐ บาท (หนึ่งล้านสองแสนบาทถ้วน)"
     },
     "category": {
       "value": "จ้างเหมาบริการ",
-      "confidence": 0.9,
+      "confidence": 1,
       "evidence": "จ้างเหมาทำความสะอาดอาคาร"
     },
     "scope_summary": {
       "value": "จ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี จำนวน 1 รายการ",
-      "confidence": 0.9,
-      "evidence": "จ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี จำนวน ๑ รายการ"
+      "confidence": 1,
+      "evidence": "จ้างเหมาทำความสะอาดอาคาร จำนวน ๑ รายการ สำนักงานเขตราชเทวี"
     },
     "required_qualifications": {
       "value": [
         "เป็นนิติบุคคลผู้มีอาชีพรับจ้างงานที่ประกวดราคาอิเล็กทรอนิกส์ดังกล่าว",
-        "กรณีผู้ยื่นข้อเสนอเป็นนิติบุคคลที่จัดตั้งขึ้นตามกฎหมายไทย ซึ่งยังไม่มีการรายงานงบแสดงฐานะการเงินกับกรมพัฒนาธุรกิจการค้า ให้พิจารณาการกำหนดมูลค่าของทุนจดทะเบียน โดยผู้ยื่นข้อเสนอจะต้องมีทุนจดทะเบียนที่เรียกชำระมูลค่าหุ้นแล้ว ณ วันที่ยื่นข้อเสนอ ไม่ต่ำกว่า 1 ล้านบาท"
+        "กรณีเป็นนิติบุคคลที่จัดตั้งขึ้นตามกฎหมายไทย ซึ่งยังไม่มีการรายงานงบแสดงฐานะการเงิน ต้องมีทุนจดทะเบียนที่เรียกชำระมูลค่าหุ้นแล้ว ณ วันที่ยื่นข้อเสนอ ไม่ต่ำกว่า ๑ ล้านบาท"
       ],
       "confidence": 0.9,
-      "evidence": "เป็นนิติบุคคลผู้มีอาชีพรับจ้างงานที่ประกวดราคาอิเล็กทรอนิกส์ดังกล่าว, ต้องมีทุนจดทะเบียนที่เรียกชำระมูลค่าหุ้นแล้ว ณ วันที่ยื่นข้อเสนอ ไม่ต่ำกว่า ๑ ล้านบาท"
+      "evidence": "เป็นนิติบุคคลผู้มีอาชีพรับจ้างงานที่ประกวดราคาอิเล็กทรอนิกส์ดังกล่าว (หน้า 12 ข้อ 7) และ มีทุนจดทะเบียนที่เรียกชำระมูลค่าหุ้นแล้ว ณ วันที่ยื่นข้อเสนอ ไม่ต่ำกว่า ๑ ล้านบาท (หน้า 13 ข้อ 12.2)"
     },
     "submission_deadline": {
       "value": "2024-09-16",
-      "confidence": 0.95,
-      "evidence": "ในวันที่ 16 กันยายน 2567 ระหว่างเวลา 09.00 น. ถึง 16.00 น."
+      "confidence": 1,
+      "evidence": "ในวันที่ ๑๖ กันยายน ๒๕๖๗ ระหว่างเวลา ๐๙.๐๐ น. ถึง ๑๖.๐๐ น."
     },
     "contact": {
-      "value": "โทรศัพท์หมายเลข 023544206, เว็บไซต์ www.bangkok.go.th/ratchathewi",
-      "confidence": 0.9,
-      "evidence": "www.bangkok.go.th/ratchathewi หรือ www.gprocurement.go.th หรือสอบถามทางโทรศัพท์หมายเลข 023544206"
+      "value": "โทรศัพท์หมายเลข 023544206, เว็บไซต์ www.bangkok.go.th/ratchathewi หรือ www.gprocurement.go.th",
+      "confidence": 1,
+      "evidence": "www.bangkok.go.th/ratchathewi หรือ www.gprocurement.go.th หรือสอบถามทางโทรศัพท์หมายเลข ๐๒๓๕๔๔๒๐๖"
     },
     "status": {
       "value": "announced",
-      "confidence": 0.9,
-      "evidence": "เอกสารประกวดราคาจ้างด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding) ลงวันที่ 10 กันยายน 2567"
+      "confidence": 1,
+      "evidence": "ประกาศ ณ วันที่ ๑๐ กันยายน พ.ศ. ๒๕๖๗"
     },
     "procurement_method": {
       "value": "ประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
-      "confidence": 0.95,
+      "confidence": 1,
       "evidence": "ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
     },
     "announcement_date": {
       "value": "2024-09-10",
-      "confidence": 0.95,
-      "evidence": "ประกาศ ณ วันที่ 10 กันยายน พ.ศ. 2567"
+      "confidence": 1,
+      "evidence": "ประกาศ ณ วันที่ ๑๐ กันยายน พ.ศ. ๒๕๖๗"
     },
     "reference_no": {
       "value": "1/2568",
-      "confidence": 0.95,
-      "evidence": "เลขที่ 1/2568"
+      "confidence": 1,
+      "evidence": "เลขที่ ๑/๒๕๖๘"
     }
   }
 }
