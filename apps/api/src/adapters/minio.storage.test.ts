@@ -36,3 +36,28 @@ describe("MinioStorage", () => {
     expect(url.startsWith(config.minio.publicUrl)).toBe(true);
   });
 });
+
+/**
+ * The integration test above cannot catch a regression to the internal client:
+ * on a developer host MINIO_ENDPOINT and MINIO_PUBLIC_URL are the same origin,
+ * so both would produce an identical URL. This constructs the adapter the way
+ * Compose does, with the two diverging, where signing on the wrong client
+ * yields a URL no browser can resolve.
+ */
+describe("MinioStorage.signedUrl with a Compose-shaped configuration", () => {
+  it("signs against the public origin, not the internal endpoint", async () => {
+    const composeLike = new MinioStorage({
+      ...config.minio,
+      endPoint: "tor-radar-minio",
+      port: 9000,
+      publicUrl: config.minio.publicUrl,
+    });
+
+    const key = `test-${Date.now()}-divergent`;
+    await storage.putIfAbsent(key, Buffer.from("x"), "application/pdf");
+    const url = await composeLike.signedUrl(key, 60);
+
+    expect(url.startsWith(config.minio.publicUrl)).toBe(true);
+    expect(url).not.toContain("tor-radar-minio");
+  });
+});

@@ -147,3 +147,29 @@ todo law in the global CLAUDE.md.
   - npm run build -w @tor-radar/web — succeeds, routes /search, /profile,
 - commit — 4c184fe "feat(web): port Search, TOR Detail, Vendor Profile screens"
 
+
+## 2026-09-02 — Task 6 - storage port and MinIO adapter (implementer)
+
+**Verified:** Commits 36e71fc and eb19e2b. Verified: 35/35 tests at the root, lint and tsc clean, signedUrl signs on the public client. The agent flagged that its own third test cannot catch a regression on a host where the internal and public origins coincide; parent added a Compose-shaped case with diverging endpoints and PROVED it fails when signing is switched back to the internal client, then restored. Now 36 tests.
+
+**Completed (18):**
+
+- read Task 6 in the plan and spec section 5.8
+- make the api test runner see the root .env
+  - add the config and confirm loadConfig(process.env) resolves in a test
+  - discovered: the root `vitest run` (the CI gate) has no config and does not read
+- write the failing test
+  - apps/api/src/adapters/minio.storage.test.ts with the three cases from the plan
+  - run it, confirm it fails because the module does not exist
+- define ports/storage.port.ts
+- implement adapters/minio.storage.ts
+  - putIfAbsent returns the existing object untouched rather than overwriting
+  - signedUrl is generated against MINIO_PUBLIC_URL, not the internal endpoint
+  - discovered: on this host MINIO_ENDPOINT and MINIO_PUBLIC_URL resolve to the
+- run the test against the live MinIO, confirm all three pass
+- run the repo gates that CI runs
+  - npm test at the root → 6 files, 35 passed
+  - npm run lint at the root → clean
+  - npm run build -w @tor-radar/api → clean
+- commit
+
