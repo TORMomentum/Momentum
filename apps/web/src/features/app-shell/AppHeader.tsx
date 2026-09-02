@@ -184,20 +184,20 @@ export function AppHeader() {
               <div className={styles.menuDivider} />
 
               {/*
-                There is no session to end yet: authentication arrives in slice
-                4. The item is present and disabled rather than absent, so the
-                menu matches the design and nobody wires a fake sign-out that
-                only hides the avatar.
+                There is no session to tear down until authentication lands in
+                slice 4, so this does not pretend to end one. It returns to the
+                public landing page, which IS the signed-out surface today.
+                Slice 4 replaces the href with real session teardown; the item
+                itself does not move.
               */}
-              <button
-                type="button"
+              <Link
+                href="/"
                 role="menuitem"
                 className={styles.menuSignOut}
-                disabled
-                title="พร้อมใช้งานเมื่อระบบเข้าสู่ระบบพร้อม"
+                onClick={() => setMenuOpen(false)}
               >
                 ออกจากระบบ
-              </button>
+              </Link>
             </div>
           )}
         </div>

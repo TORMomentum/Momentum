@@ -116,8 +116,7 @@
 .menuDivider { height: 1px; margin: 5px 0; background: rgba(18, 35, 60, 0.1); }
 
 .menuSignOut { color: var(--ink-62); }
-.menuSignOut:hover:not(:disabled) { background: rgba(190, 32, 38, 0.08); color: var(--danger); }
-.menuSignOut:disabled { cursor: not-allowed; opacity: 0.55; }
+.menuSignOut:hover { background: rgba(190, 32, 38, 0.08); color: var(--danger); }
 
 /* ---------- notification bell ---------- */
 .bellWrap { position: relative; }
