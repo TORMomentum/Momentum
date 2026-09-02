@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — NOT STARTED
+## 2. Slice 1 — foundation and intake — IN PROGRESS (1/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
