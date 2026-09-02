@@ -481,26 +481,7 @@
 .profileFactValue { font: 600 16px var(--data); }
 .profileFactText { font-size: 13px; color: rgba(18, 35, 60, 0.75); }
 
-.notifyRow { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-.notifyTitle { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
-.notifySub { font-size: 11.5px; color: var(--ink-65); }
-
-.notifyToggle { display: flex; border: 1px solid rgba(18, 35, 60, 0.35); border-radius: 6px; overflow: hidden; }
-.notifyToggleBtn {
-  white-space: nowrap;
-  font: 600 12px var(--body);
-  padding: 9px 18px;
-  cursor: pointer;
-  background: transparent;
-  color: rgba(18, 35, 60, 0.6);
-  border: 0;
-}
-.notifyToggleBtnOn { background: var(--blue); color: var(--paper); }
-
-.matchSlider { margin-top: 16px; }
 .matchRangeInput { width: 100%; cursor: pointer; accent-color: var(--blue); }
-.matchSliderLabels { display: flex; justify-content: space-between; font: 10px var(--data); color: var(--ink-65); }
-.matchSliderActive { color: var(--blue); font-weight: 600; }
 
 .trackLabelRow { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
 .trackList { display: flex; flex-direction: column; }

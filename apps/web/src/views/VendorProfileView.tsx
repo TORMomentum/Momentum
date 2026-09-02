@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import styles from "../features/app-shell/screens.module.css";
+import styles2 from "../features/app-shell/screens-2.module.css";
 import { TOR_SAMPLES, type TorSample } from "../data/tor-samples";
 
 /**
@@ -29,6 +30,47 @@ const DEFAULT_SKILLS: Record<string, boolean> = {
 const SAMPLE_STARRED_SLUGS = ["TOR-2569-0812-041", "TOR-2569-0810-029"];
 const SAMPLE_BOOKED_SLUGS = ["demo-anomaly", "TOR-2569-0811-038"];
 
+/**
+ * Notification presets — matches the mockup's `presets` array. Picking one
+ * sets the minimum-match slider below to that preset's threshold, which the
+ * "การตั้งค่าขั้นสูง" disclosure then lets the vendor fine-tune further.
+ */
+const NOTIFY_PRESETS = [
+  {
+    key: "all" as const,
+    title: "ทุกงานที่เกี่ยวข้อง",
+    desc: "อีเมลทันทีทุกครั้งที่มี TOR ตรงกับทักษะ (≥ 50%)",
+    minMatch: 50,
+  },
+  {
+    key: "balanced" as const,
+    title: "สรุปรายวัน (แนะนำ)",
+    desc: "อีเมลวันละครั้ง รวมงานที่ตรง ≥ 70% + เตือนก่อนหมดเขต",
+    minMatch: 70,
+  },
+  {
+    key: "few" as const,
+    title: "เฉพาะงานที่ตรงมาก",
+    desc: "อีเมลเฉพาะงานที่ตรง ≥ 85% เท่านั้น",
+    minMatch: 85,
+  },
+];
+
+const LEAD_OPTIONS = [3, 7, 14];
+
+const EXTRA_OPTIONS = [
+  {
+    key: "deadline" as const,
+    label: "เตือน TOR ที่บุ๊กมาร์กใกล้หมดเขต",
+    note: "ตามจำนวนวันที่เลือกด้านบน",
+  },
+  {
+    key: "anomaly" as const,
+    label: "เตือนเมื่อพบความผิดปกติทางสถิติ",
+    note: "เหมาะกับนักข่าว/นักวิจัย — ไม่ใช่ข้อกล่าวหา",
+  },
+];
+
 function statusFor(tor: TorSample) {
   return tor.open
     ? { text: `เปิดรับ · ${tor.deadlineNote.replace("เหลืออีก ", "")}`, className: styles.trackStatusOpen }
@@ -39,8 +81,11 @@ export function VendorProfileView() {
   const [skillOn, setSkillOn] = useState<Record<string, boolean>>(DEFAULT_SKILLS);
   const [addingSkill, setAddingSkill] = useState(false);
   const [newSkill, setNewSkill] = useState("");
-  const [freq, setFreq] = useState<"immediate" | "digest">("immediate");
+  const [preset, setPreset] = useState<"all" | "balanced" | "few">("balanced");
   const [minMatch, setMinMatch] = useState(70);
+  const [advanced, setAdvanced] = useState(false);
+  const [lead, setLead] = useState(7);
+  const [extras, setExtras] = useState({ deadline: true, anomaly: false });
 
   const skillNames = Object.keys(skillOn);
   const skillCount = skillNames.filter((name) => skillOn[name]).length;
@@ -134,46 +179,108 @@ export function VendorProfileView() {
       </div>
 
       <div className={styles.profileCard}>
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>[ การแจ้งเตือน ]</div>
-        <div className={styles.notifyRow}>
-          <div>
-            <div className={styles.notifyTitle}>ความถี่อีเมล</div>
-            <div className={styles.notifySub}>คะแนนจับคู่ขั้นต่ำ {minMatch}% · เฉพาะหมวดที่เลือก</div>
-          </div>
-          <div className={styles.notifyToggle}>
+        <div id="notif-settings" className={`${styles.blockLabel} ${styles.blockLabelWide}`}>
+          [ การแจ้งเตือน ]
+        </div>
+        <div className={styles2.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
+
+        <div className={styles2.presetList}>
+          {NOTIFY_PRESETS.map((p) => (
             <button
               type="button"
-              className={`${styles.notifyToggleBtn} ${freq === "immediate" ? styles.notifyToggleBtnOn : ""}`}
-              onClick={() => setFreq("immediate")}
+              key={p.key}
+              className={`${styles2.presetCard} ${preset === p.key ? styles2.presetCardOn : ""}`}
+              onClick={() => {
+                setPreset(p.key);
+                setMinMatch(p.minMatch);
+              }}
             >
-              ทันที
+              <span className={`${styles2.presetDot} ${preset === p.key ? styles2.presetDotOn : ""}`} />
+              <span>
+                <div className={styles2.presetTitle}>{p.title}</div>
+                <div className={styles2.presetDesc}>{p.desc}</div>
+              </span>
             </button>
-            <button
-              type="button"
-              className={`${styles.notifyToggleBtn} ${freq === "digest" ? styles.notifyToggleBtnOn : ""}`}
-              onClick={() => setFreq("digest")}
-            >
-              สรุปรายวัน
-            </button>
-          </div>
+          ))}
         </div>
-        <div className={styles.matchSlider}>
-          <input
-            type="range"
-            className={styles.matchRangeInput}
-            min={50}
-            max={95}
-            step={5}
-            value={minMatch}
-            onChange={(e) => setMinMatch(Number(e.target.value))}
-            aria-label="คะแนนจับคู่ขั้นต่ำ"
-          />
-          <div className={styles.matchSliderLabels}>
-            <span>50%</span>
-            <span className={styles.matchSliderActive}>ขั้นต่ำ {minMatch}%</span>
-            <span>95%</span>
+
+        <button
+          type="button"
+          className={styles2.advancedToggle}
+          onClick={() => setAdvanced((v) => !v)}
+        >
+          <span className={`${styles2.advancedArrow} ${advanced ? styles2.advancedArrowOpen : ""}`}>▾</span>
+          <span className={styles2.advancedLabel}>
+            {advanced ? "ซ่อนการตั้งค่าขั้นสูง" : "การตั้งค่าขั้นสูง"}
+          </span>
+        </button>
+
+        {advanced && (
+          <div className={styles2.advancedPanel}>
+            <div>
+              <div className={styles2.advancedRow}>
+                <span className={styles2.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
+                <span className={styles2.advancedRowValue}>{minMatch}%</span>
+              </div>
+              <input
+                type="range"
+                className={styles.matchRangeInput}
+                min={50}
+                max={95}
+                step={5}
+                value={minMatch}
+                onChange={(e) => setMinMatch(Number(e.target.value))}
+                aria-label="คะแนนจับคู่ขั้นต่ำ"
+              />
+              <div className={styles2.advancedSliderLabels}>
+                <span>50% (กว้าง)</span>
+                <span>95% (เฉพาะที่ตรงมาก)</span>
+              </div>
+            </div>
+
+            <div>
+              <div className={styles2.leadGroupTitle}>เตือนก่อนกำหนดยื่นซอง</div>
+              <div className={styles2.leadGroup}>
+                {LEAD_OPTIONS.map((n) => (
+                  <button
+                    type="button"
+                    key={n}
+                    className={`${styles2.leadOption} ${lead === n ? styles2.leadOptionOn : ""}`}
+                    onClick={() => setLead(n)}
+                  >
+                    {n} วัน
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className={styles2.extraGroupTitle}>แจ้งเตือนเพิ่มเติม</div>
+              <div className={styles2.extraList}>
+                {EXTRA_OPTIONS.map((x) => (
+                  <button
+                    type="button"
+                    key={x.key}
+                    className={styles2.extraRow}
+                    onClick={() => setExtras((prev) => ({ ...prev, [x.key]: !prev[x.key] }))}
+                  >
+                    <span>
+                      <div className={styles2.extraLabel}>{x.label}</div>
+                      <div className={styles2.extraNote}>{x.note}</div>
+                    </span>
+                    <span className={`${styles2.switchTrack} ${extras[x.key] ? styles2.switchTrackOn : ""}`}>
+                      <span className={`${styles2.switchKnob} ${extras[x.key] ? styles2.switchKnobOn : ""}`} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles2.advancedFoot}>
+              อีเมลส่งภายใน 5 นาทีหลัง TOR เผยแพร่ · ยกเลิกการรับได้ทุกอีเมล (PDPA)
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className={styles.profileCard}>

@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (8/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (9/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -116,8 +116,15 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] dedupe proven under concurrency: 12 simultaneous inserts of one hash gave 1 success,
         11 duplicate-key rejections, 1 record. The unique index is the guarantee, not the
         `findByHash` check in front of it
-- [ ] **Task 9 — intake service** ← next
-- [ ] Task 10 — three intake routes with access control
+- [x] **Task 9 — intake service** — built in-session, `be7970a`
+  - [x] one entry for all three routes, so they cannot drift apart in what they accept
+  - [x] fixed order: store bytes → insert record → enqueue, so a crash orphans an object rather
+        than leaving a job pointing at nothing
+  - [x] duplicate-key on insert routed into the dedupe path, not surfaced as an error
+  - [x] 9 cases with fake ports, no infrastructure needed; two assert the negative space — a failed
+        insert enqueues nothing, a rejected type stores nothing
+  - [x] 58/58 at the root, lint and tsc clean
+- [ ] **Task 10 — three intake routes with access control** ← next
 - [ ] Task 11 — extraction worker and orphan reconciler
 - [ ] Task 12 — TOR read API, signed links, redaction
 - [ ] Task 13 — design tokens and the admin upload screen

@@ -22,6 +22,7 @@
   --verified: #0e7a5f;      /* a check that passed */
   --match: #2b6e5a;         /* match-score badge, signed-in avatar */
   --star: #e8930c;          /* "worked on something like this" marker */
+  --danger: #be2026;        /* destructive/reject action hover (admin review queue) */
   --panel: #f4f7fb;         /* secondary panel surface (detail sidebar, profile cards) */
 
   /* type */

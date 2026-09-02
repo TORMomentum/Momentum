@@ -7,20 +7,42 @@ import styles from "../features/app-shell/app.module.css";
 /**
  * Public transparency dashboard (FR-E-1, FR-E-2). Figures are placeholders
  * until the pipeline fills them; the coverage line says so, which FR-E-6
- * requires the interface to do rather than imply completeness.
+ * requires the interface to do rather than imply completeness. Ported from
+ * the "Dashboard" screen of mockups/TOR Radar App.dc.html — budget is in
+ * millions of baht, matching the mockup's `agAll` sample rows; the stat
+ * strip below reads from whichever agency (if any) is filtered.
  */
 const AGENCIES = [
-  { name: "กรมทางหลวง", tors: 96, budget: "฿412M" },
-  { name: "กรมชลประทาน", tors: 74, budget: "฿288M" },
-  { name: "สพฐ. กระทรวงศึกษาธิการ", tors: 61, budget: "฿167M" },
-  { name: "เทศบาลนครเชียงใหม่", tors: 48, budget: "฿121M" },
-  { name: "เมืองพัทยา", tors: 39, budget: "฿94M" },
-  { name: "กรมควบคุมมลพิษ", tors: 27, budget: "฿62M" },
+  { name: "กรมทางหลวง", tors: 86, budget: 412 },
+  { name: "กรมชลประทาน", tors: 61, budget: 298 },
+  { name: "สพฐ. กระทรวงศึกษาธิการ", tors: 54, budget: 176 },
+  { name: "เทศบาลนครเชียงใหม่", tors: 38, budget: 94 },
+  { name: "เมืองพัทยา", tors: 29, budget: 71 },
+  { name: "กรมควบคุมมลพิษ", tors: 27, budget: 63 },
 ];
+
+/** Unfiltered dashboard totals (not the sum of AGENCIES above — the sample
+ * corpus includes agencies beyond the top 6 shown in the bar chart, matching
+ * the mockup's fixed `statTor`/`statBudget`/`statAgency`/`statAnomaly`). */
+const TOTAL_STATS = { torCount: "487", budget: "฿1.28B", agencyCount: "128", anomalyCount: "12" };
+
+/** Anomaly count shown when a single agency is filtered — matches the
+ * mockup's `agSel.name === 'กรมควบคุมมลพิษ' ? '2' : '1'`. */
+const FILTERED_ANOMALY_AGENCY = "กรมควบคุมมลพิษ";
 
 const CATEGORIES = ["ก่อสร้าง", "ชลประทาน", "ไอที/ซอฟต์แวร์", "จ้างเหมาบริการ"];
 const CATEGORY_COLUMNS = [7, 32, 57, 82];
-const SPREAD = [0.18, 0.31, 0.24, 0.12, 0.27, 0.2, 0.15, 0.34, 0.22, 0.29, 0.11, 0.25, 0.19, 0.3];
+const SPREAD = [
+  0.18, 0.31, 0.24, 0.12, 0.27, 0.2, 0.15, 0.34, 0.22, 0.29, 0.11, 0.25, 0.19, 0.3, 0.16, 0.26,
+];
+
+/** The two flagged points on the scatter plot — both link to the one
+ * anomaly TOR in the sample corpus (/tors/demo-anomaly), matching the
+ * mockup's `dots.push(...)` calls (both route to `detailIdx: 3`). */
+const FLAGGED_POINTS = [
+  { id: "flag-a", left: "14%", bottom: "68%", size: 12, tip: "฿7.1M · สูงกว่ากลุ่มเทียบ 2.4×IQR — คลิกเพื่อดู" },
+  { id: "flag-b", left: "58%", bottom: "80%", size: 13, tip: "฿9.4M · สูงกว่ากลุ่มเทียบ 3.1×IQR — คลิกเพื่อดู" },
+];
 
 const AXIS_CATEGORIES = [
   { left: "5%", name: "ก่อสร้าง" },
@@ -40,6 +62,16 @@ export function DashboardView() {
 
   const widest = Math.max(...AGENCIES.map((row) => row.tors));
 
+  const selectedAgency = agency === "all" ? null : AGENCIES.find((row) => row.name === agency);
+  const statTor = selectedAgency ? String(selectedAgency.tors) : TOTAL_STATS.torCount;
+  const statBudget = selectedAgency ? `฿${selectedAgency.budget}M` : TOTAL_STATS.budget;
+  const statAgencyCount = selectedAgency ? "1" : TOTAL_STATS.agencyCount;
+  const statAnomaly = selectedAgency
+    ? selectedAgency.name === FILTERED_ANOMALY_AGENCY
+      ? "2"
+      : "1"
+    : TOTAL_STATS.anomalyCount;
+
   const points = useMemo(
     () =>
       SPREAD.map((height, index) => ({
@@ -49,16 +81,16 @@ export function DashboardView() {
         size: 9,
         flagged: false,
         tip: `฿${(1 + height * 12).toFixed(1)}M · ในช่วงปกติของกลุ่มเทียบ`,
-      })).concat([
-        {
-          id: "flagged",
-          left: "58%",
-          bottom: "80%",
-          size: 14,
+      })).concat(
+        FLAGGED_POINTS.map((flag) => ({
+          id: flag.id,
+          left: flag.left,
+          bottom: flag.bottom,
+          size: flag.size,
           flagged: true,
-          tip: "฿9,400,000 · สูงกว่ากลุ่มเทียบ 3.1×IQR — ความผิดปกติทางสถิติ",
-        },
-      ]),
+          tip: flag.tip,
+        })),
+      ),
     [],
   );
 
@@ -110,22 +142,22 @@ export function DashboardView() {
       <div className={styles.stats}>
         <div className={styles.stat}>
           <div className={styles.statKey}>[ TOR ทั้งหมด ]</div>
-          <div className={styles.statValue}>487</div>
+          <div className={styles.statValue}>{statTor}</div>
           <div className={styles.statNote}>ฉบับ</div>
         </div>
         <div className={styles.stat}>
           <div className={styles.statKey}>[ งบประมาณรวม ]</div>
-          <div className={styles.statValue}>฿1,284M</div>
+          <div className={styles.statValue}>{statBudget}</div>
           <div className={styles.statNote}>ตามราคากลางที่ประกาศ</div>
         </div>
         <div className={styles.stat}>
           <div className={styles.statKey}>[ หน่วยงาน ]</div>
-          <div className={styles.statValue}>128</div>
+          <div className={styles.statValue}>{statAgencyCount}</div>
           <div className={styles.statNote}>หน่วยงานรัฐทั่วประเทศ</div>
         </div>
         <div className={`${styles.stat} ${styles.statFlagged}`}>
           <div className={styles.statKey}>[ ความผิดปกติทางสถิติ ]</div>
-          <div className={styles.statValue}>12</div>
+          <div className={styles.statValue}>{statAnomaly}</div>
           <div className={styles.statNote}>เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา</div>
         </div>
       </div>
@@ -148,7 +180,7 @@ export function DashboardView() {
                 <span className={styles.barLabel}>
                   <span className={styles.barName}>{row.name}</span>
                   <span className={styles.barStat}>
-                    {row.tors} ฉบับ · {row.budget}
+                    {row.tors} ฉบับ · ฿{row.budget}M
                   </span>
                 </span>
                 <span className={styles.barTrack}>
