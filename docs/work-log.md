@@ -122,3 +122,28 @@ todo law in the global CLAUDE.md.
   - npm run build -w @tor-radar/api
 - commit with the message from the plan
 
+
+## 2026-09-02 — Web screens port - Search, TOR Detail, Vendor Profile (mechanic)
+
+**Verified:** Commits 4c184fe and 7a5a906. Verified: lint clean, 32/32 api tests still green, all six routes return 200, and zero literal hex values in the new files so token discipline held. Screenshots of /search and /tors/demo-anomaly checked against the mockup - filter sidebar, dual budget slider, MATCH/UNVERIFIED/STATISTICAL-ANOMALY badges, fact grid, AI checklist and PII note all faithful. Agent flagged five interpretation points; four were forced by existing code and one was a deliberate fix to a date-derivation bug in the mockup.
+
+**Completed (17):**
+
+- read the mockup sections and DashboardView.tsx to learn the pattern
+- Search screen
+  - SearchView.tsx with the filter sidebar and result list
+  - styles added as tokenised CSS Module classes
+  - route at app/(app)/search/page.tsx
+- TOR Detail screen
+  - TorDetailView.tsx
+  - styles
+  - route at app/(app)/tors/[id]/page.tsx
+- Vendor Profile screen
+  - VendorProfileView.tsx
+  - styles
+  - route at app/(app)/profile/page.tsx
+- gates
+  - npm run lint at the root — clean (after removing an eslint-disable
+  - npm run build -w @tor-radar/web — succeeds, routes /search, /profile,
+- commit — 4c184fe "feat(web): port Search, TOR Detail, Vendor Profile screens"
+

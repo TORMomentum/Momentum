@@ -96,6 +96,24 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
 - [ ] Task 15 — Compose services, health gates, CI audit
 - [ ] Task 16 — live verification and documentation
 
+## 2b. Web — mockup port (outside the slice-1 plan, done on request)
+
+- [x] **Landing page** — ported from `mockups/TOR Radar Landing.dc.html`
+  - [x] design tokens extracted; no literal colours in components
+  - [x] hero, marquee, counting stats, three steps, anomaly plot, checklist, closing, footer
+  - [x] three.js radar backdrop restored, always animating, paused off-screen and when hidden
+  - [x] sample-data notice added: the mockup's figures are invented and FR-E-6 forbids implying coverage
+- [x] **Dashboard** — `/dashboard`, app shell with the tab bar
+  - [x] agency bars filter on click, price plot with tooltips, flagged point links to its detail page
+  - [x] bars grow and plot points scale in, staggered; flagged point keeps pulsing
+- [x] **Search** — `/search`, delegated to `mechanic`, verified, `4c184fe`
+- [x] **TOR Detail** — `/tors/[id]`
+- [x] **Vendor Profile** — `/profile`
+- [ ] **Carried forward from the port** (decide before these screens meet real data):
+  - [ ] no signed-out state exists in the app shell; every screen renders the signed-in branch. Slice 4 builds auth and must add it
+  - [ ] starred and bookmarked lists on the profile are seeded samples; they need real cross-route state once accounts exist
+  - [ ] `/tors/demo-anomaly` is a hard-coded slug pointing at the sample anomaly TOR; replaced by real ids when ingestion lands
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [ ] O1 — `T_low` / `T_high`, from the accuracy measurement (NFR-F3)
