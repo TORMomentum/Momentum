@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (3/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (4/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -65,8 +65,16 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] `sha256(Buffer)` over `node:crypto`, three cases pass
   - [x] 8/8 tests at the root, lint and tsc clean
   - [x] parent check: the test's `abc` vector matches a real sha256 digest
-- [ ] **Task 4 — magic-byte verification** ← next
-- [ ] Task 5 — SSRF-resistant fetch and typed errors
+- [x] **Task 4 — magic-byte verification** — delegated to `mechanic`, verified, `f4f04fc`
+  - [x] failing test first, five cases pass
+  - [x] 13/13 tests at the root, lint and tsc clean
+  - [x] parent adversarial probe: HTML, SVG-with-script, an html-then-%PDF polyglot, truncated
+        magic, zip and empty are all rejected; real PDF/PNG/JPEG accepted
+  - [ ] **open question for the Sprint-1 corpus:** a PDF whose `%PDF` header is not at byte 0
+        (leading whitespace or junk) is rejected. Strict is right for a security control, but real
+        scans sometimes carry leading bytes — check against the 10–20 real TORs before deciding
+        whether to scan a bounded prefix instead
+- [ ] **Task 5 — SSRF-resistant fetch and typed errors** ← next
 - [ ] Task 6 — storage port and MinIO adapter
 - [ ] Task 7 — queue port and MongoDB adapter
 - [ ] Task 8 — intake repository

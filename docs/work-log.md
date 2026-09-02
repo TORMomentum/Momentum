@@ -75,3 +75,23 @@ todo law in the global CLAUDE.md.
 - write the failing test
 - run the repo gates that CI runs
 
+
+## 2026-09-02 — Task 4 - magic-byte verification (mechanic)
+
+**Verified:** commit f4f04fc has exactly the two planned files; 13/13 tests at the root, lint and tsc clean. Parent ran adversarial probes the agent did not: HTML, SVG-with-script, an html-then-%PDF polyglot, truncated magic, zip and empty are all rejected, real PDF/PNG/JPEG accepted. Noted that a PDF header not at byte 0 is also rejected - safe default, to be checked against the real corpus.
+
+**Completed (12):**
+
+- read Task 4 in the plan
+- write the failing test
+  - create apps/api/src/lib/file-type.test.ts with the five cases from the plan
+  - run it, confirm it fails because the module does not exist, not for another reason
+- write the failing test
+- implement apps/api/src/lib/file-type.ts
+- run the test, confirm all five pass
+- run the repo gates that CI runs
+  - npm test at the root
+  - npm run lint at the root
+  - npm run build -w @tor-radar/api
+- commit with the message from the plan
+
