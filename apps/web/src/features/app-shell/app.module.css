@@ -154,7 +154,17 @@
 .barName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .barStat { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
 .barTrack { height: 6px; background: rgba(18, 35, 60, 0.08); }
-.barFill { height: 6px; background: var(--blue); }
+.barFill {
+  height: 6px;
+  background: var(--blue);
+  transform-origin: left center;
+  animation: grow 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
 
 .moreLink {
   display: inline-block;
@@ -183,10 +193,28 @@
   border: 0;
   padding: 0;
   transition: transform 0.2s ease;
+  animation: dotIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 .dot:hover { transform: scale(1.8); }
-.dotFlagged { background: var(--anomaly); }
+
+/* the flagged point lands, then keeps pulsing the way the mockup does */
+.dotFlagged {
+  background: var(--anomaly);
+  animation:
+    dotIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    flagPulse 2s 0.6s infinite;
+}
+
+@keyframes dotIn {
+  from { opacity: 0; transform: scale(0.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes flagPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(180, 83, 9, 0); }
+}
 
 .plotFlag {
   position: absolute;

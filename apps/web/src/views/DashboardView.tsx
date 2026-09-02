@@ -138,7 +138,7 @@ export function DashboardView() {
           </div>
 
           <div className={styles.bars}>
-            {shown.map((row) => (
+            {shown.map((row, index) => (
               <button
                 type="button"
                 key={row.name}
@@ -154,7 +154,10 @@ export function DashboardView() {
                 <span className={styles.barTrack}>
                   <span
                     className={styles.barFill}
-                    style={{ width: `${(row.tors / widest) * 100}%` }}
+                    style={{
+                      width: `${(row.tors / widest) * 100}%`,
+                      animationDelay: `${index * 70}ms`,
+                    }}
                   />
                 </span>
               </button>
@@ -179,7 +182,7 @@ export function DashboardView() {
             <div className={styles.grid} style={{ top: 130 }} />
             <div className={styles.grid} style={{ top: 65 }} />
 
-            {points.map((point) =>
+            {points.map((point, index) =>
               point.flagged ? (
                 <Link
                   key={point.id}
@@ -190,6 +193,7 @@ export function DashboardView() {
                     bottom: point.bottom,
                     width: point.size,
                     height: point.size,
+                    animationDelay: `${index * 35}ms`,
                   }}
                   title={point.tip}
                   aria-label={point.tip}
@@ -203,6 +207,7 @@ export function DashboardView() {
                     bottom: point.bottom,
                     width: point.size,
                     height: point.size,
+                    animationDelay: `${index * 35}ms`,
                   }}
                   title={point.tip}
                 />
