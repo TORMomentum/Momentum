@@ -20,15 +20,16 @@
         the login/logout + avatar-menu state are new in the mockup too, but
         out of scope per task instructions (bell only; app has no
         logged-out state).
-- [ ] header: notification bell, unread badge, dropdown panel
-- [ ] Notifications screen and its /notifications route
-- [ ] Admin Review Queue and its /admin/review route, unlinked from vendor navigation
-- [ ] update the four existing screens where they diverge
-  - [ ] Dashboard
-  - [ ] Vendor Profile
+- [x] header: notification bell, unread badge, dropdown panel
+- [x] Notifications screen and its /notifications route
+- [x] Admin Review Queue and its /admin/review route, unlinked from vendor navigation
+- [x] update the four existing screens where they diverge
+  - [x] Dashboard
+  - [x] Vendor Profile
   - [x] Search (no changes needed)
   - [x] TOR Detail (no changes needed)
 - [ ] gates
-  - [ ] npm run lint at the root
-  - [ ] npm run build -w @tor-radar/web
-- [ ] commit
+  - [x] npm run lint at the root — clean
+  - [x] npm run build -w @tor-radar/web — compiled, all 8 routes generated
+        (including new /admin/review and /notifications)
+- [x] commit
