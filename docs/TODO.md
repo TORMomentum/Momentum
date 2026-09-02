@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (6/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (7/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -96,8 +96,19 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [ ] **carried:** `putIfAbsent` is check-then-write, not atomic. Benign with content-addressed
         keys because concurrent writers store identical bytes, but it is a race — revisit if keys
         ever stop being content hashes
-- [ ] **Task 7 — queue port and MongoDB adapter** ← next
-- [ ] Task 8 — intake repository
+- [x] **Task 7 — queue port and MongoDB adapter** — delegated to `implementer`, verified, `48385dc`
+  - [x] `core/db.ts` with the collection shapes and `ensureIndexes`, including the unique
+        `contentHash` index and the `announcedAt` indexes the cross-check added
+  - [x] atomic claim via `findOneAndUpdate`, lock expiry so a crashed worker's job returns
+  - [x] idempotent enqueue, retry with backoff, permanent give-up at `JOB_MAX_ATTEMPTS`
+  - [x] 42/42 tests at the root, lint and tsc clean
+  - [x] parent stress test beyond the suite: 20 racing claimants produced exactly 1 winner, and
+        20 concurrent enqueues of one record produced exactly 1 job document
+  - [ ] **carried:** concurrent upserts can duplicate without a unique index, and
+        `partialFilterExpression` cannot express `state in (pending, running)`. It held under the
+        stress test, but the guarantee is probabilistic. A duplicate job means one wasted extraction
+        call rather than corruption — revisit if extraction ever stops being safe to repeat
+- [ ] **Task 8 — intake repository** ← next
 - [ ] Task 9 — intake service
 - [ ] Task 10 — three intake routes with access control
 - [ ] Task 11 — extraction worker and orphan reconciler

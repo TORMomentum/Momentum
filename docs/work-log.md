@@ -173,3 +173,35 @@ todo law in the global CLAUDE.md.
   - npm run build -w @tor-radar/api → clean
 - commit
 
+
+## 2026-09-03 — Task 7 - queue port and MongoDB adapter (implementer)
+
+**Verified:** Commit 48385dc landed before the agent hit a session rate limit. Verified: 42/42 tests at the root, lint and tsc clean, findOneAndUpdate for the claim with lockedUntil expiry, upsert with setOnInsert for idempotent enqueue. Parent stress-tested beyond the suite: 20 racing claimants yielded exactly one winner and 20 concurrent enqueues yielded one job document. Noted that upsert idempotency is probabilistic without a unique index, which partialFilterExpression cannot express for a state set.
+
+**Completed (24):**
+
+- read Task 7 in the plan
+- define ports/queue.port.ts
+- write core/db.ts
+  - TorDocument and JobDocument shapes
+  - connect, disconnect, collection accessors
+  - ensureIndexes including the unique contentHash index
+- write the failing test
+  - adapters/mongo.queue.test.ts with the six cases from the plan
+  - import ../test/env.js first so config resolves
+  - run it, confirm it fails because the module does not exist
+- implement adapters/mongo.queue.ts
+  - enqueue is idempotent while a job is pending or running
+  - claim is atomic and respects lockedUntil
+  - fail schedules a retry until attempts are exhausted, then gives up
+- **added:** install `mongodb` in the api workspace before the test rather
+- **added:** verify `findOneAndUpdate`'s return shape on the installed
+- **added:** prove the atomicity test has teeth, not luck (see below)
+- **added:** probe whether a crashed worker's job becomes claimable again —
+- run the test against the live Mongo, confirm all six pass
+- run the repo gates that CI runs
+  - npm test at the root
+  - npm run lint at the root
+  - npm run build -w @tor-radar/api
+- commit
+
