@@ -22,14 +22,15 @@ const DOT_CLASS: Record<string, string> = {
  * Shared chrome for every signed-in screen. The active tab follows the
  * route. Ported from the header block of mockups/TOR Radar App.dc.html
  * (above its `data-screen-label="Dashboard"` main) — only the bell/badge/
- * dropdown from that header is built here; the ADMIN/EMAIL demo chips and
- * the login/logout + avatar-menu state are prototype-only and out of scope
- * (this app shell has no logged-out state, same as the rest of the ported
- * screens).
+ * dropdown and the account menu are built here. The ADMIN/EMAIL chips are
+ * prototype navigation for jumping between demo states and are deliberately
+ * absent; so is the logged-out branch, since this app shell has no signed-out
+ * state until authentication arrives in slice 4.
  */
 export function AppHeader() {
   const pathname = usePathname();
   const [bellOpen, setBellOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // Local to the header, matching the mockup's own `unread` counter — it is
   // not wired to the Notifications screen's own "mark all read" (that screen
   // is a separate route with no shared client store, same as the rest of
@@ -141,9 +142,65 @@ export function AppHeader() {
             </div>
           )}
         </div>
-        <span className={styles.avatar} aria-hidden="true">
-          น
-        </span>
+        <div className={styles.menuWrap}>
+          <button
+            type="button"
+            className={styles.avatar}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label="เมนูบัญชี"
+            onClick={() => {
+              setMenuOpen((open) => !open);
+              setBellOpen(false);
+            }}
+          >
+            น
+          </button>
+
+          {menuOpen && (
+            <div className={styles.menuPanel} role="menu">
+              <div className={styles.menuIdentity}>
+                <div className={styles.menuName}>คุณนก วิภาดา</div>
+                <div className={styles.menuRole}>FREELANCE FULL-STACK</div>
+              </div>
+
+              <Link
+                href="/profile"
+                role="menuitem"
+                className={styles.menuItem}
+                onClick={() => setMenuOpen(false)}
+              >
+                โปรไฟล์และทักษะ
+              </Link>
+              <Link
+                href="/profile#notif-settings"
+                role="menuitem"
+                className={styles.menuItem}
+                onClick={() => setMenuOpen(false)}
+              >
+                ตั้งค่าการแจ้งเตือน
+              </Link>
+
+              <div className={styles.menuDivider} />
+
+              {/*
+                There is no session to end yet: authentication arrives in slice
+                4. The item is present and disabled rather than absent, so the
+                menu matches the design and nobody wires a fake sign-out that
+                only hides the avatar.
+              */}
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.menuSignOut}
+                disabled
+                title="พร้อมใช้งานเมื่อระบบเข้าสู่ระบบพร้อม"
+              >
+                ออกจากระบบ
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

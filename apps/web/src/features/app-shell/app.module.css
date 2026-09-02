@@ -53,17 +53,71 @@
   gap: 12px;
 }
 
+.menuWrap { position: relative; }
+
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
+  border: 0;
   border-radius: 50%;
-  background: var(--match);
+  background: var(--avatar);
   color: var(--paper);
   display: grid;
   place-items: center;
+  font-family: var(--body);
   font-weight: 700;
   font-size: 13px;
+  cursor: pointer;
 }
+
+.menuPanel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  width: 216px;
+  padding: 5px 0;
+  background: var(--paper);
+  border: 1px solid var(--ink-18);
+  border-radius: 10px;
+  box-shadow: 0 12px 34px rgba(18, 35, 60, 0.16);
+  overflow: hidden;
+  z-index: 40;
+}
+
+.menuIdentity {
+  padding: 10px 15px 12px;
+  margin-bottom: 5px;
+  background: var(--panel);
+  border-bottom: 1px solid rgba(18, 35, 60, 0.1);
+}
+
+.menuName { font-size: 12.5px; font-weight: 600; line-height: 1.6; color: var(--ink); }
+.menuRole { font: 9.5px var(--data); color: var(--blue); letter-spacing: 0.04em; }
+
+.menuItem,
+.menuSignOut {
+  display: block;
+  width: calc(100% - 10px);
+  margin: 0 5px;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-family: var(--body);
+  font-size: 12.5px;
+  line-height: 1.7;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.menuItem:hover { background: rgba(29, 99, 216, 0.09); color: var(--blue); }
+
+.menuDivider { height: 1px; margin: 5px 0; background: rgba(18, 35, 60, 0.1); }
+
+.menuSignOut { color: var(--ink-62); }
+.menuSignOut:hover:not(:disabled) { background: rgba(190, 32, 38, 0.08); color: var(--danger); }
+.menuSignOut:disabled { cursor: not-allowed; opacity: 0.55; }
 
 /* ---------- notification bell ---------- */
 .bellWrap { position: relative; }
