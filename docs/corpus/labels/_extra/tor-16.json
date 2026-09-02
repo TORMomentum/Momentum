@@ -1,0 +1,29 @@
+{
+  "id": "tor-16",
+  "file": "tor-16.pdf",
+  "corpus": "_extra (OCR test, not the labeled 10)",
+  "labeled_by": "Claude (Sonnet 5) - spot-check label from rendered scan pages 1-3 only; budget/deadline marked unverified where they'd be on later pages",
+  "labeled_at": "2026-09-02",
+  "schema": "../SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างโครงการปรับปรุงสำนักงานเขตธนบุรีใหม่ (สำนักเทศกิจเดิม) ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตธนบุรี",
+  "agency_bma_valid": true,
+  "agency_note": "ประกาศลงนามโดย ว่าที่ร้อยตรี เดชาธร แสงอำนาจ ผู้อำนวยการเขตธนบุรี",
+  "budget_thb": 17295845.84,
+  "budget_source": "ราคากลางของงานจ้างก่อสร้าง (ระบุในประกาศ)",
+  "category": "งานก่อสร้าง-อาคาร",
+  "scope_summary": "ก่อสร้างปรับปรุงอาคารสำนักงานเขตธนบุรีใหม่ (อาคารสำนักเทศกิจเดิม) จำนวน 1 รายการ",
+  "required_qualifications": [],
+  "submission_deadline": null,
+  "contact": "www.bangkok.go.th/thonburi; www.gprocurement.go.th",
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": "กรกฎาคม พ.ศ. 2569 (ไม่ระบุวันที่)",
+  "reference_no": null,
+  "delivery_period": null,
+  "confidence": {
+    "overall": "high",
+    "note": "ประกาศ (announcement) 1 หน้าอ่านครบ; text layer เพี้ยน (font) แต่รูปสแกนชัด. ราคากลาง 17,295,845.84 บาท (สิบเจ็ดล้านสองแสนเก้าหมื่นห้าพันแปดร้อยสี่สิบห้าบาทแปดสิบสี่สตางค์). วันยื่นข้อเสนอเว้นว่าง"
+  }
+}

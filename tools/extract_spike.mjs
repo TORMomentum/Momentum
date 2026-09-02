@@ -15,7 +15,7 @@
 // enough. Full scoring (precision/recall, threshold sweep) is TOR-22; the diff
 // here is just a smoke signal.
 
-import { readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { loadEnv, geminiGenerate, responseText } from "./_vertex.mjs";
@@ -29,6 +29,8 @@ const LOCATION = process.env.VERTEX_LOCATION ?? "us-central1";
 
 const args = process.argv.slice(2);
 const only = args.flatMap((a, i) => (a === "--only" ? [args[i + 1]] : [])).filter(Boolean);
+const dirArg = args.flatMap((a, i) => (a === "--dir" ? [args[i + 1]] : []))[0] ?? ".";
+const PDF_DIR = join(CORPUS, dirArg); // "." = the labeled corpus; "_extra" = the OCR-only scans
 const doScore = !args.includes("--no-score");
 
 const bma = JSON.parse(readFileSync(join(ROOT, "tools", "bma-agencies.json"), "utf8"));
@@ -134,7 +136,7 @@ async function extract(id) {
   const { fields, usage } = await generateAndParse({
     systemInstruction: SYSTEM,
     parts: [
-      pdfPart(join(CORPUS, `${id}.pdf`)),
+      pdfPart(join(PDF_DIR, `${id}.pdf`)),
       { text: "สกัดข้อมูลตาม schema ที่กำหนด ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนำหน้าหรือต่อท้าย" },
     ],
     generationConfig: { responseMimeType: "application/json", responseSchema, temperature: 0, maxOutputTokens: 8192 },
@@ -172,13 +174,13 @@ function scoreOne(pred, gold) {
   return rows;
 }
 
-const ids = (only.length ? only : readdirSync(CORPUS).filter((f) => /^tor-\d+\.pdf$/.test(f)).map((f) => f.replace(".pdf", "")))
+const ids = (only.length ? only : readdirSync(PDF_DIR).filter((f) => /^tor-\d+\.pdf$/.test(f)).map((f) => f.replace(".pdf", "")))
   .sort();
 
-const outDir = join(CORPUS, "predictions", MODEL);
+const outDir = join(CORPUS, "predictions", MODEL, ...(dirArg === "." ? [] : [dirArg]));
 mkdirSync(outDir, { recursive: true });
 
-console.log(`extract_spike: ${ids.length} doc(s) · ${MODEL} @ ${LOCATION}\n`);
+console.log(`extract_spike: ${ids.length} doc(s) from ${dirArg} · ${MODEL} @ ${LOCATION}\n`);
 let hits = 0, total = 0;
 
 for (const id of ids) {
@@ -189,8 +191,8 @@ for (const id of ids) {
     writeFileSync(join(outDir, `${id}.json`), JSON.stringify(pred, null, 2));
     const toks = pred.usage ? `${pred.usage.promptTokenCount}→${pred.usage.candidatesTokenCount} tok` : "";
     console.log(`ok  (bma_valid=${pred.agency_bma_valid}) ${toks}`);
-    if (doScore) {
-      const goldPath = join(CORPUS, "labels", `${id}.json`);
+    const goldPath = join(CORPUS, "labels", ...(dirArg === "." ? [] : [dirArg]), `${id}.json`);
+    if (doScore && existsSync(goldPath)) {
       const gold = JSON.parse(readFileSync(goldPath, "utf8"));
       const rows = scoreOne(pred, gold);
       for (const r of rows) {

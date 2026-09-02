@@ -1,0 +1,29 @@
+{
+  "id": "tor-03",
+  "file": "tor-03.pdf",
+  "corpus": "_extra (OCR test, not the labeled 10)",
+  "labeled_by": "Claude (Sonnet 5) - spot-check label from rendered scan pages 1-3 only; budget/deadline marked unverified where they'd be on later pages",
+  "labeled_at": "2026-09-02",
+  "schema": "../SCHEMA.md",
+  "title": "ประกวดราคาจ้างค่าใช้จ่ายในการสัมมนาศึกษาดูงานเพื่อเพิ่มศักยภาพประชาชนในพื้นที่เขตภาษีเจริญด้านมลพิษทางอากาศ (ฝุ่นละอองขนาดเล็ก PM 2.5) ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "กรุงเทพมหานคร",
+  "agency_bma_valid": true,
+  "agency_note": "ตัวเอกสารระบุ 'กรุงเทพมหานคร' (และเรียกตัวเองว่า 'กรม'); โครงการเป็นของพื้นที่เขตภาษีเจริญ",
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "จ้างเหมาบริการ",
+  "scope_summary": "จ้างจัดสัมมนา/ศึกษาดูงานเพื่อเพิ่มศักยภาพประชาชนในพื้นที่เขตภาษีเจริญ ด้านมลพิษทางอากาศ (PM 2.5)",
+  "required_qualifications": [],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": "2023-11-22",
+  "announcement_date_raw": "22 พฤศจิกายน 2566",
+  "reference_no": "3/2567",
+  "delivery_period": null,
+  "confidence": {
+    "overall": "medium",
+    "note": "เอกสารประกวดราคา (invitation) สแกน 10 หน้า; ตรวจถึงหน้า 3 เท่านั้น. budget/submission_deadline ยังไม่ตรวจหน้าท้าย. เลขที่ในหัวเอกสารอ่านได้ '๓/๒๕๖๗'."
+  }
+}
