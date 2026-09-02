@@ -8,3 +8,8 @@ out/
 coverage/
 *.log
 .DS_Store
+
+# GCP service-account keys and other local secrets — never commit
+secrets/
+*-sa.json
+*-credentials.json
