@@ -98,16 +98,19 @@ a:hover {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
 
-  /* Only the looping, decorative motion stops. Transitions on hover and the
-     section reveals stay: they are feedback, not spectacle, and removing them
-     leaves the page feeling broken rather than calm. */
-  [class*="marquee"],
-  [class*="scrollHint"],
-  [class*="liveDot"],
-  [class*="dotAnomaly"] {
-    animation: none !important;
-  }
+/* The motion toggle sets data-motion on <html>, so a reader's choice reaches
+   stylesheets as well as scripts. Only the looping decorative motion stops;
+   hover transitions and section reveals are feedback, not spectacle. */
+:root[data-motion="off"] [class*="marquee"],
+:root[data-motion="off"] [class*="scrollHint"],
+:root[data-motion="off"] [class*="liveDot"],
+:root[data-motion="off"] [class*="dotAnomaly"] {
+  animation: none !important;
+}
 
-  [data-reveal] { opacity: 1; transform: none; }
+:root[data-motion="off"] [data-reveal] {
+  opacity: 1;
+  transform: none;
 }

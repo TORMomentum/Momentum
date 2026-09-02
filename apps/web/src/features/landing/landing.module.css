@@ -421,3 +421,14 @@
   .anomalyLabel { left: 0; right: 0; bottom: 92%; white-space: normal; }
   .footer, .footerRight { text-align: left; }
 }
+
+.motionToggle {
+  margin-top: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: 10.5px var(--data);
+  color: var(--blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
