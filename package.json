@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check:vertex": "node tools/check_vertex.mjs",
-    "spike:extract": "node tools/extract_spike.mjs"
+    "spike:extract": "node tools/extract_spike.mjs",
+    "score:extract": "node tools/score_extraction.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
