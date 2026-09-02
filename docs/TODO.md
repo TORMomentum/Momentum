@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (1/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (2/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -49,8 +49,18 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] verify `prepare` produced `dist/`, and that `dist/` is gitignored
   - [x] verify the package actually imports at runtime (`node -e "import(...)"` → `urlIntakeSchema`)
   - [x] commit
-- [ ] **Task 2 — `core/config.ts`, every threshold validated, fails fast** ← next
-- [ ] Task 3 — content hashing
+- [x] **Task 2 — `core/config.ts`, every threshold validated, fails fast** — delegated to
+      `implementer`, verified, `324ade9`
+  - [x] zod + vitest added to the api workspace
+  - [x] failing test first, confirmed failing for the right reason
+  - [x] schema with 24 keys, `Config`, `loadConfig`, `OPEN_VALUES` (O1–O4 names only, no invented
+        values)
+  - [x] 5/5 tests pass at the root, which is what CI runs
+  - [x] parent follow-ups from the agent's findings:
+    - [x] `ignoreRestSiblings` at the root eslint config, so the rest-omit pattern stops breaking CI
+    - [x] removed the local `eslint-disable` the agent had to add inside the test
+    - [x] `z.string().url()` → `z.url()`, since zod resolved to 4.5.4 where the old form is deprecated
+- [ ] **Task 3 — content hashing** ← next
 - [ ] Task 4 — magic-byte verification
 - [ ] Task 5 — SSRF-resistant fetch and typed errors
 - [ ] Task 6 — storage port and MinIO adapter

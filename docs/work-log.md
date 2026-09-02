@@ -21,3 +21,35 @@ todo law in the global CLAUDE.md.
 - confirm packages/shared/dist/index.js was produced by the prepare script
 - commit with the message from the plan
 
+
+## 2026-09-02 — Task 2 - configuration module (implementer)
+
+**Verified:** commit 324ade9 has the right scope; 5/5 tests pass at the root (what CI runs); lint and tsc clean. Parent applied the agent's own recommendation - ignoreRestSiblings at the root eslint config - then removed its local suppression, and modernised z.string().url() to z.url() for the zod 4.5.4 that actually resolved.
+
+**Completed (24):**
+
+- read Task 2 in the plan
+  - note the keys added after the cross-check: ADMIN_API_KEYS, RECONCILE_INTERVAL_MS, RECONCILE_MIN_AGE_MS
+- add dependencies to the api workspace
+  - zod (`npm install zod -w @tor-radar/api` -> zod ^4.5.4)
+  - vitest (dev) (`npm install -D vitest -w @tor-radar/api` -> vitest ^4.1.11)
+- write the failing test
+  - create apps/api/src/core/config.test.ts with the four cases from the plan (verbatim from the plan)
+  - run it and confirm it fails because the module does not exist yet, not for another reason -- `npm test -w @tor-radar/api -- config` -> `Error: Cannot find module './config.js' imported from .../src/core/config.test.ts`
+- implement apps/api/src/core/config.ts (verbatim from the plan)
+  - the zod schema, every key with its documented default (24 keys; 9 required, 15 defaulted)
+  - the Config interface
+  - OPEN_VALUES with the O1-O4 open-issue status recorded (names only -- no values invented)
+  - loadConfig mapping env to Config
+- run the test and confirm all four pass -- `npm test -w @tor-radar/api -- config` -> `Test Files 1 passed (1) / Tests 4 passed (4)`
+- confirm the api workspace test script actually runs this file -- `npm test -w @tor-radar/api` -> 2 files / 5 tests; verbose run lists all four `src/core/config.test.ts > loadConfig > ...` cases
+- commit with the message from the plan -- `324ade9` `feat(api): add the validated configuration module` (4 files, matching the plan's `git add` list; body + Co-Authored-By trailer added per repo convention)
+- repo-wide gates re-run, because CI (`.github/workflows/ci.yml`) runs lint + test + build
+  - `npm run build -w @tor-radar/api` (tsc) -- clean
+  - `npm run lint` -- initially FAILED on the plan-verbatim test line
+  - resolved inside `apps/api/` with a one-line targeted eslint-disable on the rest-omit
+  - `npm run lint` -- clean
+  - `npm test` (root) -- 2 files / 5 tests passed
+  - `npm run build` (root) -- web + shared build clean
+  - first attempt used PowerShell here-string quoting inside the Bash tool and produced a stray `@` first line; amended immediately to the correct subject
+

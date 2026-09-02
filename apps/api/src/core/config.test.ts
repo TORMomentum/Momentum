@@ -27,7 +27,6 @@ describe("loadConfig", () => {
   });
 
   it("fails fast when a required value is missing", () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the rest-omit is the point: MONGO_URL is deliberately dropped
     const { MONGO_URL, ...withoutMongo } = base;
     expect(() => loadConfig(withoutMongo)).toThrow(/MONGO_URL/);
   });
