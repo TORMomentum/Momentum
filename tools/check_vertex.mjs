@@ -4,47 +4,21 @@
 //   npm run check:vertex
 //
 // ponytail: single-purpose smoke test, no framework. Delete once the TOR-20
-// spike script exercises the same auth path for real.
+// spike (extract_spike.mjs) is exercising the same auth path in anger.
 
-import { readFileSync } from "node:fs";
-import { GoogleAuth } from "google-auth-library";
+import { loadEnv, authClient, geminiGenerate, responseText } from "./_vertex.mjs";
 
-// --- tiny .env loader (no dependency; Node 22 has --env-file but npm scripts vary) ---
-try {
-  for (const line of readFileSync(new URL("../.env", import.meta.url), "utf8").split("\n")) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
-  }
-} catch {
-  console.error("No .env at repo root — copy .env.example to .env and fill the GCP block first.");
-  process.exit(1);
-}
-
+loadEnv();
 const project = process.env.GOOGLE_CLOUD_PROJECT;
 const location = process.env.VERTEX_LOCATION ?? "us-central1";
 const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
-if (!project || !keyFile) {
-  console.error("Set GOOGLE_CLOUD_PROJECT and GOOGLE_APPLICATION_CREDENTIALS in .env");
-  process.exit(1);
-}
-
-const auth = new GoogleAuth({
-  keyFile,
-  scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-});
 
 async function checkVertex() {
-  const client = await auth.getClient();
-  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`;
-  const res = await client.request({
-    url,
-    method: "POST",
-    data: { contents: [{ role: "user", parts: [{ text: "reply with the single word: pong" }] }] },
+  const body = await geminiGenerate({
+    parts: [{ text: "reply with the single word: pong" }],
+    generationConfig: { temperature: 0, maxOutputTokens: 50 },
   });
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  console.log(`  Vertex AI  ✓  ${model} @ ${location} replied: ${JSON.stringify(text)}`);
+  console.log(`  Vertex AI  ✓  ${model} @ ${location} replied: ${JSON.stringify(responseText(body))}`);
 }
 
 // 1x1 PNG — real content isn't the point; a non-403 proves the SA can call :process.
@@ -54,7 +28,7 @@ async function checkDocAI() {
   const loc = process.env.DOCAI_LOCATION;
   const procId = process.env.DOCAI_PROCESSOR_ID;
   if (!loc || !procId) return console.log("  Document AI    skipped (DOCAI_LOCATION / DOCAI_PROCESSOR_ID not set)");
-  const client = await auth.getClient();
+  const client = await authClient();
   // documentai.apiUser can :process but not processors.list — exercise the real path.
   const url = `https://${loc}-documentai.googleapis.com/v1/projects/${project}/locations/${loc}/processors/${procId}:process`;
   try {

@@ -1,0 +1,106 @@
+{
+  "id": "tor-06",
+  "extracted_at": "2026-09-02T16:27:24.342Z",
+  "model": "gemini-3.5-flash",
+  "location": "global",
+  "usage": {
+    "promptTokenCount": 9012,
+    "candidatesTokenCount": 917,
+    "totalTokenCount": 12016,
+    "cachedContentTokenCount": 8904,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "IMAGE",
+        "tokenCount": 7448
+      },
+      {
+        "modality": "TEXT",
+        "tokenCount": 1564
+      }
+    ],
+    "cacheTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1545
+      },
+      {
+        "modality": "IMAGE",
+        "tokenCount": 7359
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 917
+      }
+    ],
+    "thoughtsTokenCount": 2087
+  },
+  "agency_bma_valid": true,
+  "fields": {
+    "title": {
+      "value": "ประกวดราคาจ้างก่อสร้างโครงการก่อสร้างเขื่อน ค.ส.ล. และถนนเลียบคลองเนินทราย ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+      "confidence": 1,
+      "evidence": "ประกวดราคาจ้างก่อสร้างโครงการก่อสร้างเขื่อน ค.ส.ล. และถนนเลียบคลองเนินทราย ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+    },
+    "agency": {
+      "value": "กรุงเทพมหานคร",
+      "confidence": 1,
+      "evidence": "ตามประกาศ กรุงเทพมหานคร"
+    },
+    "budget_thb": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "ไม่พบข้อมูลราคากลางหรือวงเงินงบประมาณโครงการในเอกสาร มีเพียงข้อมูลหลักประกันการเสนอราคาจำนวน 2,965,700.00 บาท"
+    },
+    "category": {
+      "value": "งานก่อสร้าง-ชลประทาน",
+      "confidence": 0.9,
+      "evidence": "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้างสาขางานก่อสร้างชลประทาน ไม่น้อยกว่าชั้น 4 ประเภททั่วไป ไว้กับกรมบัญชีกลาง"
+    },
+    "scope_summary": {
+      "value": "โครงการก่อสร้างเขื่อน ค.ส.ล. และถนนเลียบคลองเนินทราย",
+      "confidence": 1,
+      "evidence": "โครงการก่อสร้างเขื่อน ค.ส.ล. และถนนเลียบคลองเนินทราย"
+    },
+    "required_qualifications": {
+      "value": [
+        "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้างสาขางานก่อสร้างชลประทาน ไม่น้อยกว่าชั้น 4 ประเภททั่วไป ไว้กับกรมบัญชีกลาง",
+        "ต้องมีวิศวกรประจำ ทำหน้าที่รับผิดชอบควบคุมงาน โดยต้องเป็นผู้ได้รับอนุญาตให้ประกอบวิชาชีพวิศวกรรมควบคุม"
+      ],
+      "confidence": 1,
+      "evidence": "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้างสาขางานก่อสร้างชลประทาน ไม่น้อยกว่าชั้น 4 ประเภททั่วไป ไว้กับกรมบัญชีกลาง (ข้อ 2.10) และ ต้องมีวิศวกรประจำ ทำหน้าที่รับผิดชอบควบคุมงาน โดยต้องเป็นผู้ได้รับอนุญาตให้ประกอบวิชาชีพวิศวกรรมควบคุม (ข้อ 2.14)"
+    },
+    "submission_deadline": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "เอกสารเว้นว่างวันที่และเวลาในการยื่นข้อเสนอในข้อ 4.5"
+    },
+    "contact": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "ไม่พบข้อมูลการติดต่อในเอกสาร"
+    },
+    "status": {
+      "value": "announced",
+      "confidence": 0.9,
+      "evidence": "เอกสารประกวดราคาจ้างก่อสร้างด้วยการประกวดราคาอิเล็กทรอนิกส์ ลงวันที่ ธันวาคม 2567"
+    },
+    "procurement_method": {
+      "value": "ประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+      "confidence": 1,
+      "evidence": "ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+    },
+    "announcement_date": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "เอกสารระบุเพียงเดือนและปี 'ธันวาคม 2567' แต่เว้นว่างวันที่ไว้"
+    },
+    "reference_no": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "เอกสารเว้นว่างเลขที่ประกาศไว้"
+    }
+  }
+}
