@@ -37,14 +37,19 @@ _last updated: 2026-09-02_
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
-- [ ] **Task 1 — workspace plumbing and shared types** ← next
-  - [ ] add `packages/shared/package.json` with the build and prepare scripts
-  - [ ] write `src/tor.ts` — `TorRecord`, `ExtractedField`, `SourceRef`, `PipelineState`
-  - [ ] write `src/intake.ts` — the URL request schema
-  - [ ] register `packages/*` in the root workspaces array
-  - [ ] verify `@tor-radar/shared` resolves from both apps
-  - [ ] commit
-- [ ] Task 2 — `core/config.ts`, every threshold validated, fails fast
+- [x] **Task 1 — workspace plumbing and shared types** — delegated to `mechanic`, verified, `79f45c2`
+  - [x] add `packages/shared/package.json` with the build and prepare scripts
+  - [x] add `packages/shared/tsconfig.json` (pulled forward from Task 14, so the manifest was not
+        written twice)
+  - [x] write `src/tor.ts` — `TorRecord`, `ExtractedField`, `SourceRef`, `PipelineState`
+  - [x] write `src/intake.ts` — the URL request schema
+  - [x] write `src/index.ts` — the barrel
+  - [x] register `packages/*` in the root workspaces array
+  - [x] verify `@tor-radar/shared` resolves — `npm ls` shows the symlink
+  - [x] verify `prepare` produced `dist/`, and that `dist/` is gitignored
+  - [x] verify the package actually imports at runtime (`node -e "import(...)"` → `urlIntakeSchema`)
+  - [x] commit
+- [ ] **Task 2 — `core/config.ts`, every threshold validated, fails fast** ← next
 - [ ] Task 3 — content hashing
 - [ ] Task 4 — magic-byte verification
 - [ ] Task 5 — SSRF-resistant fetch and typed errors
