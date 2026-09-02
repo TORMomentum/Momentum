@@ -196,7 +196,12 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
     admin review queue (FR-G1) for priority correction.
 
   Both thresholds set empirically AFTER measuring extraction accuracy on a 10–20-document
-  benchmark set (see NFR-1); full automation is not promised.
+  benchmark set (see NFR-1); full automation is not promised. **Sprint-1 result
+  (`docs/corpus/BENCHMARK.md`, TOR-18):** phase gate PASSED. Model confidence alone
+  does not discriminate correct from wrong, so the two tiers are gated by
+  deterministic per-field rules first (BMA check, budget-range sanity,
+  `cancelled ⇒ no deadline`, OCR'd doc ⇒ `budget_thb`/dates never "clean"), then
+  model confidence at **T_low = 0.80 / T_high = 0.95**.
 - **FR-B4** Normalize extracted qualifications into the shared skill taxonomy used by profiles.
 - **FR-B5** PII handling inside TOR documents: displayed extractions minimize personal data (e.g.
   officer personal phone numbers, signatures); original documents remain available via source link;
