@@ -25,6 +25,9 @@ const CAMERA_START_Z = 8;
 const CAMERA_START_Y = 2.2;
 const TILT_BASE = 0.12;
 const EASE = 0.05;
+const MAX_PIXEL_RATIO = 1.5;
+/** Past this much scrolling the canvas is behind opaque sections: stop drawing. */
+const STOP_DRAWING_AFTER_SCREENS = 1.2;
 
 export function RadarBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,8 +40,11 @@ export function RadarBackdrop() {
     // anyone having asked for it, and the result was a frozen hero. This is a
     // slow ambient backdrop, not flashing or parallax-heavy motion.
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Antialiasing buys little on points and a hairline sweep, and fill rate
+    // is what costs frames. Capping the pixel ratio at 1.5 roughly halves the
+    // work on a 2x display with no visible difference at this scale.
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
@@ -132,8 +138,16 @@ export function RadarBackdrop() {
     const clock = new THREE.Clock();
     let frame = 0;
 
+    let lastOpacity = "";
+
     const loop = () => {
       frame = requestAnimationFrame(loop);
+
+      // Nothing to draw when the tab is in the background or the reader has
+      // scrolled past the hero into the opaque sections below it.
+      if (document.hidden) return;
+      if (window.scrollY > window.innerHeight * STOP_DRAWING_AFTER_SCREENS) return;
+
       const time = clock.getElapsedTime();
       const scrolled = Math.min(1, window.scrollY / (window.innerHeight * 1.4));
 
@@ -149,7 +163,11 @@ export function RadarBackdrop() {
       camera.lookAt(0, 0, 0);
 
       const fade = Math.max(0, 1 - window.scrollY / (window.innerHeight * 1.1));
-      canvas.style.opacity = String(0.3 + fade * 0.7);
+      const opacity = (0.3 + fade * 0.7).toFixed(2);
+      if (opacity !== lastOpacity) {
+        canvas.style.opacity = opacity;
+        lastOpacity = opacity;
+      }
 
       renderer.render(scene, camera);
     };
