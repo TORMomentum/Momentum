@@ -6,11 +6,13 @@ import {
   HowItWorks,
   QualityChecklist,
 } from "../features/landing/ProofSections";
+import { RadarBackdrop } from "../features/landing/RadarBackdrop";
 
 /** The public landing page, composed from the landing feature's sections. */
 export function LandingView() {
   return (
     <>
+      <RadarBackdrop />
       <SiteNav />
       <SampleDataNotice />
       <Hero />

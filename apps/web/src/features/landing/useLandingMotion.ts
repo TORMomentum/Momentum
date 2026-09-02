@@ -21,11 +21,19 @@ function prefersReducedMotion(): boolean {
  */
 export function useCountUp(target: number, decimals = 0) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [value, setValue] = useState(prefersReducedMotion() ? target : 0);
+  // Always start at zero: reading matchMedia here would make the server and the
+  // client disagree on the first render, which is a hydration mismatch. The
+  // reduced-motion case is settled in the effect, where only the client runs.
+  const [value, setValue] = useState(0);
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || prefersReducedMotion()) return;
+    if (!node) return;
+
+    if (prefersReducedMotion()) {
+      setValue(target);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
