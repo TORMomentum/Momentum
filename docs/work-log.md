@@ -53,3 +53,25 @@ todo law in the global CLAUDE.md.
   - `npm run build` (root) -- web + shared build clean
   - first attempt used PowerShell here-string quoting inside the Bash tool and produced a stray `@` first line; amended immediately to the correct subject
 
+
+## 2026-09-02 — Task 3 - content hashing (mechanic)
+
+**Verified:** commit 36aea85 contains exactly the two planned files; 8/8 tests at the root, lint and tsc clean. Parent confirmed independently that the test's abc vector is a real sha256 digest, so the test asserts against the algorithm rather than against the implementation.
+
+**Completed (9):**
+
+- read Task 3 in the plan
+  - create apps/api/src/lib/hash.test.ts with the three cases from the plan
+  - run it, confirm it fails because the module does not exist, not for another reason
+- implement apps/api/src/lib/hash.ts
+- run the test, confirm all three pass
+  - npm test at the root
+  - npm run lint at the root
+  - npm run build -w @tor-radar/api
+- commit with the message from the plan (36aea85)
+
+**Left open (2):**
+
+- write the failing test
+- run the repo gates that CI runs
+

@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (2/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (3/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -60,8 +60,12 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
     - [x] `ignoreRestSiblings` at the root eslint config, so the rest-omit pattern stops breaking CI
     - [x] removed the local `eslint-disable` the agent had to add inside the test
     - [x] `z.string().url()` → `z.url()`, since zod resolved to 4.5.4 where the old form is deprecated
-- [ ] **Task 3 — content hashing** ← next
-- [ ] Task 4 — magic-byte verification
+- [x] **Task 3 — content hashing** — delegated to `mechanic`, verified, `36aea85`
+  - [x] failing test first, confirmed failing for the right reason
+  - [x] `sha256(Buffer)` over `node:crypto`, three cases pass
+  - [x] 8/8 tests at the root, lint and tsc clean
+  - [x] parent check: the test's `abc` vector matches a real sha256 digest
+- [ ] **Task 4 — magic-byte verification** ← next
 - [ ] Task 5 — SSRF-resistant fetch and typed errors
 - [ ] Task 6 — storage port and MinIO adapter
 - [ ] Task 7 — queue port and MongoDB adapter
