@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (7/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (8/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -108,8 +108,15 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
         `partialFilterExpression` cannot express `state in (pending, running)`. It held under the
         stress test, but the guarantee is probabilistic. A duplicate job means one wasted extraction
         call rather than corruption — revisit if extraction ever stops being safe to repeat
-- [ ] **Task 8 — intake repository** ← next
-- [ ] Task 9 — intake service
+- [x] **Task 8 — intake repository** — built in-session (implementer rate-limited), `ecb7b38`
+  - [x] insert opens the record queued, with its first source ref and status-history entry
+  - [x] `appendSourceRef` records a repeat submission against the existing record (FR-A-3)
+  - [x] `announcedAt` left null on purpose: the agency's date, extracted in slice 2
+  - [x] 7 cases pass; 49/49 at the root, lint and tsc clean
+  - [x] dedupe proven under concurrency: 12 simultaneous inserts of one hash gave 1 success,
+        11 duplicate-key rejections, 1 record. The unique index is the guarantee, not the
+        `findByHash` check in front of it
+- [ ] **Task 9 — intake service** ← next
 - [ ] Task 10 — three intake routes with access control
 - [ ] Task 11 — extraction worker and orphan reconciler
 - [ ] Task 12 — TOR read API, signed links, redaction
