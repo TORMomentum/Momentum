@@ -13,3 +13,6 @@ coverage/
 secrets/
 *-sa.json
 *-credentials.json
+
+# TOR benchmark: scanned OCR-test PDFs (~38MB) — re-fetch from webportal.bangkok.go.th
+docs/corpus/_extra/
