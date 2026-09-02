@@ -97,20 +97,9 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Instant jumps instead of smooth scrolling is the one reduction kept: it is
+     the setting's clearest intent and costs the design nothing. The ambient
+     motion stays, because browsers here report this preference without anyone
+     having asked for it. */
   html { scroll-behavior: auto; }
-}
-
-/* The motion toggle sets data-motion on <html>, so a reader's choice reaches
-   stylesheets as well as scripts. Only the looping decorative motion stops;
-   hover transitions and section reveals are feedback, not spectacle. */
-:root[data-motion="off"] [class*="marquee"],
-:root[data-motion="off"] [class*="scrollHint"],
-:root[data-motion="off"] [class*="liveDot"],
-:root[data-motion="off"] [class*="dotAnomaly"] {
-  animation: none !important;
-}
-
-:root[data-motion="off"] [data-reveal] {
-  opacity: 1;
-  transform: none;
 }

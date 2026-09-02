@@ -2,7 +2,6 @@
 
 import styles from "./landing.module.css";
 import { useNavVisibility } from "./useLandingMotion";
-import { useMotionPreference } from "../../shared/lib/useMotionPreference";
 
 /** Fixed header. Hides on the way down, returns on the way up. */
 export function SiteNav() {
@@ -50,8 +49,6 @@ export function SampleDataNotice() {
 }
 
 export function SiteFooter() {
-  const { animate, toggle } = useMotionPreference();
-
   return (
     <footer className={styles.footer}>
       <div>
@@ -63,10 +60,6 @@ export function SiteFooter() {
         PDPA-ALIGNED · PII MINIMIZED · TAKEDOWN WORKFLOW
         <br />
         ISSUE NO. 2569-08 · BUILT FOR TRANSPARENCY
-        <br />
-        <button type="button" className={styles.motionToggle} onClick={toggle}>
-          {animate ? "ปิดภาพเคลื่อนไหว" : "เปิดภาพเคลื่อนไหว"}
-        </button>
       </div>
     </footer>
   );
