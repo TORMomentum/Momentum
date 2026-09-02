@@ -205,3 +205,26 @@ todo law in the global CLAUDE.md.
   - npm run build -w @tor-radar/api
 - commit
 
+
+## 2026-09-03 — Web update to the 2026-09-03 mockup (mechanic)
+
+**Verified:** Commit 769f767 plus work the parent accidentally swept into an earlier commit. Verified: all 7 routes return 200, lint clean, the header carries only the three real tabs plus the bell, ADMIN/EMAIL chips appear nowhere but a comment explaining their exclusion, and /admin/review is linked from nothing. Notifications screen checked against the mockup in a browser. The agent correctly reported that the parent's git add -A had committed its work-in-progress under an unrelated message.
+
+**Completed (15):**
+
+- read the new mockup and compare against the existing views
+  - list what changed in Dashboard, Search, TOR Detail, Vendor Profile
+  - header: bell + badge + dropdown are new; ADMIN/EMAIL demo chips and
+- header: notification bell, unread badge, dropdown panel
+- Notifications screen and its /notifications route
+- Admin Review Queue and its /admin/review route, unlinked from vendor navigation
+- update the four existing screens where they diverge
+  - Dashboard
+  - Vendor Profile
+  - Search (no changes needed)
+  - TOR Detail (no changes needed)
+- gates
+  - npm run lint at the root — clean
+  - npm run build -w @tor-radar/web — compiled, all 8 routes generated
+- commit
+

@@ -150,6 +150,18 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
 - [x] **Search** — `/search`, delegated to `mechanic`, verified, `4c184fe`
 - [x] **TOR Detail** — `/tors/[id]`
 - [x] **Vendor Profile** — `/profile`
+- [x] **Updated to the 2026-09-03 mockup** — delegated to `mechanic`, verified, `769f767`
+  - [x] header gains the notification bell, unread badge and dropdown
+  - [x] **Notifications** screen at `/notifications`
+  - [x] **Admin Review Queue** at `/admin/review` — staff-only, and nothing links to it. The role
+        gate arrives with authentication in slice 4; until then the route exists unprotected and
+        unlinked, which is the honest state
+  - [x] **Match Email not built as a route.** It is the email that lands in a vendor's inbox, not a
+        page. It stays in the mockup as the template for slice 4's notification work
+  - [x] `ADMIN` and `EMAIL` nav chips deliberately not reproduced: prototype-only demo navigation
+  - [x] Dashboard stat strip now recomputes when an agency filter is applied; profile notification
+        card rebuilt with presets and an advanced section; Search and TOR Detail already matched
+  - [x] all 7 routes serve, lint clean, no literal hex values in the new files
 - [ ] **Carried forward from the port** (decide before these screens meet real data):
   - [ ] no signed-out state exists in the app shell; every screen renders the signed-in branch. Slice 4 builds auth and must add it
   - [ ] starred and bookmarked lists on the profile are seeded samples; they need real cross-route state once accounts exist
