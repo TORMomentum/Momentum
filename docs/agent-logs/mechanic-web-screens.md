@@ -18,7 +18,7 @@
         comment for a rule not configured in this repo, see below)
   - [x] npm run build -w @tor-radar/web — succeeds, routes /search, /profile,
         /tors/[id] all present alongside the existing / and /dashboard
-- [ ] commit
+- [x] commit — 4c184fe "feat(web): port Search, TOR Detail, Vendor Profile screens"
 
 ### gate notes
 
