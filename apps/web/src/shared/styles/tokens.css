@@ -1,0 +1,106 @@
+/*
+ * Design tokens lifted from mockups/TOR Radar Landing.dc.html.
+ * Every colour, type step and rule in the app resolves to a token here —
+ * no component may hard-code a hex value (NFR-S7 in spirit: one source).
+ */
+:root {
+  /* ink and paper */
+  --paper: #ffffff;
+  --ink: #12233c;
+  --ink-70: rgba(18, 35, 60, 0.7);
+  --ink-65: rgba(18, 35, 60, 0.65);
+  --ink-62: rgba(18, 35, 60, 0.62);
+  --ink-20: rgba(18, 35, 60, 0.2);
+  --ink-18: rgba(18, 35, 60, 0.18);
+  --ink-12: rgba(18, 35, 60, 0.12);
+  --ink-02: rgba(18, 35, 60, 0.02);
+
+  /* meaning-carrying accents */
+  --blue: #1d63d8;          /* actions, links, the platform's own voice */
+  --blue-dark: #1746a0;
+  --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
+  --verified: #0e7a5f;      /* a check that passed */
+
+  /* type */
+  --display: "Anuphan", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --body: "IBM Plex Sans Thai", system-ui, sans-serif;
+  --data: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* rhythm */
+  --gutter: 40px;
+  --gutter-tight: 20px;
+  --radius: 4px;
+  --radius-card: 8px;
+  --rule: 1px solid var(--ink-18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+}
+
+::selection {
+  background: var(--blue);
+  color: var(--paper);
+}
+
+a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #3b82f6;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.45); }
+  50% { box-shadow: 0 0 0 14px rgba(180, 83, 9, 0); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(10px); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Sections fade up as they enter the viewport; see useReveal. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
+              transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  [data-reveal] { opacity: 1; transform: none; }
+}

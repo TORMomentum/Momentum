@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (4/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (5/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -74,8 +74,17 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
         (leading whitespace or junk) is rejected. Strict is right for a security control, but real
         scans sometimes carry leading bytes — check against the 10–20 real TORs before deciding
         whether to scan a bounded prefix instead
-- [ ] **Task 5 — SSRF-resistant fetch and typed errors** ← next
-- [ ] Task 6 — storage port and MinIO adapter
+- [x] **Task 5 — SSRF-resistant fetch and typed errors** — delegated to `implementer`, verified,
+      `26d22d1`
+  - [x] every resolved record checked, not just the first (the rebinding bypass the cross-check found)
+  - [x] `net.BlockList` instead of string prefixes — catches `::ffff:169.254.169.254`, which the
+        plan's version would have passed through. Agent's improvement, kept
+  - [x] unparseable addresses fail closed
+  - [x] 19 cases: loopback, metadata, private, unique-local, mapped-IPv6, private-record-not-first,
+        redirect into private range, scheme change mid-redirect, chain cap, size cap, error status
+  - [x] 32/32 tests at the root, lint and tsc clean
+  - [x] agent hit a session rate limit before committing; parent verified and committed its work
+- [ ] **Task 6 — storage port and MinIO adapter** ← next
 - [ ] Task 7 — queue port and MongoDB adapter
 - [ ] Task 8 — intake repository
 - [ ] Task 9 — intake service

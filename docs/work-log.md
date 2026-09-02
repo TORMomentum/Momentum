@@ -95,3 +95,30 @@ todo law in the global CLAUDE.md.
   - npm run build -w @tor-radar/api
 - commit with the message from the plan
 
+
+## 2026-09-02 — Task 5 - SSRF-resistant fetch (implementer)
+
+**Verified:** Agent hit a session rate limit before committing; its work was left green and uncommitted. Parent verified: 32/32 tests, lint and tsc clean, multi-address fix applied via lookup(hostname,{all:true}), and range matching upgraded to net.BlockList which catches IPv4-mapped IPv6 forms the plan's prefix comparison would have missed. Committed as 26d22d1.
+
+**Completed (1):**
+
+- read Task 5 in the plan and spec section 5.6
+
+**Left open (15):**
+
+- write the failing test
+  - create apps/api/src/lib/safe-fetch.test.ts with the seven cases from the plan
+  - add a case asserting that a hostname resolving to BOTH a public and a private address is rejected
+  - run it, confirm it fails because the module does not exist
+- implement apps/api/src/core/errors.ts
+- implement apps/api/src/lib/safe-fetch.ts
+  - resolve with { all: true } and reject if ANY address is blocked
+  - scheme allowlist, redirect cap, size cap, timeout
+  - re-run the address check after every redirect
+- run the test, confirm all cases pass
+- run the repo gates that CI runs
+  - npm test at the root
+  - npm run lint at the root
+  - npm run build -w @tor-radar/api
+- commit with the message from the plan
+
