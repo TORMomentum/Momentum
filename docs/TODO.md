@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (9/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (10/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -124,8 +124,13 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] 9 cases with fake ports, no infrastructure needed; two assert the negative space — a failed
         insert enqueues nothing, a rejected type stores nothing
   - [x] 58/58 at the root, lint and tsc clean
-- [ ] **Task 10 — three intake routes with access control** ← next
-- [ ] Task 11 — extraction worker and orphan reconciler
+- [x] **Task 10 — three intake routes with access control** — built in-session
+  - [x] upload, URL and programmatic routes all reach the one service (FR-A-1)
+  - [x] separate admin and intake keys, constant-time compare, empty key list opens nothing
+  - [x] found and fixed a real fault: a malformed URL answered 500 because a ZodError fell through
+        to the generic handler. Schema rejections now answer 400 with the failing paths
+  - [x] 20 cases across routes and auth; 78/78 at the root, lint and tsc clean
+- [ ] **Task 11 — extraction worker and orphan reconciler** ← next
 - [ ] Task 12 — TOR read API, signed links, redaction
 - [ ] Task 13 — design tokens and the admin upload screen
 - [ ] Task 14 — workspace-aware Dockerfiles
