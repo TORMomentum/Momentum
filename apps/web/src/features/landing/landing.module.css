@@ -361,7 +361,15 @@
 }
 
 /* ---------- closing ---------- */
-.closing { text-align: center; padding: 120px var(--gutter); border-top: var(--rule); }
+/* Opaque, and above the fixed canvas: the radar belongs behind the hero only. */
+.closing {
+  position: relative;
+  z-index: 10;
+  background: var(--paper);
+  text-align: center;
+  padding: 120px var(--gutter);
+  border-top: var(--rule);
+}
 
 .closingTitle { margin: 0 0 26px; font: 700 min(7vw, 84px) / 1.25 var(--display); }
 .closingTitle em { font-style: normal; color: var(--blue); }
@@ -380,6 +388,7 @@
 .footer {
   position: relative;
   z-index: 10;
+  background: var(--paper);
   border-top: var(--rule);
   padding: 34px var(--gutter);
   display: flex;
