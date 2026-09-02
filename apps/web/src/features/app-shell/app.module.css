@@ -1,0 +1,215 @@
+/* The signed-in application surface. Tokens come from shared/styles/tokens.css. */
+
+.shell {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 62px;
+  padding: 0 36px;
+  border-bottom: var(--rule);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(6px);
+}
+
+.brand {
+  font: 700 15px var(--display);
+  color: var(--ink);
+}
+
+.tabs {
+  display: flex;
+  gap: 26px;
+  font: 12px var(--data);
+  letter-spacing: 0.06em;
+}
+
+.tab {
+  padding: 22px 0;
+  color: var(--ink-62);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--ink); }
+
+.tabActive {
+  color: var(--ink);
+  border-bottom-color: var(--blue);
+}
+
+.headerRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.alerts {
+  font: 10px var(--data);
+  color: var(--verified);
+  white-space: nowrap;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2b6e5a;
+  color: var(--paper);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.page { padding: 34px 36px 60px; }
+
+.pageHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.pageTitle { margin: 0; font: 700 30px var(--display); }
+
+.coverage {
+  font: 10.5px var(--data);
+  color: var(--ink-62);
+  text-align: right;
+  line-height: 1.8;
+}
+
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+
+.filter {
+  font: 11px var(--data);
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  color: rgba(18, 35, 60, 0.75);
+  background: var(--paper);
+  padding: 6px 12px;
+  border-radius: 99px;
+  cursor: pointer;
+}
+
+/* ---------- stat strip ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: var(--rule);
+  border-bottom: var(--rule);
+  margin-bottom: 28px;
+}
+
+.stat { padding: 22px 20px; border-right: var(--rule); }
+.stat:first-child { padding-left: 0; }
+.stat:last-child { padding-right: 0; border-right: 0; }
+
+.statKey { font: 500 10px var(--data); color: var(--ink-62); letter-spacing: 0.12em; }
+.statValue { font: 600 44px/1.15 var(--data); }
+.statNote { font-size: 11px; color: var(--ink-62); }
+.statFlagged .statKey, .statFlagged .statValue { color: var(--anomaly); }
+
+/* ---------- two-column body ---------- */
+.split { display: grid; grid-template-columns: 1fr 1.4fr; }
+.splitLeft { border-right: var(--rule); padding-right: 28px; }
+.splitRight { padding-left: 28px; }
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+}
+
+.panelTitle { margin: 0; font: 600 16px var(--display); }
+.panelHint { font: 10px var(--data); color: var(--ink-62); }
+
+/* ---------- agency bars ---------- */
+.bars { display: flex; flex-direction: column; gap: 13px; }
+
+.bar { cursor: pointer; transition: opacity 0.2s ease; background: none; border: 0; padding: 0; text-align: left; width: 100%; }
+.bar:hover { opacity: 0.75; }
+
+.barLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  margin-bottom: 5px;
+  color: var(--ink);
+}
+
+.barName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.barStat { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
+.barTrack { height: 6px; background: rgba(18, 35, 60, 0.08); }
+.barFill { height: 6px; background: var(--blue); }
+
+.moreLink {
+  display: inline-block;
+  margin-top: 16px;
+  font: 11px var(--data);
+  color: var(--blue);
+}
+
+/* ---------- scatter plot ---------- */
+.plot {
+  position: relative;
+  height: 260px;
+  border-left: 1px solid rgba(18, 35, 60, 0.3);
+  border-bottom: 1px solid rgba(18, 35, 60, 0.3);
+  margin: 20px 8px 4px 46px;
+}
+
+.axis { position: absolute; left: -44px; font: 9px var(--data); color: var(--ink-62); }
+.grid { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(18, 35, 60, 0.15); }
+
+.dot {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--ink);
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+.dot:hover { transform: scale(1.8); }
+.dotFlagged { background: var(--anomaly); }
+
+.plotFlag {
+  position: absolute;
+  font: 10px var(--data);
+  color: var(--anomaly);
+  white-space: nowrap;
+}
+
+.plotCategory { position: absolute; bottom: -24px; font: 9px var(--data); color: var(--ink-62); }
+
+.method {
+  margin-top: 42px;
+  font: 10px var(--data);
+  color: var(--ink-62);
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .header { padding: 0 20px; gap: 16px; }
+  .page { padding: 24px 20px 48px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat { padding: 18px 14px; }
+  .split { grid-template-columns: 1fr; }
+  .splitLeft { border-right: 0; padding-right: 0; padding-bottom: 28px; }
+  .splitRight { padding-left: 0; padding-top: 28px; border-top: var(--rule); }
+}

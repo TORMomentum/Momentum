@@ -221,7 +221,7 @@ export function Closing() {
         <button type="button" className={`${styles.primary} ${styles.ctaLarge}`}>
           ลงทะเบียนฟรี
         </button>
-        <a className={`${styles.secondary} ${styles.ctaLarge}`} href="#data">
+        <a className={`${styles.secondary} ${styles.ctaLarge}`} href="/dashboard">
           ดูแดชบอร์ดสาธารณะ
         </a>
       </div>

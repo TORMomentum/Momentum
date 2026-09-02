@@ -33,7 +33,7 @@ export function Hero() {
           จับคู่ให้ผู้ประกอบการตามทักษะ และเปิดข้อมูลราคาให้ประชาชนตรวจสอบ
         </p>
         <div className={styles.heroActions}>
-          <a className={styles.primary} href="#data">
+          <a className={styles.primary} href="/dashboard">
             สำรวจแดชบอร์ด →
           </a>
           <button type="button" className={styles.secondary}>
