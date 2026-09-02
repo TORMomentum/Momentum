@@ -10,12 +10,15 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "busboy": "^1.6.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "minio": "^8.0.7",
     "mongodb": "^7.6.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.0",
     "@types/supertest": "^7.2.1",
