@@ -98,9 +98,16 @@ a:hover {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after {
+
+  /* Only the looping, decorative motion stops. Transitions on hover and the
+     section reveals stay: they are feedback, not spectacle, and removing them
+     leaves the page feeling broken rather than calm. */
+  [class*="marquee"],
+  [class*="scrollHint"],
+  [class*="liveDot"],
+  [class*="dotAnomaly"] {
     animation: none !important;
-    transition: none !important;
   }
+
   [data-reveal] { opacity: 1; transform: none; }
 }

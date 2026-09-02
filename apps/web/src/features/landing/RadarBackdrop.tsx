@@ -32,7 +32,11 @@ export function RadarBackdrop() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // Reduced motion means calmer, not blank. The scene is still built and
+    // rendered once; only the animation loop is skipped, so the radar is there
+    // for everyone and moves only for those who want movement.
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -129,6 +133,11 @@ export function RadarBackdrop() {
     const clock = new THREE.Clock();
     let frame = 0;
 
+    if (still) {
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    }
+
     const loop = () => {
       frame = requestAnimationFrame(loop);
       const time = clock.getElapsedTime();
@@ -150,7 +159,7 @@ export function RadarBackdrop() {
 
       renderer.render(scene, camera);
     };
-    loop();
+    if (!still) loop();
 
     return () => {
       cancelAnimationFrame(frame);
