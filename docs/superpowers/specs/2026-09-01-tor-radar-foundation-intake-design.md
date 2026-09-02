@@ -151,6 +151,8 @@ web:  src/shared/styles/tokens.css · src/features/tor-upload
     title, agency, budget, category, scopeSummary,
     qualifications, deadline, contact, torStatus
   },
+  announcedAt,                    // the TOR's OWN publication date, extracted - not createdAt
+  sourceUrl,                      // the public page or document this came from, when there is one
   confidenceLevel,                // 'high' | 'medium' | 'low' — §4.2.1
   unverified,                     // Boolean
   provenance: { ocrModel, extractModel, modelVersion, extractedAt, thresholdsVersion },
@@ -173,6 +175,8 @@ budget: { raw: '๑,๒๐๐,๐๐๐ บาท', amount: 1200000, currency: '
 ```
 
 `raw` is what the interface displays, exactly as extracted (NFR-F7). `amount` is what the anomaly rule computes on (§4.5.1). Keeping both means a formatting or numeral-parsing change can never silently alter a displayed budget, and statistics never parse display strings.
+
+**`announcedAt` is not `createdAt`.** `createdAt` is when this system ingested the document; `announcedAt` is when the agency published it. FR-E-1 plots totals and a trend over a selectable date range and FR-E-3 filters by date, and both mean the agency's date. Using ingestion time would make a batch of old documents ingested today appear as today's procurement activity, distorting every chart and filter. `announcedAt` is extracted in slice 2 and may be absent; records without it are excluded from trend calculations rather than defaulted to their ingestion date. `sourceUrl` is separate from `sourceRefs[]` because upload and API submissions have no URL, while FR-E-4 and NFR-F6 require a link to the source document wherever one exists.
 
 **`provenance.thresholdsVersion` records which confidence thresholds graded the record.** Open issue O1 settles `T_low` and `T_high` from measurement; when they change, this field distinguishes records graded under the old values from those graded under the new.
 
@@ -203,6 +207,8 @@ FR-A-4 requires the last successful collection time and the health of each adapt
 | `tors.pipeline.state + createdAt` | Queue and admin views |
 | `tors.fields.agency.value + createdAt` | Per-agency aggregation (FR-E-1) |
 | `tors.fields.category.value + createdAt` | Peer-group selection (§4.5.1) |
+| `tors.announcedAt` | Date-range selection and trend calculation (FR-E-1, FR-E-3) |
+| `tors.fields.agency.value + announcedAt + fields.torStatus.value` | The combined agency, date, and status filters of FR-E-3 |
 | `tors.access.restricted` | Excludes restricted records from public queries |
 | `ingest_jobs.state + nextRunAt` | Worker claim query |
 
@@ -247,6 +253,7 @@ failure → attempts++, backoff, lastError recorded; after JOB_MAX_ATTEMPTS
 ### 5.2 Ordering and correctness rules
 
 - **Order is fixed:** store bytes, insert the record, then enqueue. A crash between steps leaves an orphaned object, never a job pointing at nothing.
+- **The gap between insert and enqueue is closed by a reconciler, not by hope.** A process that dies after inserting the record but before enqueueing leaves a document that is stored, recorded, and never processed - it would sit in `queued` forever without ever appearing as failed. The worker therefore runs a periodic sweep, every `RECONCILE_INTERVAL_MS`, that finds records in `pipeline.state = 'queued'` older than `RECONCILE_MIN_AGE_MS` with no corresponding job and enqueues one. Enqueueing is idempotent per record, so a sweep that races the original enqueue produces no duplicate work. This is the cheaper half of an outbox pattern and is the honest cost of D5's decision to use the database as the queue.
 - **The unique index is the dedupe guarantee.** Two simultaneous submissions of the same file can both pass `findByHash`; the duplicate-key error on insert is caught and routed into the dedupe path. The pre-check is an optimisation, not the correctness mechanism.
 - **`putIfAbsent`, never `put`.** FR-A-2 forbids overwriting a stored object, and the prohibition is enforced inside the adapter so no caller can bypass it.
 - **Services receive ports.** `IntakeService` takes `Storage` and `Queue` as constructor arguments. Tests supply fakes; `app.ts` supplies MinIO and the Mongo queue.
@@ -259,11 +266,11 @@ Typed errors in `core/errors.ts` are translated by one Express error middleware 
 
 Every value below lives in `core/config.ts`, read from the environment with a validated default, and nowhere else in the code (NFR-S7):
 
-`MAX_UPLOAD_BYTES`, `ALLOWED_MIME_TYPES`, `JOB_MAX_ATTEMPTS`, `JOB_BACKOFF_MS`, `JOB_LOCK_MS`, `INTAKE_RATE_LIMIT`, `INTAKE_API_KEYS`, `MINIO_BUCKET`, `MONGO_URL`.
+`MAX_UPLOAD_BYTES`, `ALLOWED_MIME_TYPES`, `JOB_MAX_ATTEMPTS`, `JOB_BACKOFF_MS`, `JOB_LOCK_MS`, `RECONCILE_INTERVAL_MS`, `RECONCILE_MIN_AGE_MS`, `INTAKE_RATE_LIMIT`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS`, `MINIO_BUCKET`, `MONGO_URL`.
 
 ### 5.5 Intake API authentication
 
-NFR-S1 requires the intake API to enforce access level and to be rate-limited. Slice 1 authenticates the API route with a static key presented in an `Authorization` header and compared in constant time against `INTAKE_API_KEYS`, which is supplied through the environment and never committed. Rate limiting applies per key. The upload and URL routes are admin-only and move behind the session authentication built in slice 4; until then they are reachable only on the local Compose network, which is recorded here so the gap is deliberate rather than forgotten.
+NFR-S1 requires the intake API to enforce access level and to be rate-limited. Slice 1 authenticates the API route with a static key presented in an `Authorization` header and compared in constant time against `INTAKE_API_KEYS`, which is supplied through the environment and never committed. Rate limiting applies per key. The upload and URL routes are admin-only and enforce access level the same way, using a separate `ADMIN_API_KEYS` value, so an intake key cannot reach an admin route. Network placement is **not** treated as access control: NFR-S1 requires admin routes to enforce access level, and the URL route is the highest-risk intake path, so it is authenticated from the first commit rather than after slice 4. Slice 4 replaces the admin key with session authentication; the route-level check does not change, only what satisfies it.
 
 Thresholds belonging to later slices (`T_LOW`, `T_HIGH`, `PEER_MIN_N`, `PEER_WINDOW`, `ANOMALY_METHOD`, `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`, `MIN_BID_WINDOW_DAYS`) are declared in the same module with their open-issue status recorded, so no later slice introduces a literal.
 
@@ -274,7 +281,7 @@ NFR-S1 states the security baseline; the controls below are how slice 1 meets it
 **Server-side request forgery, URL intake route.** The URL route causes the server to fetch an attacker-supplied address, which without controls reaches cloud metadata endpoints and internal services such as the database and object store. Every fetch therefore:
 
 - accepts `http` and `https` schemes only;
-- resolves the hostname and rejects the address if it falls in a loopback, private, link-local, or unique-local range, checked against the resolved address rather than the hostname string;
+- resolves the hostname and rejects the request if **any** returned address falls in a loopback, private, link-local, or unique-local range, checked against the resolved addresses rather than the hostname string. A hostname may return several A or AAAA records, so validating one and connecting to another is a rebinding bypass; the fetch either rejects on any bad record or connects to the specific address it validated;
 - re-runs that check after each redirect and caps the redirect chain, so a host that resolves differently on the second lookup cannot slip through;
 - enforces a response size cap and a request timeout, both from `core/config.ts`.
 
@@ -380,7 +387,22 @@ None blocks slice 1.
 
 ---
 
-## 10. Tripwires
+## 10. Cross-check record
+
+This design was reviewed by Codex, a different-company model, on 2026-09-01, per the standing cross-check default. Four defects were accepted and are fixed above:
+
+| Finding | Fix |
+| :---- | :---- |
+| The SSRF check validated a single resolved address, while a hostname may return several records | §5.6 rejects on any bad record, or pins the validated address |
+| Admin routes were protected by network placement, contradicting NFR-S1 | §5.5 authenticates upload and URL routes from the first commit with a separate admin key |
+| No publication date on the record, so the FR-E-1 trend and FR-E-3 date filter would silently use ingestion time | §4.2 adds `announcedAt` and `sourceUrl`; §4.5 adds their indexes |
+| D5's insert-then-enqueue leaves an unprocessed record if the process dies between the two | §5.2 adds a reconciler sweep with idempotent enqueue |
+
+Two further observations were noted and deferred with reasons: presigned URLs served to a browser must carry the same download headers as the API route, which is a slice-3 concern when the detail page is built; and PDF active content argues for a separate download origin, which §5.6 already prefers and deployment will decide.
+
+---
+
+## 11. Tripwires
 
 Conditions that mean the design needs revisiting rather than extending:
 
