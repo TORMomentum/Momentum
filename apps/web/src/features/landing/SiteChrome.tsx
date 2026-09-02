@@ -1,7 +1,7 @@
 "use client";
 
 import styles from "./landing.module.css";
-import { useNavVisibility } from "./useLandingMotion.js";
+import { useNavVisibility } from "./useLandingMotion";
 
 /** Fixed header. Hides on the way down, returns on the way up. */
 export function SiteNav() {

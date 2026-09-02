@@ -28,7 +28,7 @@
 .navScrolled { box-shadow: 0 4px 20px rgba(18, 35, 60, 0.1); }
 
 .wordmark {
-  font: 800 16px var(--display);
+  font: 700 16px var(--display);
   letter-spacing: 0.02em;
 }
 
@@ -114,7 +114,7 @@
 
 .heroTitle {
   margin: 0;
-  font: 800 min(8.5vw, 110px) / 1.22 var(--display);
+  font: 700 min(8.5vw, 110px) / 1.22 var(--display);
   letter-spacing: -0.02em;
 }
 
@@ -363,7 +363,7 @@
 /* ---------- closing ---------- */
 .closing { text-align: center; padding: 120px var(--gutter); border-top: var(--rule); }
 
-.closingTitle { margin: 0 0 26px; font: 800 min(7vw, 84px) / 1.25 var(--display); }
+.closingTitle { margin: 0 0 26px; font: 700 min(7vw, 84px) / 1.25 var(--display); }
 .closingTitle em { font-style: normal; color: var(--blue); }
 
 .closingLede {

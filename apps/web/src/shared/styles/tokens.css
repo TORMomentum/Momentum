@@ -22,9 +22,9 @@
   --verified: #0e7a5f;      /* a check that passed */
 
   /* type */
-  --display: "Anuphan", "IBM Plex Sans Thai", system-ui, sans-serif;
-  --body: "IBM Plex Sans Thai", system-ui, sans-serif;
-  --data: "IBM Plex Mono", ui-monospace, monospace;
+  --display: var(--font-display), "IBM Plex Sans Thai", system-ui, sans-serif;
+  --body: var(--font-body), system-ui, sans-serif;
+  --data: var(--font-data), ui-monospace, monospace;
 
   /* rhythm */
   --gutter: 40px;
