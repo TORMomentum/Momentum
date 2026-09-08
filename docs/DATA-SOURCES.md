@@ -168,6 +168,24 @@ Two consequences worth deciding on before Sprint 2:
   `masterAnnounceTypeName` too — `selectTorAnnouncements()` in the client does this.
 - Rate-limit politely — the collector sleeps between requests. This is a public government service.
 
+## Taxonomy seeds
+
+`apps/api/src/data/` holds three committed seed files (FR-G3):
+
+| File | Records | Origin |
+|---|---|---|
+| `bma-agencies.json` | 75 | `MasterOrgGroups` — backs the FR-A4 Bangkok-only check, read from disk at startup |
+| `procurement-categories.json` | 87 | `MasterGoodsIds` (70) + `MasterTypeIds` (9) + `MasterProjectCategories` (8) |
+| `skill-tags.json` | 23 | hand-authored; they describe vendors, not procurement |
+
+The category seed is **generated** — run `node tools/build_seeds.mjs` to refresh it rather than
+editing the JSON, or your edit is lost on the next regeneration. Every skill tag maps onto
+goods-category codes that exist in that file (61 of 69 covered; the rest are fuel, weapons, land
+and "other" buckets nobody bids on as a skill).
+
+Note that upstream reuses some category codes — `2001` is both ที่ดิน (เช่า) and ที่ดิน (ซื้อ) — so
+anything keyed on these records must use `category_id`, not `code`.
+
 ## Not usable: national e-GP (`process5.gprocurement.go.th`)
 
 Thailand's national e-GP is an Angular micro-frontend over ~25 microservices at

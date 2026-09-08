@@ -10,7 +10,7 @@ apps/web/       Next.js dashboard (public + admin)
 apps/api/       Express REST API + matching + notifications
 docs/           spec (PROJECT.md), SRS, source API reference (DATA-SOURCES.md), proposal
 mockups/        design-canvas mockups — not app code, not built or linted
-tools/          Jira seeding
+tools/          source collection, seed generation, Jira seeding
 .github/        CI
 ```
 
@@ -31,26 +31,19 @@ npm run lint                # eslint
 npm run build               # build all apps
 ```
 
-## Source data — no setup needed
+## Source data
 
-The BMA eGP source system is wired up behind our own API (no key, no cookie, nothing to configure).
-With the stack running:
-
-```
-curl "localhost:4000/sources/bma-egp/tors?pageSize=5"              # TOR announcements (4,873 upstream)
-curl "localhost:4000/sources/bma-egp/tors?q=พัฒนาระบบ"              # keyword search
-curl "localhost:4000/sources/bma-egp/tors/<projectId>/documents"   # that project's TOR PDFs + source URLs
-```
-
-To confirm the whole chain (upstream reachable → our routes → a downloadable source PDF):
+The BMA eGP source system is wired up behind our own API — no key, no cookie, nothing to
+configure. With the stack running, `GET /sources/bma-egp/tors` lists TOR announcements and
+`/sources/bma-egp/tors/<projectId>/documents` returns their source PDFs.
 
 ```
-node tools/check-source.mjs                       # against localhost:4000
-API_URL=http://localhost:4123 node tools/check-source.mjs
+npm run dev                     # terminal 1 — wait for "listening on 0.0.0.0:4000"
+node tools/check-source.mjs     # terminal 2 — verify the whole chain; non-zero on failure
+node tools/build_seeds.mjs      # regenerate the generated taxonomy seed (no server needed)
 ```
 
-It prints PASS/FAIL per step and exits non-zero on failure.
-
-Endpoint reference and upstream quirks: [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md).
+Endpoints, upstream quirks, document formats and the taxonomy seeds:
+[docs/DATA-SOURCES.md](docs/DATA-SOURCES.md).
 
 Node 22+. CI runs lint + test + build on every PR (`.github/workflows/ci.yml`).
