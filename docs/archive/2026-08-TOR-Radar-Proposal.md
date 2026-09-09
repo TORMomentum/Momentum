@@ -1,3 +1,10 @@
+> **Superseded — kept for the record.** This is the original course proposal, written when the
+> product was scoped to Bangkok (BMA) only. Two things in it are no longer true: the scope is
+> national (SRS v2.0 §1.2), and the requirement identifiers were renumbered. Current documents:
+> [../SRS.md](../SRS.md) for requirements, [../PROJECT.md](../PROJECT.md) for problem and
+> stakeholders, [../ARCHITECTURE.md](../ARCHITECTURE.md) for how it is built. Nothing new should
+> cite this file.
+
 # TOR Radar — BMA Procurement Discovery and Transparency Platform
 
 **Project Proposal for Collaborative Software Process and Project Management — 01219346 (450)**
