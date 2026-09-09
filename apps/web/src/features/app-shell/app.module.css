@@ -341,8 +341,16 @@
 
 .barName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .barStat { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
-.barTrack { height: 6px; background: rgba(18, 35, 60, 0.08); }
+/* Both are spans inside a button, and an inline box ignores height - without
+   an explicit display they collapse and the chart renders as bare text. */
+.barTrack {
+  display: block;
+  height: 6px;
+  background: rgba(18, 35, 60, 0.08);
+}
+
 .barFill {
+  display: block;
   height: 6px;
   background: var(--blue);
   transform-origin: left center;

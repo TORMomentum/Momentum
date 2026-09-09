@@ -44,6 +44,17 @@ const FLAGGED_POINTS = [
   { id: "flag-b", left: "58%", bottom: "80%", size: 13, tip: "฿9.4M · สูงกว่ากลุ่มเทียบ 3.1×IQR — คลิกเพื่อดู" },
 ];
 
+interface PlotPoint {
+  id: string;
+  left: string;
+  bottom: string;
+  size: number;
+  flagged: boolean;
+  /** The column's category; null on a flagged point, which opens its record. */
+  category: string | null;
+  tip: string;
+}
+
 const AXIS_CATEGORIES = [
   { left: "5%", name: "ก่อสร้าง" },
   { left: "30%", name: "ชลประทาน" },
@@ -74,13 +85,17 @@ export function DashboardView() {
 
   const points = useMemo(
     () =>
-      SPREAD.map((height, index) => ({
+      SPREAD.map<PlotPoint>((height, index) => ({
         id: `p${index}`,
         left: `${CATEGORY_COLUMNS[index % CATEGORY_COLUMNS.length] + ((index * 2.3) % 9)}%`,
         bottom: `${height * 100}%`,
         size: 9,
         flagged: false,
-        tip: `฿${(1 + height * 12).toFixed(1)}M · ในช่วงปกติของกลุ่มเทียบ`,
+        // A dot's column IS its category, so an unflagged point can honestly
+        // lead to that category's listing. Per-document routing arrives when
+        // the plot is drawn from real records rather than sample scatter.
+        category: CATEGORIES[index % CATEGORIES.length],
+        tip: `฿${(1 + height * 12).toFixed(1)}M · ในช่วงปกติของกลุ่มเทียบ · คลิกเพื่อดูหมวดนี้`,
       })).concat(
         FLAGGED_POINTS.map((flag) => ({
           id: flag.id,
@@ -88,6 +103,7 @@ export function DashboardView() {
           bottom: flag.bottom,
           size: flag.size,
           flagged: true,
+          category: null,
           tip: flag.tip,
         })),
       ),
@@ -204,7 +220,7 @@ export function DashboardView() {
         <section className={styles.splitRight}>
           <div className={styles.panelHead}>
             <h2 className={styles.panelTitle}>งบประมาณตามหมวดหมู่</h2>
-            <span className={styles.panelHint}>1 จุด = 1 TOR · คลิกจุดสีส้มเพื่อดูรายละเอียด</span>
+            <span className={styles.panelHint}>1 จุด = 1 TOR · คลิกจุดเพื่อดูรายละเอียด</span>
           </div>
 
           <div className={styles.plot}>
@@ -214,37 +230,22 @@ export function DashboardView() {
             <div className={styles.grid} style={{ top: 130 }} />
             <div className={styles.grid} style={{ top: 65 }} />
 
-            {points.map((point, index) =>
-              point.flagged ? (
-                <Link
-                  key={point.id}
-                  href="/tors/demo-anomaly"
-                  className={`${styles.dot} ${styles.dotFlagged}`}
-                  style={{
-                    left: point.left,
-                    bottom: point.bottom,
-                    width: point.size,
-                    height: point.size,
-                    animationDelay: `${index * 35}ms`,
-                  }}
-                  title={point.tip}
-                  aria-label={point.tip}
-                />
-              ) : (
-                <span
-                  key={point.id}
-                  className={styles.dot}
-                  style={{
-                    left: point.left,
-                    bottom: point.bottom,
-                    width: point.size,
-                    height: point.size,
-                    animationDelay: `${index * 35}ms`,
-                  }}
-                  title={point.tip}
-                />
-              ),
-            )}
+            {points.map((point, index) => (
+              <Link
+                key={point.id}
+                href={point.flagged ? "/tors/demo-anomaly" : "/search"}
+                className={`${styles.dot} ${point.flagged ? styles.dotFlagged : ""}`}
+                style={{
+                  left: point.left,
+                  bottom: point.bottom,
+                  width: point.size,
+                  height: point.size,
+                  animationDelay: `${index * 35}ms`,
+                }}
+                title={point.tip}
+                aria-label={point.tip}
+              />
+            ))}
 
             <div className={styles.plotFlag} style={{ left: "62%", bottom: "87%" }}>
               [ ANOMALY ] ฿9.4M · 3.1×IQR
