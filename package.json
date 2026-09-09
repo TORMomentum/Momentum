@@ -1,5 +1,5 @@
 {
-  "name": "tor-radar-bkk",
+  "name": "tor-radar",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "engines": {
