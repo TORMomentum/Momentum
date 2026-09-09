@@ -1,0 +1,95 @@
+{
+  "id": "tor-08",
+  "extracted_at": "2026-09-02T17:05:07.589Z",
+  "model": "gemini-3.5-flash",
+  "location": "global",
+  "usage": {
+    "promptTokenCount": 10608,
+    "candidatesTokenCount": 828,
+    "totalTokenCount": 13405,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1564
+      },
+      {
+        "modality": "IMAGE",
+        "tokenCount": 9044
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 828
+      }
+    ],
+    "thoughtsTokenCount": 1969
+  },
+  "agency_bma_valid": true,
+  "fields": {
+    "title": {
+      "value": "การจ้างก่อสร้างปรับปรุงซอยสุขาภิบาลบางระมาด ๕/๑",
+      "confidence": 1,
+      "evidence": "การจ้างก่อสร้างปรับปรุงซอยสุขาภิบาลบางระมาด ๕/๑"
+    },
+    "agency": {
+      "value": "สำนักงานเขตทวีวัฒนา",
+      "confidence": 1,
+      "evidence": "กรุงเทพมหานคร ซึ่งต่อไปนี้เรียกว่า \"สำนักงานเขตทวีวัฒนา\""
+    },
+    "budget_thb": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "ไม่พบข้อมูลวงเงินงบประมาณหรือราคากลางในเอกสาร"
+    },
+    "category": {
+      "value": "งานก่อสร้าง-ทาง",
+      "confidence": 0.9,
+      "evidence": "ปรับปรุงซอยสุขาภิบาลบางระมาด ๕/๑ และ สาขางานก่อสร้างทาง"
+    },
+    "scope_summary": {
+      "value": "ปรับปรุงซอยสุขาภิบาลบางระมาด ๕/๑ จำนวน ๑ รายการ",
+      "confidence": 1,
+      "evidence": "ปรับปรุงซอยสุขาภิบาลบางระมาด ๕/๑ จำนวน ๑ รายการ"
+    },
+    "required_qualifications": {
+      "value": [
+        "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้างสาขางานก่อสร้างทาง ไม่น้อยกว่าชั้น ๖ ประเภททั่วไป ไว้กับกรมบัญชีกลาง",
+        "ต้องมีวิศวกรประจำ ทำหน้าที่รับผิดชอบควบคุมงาน โดยต้องเป็นผู้ได้รับอนุญาตให้ประกอบวิชาชีพวิศวกรรมควบคุม"
+      ],
+      "confidence": 1,
+      "evidence": "๒.๑๐ เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้างสาขางานก่อสร้างทาง ไม่น้อยกว่าชั้น ๖ ประเภททั่วไป ไว้กับกรมบัญชีกลาง และ ๒.๑๔ ต้องมีวิศวกรประจำ ทำหน้าที่รับผิดชอบควบคุมงาน โดยต้องเป็นผู้ได้รับอนุญาตให้ประกอบวิชาชีพวิศวกรรมควบคุม"
+    },
+    "submission_deadline": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "ในวันที่ ระหว่างเวลา น. ถึง น. (เว้นว่าง)"
+    },
+    "contact": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "ไม่พบข้อมูลติดต่อโดยตรงของหน่วยงานในเอกสาร"
+    },
+    "status": {
+      "value": "announced",
+      "confidence": 0.9,
+      "evidence": "เอกสารประกวดราคาจ้างก่อสร้างด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+    },
+    "procurement_method": {
+      "value": "ประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+      "confidence": 1,
+      "evidence": "ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)"
+    },
+    "announcement_date": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "ลงวันที่ พฤศจิกายน ๒๕๖๘ (เว้นว่างวันที่)"
+    },
+    "reference_no": {
+      "value": null,
+      "confidence": 1,
+      "evidence": "เลขที่ (เว้นว่าง)"
+    }
+  }
+}

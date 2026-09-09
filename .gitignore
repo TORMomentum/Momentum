@@ -8,3 +8,11 @@ out/
 coverage/
 *.log
 .DS_Store
+
+# GCP service-account keys and other local secrets — never commit
+secrets/
+*-sa.json
+*-credentials.json
+
+# TOR benchmark: scanned OCR-test PDFs (~38MB) — re-fetch from webportal.bangkok.go.th
+docs/corpus/_extra/

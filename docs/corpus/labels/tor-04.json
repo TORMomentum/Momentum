@@ -1,0 +1,34 @@
+{
+  "id": "tor-04",
+  "file": "tor-04.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ร่างtor/23.1april67/1.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "invitation",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาซื้อจัดซื้อรถโดยสาร ขนาด 12 ที่นั่ง (ดีเซล) ปริมาตรกระบอกสูบไม่ต่ำกว่า 2,400 ซีซี หรือกำลังเครื่องยนต์สูงสุดไม่ต่ำกว่า 90 กิโลวัตต์ 1 คัน ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตทวีวัฒนา",
+  "agency_bma_valid": true,
+  "agency_note": null,
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "ซื้อครุภัณฑ์",
+  "scope_summary": "จัดซื้อรถโดยสารขนาด 12 ที่นั่ง (ดีเซล) เครื่องยนต์ไม่ต่ำกว่า 2,400 ซีซี หรือกำลังสูงสุดไม่ต่ำกว่า 90 กิโลวัตต์ จำนวน 1 คัน ของแท้ ของใหม่ ไม่เคยใช้งาน",
+  "required_qualifications": [
+    "เป็นนิติบุคคลผู้มีอาชีพขายพัสดุที่ประกวดราคาอิเล็กทรอนิกส์ดังกล่าว",
+    "พัสดุต้องมีคุณลักษณะเฉพาะตรงตามที่กำหนดในเอกสารประกวดราคาซื้อ"
+  ],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": "เมษายน 2567 (ไม่ระบุวันที่)",
+  "reference_no": null,
+  "delivery_period": "ผู้ยื่นข้อเสนอต้องเสนอกำหนดเวลาส่งมอบไม่เกิน 60 วัน นับถัดจากวันลงนามในสัญญา",
+  "confidence": {
+    "overall": "high",
+    "note": "เงินค่าพัสดุมาจากเงินงบประมาณประจำปี พ.ศ. 2567; ไม่ระบุจำนวนเงินในเอกสาร"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "tor-11",
+  "file": "tor-11.pdf",
+  "corpus": "_extra (OCR test, not the labeled 10)",
+  "labeled_by": "Claude (Sonnet 5) - spot-check label from rendered scan pages 1-3 only; budget/deadline marked unverified where they'd be on later pages",
+  "labeled_at": "2026-09-02",
+  "schema": "../SCHEMA.md",
+  "title": "ประกวดราคาจ้างบำรุงรักษาระบบคอมพิวเตอร์ศูนย์ข้อมูลด้านเศรษฐกิจการคลังและส่งเสริมการลงทุนในเขตพื้นที่กรุงเทพมหานคร ประจำปีงบประมาณ พ.ศ. 2567 ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "กรุงเทพมหานคร",
+  "agency_bma_valid": true,
+  "agency_note": "ตัวเอกสารระบุ 'กรุงเทพมหานคร'; น่าจะเป็นสำนักงานเศรษฐกิจการคลัง (ไฟล์ต้นทาง id 120)",
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "จ้างเหมาบริการ",
+  "scope_summary": "จ้างบำรุงรักษาระบบคอมพิวเตอร์ของศูนย์ข้อมูลด้านเศรษฐกิจการคลังและส่งเสริมการลงทุน ประจำปีงบประมาณ 2567",
+  "required_qualifications": [],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": "2023-09-19",
+  "announcement_date_raw": "19 กันยายน 2566",
+  "reference_no": "3/2566",
+  "delivery_period": null,
+  "confidence": {
+    "overall": "medium",
+    "note": "เอกสารประกวดราคา สแกน 14 หน้า; ตรวจหน้า 1. budget/deadline ยังไม่ตรวจ"
+  }
+}

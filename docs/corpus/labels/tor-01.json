@@ -1,0 +1,34 @@
+{
+  "id": "tor-01",
+  "file": "tor-01.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ร่างtor/6.1nov68/ร่างรายละเอียดขอบเขตของงานทั้งโครงการ.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "draft-tor",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างขุดลอกคลองบางน้อย จากที่ดินเอกชนถึงถนนกาญจนาภิเษก ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตทวีวัฒนา",
+  "agency_bma_valid": true,
+  "agency_note": null,
+  "budget_thb": 5524000,
+  "budget_source": "วงเงินงบประมาณ/วงเงินที่ได้รับจัดสรร",
+  "category": "งานก่อสร้าง-ชลประทาน",
+  "scope_summary": "ขุดลอกคลองบางน้อย ช่วงจากที่ดินเอกชนถึงถนนกาญจนาภิเษก แขวงทวีวัฒนา เขตทวีวัฒนา เพื่อเพิ่มประสิทธิภาพการระบายน้ำและแก้ปัญหาน้ำท่วม/น้ำเน่าเสีย",
+  "required_qualifications": [
+    "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้าง สาขางานก่อสร้างชลประทาน ไม่น้อยกว่าชั้น 6 ประเภททั่วไป กับกรมบัญชีกลาง",
+    "ในการปฏิบัติงานต้องมีวิศวกรประจำที่ได้รับใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม",
+    "มีและใช้ผู้ผ่านการทดสอบมาตรฐานฝีมือช่าง (ช่างก่อสร้าง, ช่างเครื่องจักรกล) ไม่ต่ำกว่าร้อยละ 10 อย่างน้อยสาขาละ 1 คน"
+  ],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": null,
+  "reference_no": null,
+  "delivery_period": "120 วัน นับถัดจากวันที่ได้รับหนังสือแจ้งให้เริ่มทำงาน",
+  "confidence": {
+    "overall": "high"
+  }
+}

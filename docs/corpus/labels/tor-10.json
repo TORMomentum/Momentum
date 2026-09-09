@@ -1,0 +1,33 @@
+{
+  "id": "tor-10",
+  "file": "tor-10.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ประกาศ/6.1nov68/ร่างรายละเอียดขอบเขตของงานทั้งโครงการ (TOR).pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "draft-tor",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างขุดลอกคลองบางตาล จากคลองควายถึงถนนกาญจนาภิเษก ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตทวีวัฒนา",
+  "agency_bma_valid": true,
+  "agency_note": null,
+  "budget_thb": 1938000,
+  "budget_source": "วงเงินงบประมาณ/วงเงินที่ได้รับจัดสรร",
+  "category": "งานก่อสร้าง-ชลประทาน",
+  "scope_summary": "ขุดลอกคลองบางตาล ช่วงจากคลองควายถึงถนนกาญจนาภิเษก แขวงศาลาธรรมสพน์ เขตทวีวัฒนา เพื่อเพิ่มประสิทธิภาพการระบายน้ำและแก้ปัญหาน้ำท่วม/น้ำเน่าเสีย",
+  "required_qualifications": [
+    "เป็นนิติบุคคล ผู้มีอาชีพรับจ้างงานก่อสร้างที่ประกวดราคาอิเล็กทรอนิกส์ดังกล่าว"
+  ],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": null,
+  "reference_no": null,
+  "delivery_period": "120 วัน นับถัดจากวันที่ได้รับหนังสือแจ้งให้เริ่มทำงาน",
+  "confidence": {
+    "overall": "high",
+    "note": "แบบเลขที่ ผ.ขทว.14-2569"
+  }
+}
