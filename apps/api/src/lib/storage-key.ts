@@ -1,24 +1,35 @@
 /**
  * Where a stored document lives in the bucket.
  *
- * The key stays derived from the content hash, because that is what makes
- * storage content-addressed: the same bytes always land on the same key, an
- * upload can never overwrite a different document, and the dedupe guarantee and
- * the storage location are the same fact (FR-A-2, FR-A-3). A key built from a
- * filename or an agency name would break all three — two names for one
- * document, and one name for two.
+ * The document's identity in the key stays the content hash, because that is
+ * what makes an upload unable to overwrite a different document (FR-A-2) and
+ * what ties an object to exactly one record (FR-A-3). A key built from a
+ * filename or an agency name would break both — two names for one document,
+ * and one name for two — and a name that is only known after extraction would
+ * require renaming, which in object storage means copy-then-delete.
  *
  * What it does add is legibility, which costs nothing:
  *
- *   tors/cf/a3/cfa3181c1ee36e8bce5e39f84959f4558ea7ba32c0e4539a8ab3c8ce8c716ec6.pdf
- *   └──┘ └───┘ └──────────────────────── the identity ───────────────────────┘ └─┘
- *   type shard                                                                 kind
+ *   tors/2026/09/cfa3181c1ee36e8bce5e39f84959f4558ea7ba32c0e4539a8ab3c8ce8c716ec6.pdf
+ *   └──┘ └─────┘ └──────────────────────── the identity ───────────────────────┘ └─┘
+ *   type  month                                                                  kind
  *
- * The two shard levels keep any one prefix listing small — a flat bucket with
- * a hundred thousand siblings is slow to browse and slow to list — and are
- * taken from the hash itself, so the key remains a pure function of the bytes.
- * The extension tells an operator, and the browser downloading it, what the
- * file is.
+ * The month prefix is for whoever has to operate this: the console renders
+ * prefixes as folders, so an intake problem is scoped to "what arrived in
+ * September" instead of one flat list of hashes. The extension tells an
+ * operator, and a downloading browser, what the file is.
+ *
+ * Hash-shard prefixes were tried and removed. AWS auto-scales per prefix
+ * (3,500 writes and 5,500 reads per second, unlimited prefixes), so sharding
+ * by hash solves a problem this system does not have and costs the readability
+ * that a date prefix buys.
+ *
+ * The key is therefore not a pure function of the bytes any more — the same
+ * document submitted in two different months would compute two keys. That is
+ * harmless because the key is not the dedupe mechanism: the unique index on
+ * `contentHash` is, an existing record short-circuits before storage is ever
+ * touched, and every read uses the key recorded on the record rather than
+ * recomputing one.
  */
 
 const EXTENSIONS: Record<string, string> = {
@@ -35,8 +46,8 @@ export function extensionFor(contentType: string): string {
   return EXTENSIONS[contentType] ?? "bin";
 }
 
-export function storageKeyFor(contentHash: string, contentType: string): string {
-  const shardA = contentHash.slice(0, 2);
-  const shardB = contentHash.slice(2, 4);
-  return `${PREFIX}/${shardA}/${shardB}/${contentHash}.${extensionFor(contentType)}`;
+export function storageKeyFor(contentHash: string, contentType: string, at: Date = new Date()): string {
+  const year = at.getUTCFullYear();
+  const month = String(at.getUTCMonth() + 1).padStart(2, "0");
+  return `${PREFIX}/${year}/${month}/${contentHash}.${extensionFor(contentType)}`;
 }

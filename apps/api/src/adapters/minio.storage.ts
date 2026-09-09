@@ -1,15 +1,6 @@
 import { Client } from "minio";
 import type { Storage, StorageMetadata, StoredObject } from "../ports/storage.port.js";
-
-/**
- * A filename arrives from the client, so it cannot go into a header as-is: a
- * newline would let a caller inject headers of their own, and a non-ASCII byte
- * is not valid there. Thai filenames are common here, so they are percent-
- * encoded rather than dropped.
- */
-function sanitiseHeader(value: string): string {
-  return encodeURIComponent(value.replace(/[\r\n]/g, " ")).slice(0, 200);
-}
+import { encodeMetadataValue } from "../lib/metadata-header.js";
 
 export interface MinioSettings {
   endPoint: string;
@@ -71,7 +62,7 @@ export class MinioStorage implements Storage {
       // x-amz-meta-* is what an operator sees beside the object. The key itself
       // is a hash by design, so this is where the human-readable trace lives.
       ...(metadata.originalFilename
-        ? { "x-amz-meta-original-filename": sanitiseHeader(metadata.originalFilename) }
+        ? { "x-amz-meta-original-filename": encodeMetadataValue(metadata.originalFilename) }
         : {}),
       ...(metadata.route ? { "x-amz-meta-route": metadata.route } : {}),
     });

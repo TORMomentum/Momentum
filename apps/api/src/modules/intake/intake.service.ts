@@ -78,7 +78,7 @@ export class IntakeService {
 
     // The key is derived from the hash, never from the filename: content
     // addressing is what makes an overwrite impossible and dedupe exact.
-    const storageKey = storageKeyFor(contentHash, contentType);
+    const storageKey = storageKeyFor(contentHash, contentType, sourceRef.submittedAt);
     const storedObject = await this.storage.putIfAbsent(storageKey, bytes, contentType, {
       originalFilename: source.filename,
       route: source.route,

@@ -104,10 +104,11 @@ describe("IntakeService.submit", () => {
 
     await service.submit(pdf, { ...source, filename: "แผนงาน ฉบับล่าสุด.pdf" });
 
-    // Sharded and given an extension so the bucket is browsable, but the hash
-    // is still the whole identity — the submitted name changes nothing.
+    // Grouped by arrival month and given an extension so the bucket is
+    // browsable, but the hash is still the identity — the submitted name
+    // changes nothing about where the bytes land.
     const [key] = [...objects.keys()];
-    expect(key).toMatch(/^tors\/[0-9a-f]{2}\/[0-9a-f]{2}\/[0-9a-f]{64}\.pdf$/);
+    expect(key).toMatch(/^tors\/\d{4}\/\d{2}\/[0-9a-f]{64}\.pdf$/);
   });
 
   it("converges a repeat submission on the existing record without re-queueing", async () => {

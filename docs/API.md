@@ -138,9 +138,9 @@ sequenceDiagram
 **202 means accepted, not processed.** Extraction happens in the worker; poll `GET /tors/:id`
 (slice 3) for the outcome.
 
-The stored object lands at `tors/<aa>/<bb>/<sha256>.<ext>`, with the submitted filename and the
-route kept as object metadata. The key is derived from the content, never from the name — that is
-what makes an overwrite impossible and dedupe exact.
+The stored object lands at `tors/<year>/<month>/<sha256>.<ext>`, with the submitted filename and
+the route kept as object metadata. The identity in the key is the content hash, never the name —
+that is what makes an overwrite impossible and ties one object to one record.
 
 **200 means it was already here.** A repeat submission is not new work — the response carries the
 existing `torId` and the record gains one more `sourceRef` (`FR-A-3`).
