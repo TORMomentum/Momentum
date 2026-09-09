@@ -216,6 +216,10 @@ FR-A-4 requires the last successful collection time and the health of each adapt
 
 Mongo's built-in text index performs no Thai word segmentation, and Thai does not delimit words with spaces. FR-E-3 search combined with the two-second target in NFR-F2 may require Atlas Search with a Thai analyser, or an n-gram fallback. This is to be verified against current Atlas documentation when slice 3 is specified. Slice 1 requires only exact-match and range filters, so it is not blocked.
 
+**Settled 2026-09-09:** Atlas Search with the `lucene.thai` analyzer, with
+`mongodb/mongodb-atlas-local` giving the same analyzer in Compose and CI. See
+[2026-09-09-data-model-review.md](2026-09-09-data-model-review.md) §2.1.
+
 ### 4.7 Personal data
 
 `fields.contact` may contain personal data. It is stored, but redacted from public API responses and stripped from CSV export (FR-B-5, NFR-S2). Redaction lives in a single serializer so no route can omit it by accident.

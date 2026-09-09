@@ -55,8 +55,11 @@ export function jobs(db: Db): Collection<JobDocument> {
 export async function ensureIndexes(db: Db): Promise<void> {
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
-  await tors(db).createIndex({ "fields.agency.value": 1, createdAt: -1 });
-  await tors(db).createIndex({ "fields.category.value": 1, createdAt: -1 });
+  // Aggregations and peer groups select on the AGENCY's date, so these index
+  // announcedAt rather than ingestion time. The agency + announcedAt pair is
+  // served by the three-field compound below, whose prefix covers it - one
+  // index, not two, because every extra index is paid for on every write.
+  await tors(db).createIndex({ "fields.category.value": 1, announcedAt: -1 });
   await tors(db).createIndex({ announcedAt: -1 });
   await tors(db).createIndex({
     "fields.agency.value": 1,

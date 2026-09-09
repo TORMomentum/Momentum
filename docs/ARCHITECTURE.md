@@ -374,8 +374,7 @@ Three shapes are load-bearing:
 | :--- | :--- |
 | `tors.contentHash` **unique** | Dedupe under concurrency (FR-A-3) — the guarantee, not the optimisation |
 | `tors.pipeline.state + createdAt` | Queue and admin views |
-| `tors.fields.agency.value + createdAt` | Per-agency aggregation (FR-E-1) |
-| `tors.fields.category.value + createdAt` | Peer-group selection for the anomaly rule |
+| `tors.fields.category.value + announcedAt` | Peer-group selection for the anomaly rule |
 | `tors.announcedAt` | Date-range selection and trends (FR-E-1, FR-E-3) |
 | `tors.fields.agency.value + announcedAt + fields.torStatus.value` | The combined filters of FR-E-3 |
 | `tors.access.restricted` | Keeps restricted records out of public queries |
@@ -416,6 +415,7 @@ Decided; not substituted without a design change.
 | API | Express, REST | 5 | Small, well-understood surface; no GraphQL need at this size |
 | Validation | Zod | 4 | One schema shared by both apps via `packages/shared` |
 | Database | MongoDB (Atlas in deployment) | 7 | Extracted fields are irregular and evolve per slice; also serves as the job queue |
+| Search | Atlas Search, `lucene.thai` analyzer | ⬜ slice 3 | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
 | Object storage | MinIO, S3-compatible | 8 (client) | Immutable originals behind a `Storage` port, swappable for S3 |
 | AI | Vertex AI — Document AI OCR, Gemini | ⬜ slice 2 | Thai OCR quality; confidence values per field |
 | Notifications | SMTP email | ⬜ slice 4 | The only channel in scope |
@@ -512,6 +512,7 @@ not a shortcut.
 
 | Question | Document |
 | :--- | :--- |
+| Is the data model right? | [superpowers/specs/2026-09-09-data-model-review.md](superpowers/specs/2026-09-09-data-model-review.md) — workload, decisions, what is still open |
 | What must the system do? | [SRS.md](SRS.md) — every requirement, testable, with verification method |
 | Why does it exist, and for whom? | [PROJECT.md](PROJECT.md) — problem, stakeholders, personas, user stories |
 | How is the current slice built? | [superpowers/specs/](superpowers/specs/) — decisions, structure, seams, security |

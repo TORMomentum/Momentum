@@ -16,6 +16,14 @@ export interface FoundTor {
 }
 
 /** The only intake code that touches MongoDB. */
+/**
+ * Stamped on every record so a reader can tell which shape it is holding.
+ * Slices 2-4 each add fields; without this marker, "absent" and "not yet
+ * written by that slice" are indistinguishable, and a migration has nothing
+ * to select on. Bump it when the shape of a written record changes.
+ */
+export const TOR_SCHEMA_VERSION = 1;
+
 export class IntakeRepository {
   constructor(private readonly db: Db) {}
 
@@ -41,6 +49,7 @@ export class IntakeRepository {
   ): Promise<string> {
     const now = new Date();
     const result = await tors(this.db).insertOne({
+      schemaVersion: TOR_SCHEMA_VERSION,
       contentHash,
       storage: storedObject,
       sourceRefs: [source],
