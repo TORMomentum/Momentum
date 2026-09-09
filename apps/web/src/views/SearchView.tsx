@@ -37,10 +37,10 @@ type Badge = {
  * its public banner invites you to register.
  */
 function badgeFor(row: TorSample, signedIn: boolean): Badge {
-  if (row.anomaly) return { label: "◆ STATISTICAL ANOMALY", className: styles.badgeAnomaly };
-  if (row.unverified) return { label: "⚠ UNVERIFIED EXTRACTION", className: styles.badgeUnverified };
+  if (row.anomaly) return { label: "◆ ความผิดปกติทางสถิติ", className: styles.badgeAnomaly };
+  if (row.unverified) return { label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };
-  if (signedIn && row.match != null) return { label: `MATCH ${row.match}%`, className: styles.badgeMatch };
+  if (signedIn && row.match != null) return { label: `จับคู่ ${row.match}%`, className: styles.badgeMatch };
   return { label: "เปิดรับข้อเสนอ", className: styles.badgeOpen };
 }
 
@@ -246,7 +246,7 @@ export function SearchView() {
           </div>
         </div>
 
-        <div className={styles.sidebarFoot}>RESULTS &lt; 2S · SEEDED CORPUS</div>
+        <div className={styles.sidebarFoot}>ผลลัพธ์ &lt; 2 วินาที · คลังข้อมูลตัวอย่าง</div>
       </div>
 
       <div className={styles.results}>
@@ -263,7 +263,7 @@ export function SearchView() {
         {ready && !signedIn && (
           <div className={styles.publicBanner}>
             <div className={styles.publicBannerText}>
-              คุณกำลังดูแบบสาธารณะ — ลงทะเบียนเพื่อรับคะแนนจับคู่ (MATCH %) และแจ้งเตือนอีเมลภายใน 5
+              คุณกำลังดูแบบสาธารณะ — ลงทะเบียนเพื่อรับคะแนนจับคู่ และแจ้งเตือนอีเมลภายใน 5
               นาที
             </div>
             <Link href="/login?mode=signup" className={styles.publicBannerCta}>
@@ -296,7 +296,7 @@ export function SearchView() {
                   </div>
                   <div className={styles.resultTitle}>{row.title}</div>
                   <div className={styles.resultMeta}>
-                    {row.agency} · ประกาศ {row.posted} · QUALITY {row.quality}/10
+                    {row.agency} · ประกาศ {row.posted} · คุณภาพ {row.quality}/10
                   </div>
                 </div>
                 <div className={`${styles.resultPrice} ${priceClassFor(row)}`}>

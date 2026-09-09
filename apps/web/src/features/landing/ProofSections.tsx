@@ -8,22 +8,22 @@ import { Reveal } from "./Reveal";
 
 const STEPS = [
   {
-    key: "01 · INGEST",
+    key: "01 · นำเข้า",
     title: "รวบรวมทุกฟอร์แมต",
     body: "PDF, สแกน, ภาพถ่ายจากประกาศสาธารณะ — เก็บต้นฉบับถาวรแบบแก้ไขไม่ได้ พร้อมลิงก์กลับแหล่งที่มาเสมอ",
-    foot: "UPLOAD · URL · API → SAME PIPELINE",
+    foot: "อัปโหลด · URL · API → เข้าท่อเดียวกัน",
   },
   {
-    key: "02 · EXTRACT",
+    key: "02 · สกัดข้อมูล",
     title: "AI สกัดโครงสร้าง",
     body: 'OCR ภาษาไทย + สกัดงบประมาณ ขอบเขต คุณสมบัติ กำหนดยื่นซอง — ทุกฟิลด์มีคะแนนความมั่นใจและป้าย "unverified" เมื่อไม่แน่ใจ',
-    foot: "CONFIDENCE-TIERED · HUMAN REVIEW QUEUE",
+    foot: "แบ่งชั้นตามความเชื่อมั่น · มีคิวให้คนตรวจ",
   },
   {
-    key: "03 · MATCH",
+    key: "03 · จับคู่",
     title: "จับคู่และแจ้งเตือน",
     body: "โปรไฟล์ทักษะ × TOR ใหม่ — อีเมลถึงผู้ประกอบการภายใน 5 นาที พร้อมเหตุผลว่าทำไมงานนี้ถึงตรงกับคุณ",
-    foot: "✉ MATCH 92% · TOP-3 SKILL REASONS",
+    foot: "✉ จับคู่ 92% · เหตุผล 3 อันดับแรกจากทักษะ",
     matched: true,
   },
 ] as const;
@@ -128,7 +128,7 @@ export function AnomalyPlot() {
           title="฿9,400,000 · สูงกว่ากลุ่มเทียบ 3.1×IQR"
         />
         <div className={styles.anomalyLabel} style={{ left: "61.5%", bottom: "86%" }}>
-          [ ANOMALY ] ฿9.4M · 3.1×IQR เหนือกลุ่มเทียบ
+          [ ความผิดปกติทางสถิติ ] ฿9.4M · 3.1×IQR เหนือกลุ่มเทียบ
         </div>
 
         {CATEGORIES.map((category) => (
@@ -139,7 +139,7 @@ export function AnomalyPlot() {
       </Reveal>
 
       <Reveal className={styles.plotFoot}>
-        HOVER A DOT · 1 จุด = 1 TOR · ข้อมูลตัวอย่างจาก corpus นำร่อง
+        ชี้ที่จุด · 1 จุด = 1 TOR · ข้อมูลตัวอย่างจากคลังข้อมูลนำร่อง
       </Reveal>
     </section>
   );
@@ -152,7 +152,7 @@ export function QualityChecklist() {
     <section className={styles.section} id="quality">
       <div className={styles.quality}>
         <Reveal>
-          <div className={styles.eyebrow}>[ AI QUALITY CHECKLIST ]</div>
+          <div className={styles.eyebrow}>[ ตรวจคุณภาพข้อกำหนดด้วย AI ]</div>
           <h2 className={styles.heading}>
             TOR เขียนดีแค่ไหน
             <br />
@@ -169,7 +169,7 @@ export function QualityChecklist() {
             <span className={styles.scoreValue} ref={score.ref}>
               {score.text}
             </span>
-            <span className={styles.scoreOutOf}>/ 10 · SPEC QUALITY</span>
+            <span className={styles.scoreOutOf}>/ 10 · คุณภาพข้อกำหนด</span>
           </div>
 
           <div className={styles.checks}>
@@ -192,9 +192,9 @@ export function QualityChecklist() {
           </div>
 
           <div className={styles.disclaimer}>
-            AI-GENERATED SPECIFICATION-QUALITY CHECK
+            ผลการตรวจคุณภาพข้อกำหนดโดย AI
             <br />
-            NOT A LEGAL OR CORRUPTION JUDGMENT
+            ไม่ใช่คำวินิจฉัยทางกฎหมายหรือข้อกล่าวหาทุจริต
           </div>
         </Reveal>
       </div>

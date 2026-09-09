@@ -26,14 +26,14 @@ export const HEADER_NOTIFICATIONS: HeaderNotification[] = [
   {
     id: "match-gis",
     title: "จ้างพัฒนาระบบ GIS เพื่อบริหารจัดการน้ำท่วม",
-    meta: "กรมชลประทาน · MATCH 92% · 2 ชม.",
+    meta: "กรมชลประทาน · จับคู่ 92% · 2 ชม.",
     kind: "match",
     torSlug: "TOR-2569-0812-041",
   },
   {
     id: "match-smart-city",
     title: "จ้างพัฒนาแอปพลิเคชันรายงานปัญหาเมือง",
-    meta: "เมืองพัทยา · MATCH 78% · 1 วัน",
+    meta: "เมืองพัทยา · จับคู่ 78% · 1 วัน",
     kind: "match",
     torSlug: "TOR-2569-0810-029",
   },
@@ -66,7 +66,7 @@ export const ALL_NOTIFICATIONS: ListedNotification[] = [
   {
     id: "match-gis",
     kind: "match",
-    tag: "MATCH 92%",
+    tag: "จับคู่ 92%",
     title: "จ้างพัฒนาระบบสารสนเทศภูมิศาสตร์ (GIS) เพื่อบริหารจัดการน้ำท่วม",
     meta: "กรมชลประทาน · ฿4,850,000 · ยื่นภายใน 25 ส.ค. 2569",
     time: "2 ชม.",
@@ -76,7 +76,7 @@ export const ALL_NOTIFICATIONS: ListedNotification[] = [
   {
     id: "match-smart-city",
     kind: "match",
-    tag: "MATCH 78%",
+    tag: "จับคู่ 78%",
     title: "จ้างพัฒนาแอปพลิเคชันรายงานปัญหาเมือง (Smart City Integration)",
     meta: "เมืองพัทยา · ฿2,300,000 · ยื่นภายใน 22 ส.ค. 2569",
     time: "1 วัน",
@@ -106,7 +106,7 @@ export const ALL_NOTIFICATIONS: ListedNotification[] = [
   {
     id: "match-cctv",
     kind: "match",
-    tag: "MATCH 71%",
+    tag: "จับคู่ 71%",
     title: "จ้างบำรุงรักษาระบบกล้อง CCTV ทางหลวงสายหลัก",
     meta: "กรมทางหลวง · ฿3,750,000 · ปิดรับแล้ว",
     time: "2 สัปดาห์",

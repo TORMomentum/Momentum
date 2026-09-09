@@ -84,7 +84,7 @@ export const TOR_SAMPLES: TorSample[] = [
     docRef: "ประกาศกรมชลประทาน · 12 หน้า",
     priceNote: "ในช่วงปกติของกลุ่มเทียบ (GIS × Q3/2569)",
     deadlineNote: "เหลืออีก 13 วัน",
-    extractedAt: "2026-08-11 14:03",
+    extractedAt: "11 ส.ค. 2569 14:03",
     quals: [
       { text: "GIS / แผนที่ดิจิทัล", ok: true },
       { text: "พัฒนาเว็บแอปพลิเคชัน", ok: true },
@@ -121,7 +121,7 @@ export const TOR_SAMPLES: TorSample[] = [
     docRef: "ประกาศเทศบาลนครเชียงใหม่ · สแกน 6 หน้า",
     priceNote: "ค่าจากเอกสารสแกน — ยังไม่ยืนยัน",
     deadlineNote: "เหลืออีก 7 วัน",
-    extractedAt: "2026-08-11 14:03",
+    extractedAt: "11 ส.ค. 2569 14:03",
     quals: [
       { text: "พัฒนาเว็บแอปพลิเคชัน", ok: true },
       { text: "ระบบจองคิว/CRM", ok: false },
@@ -154,7 +154,7 @@ export const TOR_SAMPLES: TorSample[] = [
     docRef: "ประกาศเมืองพัทยา · 15 หน้า",
     priceNote: "ในช่วงปกติของกลุ่มเทียบ",
     deadlineNote: "เหลืออีก 10 วัน",
-    extractedAt: "2026-08-10 14:03",
+    extractedAt: "10 ส.ค. 2569 14:03",
     quals: [
       { text: "พัฒนาแอปมือถือ", ok: false },
       { text: "พัฒนาเว็บแอปพลิเคชัน", ok: true },
@@ -190,7 +190,7 @@ export const TOR_SAMPLES: TorSample[] = [
     docRef: "ประกาศกรมควบคุมมลพิษ · 9 หน้า",
     priceNote: "สูงกว่ากลุ่มเทียบ 3.1×IQR — ความผิดปกติทางสถิติ",
     deadlineNote: "เหลืออีก 6 วัน",
-    extractedAt: "2026-08-08 14:03",
+    extractedAt: "8 ส.ค. 2569 14:03",
     quals: [
       { text: "ระบบจัดการเอกสาร", ok: false },
       { text: "บริการสแกนเอกสาร", ok: false },
@@ -223,7 +223,7 @@ export const TOR_SAMPLES: TorSample[] = [
     docRef: "ประกาศกรมทางหลวง · 10 หน้า",
     priceNote: "ในช่วงปกติของกลุ่มเทียบ",
     deadlineNote: "ปิดรับแล้ว",
-    extractedAt: "2026-07-22 14:03",
+    extractedAt: "22 ก.ค. 2569 14:03",
     quals: [
       { text: "งานบำรุงรักษา CCTV", ok: false },
       { text: "ผลงานภาครัฐ ≥ 2 โครงการ", ok: false },

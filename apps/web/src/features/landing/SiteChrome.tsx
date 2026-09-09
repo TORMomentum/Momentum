@@ -23,9 +23,13 @@ export function SiteNav() {
     <header className={className}>
       <div className={styles.wordmark}>TOR RADAR</div>
       <nav className={styles.navLinks}>
-        <a href="#how">HOW IT WORKS</a>
-        <a href="#data">DATA</a>
-        <a href="#quality">QUALITY</a>
+        <a href="#how">วิธีทำงาน</a>
+        <a href="#data">ข้อมูล</a>
+        <a href="#quality">คุณภาพ</a>
+        {/* The way into the app belongs with the other navigation, not over
+            with the account controls. It only appears once there is a session
+            to go back to. */}
+        {ready && signedIn && <Link href="/dashboard">แดชบอร์ด</Link>}
       </nav>
       <div className={styles.auth}>
         {/*
@@ -45,14 +49,7 @@ export function SiteNav() {
             </Link>
           </>
         )}
-        {ready && signedIn && (
-          <>
-            <Link href="/dashboard" className={styles.signIn}>
-              แดชบอร์ด
-            </Link>
-            <AccountControls />
-          </>
-        )}
+        {ready && signedIn && <AccountControls />}
       </div>
     </header>
   );
@@ -81,9 +78,9 @@ export function SiteFooter() {
         ข้อมูลจากประกาศสาธารณะเท่านั้น · เนื้อหาสกัดโดย AI มีป้ายกำกับเสมอ
       </div>
       <div className={styles.footerRight}>
-        PDPA-ALIGNED · PII MINIMIZED · TAKEDOWN WORKFLOW
+        สอดคล้องแนวทาง PDPA · ลดทอนข้อมูลส่วนบุคคล · มีขั้นตอนขอถอดถอน
         <br />
-        ISSUE NO. 2569-08 · BUILT FOR TRANSPARENCY
+        ฉบับ 2569-08 · สร้างเพื่อความโปร่งใส
       </div>
     </footer>
   );

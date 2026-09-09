@@ -91,12 +91,12 @@ export function TorDetailView() {
             ))}
           </div>
           <div className={styles.matchNote}>
-            ✓ = ตรงกับโปรไฟล์ของคุณ ({tor.match != null ? `MATCH ${tor.match}%` : "ยังไม่มีคะแนน"})
+            ✓ = ตรงกับโปรไฟล์ของคุณ ({tor.match != null ? `จับคู่ ${tor.match}%` : "ยังไม่มีคะแนน"})
           </div>
         </div>
 
         <div className={styles.provenance}>
-          EXTRACTED {tor.extractedAt} · CONFIDENCE {tor.conf}
+          สกัดเมื่อ {tor.extractedAt} · ความเชื่อมั่น {tor.conf}
           <br />
           เนื้อหาสกัดโดย AI — ตรวจสอบกับเอกสารต้นฉบับเสมอ
         </div>
@@ -114,10 +114,10 @@ export function TorDetailView() {
           </button>
         </div>
 
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>[ AI QUALITY CHECKLIST ]</div>
+        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>[ ตรวจคุณภาพข้อกำหนดด้วย AI ]</div>
         <div className={styles.qualityRow}>
           <span className={styles.qualityValue}>{tor.quality}</span>
-          <span className={styles.qualityUnit}>/ 10 · SPEC QUALITY</span>
+          <span className={styles.qualityUnit}>/ 10 · คุณภาพข้อกำหนด</span>
         </div>
         <div className={styles.qualityCaption}>
           การตรวจความครบถ้วนของข้อกำหนดโดย AI — ไม่ใช่คำตัดสินทางกฎหมาย
@@ -138,12 +138,12 @@ export function TorDetailView() {
           <div className={`${styles.blockLabel} ${styles.blockLabelMid}`}>[ เอกสารต้นฉบับ ]</div>
           <div className={styles.docPreview}>
             <div className={styles.docPreviewText}>
-              PDF PREVIEW
+              ตัวอย่างเอกสาร PDF
               <br />
               {tor.docRef}
             </div>
           </div>
-          <div className={styles.docHash}>SHA-256 VERIFIED · เก็บถาวรไม่แก้ไข</div>
+          <div className={styles.docHash}>ยืนยันด้วย SHA-256 · เก็บถาวรไม่แก้ไข</div>
         </div>
       </div>
     </main>

@@ -26,7 +26,7 @@ export interface Account {
   role: string;
 }
 
-const DEFAULT_ROLE = "FREELANCE FULL-STACK";
+const DEFAULT_ROLE = "ผู้ประกอบการ";
 
 /** "somchai.dev@gmail.com" → "somchai.dev", which beats showing the raw email. */
 export function nameFromEmail(email: string): string {

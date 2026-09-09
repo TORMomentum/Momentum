@@ -149,14 +149,14 @@ export function VendorProfileView() {
           <h1 className={styles.profileName}>{account?.name}</h1>
           <div className={styles.profileSub}>
             {account?.email} ·{" "}
-            <span className={styles.profileComplete}>PROFILE 90% COMPLETE</span>
+            <span className={styles.profileComplete}>โปรไฟล์สมบูรณ์ 90%</span>
           </div>
         </div>
       </div>
 
       <div className={styles.profileCard}>
         <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>
-          [ ทักษะ — จาก TAXONOMY กลาง · คลิกเพื่อเปิด/ปิด ]
+          [ ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด ]
         </div>
         <div className={styles.skillRow}>
           {skillNames.map((name) => (

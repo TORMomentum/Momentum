@@ -137,7 +137,7 @@ export function DashboardView() {
       <div className={styles.pageHead}>
         <h1 className={styles.pageTitle}>ภาพรวมการจัดซื้อจัดจ้างภาครัฐ</h1>
         <div className={styles.coverage}>
-          DATA LAST UPDATED 12 AUG 2026 · 09:42
+          อัปเดตข้อมูลล่าสุด 12 ส.ค. 2569 · 09:42
           <br />
           ครอบคลุมเฉพาะเอกสารที่นำเข้าระบบ · ตัวเลขเป็นข้อมูลตัวอย่าง
         </div>
@@ -296,7 +296,7 @@ export function DashboardView() {
             ))}
 
             <div className={styles.plotFlag} style={{ left: "62%", bottom: "87%" }}>
-              [ ANOMALY ] ฿9.4M · 3.1×IQR
+              [ ความผิดปกติทางสถิติ ] ฿9.4M · 3.1×IQR
             </div>
 
             {AXIS_CATEGORIES.map((item) => (
