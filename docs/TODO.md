@@ -33,7 +33,7 @@ _last updated: 2026-09-02_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (10/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (11/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -130,7 +130,22 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] found and fixed a real fault: a malformed URL answered 500 because a ZodError fell through
         to the generic handler. Schema rejections now answer 400 with the failing paths
   - [x] 20 cases across routes and auth; 78/78 at the root, lint and tsc clean
-- [ ] **Task 11 — extraction worker and orphan reconciler** ← next
+- [x] **Task 11 — extraction worker and orphan reconciler** — pulled into TOR-88's branch as
+      subtask **TOR-126** (the worker is the harness the extraction runs in, not a TOR-73 concern)
+  - [x] `workers/reconcile.ts` + 4 integration cases — requeues an orphaned `queued` record,
+        leaves a live-job record alone, ignores records younger than `RECONCILE_MIN_AGE_MS`,
+        ignores records past `queued`
+  - [x] `workers/extract.worker.ts` — `runOnce` (claim → extracting → handler → published |
+        retry | failed), a pass-through `ExtractionHandler` as the slice-2 seam, `startWorker`
+        loop with scheduled reconcile, entry guard so importing the module in tests starts nothing
+  - [x] `runOnce` unit-tested with a fake queue; the seam integration-tested against real Mongo
+        (`queued → published`, handler runs while `extracting`, exhausted retries → `failed` with
+        the reason, NFR-S5)
+  - [x] `worker` / `worker:dev` scripts; `worker` Compose service (shared env anchor with `api`,
+        which also gained the `MINIO_PUBLIC_URL` / key vars it was missing)
+  - [x] per-file isolated test DBs (`test/mongo.ts`) so `tors`-touching integration files stop
+        racing each other under vitest parallelism
+  - [x] 89/89 at the root, lint and tsc clean; worker verified live against Mongo
 - [ ] Task 12 — TOR read API, signed links, redaction
 - [ ] Task 13 — design tokens and the admin upload screen
 - [ ] Task 14 — workspace-aware Dockerfiles
