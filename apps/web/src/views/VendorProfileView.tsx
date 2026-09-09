@@ -4,8 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import styles from "../features/app-shell/screens.module.css";
 import styles2 from "../features/app-shell/screens-2.module.css";
-import { TOR_SAMPLES, type TorSample } from "../data/tor-samples";
+import {
+  BUDGET_FILTER_MAX,
+  BUDGET_FILTER_MIN,
+  BUDGET_FILTER_STEP,
+  TOR_SAMPLES,
+  formatBudgetShort,
+  type TorSample,
+} from "../data/tor-samples";
 import { useViewer } from "../shared/lib/viewer";
+import { BudgetRange } from "../shared/ui/BudgetRange";
 
 /**
  * Vendor profile (FR-D). Ported from the "Vendor Profile" screen of
@@ -27,6 +35,19 @@ const DEFAULT_SKILLS: Record<string, boolean> = {
   "Node.js / API": true,
   "ความปลอดภัยไซเบอร์": false,
 };
+
+/**
+ * The vendor's budget interest, editable here because FR-D-2 makes it theirs
+ * to update. It is scored against every published TOR (FR-C-1), so the range
+ * is a real matching input rather than a profile decoration.
+ *
+ * "Past projects" used to sit beside it and has been dropped: the starred list
+ * further down already records "I have done work like this", and two lists
+ * saying the same thing invite two answers. FR-D-2 still names past projects
+ * and portfolio material, so either that requirement gets amended or the field
+ * returns with slice 4's real profile storage.
+ */
+const DEFAULT_BUDGET_RANGE = { min: 500_000, max: 5_000_000 };
 
 const SAMPLE_STARRED_SLUGS = ["TOR-2569-0812-041", "TOR-2569-0810-029"];
 const SAMPLE_BOOKED_SLUGS = ["demo-anomaly", "TOR-2569-0811-038"];
@@ -80,7 +101,12 @@ function statusFor(tor: TorSample) {
 
 export function VendorProfileView() {
   const { account } = useViewer();
+  const [budget, setBudget] = useState(DEFAULT_BUDGET_RANGE);
+  const [editingBudget, setEditingBudget] = useState(false);
+  // The slider edits a draft, so ยกเลิก can put the saved range back.
+  const [budgetDraft, setBudgetDraft] = useState(DEFAULT_BUDGET_RANGE);
   const [skillOn, setSkillOn] = useState<Record<string, boolean>>(DEFAULT_SKILLS);
+
   const [addingSkill, setAddingSkill] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [preset, setPreset] = useState<"all" | "balanced" | "few">("balanced");
@@ -172,12 +198,64 @@ export function VendorProfileView() {
 
         <div className={styles.profileFactGrid}>
           <div>
-            <div className={styles.profileFactTitle}>ช่วงงบประมาณที่สนใจ</div>
-            <div className={styles.profileFactValue}>฿500K — ฿5M</div>
-          </div>
-          <div>
-            <div className={styles.profileFactTitle}>ผลงานภาครัฐ</div>
-            <div className={styles.profileFactText}>ระบบจองคิวออนไลน์ เทศบาลนครขอนแก่น (2568)</div>
+            <div className={styles.profileFactHead}>
+              <div className={styles.profileFactTitle}>ช่วงงบประมาณที่สนใจ</div>
+              {!editingBudget && (
+                <button
+                  type="button"
+                  className={styles.factEdit}
+                  onClick={() => {
+                    setBudgetDraft(budget);
+                    setEditingBudget(true);
+                  }}
+                >
+                  แก้ไข
+                </button>
+              )}
+            </div>
+
+            {!editingBudget && (
+              <div className={styles.profileFactValue}>
+                {formatBudgetShort(budget.min)} — {formatBudgetShort(budget.max)}
+              </div>
+            )}
+
+            {editingBudget && (
+              <div className={styles.factEditor}>
+                {/* The same two-handle slider the Search filters use, so the
+                    range is stated the way it is read. It cannot produce an
+                    invalid range: each handle stops at the other. */}
+                <BudgetRange
+                  min={budgetDraft.min}
+                  max={budgetDraft.max}
+                  floor={BUDGET_FILTER_MIN}
+                  ceiling={BUDGET_FILTER_MAX}
+                  step={BUDGET_FILTER_STEP}
+                  onChange={setBudgetDraft}
+                  minLabel="งบประมาณต่ำสุดที่สนใจ"
+                  maxLabel="งบประมาณสูงสุดที่สนใจ"
+                />
+                <div className={styles.factActions}>
+                  <button
+                    type="button"
+                    className={styles.addSkillConfirm}
+                    onClick={() => {
+                      setBudget(budgetDraft);
+                      setEditingBudget(false);
+                    }}
+                  >
+                    บันทึก
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.addSkillCancel}
+                    onClick={() => setEditingBudget(false)}
+                  >
+                    ยกเลิก
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

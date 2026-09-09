@@ -469,9 +469,10 @@
 
 .skillCount { margin-top: 12px; font: 10px var(--data); color: rgba(18, 35, 60, 0.55); }
 
+/* One fact left in this row since past projects were dropped, so it spans. */
 .profileFactGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   margin-top: 22px;
   border-top: 1px solid rgba(18, 35, 60, 0.14);
@@ -480,6 +481,33 @@
 .profileFactTitle { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 .profileFactValue { font: 600 16px var(--data); }
 .profileFactText { font-size: 13px; color: rgba(18, 35, 60, 0.75); }
+
+/* ---- editable budget interest ---- */
+.profileFactHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.profileFactHead .profileFactTitle { margin-bottom: 0; }
+
+.factEdit {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: 10px var(--data);
+  color: var(--blue);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.factEdit:hover { text-decoration: underline; }
+
+.factEditor { display: flex; flex-direction: column; gap: 10px; }
+
+.factActions { display: flex; gap: 8px; }
 
 .matchRangeInput { width: 100%; cursor: pointer; accent-color: var(--blue); }
 
@@ -517,7 +545,6 @@
   .detailSide { padding: 24px 20px; }
 
   .profilePage { padding: 24px 20px 48px; }
-  .profileFactGrid { grid-template-columns: 1fr; }
 }
 
 /* Signed-out notice on Search: says what an account adds, in the mockup's words. */

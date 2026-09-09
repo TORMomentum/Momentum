@@ -16,3 +16,6 @@ secrets/
 
 # TOR benchmark: scanned OCR-test PDFs (~38MB) — re-fetch from webportal.bangkok.go.th
 docs/corpus/_extra/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
