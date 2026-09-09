@@ -10,6 +10,7 @@
   --ink-70: rgba(18, 35, 60, 0.7);
   --ink-65: rgba(18, 35, 60, 0.65);
   --ink-62: rgba(18, 35, 60, 0.62);
+  --ink-28: rgba(18, 35, 60, 0.28);
   --ink-20: rgba(18, 35, 60, 0.2);
   --ink-18: rgba(18, 35, 60, 0.18);
   --ink-12: rgba(18, 35, 60, 0.12);
@@ -18,6 +19,8 @@
   /* meaning-carrying accents */
   --blue: #1d63d8;          /* actions, links, the platform's own voice */
   --blue-dark: #1746a0;
+  --blue-wash: rgba(29, 99, 216, 0.06);   /* a control that is holding a filter */
+  --blue-ring: rgba(29, 99, 216, 0.12);   /* focus/open ring around one */
   --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
   --verified: #0e7a5f;      /* a check that passed */
   --avatar: #2b6e5a;        /* the account initial's disc */

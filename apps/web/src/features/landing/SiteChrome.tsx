@@ -4,10 +4,13 @@ import Link from "next/link";
 
 import styles from "./landing.module.css";
 import { useNavVisibility } from "./useLandingMotion";
+import { AccountControls } from "../app-shell/AccountControls";
+import { useViewer } from "../../shared/lib/viewer";
 
 /** Fixed header. Hides on the way down, returns on the way up. */
 export function SiteNav() {
   const { hidden, scrolled } = useNavVisibility();
+  const { signedIn, ready } = useViewer();
   const className = [
     styles.nav,
     hidden ? styles.navHidden : "",
@@ -25,12 +28,31 @@ export function SiteNav() {
         <a href="#quality">QUALITY</a>
       </nav>
       <div className={styles.auth}>
-        <Link href="/login" className={styles.signIn}>
-          เข้าสู่ระบบ
-        </Link>
-        <Link href="/login?mode=signup" className={`${styles.primary} ${styles.navCta}`}>
-          ลงทะเบียนผู้ประกอบการ
-        </Link>
+        {/*
+          Signed in, this header carries the same bell and account menu as the
+          app shell instead of the two auth buttons — a reader who lands back
+          on the public page is still signed in and should be able to see it.
+          Nothing renders until the stored session has been read, so neither
+          branch flashes.
+        */}
+        {ready && !signedIn && (
+          <>
+            <Link href="/login" className={styles.signIn}>
+              เข้าสู่ระบบ
+            </Link>
+            <Link href="/login?mode=signup" className={`${styles.primary} ${styles.navCta}`}>
+              ลงทะเบียนผู้ประกอบการ
+            </Link>
+          </>
+        )}
+        {ready && signedIn && (
+          <>
+            <Link href="/dashboard" className={styles.signIn}>
+              แดชบอร์ด
+            </Link>
+            <AccountControls />
+          </>
+        )}
       </div>
     </header>
   );

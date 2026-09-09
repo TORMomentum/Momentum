@@ -5,6 +5,7 @@ import Link from "next/link";
 import styles from "../features/app-shell/screens.module.css";
 import styles2 from "../features/app-shell/screens-2.module.css";
 import { TOR_SAMPLES, type TorSample } from "../data/tor-samples";
+import { useViewer } from "../shared/lib/viewer";
 
 /**
  * Vendor profile (FR-D). Ported from the "Vendor Profile" screen of
@@ -78,6 +79,7 @@ function statusFor(tor: TorSample) {
 }
 
 export function VendorProfileView() {
+  const { account } = useViewer();
   const [skillOn, setSkillOn] = useState<Record<string, boolean>>(DEFAULT_SKILLS);
   const [addingSkill, setAddingSkill] = useState(false);
   const [newSkill, setNewSkill] = useState("");
@@ -111,14 +113,16 @@ export function VendorProfileView() {
 
   return (
     <main className={styles.profilePage}>
+      {/* Name and email are the signed-in account's own; everything below is
+          still sample data until slice 4 stores a real vendor profile. */}
       <div className={styles.profileHead}>
         <span className={styles.profileAvatar} aria-hidden="true">
-          น
+          {account?.name.trim().charAt(0) || "ผ"}
         </span>
         <div>
-          <h1 className={styles.profileName}>คุณนก วิภาดา</h1>
+          <h1 className={styles.profileName}>{account?.name}</h1>
           <div className={styles.profileSub}>
-            FREELANCE FULL-STACK · สมาชิกตั้งแต่ มี.ค. 2569 ·{" "}
+            {account?.email} ·{" "}
             <span className={styles.profileComplete}>PROFILE 90% COMPLETE</span>
           </div>
         </div>

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Anuphan, IBM_Plex_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import "../src/shared/styles/tokens.css";
+import { NotificationsProvider } from "../src/shared/lib/notifications";
+import { ViewerProvider } from "../src/shared/lib/viewer";
 
 // Self-hosted at build time: no render-blocking request, no layout shift.
 const display = Anuphan({
@@ -30,7 +32,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" className={`${display.variable} ${body.variable} ${data.variable}`}>
-      <body>{children}</body>
+      <body>
+        {/* Session and notification read-state wrap EVERY route, public ones
+            included: the landing page's own header has to know whether someone
+            is signed in, and the bell's unread count must not reset when a
+            reader crosses between the two layouts. */}
+        <ViewerProvider>
+          <NotificationsProvider>{children}</NotificationsProvider>
+        </ViewerProvider>
+      </body>
     </html>
   );
 }

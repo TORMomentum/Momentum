@@ -279,17 +279,86 @@
   line-height: 1.8;
 }
 
-.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.filters { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 24px; }
 
-.filter {
-  font: 11px var(--data);
-  border: 1px solid rgba(18, 35, 60, 0.35);
-  color: rgba(18, 35, 60, 0.75);
+/* ---------- filter chips and their option panels ---------- */
+.dropWrap { position: relative; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+  font: 500 11px var(--data);
+  border: 1px solid var(--ink-28);
   background: var(--paper);
-  padding: 6px 12px;
+  color: var(--ink);
+  padding: 8px 14px;
   border-radius: 99px;
   cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
+
+.chip:hover { border-color: var(--blue); }
+
+/* A chip reads as filtered while it holds anything but "all", and stays lit
+   while its panel is open. */
+.chipFiltered,
+.chipOpen { border-color: var(--blue); background: var(--blue-wash); }
+
+.chipOpen { box-shadow: 0 0 0 3px var(--blue-ring); }
+
+.chipLabel { color: rgba(18, 35, 60, 0.55); }
+.chipValue { font-weight: 600; }
+
+.chipCaret {
+  font-size: 9px;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.chipCaretOpen { transform: rotate(180deg); }
+
+.dropPanel {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  min-width: 224px;
+  background: var(--paper);
+  border: 1px solid rgba(18, 35, 60, 0.16);
+  border-radius: 9px;
+  box-shadow: 0 14px 36px rgba(18, 35, 60, 0.16);
+  padding: 5px;
+  z-index: 30;
+  max-height: 290px;
+  overflow: auto;
+}
+
+.dropOption {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-family: var(--body);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropOption:hover { background: rgba(29, 99, 216, 0.08); }
+
+.dropOptionOn { background: rgba(29, 99, 216, 0.1); color: var(--blue); font-weight: 600; }
+
+.dropMeta { font: 10px var(--data); color: rgba(18, 35, 60, 0.5); }
+.dropOptionOn .dropMeta { color: var(--blue); }
 
 /* ---------- stat strip ---------- */
 .stats {
@@ -329,6 +398,9 @@
 
 .bar { cursor: pointer; transition: opacity 0.2s ease; background: none; border: 0; padding: 0; text-align: left; width: 100%; }
 .bar:hover { opacity: 0.75; }
+/* Picking one agency fades the rest instead of removing them, so the chosen
+   bar can still be read against its peers. */
+.barDim { opacity: 0.35; }
 
 .barLabel {
   display: flex;
@@ -502,3 +574,12 @@
 }
 
 .gateEscape:hover { color: var(--blue); }
+
+/* ---------- account controls (bell + menu), shared with the landing nav ---------- */
+.accountControls { display: flex; align-items: center; gap: 14px; }
+
+/* A read item keeps its place in the list but stops asking for attention. */
+.bellItemRead .bellItemTitle { color: var(--ink-70); font-weight: 500; }
+.bellItemDotRead { background: var(--ink-20); }
+
+.bellMarkRead:disabled { color: var(--ink-62); cursor: default; }
