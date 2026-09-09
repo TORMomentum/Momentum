@@ -187,14 +187,20 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
 _Design: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpowers/specs/2026-09-09-tor-radar-extraction-confidence-design.md) — drafted on this branch, NOT yet externally cross-checked; §10 holds the open questions. Reviewed at PR time._
 
 - [x] **TOR-126 — extraction worker + reconciler (pipeline harness)** — see §2 Task 11
-- [x] **Slice-2 design spec** — decisions D1–D11, the §6 confidence policy, §10 open questions
-- [ ] **TOR-89 — Vertex AI extraction service** — `ai.port.ts`, `vertex.ai.ts`, `extraction.service.ts`;
-      gated on the corpus check (spec §8) before the rest stack on the grade
-- [ ] TOR-90 — per-field confidence + tier logic (`extraction.grading.ts`, the §6 policy)
-- [ ] TOR-91 — sanity checks (folded into `grading.ts` Pass 3)
+- [x] **Slice-2 design spec** — decisions D1–D11, the §6 confidence policy, §10 questions
+      (Q2/Q3/Q5 resolved after the corpus gate ran)
+- [x] **TOR-89 — Vertex AI extraction service** — `ports/ai.port.ts`, `adapters/vertex.ai.ts`,
+      `modules/extraction/{service,repository}.ts`, `lib/pdf-text.ts`, config (T_low/T_high promoted).
+      Corpus gate (spec §8, real Vertex, `extraction.corpus.test.ts`): 10/10 — agency/budget/status
+      match the labels; grade distribution high:5 / low:5. `dc4cfcf`
+- [x] **TOR-90 — per-field confidence + tier logic** — `extraction.grading.ts`, the §6 three-pass
+      policy; 10 table-driven cases. Built with TOR-89 as one testable unit. `dc4cfcf`
+- [x] **TOR-91 — sanity checks** — `grading.ts` Pass 3 (missing critical field, implausible budget,
+      deadline before announcement, cancelled-with-deadline, copy-through). Corpus-validated. `dc4cfcf`
 - [ ] TOR-92 — qualification → taxonomy mapping (`extraction.taxonomy.ts`, `packages/seeds`) — spec §10 Q1
 - [ ] TOR-93 — PII minimisation (`lib/redact.ts`)
-- [ ] TOR-120 — tests: two-tier logic + sanity checks
+- [ ] TOR-120 — tests: two-tier logic + sanity checks — mostly covered by the grading/service/corpus
+      suites; final pass once TOR-92/93 land
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

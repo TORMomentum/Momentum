@@ -64,7 +64,7 @@ The trigger below is `agency` **missing or empty**, nothing about which province
 | D1 | **One Gemini multimodal call per document. No separate Document AI OCR pass.** | The benchmark proves it: native-PDF Gemini OCRs Thai well enough, and a second service is throughput this project (NFR-S4) does not have. Document AI stays a fallback for a document class Gemini vision later fails on — added as a second `Ai` adapter, not a rewrite (Slice-1 D7). |
 | D2 | **`ports/ai.port.ts` speaks the domain**: `extract(document) → RawExtraction`. The adapter, not the port, knows the word "Gemini". | Rule 2: modules import ports. The extraction service is unit-tested with a fake `Ai`; `vertex.ai.ts` is integration-tested on its own. Swapping models or adding Document AI is one adapter. |
 | D3 | **Grading is deterministic rules first, model confidence second** (§6). | The benchmark's central finding. A field only reaches the "clean" tier after passing its structural checks; the model's confidence is a secondary gate inside the band the rules allow. |
-| D4 | **`confidenceLevel` is computed from the *critical* fields and the sanity result**, not averaged over all nine. | §4.2.1: "High — every critical field at or above T_high"; "Low — a critical field missing or implausible". Averaging would let a shaky `contact` field drag a solid record down, or a strong `title` hide a missing `budget`. Critical set: **agency, budget, submission_deadline** (per the withdrawn FR-B3's own list, kept). |
+| D4 | **`confidenceLevel` is computed from the *critical* fields and the sanity result**, not averaged over all nine. | §4.2.1: "High — every critical field at or above T_high"; "Low — a critical field missing or implausible". Averaging would let a shaky `contact` field drag a solid record down, or a strong `title` hide a missing `budget`. Critical set: **agency, budget** (see §10 Q3 — `deadline` dropped after the corpus showed 0/10 real TORs state one). |
 | D5 | **Per-field `verified: false` is the anomaly/matching gate**, set by grading; downstream (§4.5.1, FR-C-1, FR-C-4) reads `field.verified === true`, never the raw confidence. | Keeps "a misreading can neither create a flag nor move one" (§4.5.1) enforceable in one place — the grader — rather than re-implemented in every consumer. |
 | D6 | **`hasTextLayer` is detected before the model call** and stored on the record. | The tier rules treat an OCR'd `budget`/date differently from a digital one. Asking the model whether it OCR'd is unreliable; a text-layer probe (`lib/pdf-text.ts`) is deterministic and ~1 ms. Images are always "no text layer". |
 | D7 | **Provenance records one model for both OCR and extraction** (D1). `thresholdsVersion` is a config value. | NFR-F6. When O1's thresholds are re-measured, `thresholdsVersion` distinguishes records graded old from new without a migration (Slice-1 §4.2). |
@@ -287,7 +287,10 @@ treated as a Pass-1 failure.
 
 The record is **low** if any of:
 
-- `agency`, `budget`, or `deadline` is missing (no `value`);
+- `agency` or `budget` is missing (no `value`, or confidence `< T_low`).
+  **Not `deadline`** — resolved against the corpus (§10 Q3): most Thai draft
+  TORs state no submission date, so a missing deadline is not a queue trigger; a
+  deadline that is *present but implausible* still trips the checks below.
 - `budget.value` present but outside `[BUDGET_MIN_THB, BUDGET_MAX_THB]`;
 - `deadline.value` present and **before** `announcedAt`;
 - `torStatus.value` is `closed` / `awarded` / `cancelled` **and** a `deadline.value` was extracted
@@ -362,14 +365,15 @@ skipped and the pure grading/redaction/taxonomy tests still run.
 ## 10. Open questions for review
 
 Flagged because this design has **not** had the different-company cross-check Slice 1 got (§11).
+Status added after the TOR-89 corpus gate ran.
 
-| # | Question | Current answer | Risk if wrong |
+| # | Question | Answer | Status |
 | :---- | :---- | :---- | :---- |
-| Q1 | Should FR-B-4 taxonomy mapping happen now, or should TOR-92 store raw qualification strings and defer mapping to Slice 4 when F9 seeds the real taxonomy? | Pull a ~30-tag seed forward (`packages/seeds/taxonomy.json`), keyword-map now (D10). | A throwaway seed shape that F9 then has to migrate. Mitigated: `qualifications.value` keeps the raw strings; only `.tags` would be recomputed. |
-| Q2 | Is `hasTextLayer` on the record the right OCR/digital signal, or should grading trust the model to self-report? | Text-layer probe, deterministic (D6). | A digital PDF with a broken/garbled text layer (the benchmark's `tor-16`) probes as "has text" but is effectively a scan — its budget would wrongly be eligible for the clean tier. **Needs a second check**: probe *and* a low extracted-text-density heuristic. |
-| Q3 | Critical fields = {agency, budget, deadline}. A services contract with a stated budget but genuinely no public deadline would grade `low` forever. | Keep the withdrawn FR-B3's list; a no-deadline record queuing once for an admin to confirm "no deadline stated" is acceptable. | Review-queue volume if many real TORs omit a deadline. Measurable on the corpus at TOR-89. |
-| Q4 | `procurement_method` / `reference_no` stored as extra `ExtractedField`s — scope creep, or useful for FR-E-4? | Keep — cheap, and the detail page shows "the structured fields". | Two more fields to carry forever. Low. |
-| Q5 | The corpus gate (§8) asserts `confidenceLevel` against a hand table. Who writes that table and is 10 docs enough signal? | I write it from `docs/corpus/labels/`; 10 is the NFR-F3 floor. | A table that encodes my own extraction assumptions rather than the SRS. Reviewer should read it against §4.2.1 directly. |
+| Q1 | FR-B-4 taxonomy mapping now, or defer to Slice 4 when F9 seeds the real taxonomy? | Pull a ~30-tag seed forward (`packages/seeds/taxonomy.json`), keyword-map now (D10). `qualifications.value` keeps the raw strings; only `.tags` would be recomputed if F9's shape differs. | **open** — TOR-92 |
+| Q2 | Is the `hasTextLayer` probe the right OCR/digital signal? | Deterministic Flate-stream `Tj`/`TJ` count (D6). Corpus gate: correct on all 10 (5 digital true, plus `_extra` scans false). | **resolved for the corpus.** A garbled-text-layer PDF (`_extra/tor-16`) would still fool it — noted for a future text-density second check if such a doc appears. |
+| Q3 | Critical fields include `deadline`? A TOR with a stated budget but no public deadline would grade `low` forever. | **No.** Critical = {agency, budget}. Most Thai draft TORs state no deadline (it lives in the paired ประกาศ); the corpus is 0/10 with a deadline. A missing deadline leaves that field unverified; a *present-but-implausible* deadline still trips Pass 3. | **resolved** against the corpus. §6 and the code updated. |
+| Q4 | `procurementMethod` / `referenceNo` as extra `ExtractedField`s — scope creep? | Keep — cheap, the detail page shows "the structured fields", never anomaly- or match-gated. | **open** — reviewer's call |
+| Q5 | The corpus gate asserts the grade against a hand table; is 10 docs enough? | Assertions relaxed to *allowed sets* per doc (high↔medium wobble on a correct budget is expected — BENCHMARK.md), plus a distribution check. Gate result: agency/budget/status match labels on all 10; grade distribution high:5 / low:5. | **resolved** — reviewer should still read `ALLOWED_LEVELS` against §4.2.1. |
 
 ---
 
