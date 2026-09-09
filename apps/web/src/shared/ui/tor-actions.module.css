@@ -1,0 +1,11 @@
+/*
+ * Star and bookmark icons, shown on a TOR wherever one is listed.
+ */
+
+.starIcon { fill: none; stroke: var(--star); transition: fill 0.2s ease, stroke 0.2s ease; }
+
+.starIconOn { fill: var(--star); }
+
+.bookIcon { fill: none; stroke: var(--blue); transition: fill 0.2s ease, stroke 0.2s ease; }
+
+.bookIconOn { fill: var(--blue); }

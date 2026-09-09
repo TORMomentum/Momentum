@@ -12,14 +12,14 @@ const SAMPLE = {
   budgetMillions: 1284,
   agencies: 128,
   anomalies: 12,
-  lastUpdated: "12 AUG 2026",
+  lastUpdated: "12 ส.ค. 2569",
 } as const;
 
 export function Hero() {
   return (
     <section className={styles.hero}>
       <div className={styles.eyebrow}>
-        ISSUE NO. 2569-08 · THAI PUBLIC PROCUREMENT, MADE VISIBLE
+        ฉบับ 2569-08 · จัดซื้อจัดจ้างภาครัฐไทย ที่มองเห็นได้
       </div>
 
       <h1 className={styles.heroTitle}>
@@ -45,11 +45,11 @@ export function Hero() {
         </div>
       </div>
 
-      <div className={styles.scrollHint}>SCROLL TO CONTINUE ↓</div>
+      <div className={styles.scrollHint}>เลื่อนลงเพื่ออ่านต่อ ↓</div>
       <div className={styles.heroMeta}>
-        LIVE CORPUS · <span className={styles.liveDot}>●</span> {SAMPLE.corpus} TORs
+        คลังข้อมูลปัจจุบัน · <span className={styles.liveDot}>●</span> TOR {SAMPLE.corpus} ฉบับ
         <br />
-        DATA LAST UPDATED {SAMPLE.lastUpdated}
+        อัปเดตข้อมูลล่าสุด {SAMPLE.lastUpdated}
       </div>
     </section>
   );
@@ -58,11 +58,11 @@ export function Hero() {
 /** Headline figures on a loop. Duplicated once so the scroll never shows a gap. */
 export function Marquee() {
   const items = [
-    `${SAMPLE.corpus} TOR INGESTED`,
-    `฿1.28B TRACKED`,
-    `${SAMPLE.agencies} GOV AGENCIES`,
-    `${SAMPLE.anomalies} STATISTICAL ANOMALIES`,
-    "EMAIL MATCH ≤ 5 MIN",
+    `นำเข้า TOR ${SAMPLE.corpus} ฉบับ`,
+    `ติดตามงบประมาณ ฿1.28B`,
+    `หน่วยงานรัฐ ${SAMPLE.agencies} แห่ง`,
+    `ความผิดปกติทางสถิติ ${SAMPLE.anomalies} รายการ`,
+    "อีเมลจับคู่ภายใน 5 นาที",
   ];
   const run = [...items, ...items];
 
@@ -102,7 +102,7 @@ function Stat({
   const counter = useCountUp(value, decimals);
   return (
     <div className={`${styles.stat} ${flagged ? styles.statFlagged : ""}`}>
-      <div className={styles.statKey}>[ {label} ]</div>
+      <div className={styles.statKey}>{label}</div>
       <div className={styles.statValue}>
         {prefix}
         <span ref={counter.ref}>{counter.text}</span>

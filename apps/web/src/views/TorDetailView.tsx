@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import styles from "../features/app-shell/screens.module.css";
+import styles from "../features/tor-detail/tor-detail.module.css";
+import labels from "../shared/ui/labels.module.css";
 import { formatBudgetFull, getTorBySlug } from "../data/tor-samples";
 
 /**
@@ -51,35 +52,35 @@ export function TorDetailView() {
 
         <div className={styles.factGrid}>
           <div className={styles.factCell}>
-            <div className={styles.factLabel}>[ งบประมาณ ]</div>
+            <div className={styles.factLabel}>งบประมาณ</div>
             <div className={`${styles.factValue} ${tor.anomaly ? styles.factValueAnomaly : ""}`}>
               {formatBudgetFull(tor.budget)}
             </div>
             <div className={styles.factNote}>{tor.priceNote}</div>
           </div>
           <div className={styles.factCell}>
-            <div className={styles.factLabel}>[ กำหนดยื่นซอง ]</div>
+            <div className={styles.factLabel}>กำหนดยื่นซอง</div>
             <div className={styles.factValue}>{tor.deadline}</div>
             <div className={styles.factNote}>{tor.deadlineNote}</div>
           </div>
           <div className={styles.factCell}>
-            <div className={styles.factLabel}>[ หมวดหมู่ ]</div>
+            <div className={styles.factLabel}>หมวดหมู่</div>
             <div className={styles.factValueSmall}>{tor.cat}</div>
           </div>
           <div className={styles.factCell}>
-            <div className={styles.factLabel}>[ ติดต่อ ]</div>
+            <div className={styles.factLabel}>ติดต่อ</div>
             <div className={styles.factValueSmall}>{tor.contact}</div>
             <div className={styles.factNote}>PII ถูกลดทอนตามนโยบาย</div>
           </div>
         </div>
 
         <div className={styles.scopeBlock}>
-          <div className={styles.blockLabel}>[ ขอบเขตงาน — สรุปโดย AI ]</div>
+          <div className={labels.blockLabel}>ขอบเขตงาน — สรุปโดย AI</div>
           <p className={styles.scopeText}>{tor.scope}</p>
         </div>
 
         <div className={styles.qualsBlock}>
-          <div className={styles.blockLabel}>[ คุณสมบัติผู้ยื่นข้อเสนอ ]</div>
+          <div className={labels.blockLabel}>คุณสมบัติผู้ยื่นข้อเสนอ</div>
           <div className={styles.qualsRow}>
             {tor.quals.map((qual) => (
               <span
@@ -91,12 +92,12 @@ export function TorDetailView() {
             ))}
           </div>
           <div className={styles.matchNote}>
-            ✓ = ตรงกับโปรไฟล์ของคุณ ({tor.match != null ? `MATCH ${tor.match}%` : "ยังไม่มีคะแนน"})
+            ✓ = ตรงกับโปรไฟล์ของคุณ ({tor.match != null ? `จับคู่ ${tor.match}%` : "ยังไม่มีคะแนน"})
           </div>
         </div>
 
         <div className={styles.provenance}>
-          EXTRACTED {tor.extractedAt} · CONFIDENCE {tor.conf}
+          สกัดเมื่อ {tor.extractedAt} · ความเชื่อมั่น {tor.conf}
           <br />
           เนื้อหาสกัดโดย AI — ตรวจสอบกับเอกสารต้นฉบับเสมอ
         </div>
@@ -114,10 +115,10 @@ export function TorDetailView() {
           </button>
         </div>
 
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>[ AI QUALITY CHECKLIST ]</div>
+        <div className={`${labels.blockLabel} ${labels.blockLabelWide}`}>ตรวจคุณภาพข้อกำหนดด้วย AI</div>
         <div className={styles.qualityRow}>
           <span className={styles.qualityValue}>{tor.quality}</span>
-          <span className={styles.qualityUnit}>/ 10 · SPEC QUALITY</span>
+          <span className={styles.qualityUnit}>/ 10 · คุณภาพข้อกำหนด</span>
         </div>
         <div className={styles.qualityCaption}>
           การตรวจความครบถ้วนของข้อกำหนดโดย AI — ไม่ใช่คำตัดสินทางกฎหมาย
@@ -135,15 +136,15 @@ export function TorDetailView() {
         </div>
 
         <div className={styles.docBlock}>
-          <div className={`${styles.blockLabel} ${styles.blockLabelMid}`}>[ เอกสารต้นฉบับ ]</div>
+          <div className={`${labels.blockLabel} ${labels.blockLabelMid}`}>เอกสารต้นฉบับ</div>
           <div className={styles.docPreview}>
             <div className={styles.docPreviewText}>
-              PDF PREVIEW
+              ตัวอย่างเอกสาร PDF
               <br />
               {tor.docRef}
             </div>
           </div>
-          <div className={styles.docHash}>SHA-256 VERIFIED · เก็บถาวรไม่แก้ไข</div>
+          <div className={styles.docHash}>ยืนยันด้วย SHA-256 · เก็บถาวรไม่แก้ไข</div>
         </div>
       </div>
     </main>

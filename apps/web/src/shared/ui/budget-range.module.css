@@ -1,0 +1,109 @@
+/*
+ * The two-handle budget slider. Shared: Search filters the corpus with it and
+ * the vendor profile states its budget interest with it.
+ */
+
+/* ---- budget dual-range slider ---- */
+
+.sliderWrap { position: relative; height: 28px; margin: 4px 8px 2px; }
+
+.sliderTrackBg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 11px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(18, 35, 60, 0.12);
+}
+
+.sliderGoo { position: absolute; inset: 0; }
+
+.sliderFill {
+  position: absolute;
+  top: 10px;
+  height: 8px;
+  background: var(--blue);
+  transition: left 0.3s cubic-bezier(0.22, 1.4, 0.36, 1), right 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.sliderBall {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  background: var(--blue);
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    left 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.sliderBallMax {
+  transform: translate(50%, -50%);
+  transition:
+    width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    right 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.sliderHole {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition:
+    width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    left 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.sliderHoleMax {
+  transform: translate(50%, -50%);
+  transition:
+    width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    right 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.rangeInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  cursor: pointer;
+  background: transparent;
+  appearance: none;
+  pointer-events: none;
+  height: 28px;
+  margin: 0;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.rangeInput::-webkit-slider-thumb:active { cursor: grabbing; }
+
+.rangeInput::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.rangeInput::-moz-range-thumb:active { cursor: grabbing; }
+
+.sliderLabels { display: flex; justify-content: space-between; font: 10px var(--data); color: var(--ink-65); }
+
+.sliderLabelActive { color: var(--blue); font-weight: 600; }

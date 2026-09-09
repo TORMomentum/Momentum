@@ -2,7 +2,7 @@ import "../../test/env.js";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "mongodb";
-import { connect, disconnect, ensureIndexes, tors } from "../../core/db.js";
+import { STATUS_HISTORY_KEPT, connect, disconnect, ensureIndexes, torEvents, tors } from "../../core/db.js";
 import { IntakeRepository } from "./intake.repository.js";
 import { loadConfig } from "../../core/config.js";
 
@@ -21,6 +21,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await tors(db).deleteMany({});
+  await torEvents(db).deleteMany({});
 });
 
 afterAll(async () => {
@@ -84,6 +85,37 @@ describe("IntakeRepository", () => {
       actor: "admin",
       source: "upload",
     });
+  });
+
+  it("writes the first transition to the events collection as well", async () => {
+    const torId = await repository.insert("abc", stored, source);
+
+    const events = await torEvents(db).find({ torId }).toArray();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ from: null, to: "queued", actor: "admin", source: "upload" });
+  });
+
+  it("keeps every transition in the events collection but caps the copy on the record", async () => {
+    const torId = await repository.insert("abc", stored, source);
+
+    // Well past the cap: a record corrected many times must not grow the
+    // document, which is the whole point of the split.
+    const transitions = STATUS_HISTORY_KEPT + 5;
+    for (let i = 0; i < transitions; i++) {
+      await repository.recordTransition(torId, {
+        from: "queued",
+        to: "extracting",
+        actor: "worker",
+        source: "worker",
+      });
+    }
+
+    const document = await tors(db).findOne({ contentHash: "abc" });
+    expect(document?.statusHistory).toHaveLength(STATUS_HISTORY_KEPT);
+
+    // The first insert wrote one event, and every transition wrote another.
+    const events = await torEvents(db).countDocuments({ torId });
+    expect(events).toBe(transitions + 1);
   });
 
   it("rejects a second insert of the same hash", async () => {

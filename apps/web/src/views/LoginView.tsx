@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import styles from "../features/app-shell/login.module.css";
+import styles from "../features/auth/auth.module.css";
 import { useViewer } from "../shared/lib/viewer";
 
 /**
@@ -11,10 +11,19 @@ import { useViewer } from "../shared/lib/viewer";
  * mockups/TOR Radar App.dc.html.
  *
  * NOTHING IS AUTHENTICATED HERE. Slice 4 builds real accounts, password
- * hashing (NFR-S1) and consent records. Until then submitting marks the
- * prototype viewer as signed in so the signed-in interaction can be reviewed;
- * the email and password are never sent anywhere and never stored.
+ * hashing (NFR-S1) and consent records against the API. Until then the form
+ * checks the SHAPE of what was typed and then signs the prototype viewer in
+ * under that email, so the signed-in interaction can be reviewed. The password
+ * is never sent anywhere and never stored — not in memory past this render,
+ * not in localStorage.
  */
+
+/** Account-creation rule, stated once. The signup placeholder reads from it. */
+const MIN_PASSWORD_LENGTH = 8;
+
+/** Deliberately loose: one @, something either side, a dot in the domain.
+ * The server decides whether an address is real; this only catches typos. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY = {
   login: {
     kicker: "เข้าสู่ระบบผู้ประกอบการ",
@@ -32,7 +41,7 @@ const COPY = {
     cta: "สร้างบัญชี",
     switchPrompt: "มีบัญชีอยู่แล้ว?",
     switchCta: "เข้าสู่ระบบ",
-    pwPlaceholder: "อย่างน้อย 8 ตัวอักษร",
+    pwPlaceholder: `อย่างน้อย ${MIN_PASSWORD_LENGTH} ตัวอักษร`,
   },
 } as const;
 
@@ -78,17 +87,33 @@ export function LoginView() {
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
-    if (!email.trim() || !password) {
-      setError("กรุณากรอกอีเมลและรหัสผ่าน");
+    const address = email.trim();
+
+    if (!EMAIL_SHAPE.test(address)) {
+      setError("กรุณากรอกอีเมลให้ถูกต้อง");
+      return;
+    }
+    if (!password) {
+      setError("กรุณากรอกรหัสผ่าน");
+      return;
+    }
+    // Length is an account-CREATION rule. On sign-in the stored password is
+    // whatever it is, and only the server can judge it.
+    if (isSignup && password.length < MIN_PASSWORD_LENGTH) {
+      setError(`รหัสผ่านสั้นเกินไป (อย่างน้อย ${MIN_PASSWORD_LENGTH} ตัวอักษร)`);
       return;
     }
     if (isSignup && !consented) {
       setError("กรุณายอมรับนโยบายความเป็นส่วนตัวก่อนสร้างบัญชี");
       return;
     }
+
     setError(null);
-    signIn();
-    router.push("/dashboard");
+    setPassword("");
+    signIn({ email: address });
+    // Registering lands on the profile, where skills are chosen — that is the
+    // next thing a new vendor has to do before matching can say anything.
+    router.push(isSignup ? "/profile" : "/dashboard");
   }
 
   return (
@@ -169,11 +194,22 @@ export function LoginView() {
         </div>
 
         <div className={styles.alternatives}>
-          <button type="button" className={styles.alternative} onClick={submit}>
+          {/* Both are placeholders for identity providers that slice 4 wires
+              up; neither can sign anyone in yet, so they say so rather than
+              silently doing what the password form does. */}
+          <button
+            type="button"
+            className={styles.alternative}
+            onClick={() => setError("ThaiD จะเปิดใช้งานเมื่อระบบบัญชีจริงพร้อม")}
+          >
             <span className={styles.thaid}>ThaiD</span>
             ดำเนินการต่อด้วย ThaiD
           </button>
-          <button type="button" className={styles.alternative} onClick={submit}>
+          <button
+            type="button"
+            className={styles.alternative}
+            onClick={() => setError("การเข้าสู่ระบบด้วยอีเมลองค์กรจะเปิดใช้งานเมื่อระบบบัญชีจริงพร้อม")}
+          >
             ดำเนินการต่อด้วยอีเมลองค์กร
           </button>
         </div>

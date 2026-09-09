@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import styles from "../features/app-shell/app.module.css";
+import styles from "../features/dashboard/dashboard.module.css";
+import { FilterDrop } from "../features/dashboard/FilterDrop";
 
 /**
  * Public transparency dashboard (FR-E-1, FR-E-2). Figures are placeholders
@@ -27,10 +28,27 @@ const AGENCIES = [
 const TOTAL_STATS = { torCount: "487", budget: "฿1.28B", agencyCount: "128", anomalyCount: "12" };
 
 /** Anomaly count shown when a single agency is filtered — matches the
- * mockup's `agSel.name === 'กรมควบคุมมลพิษ' ? '2' : '1'`. */
+ * mockup's rule that only the pollution-control department has two. */
 const FILTERED_ANOMALY_AGENCY = "กรมควบคุมมลพิษ";
 
-const CATEGORIES = ["ก่อสร้าง", "ชลประทาน", "ไอที/ซอฟต์แวร์", "จ้างเหมาบริการ"];
+/** Category counts are the mockup's totals; like the stat strip they cover
+ * more of the corpus than the six agencies charted above. */
+const CATEGORIES = [
+  { name: "ก่อสร้าง", tors: 164 },
+  { name: "ชลประทาน", tors: 98 },
+  { name: "ไอที/ซอฟต์แวร์", tors: 132 },
+  { name: "จ้างเหมาบริการ", tors: 93 },
+];
+
+const PERIODS = [
+  { value: "12", label: "12 เดือนล่าสุด" },
+  { value: "6", label: "6 เดือนล่าสุด" },
+  { value: "3", label: "3 เดือนล่าสุด" },
+];
+
+/** The unfiltered value of every dimension that has one. */
+const ALL = "all";
+
 const CATEGORY_COLUMNS = [7, 32, 57, 82];
 const SPREAD = [
   0.18, 0.31, 0.24, 0.12, 0.27, 0.2, 0.15, 0.34, 0.22, 0.29, 0.11, 0.25, 0.19, 0.3, 0.16, 0.26,
@@ -63,17 +81,17 @@ const AXIS_CATEGORIES = [
 ];
 
 export function DashboardView() {
-  const [agency, setAgency] = useState("all");
-  const [category, setCategory] = useState("all");
+  const [agency, setAgency] = useState(ALL);
+  const [category, setCategory] = useState(ALL);
+  const [period, setPeriod] = useState(PERIODS[0].value);
+  // One panel open at a time, as in the mockup's single `openDrop`.
+  const [openDrop, setOpenDrop] = useState<string | null>(null);
 
-  const shown = useMemo(
-    () => (agency === "all" ? AGENCIES : AGENCIES.filter((row) => row.name === agency)),
-    [agency],
-  );
+  // A bar is as long as that agency's share of the largest budget, so the
+  // chart stays truthful when the figures behind it change.
+  const widestBudget = Math.max(...AGENCIES.map((row) => row.budget));
 
-  const widest = Math.max(...AGENCIES.map((row) => row.tors));
-
-  const selectedAgency = agency === "all" ? null : AGENCIES.find((row) => row.name === agency);
+  const selectedAgency = agency === ALL ? null : AGENCIES.find((row) => row.name === agency);
   const statTor = selectedAgency ? String(selectedAgency.tors) : TOTAL_STATS.torCount;
   const statBudget = selectedAgency ? `฿${selectedAgency.budget}M` : TOTAL_STATS.budget;
   const statAgencyCount = selectedAgency ? "1" : TOTAL_STATS.agencyCount;
@@ -94,7 +112,7 @@ export function DashboardView() {
         // A dot's column IS its category, so an unflagged point can honestly
         // lead to that category's listing. Per-document routing arrives when
         // the plot is drawn from real records rather than sample scatter.
-        category: CATEGORIES[index % CATEGORIES.length],
+        category: CATEGORIES[index % CATEGORIES.length].name,
         tip: `฿${(1 + height * 12).toFixed(1)}M · ในช่วงปกติของกลุ่มเทียบ · คลิกเพื่อดูหมวดนี้`,
       })).concat(
         FLAGGED_POINTS.map((flag) => ({
@@ -110,69 +128,92 @@ export function DashboardView() {
     [],
   );
 
+  function toggleDrop(key: string) {
+    setOpenDrop((open) => (open === key ? null : key));
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.pageHead}>
         <h1 className={styles.pageTitle}>ภาพรวมการจัดซื้อจัดจ้างภาครัฐ</h1>
         <div className={styles.coverage}>
-          DATA LAST UPDATED 12 AUG 2026 · 09:42
+          อัปเดตข้อมูลล่าสุด 12 ส.ค. 2569 · 09:42
           <br />
           ครอบคลุมเฉพาะเอกสารที่นำเข้าระบบ · ตัวเลขเป็นข้อมูลตัวอย่าง
         </div>
       </div>
 
       <div className={styles.filters}>
-        <select
-          className={styles.filter}
+        <FilterDrop
+          label="หน่วยงาน"
           value={agency}
-          onChange={(event) => setAgency(event.target.value)}
-          aria-label="กรองตามหน่วยงาน"
-        >
-          <option value="all">หน่วยงาน: ทั้งหมด</option>
-          {AGENCIES.map((row) => (
-            <option key={row.name} value={row.name}>
-              {row.name}
-            </option>
-          ))}
-        </select>
+          open={openDrop === "agency"}
+          onToggle={() => toggleDrop("agency")}
+          onPick={(value) => {
+            setAgency(value);
+            setOpenDrop(null);
+          }}
+          options={[
+            { value: ALL, label: "ทั้งหมด", meta: TOTAL_STATS.torCount },
+            ...AGENCIES.map((row) => ({
+              value: row.name,
+              label: row.name,
+              meta: String(row.tors),
+            })),
+          ]}
+        />
 
-        <select
-          className={styles.filter}
+        <FilterDrop
+          label="หมวดหมู่"
           value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          aria-label="กรองตามหมวดหมู่"
-        >
-          <option value="all">หมวดหมู่: ทั้งหมด</option>
-          {CATEGORIES.map((name) => (
-            <option key={name}>{name}</option>
-          ))}
-        </select>
+          open={openDrop === "category"}
+          onToggle={() => toggleDrop("category")}
+          onPick={(value) => {
+            setCategory(value);
+            setOpenDrop(null);
+          }}
+          options={[
+            { value: ALL, label: "ทั้งหมด" },
+            ...CATEGORIES.map((item) => ({
+              value: item.name,
+              label: item.name,
+              meta: String(item.tors),
+            })),
+          ]}
+        />
 
-        <select className={styles.filter} aria-label="ช่วงเวลา" defaultValue="12">
-          <option value="12">ช่วงเวลา: 12 เดือน</option>
-          <option value="6">6 เดือน</option>
-          <option value="3">3 เดือน</option>
-        </select>
+        <FilterDrop
+          label="ช่วงเวลา"
+          value={period}
+          open={openDrop === "period"}
+          onToggle={() => toggleDrop("period")}
+          onPick={(value) => {
+            setPeriod(value);
+            setOpenDrop(null);
+          }}
+          options={PERIODS.map((item) => ({ value: item.value, label: item.label }))}
+          highlightWhenSet={false}
+        />
       </div>
 
       <div className={styles.stats}>
         <div className={styles.stat}>
-          <div className={styles.statKey}>[ TOR ทั้งหมด ]</div>
+          <div className={styles.statKey}>TOR ทั้งหมด</div>
           <div className={styles.statValue}>{statTor}</div>
           <div className={styles.statNote}>ฉบับ</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statKey}>[ งบประมาณรวม ]</div>
+          <div className={styles.statKey}>งบประมาณรวม</div>
           <div className={styles.statValue}>{statBudget}</div>
           <div className={styles.statNote}>ตามราคากลางที่ประกาศ</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statKey}>[ หน่วยงาน ]</div>
+          <div className={styles.statKey}>หน่วยงาน</div>
           <div className={styles.statValue}>{statAgencyCount}</div>
           <div className={styles.statNote}>หน่วยงานรัฐทั่วประเทศ</div>
         </div>
         <div className={`${styles.stat} ${styles.statFlagged}`}>
-          <div className={styles.statKey}>[ ความผิดปกติทางสถิติ ]</div>
+          <div className={styles.statKey}>ความผิดปกติทางสถิติ</div>
           <div className={styles.statValue}>{statAnomaly}</div>
           <div className={styles.statNote}>เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา</div>
         </div>
@@ -186,30 +227,37 @@ export function DashboardView() {
           </div>
 
           <div className={styles.bars}>
-            {shown.map((row, index) => (
-              <button
-                type="button"
-                key={row.name}
-                className={styles.bar}
-                onClick={() => setAgency(agency === row.name ? "all" : row.name)}
-              >
-                <span className={styles.barLabel}>
-                  <span className={styles.barName}>{row.name}</span>
-                  <span className={styles.barStat}>
-                    {row.tors} ฉบับ · ฿{row.budget}M
+            {/* Every agency stays on screen when one is picked; the rest fade.
+                That is what makes the selected bar readable AS a comparison —
+                dropping the other rows would leave a one-bar chart. */}
+            {AGENCIES.map((row, index) => {
+              const dimmed = agency !== ALL && agency !== row.name;
+              return (
+                <button
+                  type="button"
+                  key={row.name}
+                  className={`${styles.bar} ${dimmed ? styles.barDim : ""}`}
+                  onClick={() => setAgency(agency === row.name ? ALL : row.name)}
+                  aria-pressed={agency === row.name}
+                >
+                  <span className={styles.barLabel}>
+                    <span className={styles.barName}>{row.name}</span>
+                    <span className={styles.barStat}>
+                      {row.tors} · ฿{row.budget}M
+                    </span>
                   </span>
-                </span>
-                <span className={styles.barTrack}>
-                  <span
-                    className={styles.barFill}
-                    style={{
-                      width: `${(row.tors / widest) * 100}%`,
-                      animationDelay: `${index * 70}ms`,
-                    }}
-                  />
-                </span>
-              </button>
-            ))}
+                  <span className={styles.barTrack}>
+                    <span
+                      className={styles.barFill}
+                      style={{
+                        width: `${(row.budget / widestBudget) * 100}%`,
+                        animationDelay: `${index * 70}ms`,
+                      }}
+                    />
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <Link href="/search" className={styles.moreLink}>
@@ -248,7 +296,7 @@ export function DashboardView() {
             ))}
 
             <div className={styles.plotFlag} style={{ left: "62%", bottom: "87%" }}>
-              [ ANOMALY ] ฿9.4M · 3.1×IQR
+              [ ความผิดปกติทางสถิติ ] ฿9.4M · 3.1×IQR
             </div>
 
             {AXIS_CATEGORIES.map((item) => (

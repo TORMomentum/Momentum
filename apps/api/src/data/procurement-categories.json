@@ -1,0 +1,681 @@
+[
+  {
+    "category_id": "defc82c7-b89c-4eba-8fca-b3f6299e34e1",
+    "taxonomy": "goods_category",
+    "code": "1001",
+    "name_th": "วัสดุครุภัณฑ์สำนักงาน",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "6638326d-3445-41da-8264-8807bc5b4ff7",
+    "taxonomy": "goods_category",
+    "code": "1002",
+    "name_th": "วัสดุครุภัณฑ์การศึกษา",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "a9321b57-f5f2-41dd-9285-454ff4c62ed8",
+    "taxonomy": "goods_category",
+    "code": "1003",
+    "name_th": "วัสดุครุภัณฑ์งานบ้านงานครัว",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "2422fc0d-21d8-4890-ae12-fb1ad49099ca",
+    "taxonomy": "goods_category",
+    "code": "1004",
+    "name_th": "ครุภัณฑ์ดนตรี",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "68c6938e-1368-42c5-b9c1-9f98a49d7234",
+    "taxonomy": "goods_category",
+    "code": "1005",
+    "name_th": "วัสดุครุภัณฑ์กีฬา",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "36ad3e90-7d83-4f18-8689-d493f17c03de",
+    "taxonomy": "goods_category",
+    "code": "1006",
+    "name_th": "วัสดุครุภัณฑ์วิทยาศาสตร์และการแพทย์",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "d29c9ed9-4c5e-4302-b557-3ee36032ab93",
+    "taxonomy": "goods_category",
+    "code": "1007",
+    "name_th": "วัสดุครุภัณฑ์ไฟฟ้าและวิทยุ",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "54c0c93b-9193-4e49-809e-eccd40704a83",
+    "taxonomy": "goods_category",
+    "code": "1008",
+    "name_th": "วัสดุครุภัณฑ์คอมพิวเตอร์",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "8fba92de-c89e-48de-b60c-edbb8122db13",
+    "taxonomy": "goods_category",
+    "code": "1009",
+    "name_th": "วัสดุครุภัณฑ์สำรวจ",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "962b1e44-676e-435e-a40a-be928cfaf188",
+    "taxonomy": "goods_category",
+    "code": "1011",
+    "name_th": "วัสดุครุภัณฑ์โฆษณาและเผยแพร่",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "e63f573d-8594-4852-a52d-39f6d47aa12d",
+    "taxonomy": "goods_category",
+    "code": "1012",
+    "name_th": "วัสดุเชื้อเพลิงและหล่อลื่น",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "14325094-6690-4dbe-863e-6a64c1024263",
+    "taxonomy": "goods_category",
+    "code": "1013",
+    "name_th": "วัสดุครุภัณฑ์ยานพาหนะและขนส่ง",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "e1a6e6aa-06ed-4036-8c05-6129f2efff7a",
+    "taxonomy": "goods_category",
+    "code": "1014",
+    "name_th": "ครุภัณฑ์อาวุธ",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "7a5de448-5429-4048-8279-3e257506bb72",
+    "taxonomy": "goods_category",
+    "code": "1015",
+    "name_th": "วัสดุครุภัณฑ์การเกษตร",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "518ecd15-da80-4123-b12b-6c4db89c1d63",
+    "taxonomy": "goods_category",
+    "code": "1016",
+    "name_th": "ครุภัณฑ์โรงงาน",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "e7c70214-09a4-416b-b841-933b6dda754e",
+    "taxonomy": "goods_category",
+    "code": "1017",
+    "name_th": "วัสดุครุภัณฑ์ก่อสร้าง",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "4c7d17ea-75ee-4eac-a432-44a4f8319862",
+    "taxonomy": "goods_category",
+    "code": "1018",
+    "name_th": "วัสดุครุภัณฑ์อื่นๆ",
+    "group": "durable_goods",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "68086dd6-63fb-4c38-aefc-5e5f38a45285",
+    "taxonomy": "goods_category",
+    "code": "2001",
+    "name_th": "ที่ดิน (เช่า)",
+    "group": "land",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "76225657-93ea-446f-9017-c446d789e5b4",
+    "taxonomy": "goods_category",
+    "code": "2001",
+    "name_th": "ที่ดิน (ซื้อ)",
+    "group": "land",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "728641e4-dc0e-4f06-88a2-5834bc16afa0",
+    "taxonomy": "goods_category",
+    "code": "2002",
+    "name_th": "ที่ดินและสิ่งก่อสร้าง",
+    "group": "land",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "daeae5c1-9735-42dc-bf25-9798b5fd4631",
+    "taxonomy": "goods_category",
+    "code": "3001",
+    "name_th": "จ้างก่อสร้างอาคาร",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "2e3a3cd5-bd8d-46b2-af18-a0ff869158d0",
+    "taxonomy": "goods_category",
+    "code": "3002",
+    "name_th": "จ้างก่อสร้างทางสะพานท่อเหลี่ยม",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "bce7bd9b-c429-401b-8390-347020f54e89",
+    "taxonomy": "goods_category",
+    "code": "3003",
+    "name_th": "จ้างก่อสร้างชลประทาน",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "164c70df-d766-4dfd-baf0-eb9277223a3f",
+    "taxonomy": "goods_category",
+    "code": "3004",
+    "name_th": "จ้างปรับปรุง ซ่อมแซมอาคาร",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "20c736b9-c7f5-487d-9770-19c1ae38239a",
+    "taxonomy": "goods_category",
+    "code": "3005",
+    "name_th": "จ้างปรับปรุง ซ่อมแซมทางสะพานท่อเหลี่ยม",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "226b8c02-d3ad-460d-b6ad-4edd5e15c3c3",
+    "taxonomy": "goods_category",
+    "code": "3006",
+    "name_th": "จ้างปรับปรุง ซ่อมแซมด้านชลประทาน",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "fcfcdb1f-c504-4ca0-bc37-751be656f201",
+    "taxonomy": "goods_category",
+    "code": "3007",
+    "name_th": "จ้างก่อสร้างและปรับปรุงอื่นๆ",
+    "group": "construction",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "84532694-06cc-4347-b38f-448a201fd40b",
+    "taxonomy": "goods_category",
+    "code": "4001",
+    "name_th": "จ้างเหมางานรักษาความปลอดภัย",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "9abeba18-cbf2-453d-ae97-3f022d7309f7",
+    "taxonomy": "goods_category",
+    "code": "4002",
+    "name_th": "จ้างเหมาบริการงานทำความสะอาด",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "74fca74b-9263-46fb-be44-5edde1d541ff",
+    "taxonomy": "goods_category",
+    "code": "4003",
+    "name_th": "จ้างเหมาบริการงานดูแลต้นไม้ สนามหญ้า",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "090941a4-1b42-4e7d-a1bf-2a9b7782a153",
+    "taxonomy": "goods_category",
+    "code": "4004",
+    "name_th": "จ้างเหมางานยานพาหนะ",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "20ee9aa3-dc66-468a-bb64-197386d973be",
+    "taxonomy": "goods_category",
+    "code": "4005",
+    "name_th": "จ้างเหมางานศึกษาวิจัย",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "e1ade42a-ada3-45ab-b0df-1c90c4cb41f2",
+    "taxonomy": "goods_category",
+    "code": "4006",
+    "name_th": "จ้างเหมางานติดตามประเมินผล",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "82413748-e2c7-44ee-91e9-930bcb91b1be",
+    "taxonomy": "goods_category",
+    "code": "4007",
+    "name_th": "จ้างเหมางานจัดทำคำแปล",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "0aea8c4a-e97f-4dbf-82f1-4c589ebc3a49",
+    "taxonomy": "goods_category",
+    "code": "4008",
+    "name_th": "จ้างเหมางานผลิตและพิมพ์เอกสาร",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "11992d6a-902d-43f1-bd09-fd1cc4e38b86",
+    "taxonomy": "goods_category",
+    "code": "4009",
+    "name_th": "จ้างเหมางานผลิตสื่อการประชาสัมพันธ์",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "63f4f847-e306-40b0-a2f6-ea48e7118d17",
+    "taxonomy": "goods_category",
+    "code": "4010",
+    "name_th": "จ้างเหมางานพัฒนาระบบข้อมูลสารสนเทศ",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "4f887aa8-2d1d-40e2-bd8a-b30455c9ae49",
+    "taxonomy": "goods_category",
+    "code": "4011",
+    "name_th": "จ้างเหมางานบันทึกข้อมูล",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "1eb23b4f-0353-4048-9f53-6c87de43df53",
+    "taxonomy": "goods_category",
+    "code": "4012",
+    "name_th": "จ้างเหมางานซ่อมบำรุงยานพาหนะ",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "faa0c923-c830-4420-852b-facb536cbcd9",
+    "taxonomy": "goods_category",
+    "code": "4013",
+    "name_th": "จ้างเหมางานตรวจสอบและรับรองมาตรฐาน",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "f159ab55-4cad-4144-b674-71fde1ee26ae",
+    "taxonomy": "goods_category",
+    "code": "4014",
+    "name_th": "จ้างเหมางานทำของที่ระลึก",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "cbd32ed8-fc47-4145-b44e-0103920d54f8",
+    "taxonomy": "goods_category",
+    "code": "4015",
+    "name_th": "จ้างเหมาอบรมและพัฒนาบุคลากร",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "a317bfc8-42ec-4121-9d17-6c819c87e62e",
+    "taxonomy": "goods_category",
+    "code": "4016",
+    "name_th": "จ้างเหมาอื่นๆ",
+    "group": "service_contract",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "2ca1ea77-8b6f-4358-b2ac-9833613aa240",
+    "taxonomy": "goods_category",
+    "code": "5001",
+    "name_th": "เช่าอาคารสถานที่",
+    "group": "rental",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "1e78e5e4-a9de-496f-94b7-4511ac510154",
+    "taxonomy": "goods_category",
+    "code": "5002",
+    "name_th": "เช่ารถยนต์ที่ใช้ในราชการ",
+    "group": "rental",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "55f4fd04-2afb-415b-b954-dab2e1c96af6",
+    "taxonomy": "goods_category",
+    "code": "5003",
+    "name_th": "เช่าใช้บริการอินเตอร์เน็ต",
+    "group": "rental",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "6f700f05-69ab-4f4c-a480-1d6f85340854",
+    "taxonomy": "goods_category",
+    "code": "5004",
+    "name_th": "เช่าเครื่องถ่ายเอกสาร",
+    "group": "rental",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "f3d8b9bb-f73c-44b7-b348-51277c93305f",
+    "taxonomy": "goods_category",
+    "code": "5005",
+    "name_th": "เช่าอื่นๆ",
+    "group": "rental",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "718d4c0f-317b-42ae-baf3-91c13146ac8d",
+    "taxonomy": "goods_category",
+    "code": "6001",
+    "name_th": "จ้างที่ปรึกษาสาขาการเกษตรและพัฒนาชมบท",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "0e2aaaf3-dbd8-4830-9150-fbdfdbc6abcd",
+    "taxonomy": "goods_category",
+    "code": "6002",
+    "name_th": "จ้างที่ปรึกษาสาขาอุตสาหกรรมก่อสร้าง",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "a3a5dc1b-d5d4-4470-bd2a-5816b779909a",
+    "taxonomy": "goods_category",
+    "code": "6003",
+    "name_th": "จ้างที่ปรึกษาสาขาการศึกษา",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "c8d04783-1aa5-4fdc-9505-256a2639f2e4",
+    "taxonomy": "goods_category",
+    "code": "6004",
+    "name_th": "จ้างที่ปรึกษาสาขาพลังงาน",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "85b656bb-8d36-4f87-a640-2f4d4c38d1fb",
+    "taxonomy": "goods_category",
+    "code": "6005",
+    "name_th": "จ้างที่ปรึกษาสาขาสิ่งแวดล้อม",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "d1636d5f-df19-4a43-8fa1-fa55617c731e",
+    "taxonomy": "goods_category",
+    "code": "6006",
+    "name_th": "จ้างที่ปรึกษาสาขาการเงิน",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "67647bd4-f1f1-40ad-978d-d96bd6530220",
+    "taxonomy": "goods_category",
+    "code": "6007",
+    "name_th": "จ้างที่ปรึกษาสาขาสาธารณสุข",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "8e8d70a1-1220-48ff-a8cf-e4b5c1a206da",
+    "taxonomy": "goods_category",
+    "code": "6008",
+    "name_th": "จ้างที่ปรึกษาสาขาอุตสาหกรรม",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "054d1988-369d-4016-bea6-25550b1452cd",
+    "taxonomy": "goods_category",
+    "code": "6009",
+    "name_th": "จ้างที่ปรึกษาสาขาเบ็ดเตล็ด",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "1f0c2f7d-3570-40a5-bdc4-ed13052201d8",
+    "taxonomy": "goods_category",
+    "code": "6010",
+    "name_th": "จ้างที่ปรึกษาสาขาประชากร",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "a408f214-1ea6-4cbc-a93c-620b270b0587",
+    "taxonomy": "goods_category",
+    "code": "6011",
+    "name_th": "จ้างที่ปรึกษาสาขาการสื่อสารโทรคมนาคม",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "cd71a10a-3133-4df1-8779-a7649d6f592f",
+    "taxonomy": "goods_category",
+    "code": "6012",
+    "name_th": "จ้างที่ปรึกษาสาขาการท่องเที่ยว",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "83b4993b-c1bc-4c93-a3ad-a0587ee4db93",
+    "taxonomy": "goods_category",
+    "code": "6013",
+    "name_th": "จ้างที่ปรึกษาสาขาการขนส่ง",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "1386560e-5551-458b-8bf7-91513167a6a7",
+    "taxonomy": "goods_category",
+    "code": "6014",
+    "name_th": "จ้างที่ปรึกษาสาขาการพัฒนาเมือง",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "011df6ca-4157-4963-afe5-12f4438da57c",
+    "taxonomy": "goods_category",
+    "code": "6015",
+    "name_th": "จ้างที่ปรึกษาสาขาการประปาและสุขาภิบาล",
+    "group": "consulting",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "07b7a915-1b95-48eb-9016-2bdc2dba11ff",
+    "taxonomy": "goods_category",
+    "code": "7001",
+    "name_th": "จ้างออกแบบก่อสร้างอาคาร",
+    "group": "design_and_supervision",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "d2850d87-4417-4cda-a10e-386ed2855d35",
+    "taxonomy": "goods_category",
+    "code": "7002",
+    "name_th": "จ้างออกแบบปรับปรุง ซ่อมแซมอาคาร",
+    "group": "design_and_supervision",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "c5966fbc-d03d-4758-a4cd-433ed88bcd33",
+    "taxonomy": "goods_category",
+    "code": "7003",
+    "name_th": "จ้างควบคุมงานก่อสร้างอาคาร",
+    "group": "design_and_supervision",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "776c2b7a-0431-49d5-852a-7955267e4092",
+    "taxonomy": "goods_category",
+    "code": "7004",
+    "name_th": "จ้างควบคุมงานปรับปรุง ซ่อมแซมอาคาร",
+    "group": "design_and_supervision",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "4570fc37-3e28-4295-9207-1a854c81c160",
+    "taxonomy": "goods_category",
+    "code": "7005",
+    "name_th": "จ้างออกแบบและควบคุมงานก่อสร้างอาคาร",
+    "group": "design_and_supervision",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "822ea61c-3c3f-427a-85c9-217c6325804e",
+    "taxonomy": "goods_category",
+    "code": "7006",
+    "name_th": "จ้างออกแบบและควบคุมงานปรับปรุง ซ่อมแซมอาคาร",
+    "group": "design_and_supervision",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "106f40ce-ead7-47db-a4d5-03192512f4df",
+    "taxonomy": "goods_category",
+    "code": "99",
+    "name_th": "ไม่ระบุ",
+    "group": "unspecified",
+    "source": "MasterGoodsIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "d2d18f2d-417c-4f91-a960-d8d90d5bb9d5",
+    "taxonomy": "policy_area",
+    "code": "1",
+    "name_th": "ด้านการบริหารจัดการ และบริหารราชการกรุงเทพมหานคร",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "20d31baf-2d1d-4cb1-b2cf-bd15c28f0079",
+    "taxonomy": "policy_area",
+    "code": "2",
+    "name_th": "ด้านความปลอดภัย และความเป็นระเบียบเรียบร้อย",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "fcaceafc-b933-4e63-a404-891de3c535f2",
+    "taxonomy": "policy_area",
+    "code": "3",
+    "name_th": "ด้านเศรษฐกิจ และการพาณิชย์",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "8728566a-818f-4a17-8e18-c69e64c574c7",
+    "taxonomy": "policy_area",
+    "code": "4",
+    "name_th": "ด้านเมือง และการพัฒนาเมือง",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "189d30b6-c246-48c8-ab52-64d41b530c0d",
+    "taxonomy": "policy_area",
+    "code": "5",
+    "name_th": "ด้านทรัพยากรธรรมชาติ และสิ่งแวดล้อม",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "4189e779-039c-49dd-bf14-3494dcbee1ec",
+    "taxonomy": "policy_area",
+    "code": "6",
+    "name_th": "ด้านสาธารณสุข",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "a820ad43-c046-4897-b7c3-bf05bc7c9bf5",
+    "taxonomy": "policy_area",
+    "code": "7",
+    "name_th": "ด้านพัฒนาสังคม และชุมชนเมือง",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "27fb8ea8-19ed-4eab-8107-1e79db75a2f8",
+    "taxonomy": "policy_area",
+    "code": "8",
+    "name_th": "ด้านการศึกษา",
+    "source": "MasterProjectCategories (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "c12dba60-2b97-4946-9386-67ea4b8338f6",
+    "taxonomy": "procurement_type",
+    "code": "01",
+    "name_th": "ซื้อ",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "39409988-6523-4d3a-82d4-8cef2619757d",
+    "taxonomy": "procurement_type",
+    "code": "02",
+    "name_th": "จ้างก่อสร้าง",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "b1966810-7b24-4736-85b7-4d73547b3c70",
+    "taxonomy": "procurement_type",
+    "code": "03",
+    "name_th": "จ้างทำของ/จ้างเหมาบริการ",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "d036736d-241d-42cd-90e6-1d59620cea48",
+    "taxonomy": "procurement_type",
+    "code": "04",
+    "name_th": "เช่า",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "832a224f-0e86-4a75-938a-c6519b532d8c",
+    "taxonomy": "procurement_type",
+    "code": "05",
+    "name_th": "จ้างที่ปรึกษา",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "8e42b0c5-a208-4204-9043-317d736ab9ec",
+    "taxonomy": "procurement_type",
+    "code": "06",
+    "name_th": "จ้างออกแบบ",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "7e566efe-dc5f-489f-9bae-2bc440c876d1",
+    "taxonomy": "procurement_type",
+    "code": "07",
+    "name_th": "จ้างควบคุมงาน",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "c006f96c-4d49-4bad-b8c1-36bfa8011b45",
+    "taxonomy": "procurement_type",
+    "code": "08",
+    "name_th": "จ้างออกแบบและควบคุมงาน",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  },
+  {
+    "category_id": "5537d357-f42b-45a1-9f93-3d21988d010a",
+    "taxonomy": "procurement_type",
+    "code": "99",
+    "name_th": "ไม่ระบุ",
+    "source": "MasterTypeIds (egp2.bangkok.go.th)"
+  }
+]

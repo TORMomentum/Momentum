@@ -1,3 +1,4 @@
+import type { ExtractedField } from "@tor-radar/shared";
 import { sha256 } from "../../lib/hash.js";
 import { detectMimeType } from "../../lib/file-type.js";
 import { BadRequestError, PayloadTooLargeError } from "../../core/errors.js";
@@ -9,6 +10,13 @@ export interface SubmitSource {
   route: "upload" | "url" | "api";
   url?: string;
   submittedBy: string;
+  /**
+   * Fields the caller already knows authoritatively, because the source published them rather
+   * than the document merely containing them (FR-B-2). Recorded verified at full confidence, so
+   * §4.2.1 never marks them an unverified extraction. Absent for a plain upload, where the
+   * document is all there is.
+   */
+  knownFields?: Record<string, ExtractedField>;
 }
 
 export interface SubmitResult {
@@ -69,7 +77,12 @@ export class IntakeService {
 
     let torId: string;
     try {
-      torId = await this.repository.insert(contentHash, storedObject, sourceRef);
+      torId = await this.repository.insert(
+        contentHash,
+        storedObject,
+        sourceRef,
+        source.knownFields,
+      );
     } catch (error) {
       // The unique index is the real dedupe guarantee (FR-A-3): two callers can
       // both pass the findByHash check above, and the loser arrives here.

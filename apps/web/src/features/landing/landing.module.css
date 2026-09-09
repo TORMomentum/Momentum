@@ -106,9 +106,9 @@
 }
 
 .eyebrow {
-  font: 500 11px var(--data);
-  color: var(--blue);
-  letter-spacing: 0.2em;
+  font: 600 11px var(--body);
+  color: var(--ink-55);
+  letter-spacing: 0.04em;
   margin-bottom: 22px;
 }
 
@@ -144,7 +144,7 @@
   left: var(--gutter);
   font: 10px var(--data);
   color: var(--ink-70);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--label-tracking);
   animation: bob 2.2s ease-in-out infinite;
 }
 
@@ -178,7 +178,7 @@
   animation: marquee 22s linear infinite;
   font: 500 12px var(--data);
   color: var(--ink-65);
-  letter-spacing: 0.1em;
+  letter-spacing: var(--label-tracking);
 }
 
 .marqueeFlag { color: var(--anomaly); }
@@ -196,9 +196,9 @@
 .stat:last-child { padding-right: 0; border-right: 0; }
 
 .statKey {
-  font: 500 10px var(--data);
-  color: var(--ink-62);
-  letter-spacing: 0.14em;
+  font: 600 11px var(--body);
+  color: var(--ink-55);
+  letter-spacing: 0.04em;
 }
 
 .statValue { font: 600 64px/1.15 var(--data); }
@@ -217,7 +217,7 @@
 .index {
   font: 500 11px var(--data);
   color: var(--blue);
-  letter-spacing: 0.18em;
+  letter-spacing: var(--label-tracking);
   white-space: nowrap;
 }
 
@@ -242,9 +242,9 @@
 .step:hover { transform: translateY(-8px); border-color: var(--blue); }
 
 .stepKey {
-  font: 600 11px var(--data);
-  color: var(--ink-70);
-  letter-spacing: 0.14em;
+  font: 600 11px var(--body);
+  color: var(--ink-55);
+  letter-spacing: 0.04em;
   margin-bottom: 18px;
 }
 
@@ -395,7 +395,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: var(--ink-70);
   line-height: 1.8;
 }
@@ -410,7 +410,7 @@
   padding: 10px var(--gutter);
   background: var(--ink-02);
   border-bottom: var(--rule);
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: var(--ink-70);
   letter-spacing: 0.04em;
 }

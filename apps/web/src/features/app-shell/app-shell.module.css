@@ -1,3 +1,9 @@
+/*
+ * Chrome shared by every in-app screen: the header, its tabs, the notification
+ * bell, the account menu, and the notice a signed-out reader gets on a
+ * vendor-only route. Screen styles live with their own feature.
+ */
+
 /* The signed-in application surface. Tokens come from shared/styles/tokens.css. */
 
 .shell {
@@ -113,7 +119,8 @@
 }
 
 .menuName { font-size: 12.5px; font-weight: 600; line-height: 1.6; color: var(--ink); }
-.menuRole { font: 9.5px var(--data); color: var(--blue); letter-spacing: 0.04em; }
+
+.menuRole { font: 11px var(--data); color: var(--blue); letter-spacing: 0.04em; }
 
 .menuItem,
 .menuSignOut {
@@ -137,9 +144,11 @@
 .menuDivider { height: 1px; margin: 5px 0; background: rgba(18, 35, 60, 0.1); }
 
 .menuSignOut { color: var(--ink-62); }
+
 .menuSignOut:hover { background: rgba(190, 32, 38, 0.08); color: var(--danger); }
 
 /* ---------- notification bell ---------- */
+
 .bellWrap { position: relative; }
 
 .bellButton {
@@ -155,6 +164,7 @@
   padding: 0;
   transition: background 0.2s ease;
 }
+
 .bellButton:hover,
 .bellButtonOpen { background: rgba(29, 99, 216, 0.1); }
 
@@ -170,7 +180,7 @@
   border-radius: 99px;
   background: var(--blue);
   color: var(--paper);
-  font: 600 9.5px var(--data);
+  font: 600 11px var(--data);
   display: grid;
   place-items: center;
   border: 2px solid var(--paper);
@@ -201,6 +211,7 @@
 }
 
 .bellPanelTitle { font: 600 12.5px var(--body); }
+
 .bellPanelActions { display: flex; align-items: center; gap: 10px; }
 
 .bellMarkRead {
@@ -211,6 +222,7 @@
   border: 0;
   padding: 0;
 }
+
 .bellMarkRead:hover { color: var(--blue); }
 
 .bellSettingsBtn {
@@ -221,7 +233,9 @@
   border-radius: 5px;
   cursor: pointer;
 }
+
 .bellSettingsBtn:hover { background: rgba(29, 99, 216, 0.1); }
+
 .bellSettingsIcon { stroke: rgba(18, 35, 60, 0.6); }
 
 .bellItem {
@@ -232,6 +246,7 @@
   cursor: pointer;
   color: inherit;
 }
+
 .bellItem:hover { background: rgba(29, 99, 216, 0.06); }
 
 .bellItemDot {
@@ -241,10 +256,13 @@
   border-radius: 50%;
   margin-top: 5px;
 }
+
 .bellItemDotMatch { background: var(--blue); }
+
 .bellItemDotWarn { background: var(--anomaly); }
 
 .bellItemTitle { display: block; font-size: 12.5px; font-weight: 600; line-height: 1.5; }
+
 .bellItemMeta { display: block; font: 10px var(--data); color: rgba(18, 35, 60, 0.6); margin-top: 3px; }
 
 .bellFooter {
@@ -257,189 +275,12 @@
   cursor: pointer;
   text-align: center;
 }
+
 .bellFooter:hover { background: rgba(29, 99, 216, 0.1); }
-
-.page { padding: 34px 36px 60px; }
-
-.pageHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 26px;
-}
-
-.pageTitle { margin: 0; font: 700 30px var(--display); }
-
-.coverage {
-  font: 10.5px var(--data);
-  color: var(--ink-62);
-  text-align: right;
-  line-height: 1.8;
-}
-
-.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
-
-.filter {
-  font: 11px var(--data);
-  border: 1px solid rgba(18, 35, 60, 0.35);
-  color: rgba(18, 35, 60, 0.75);
-  background: var(--paper);
-  padding: 6px 12px;
-  border-radius: 99px;
-  cursor: pointer;
-}
-
-/* ---------- stat strip ---------- */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-top: var(--rule);
-  border-bottom: var(--rule);
-  margin-bottom: 28px;
-}
-
-.stat { padding: 22px 20px; border-right: var(--rule); }
-.stat:first-child { padding-left: 0; }
-.stat:last-child { padding-right: 0; border-right: 0; }
-
-.statKey { font: 500 10px var(--data); color: var(--ink-62); letter-spacing: 0.12em; }
-.statValue { font: 600 44px/1.15 var(--data); }
-.statNote { font-size: 11px; color: var(--ink-62); }
-.statFlagged .statKey, .statFlagged .statValue { color: var(--anomaly); }
-
-/* ---------- two-column body ---------- */
-.split { display: grid; grid-template-columns: 1fr 1.4fr; }
-.splitLeft { border-right: var(--rule); padding-right: 28px; }
-.splitRight { padding-left: 28px; }
-
-.panelHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 18px;
-}
-
-.panelTitle { margin: 0; font: 600 16px var(--display); }
-.panelHint { font: 10px var(--data); color: var(--ink-62); }
-
-/* ---------- agency bars ---------- */
-.bars { display: flex; flex-direction: column; gap: 13px; }
-
-.bar { cursor: pointer; transition: opacity 0.2s ease; background: none; border: 0; padding: 0; text-align: left; width: 100%; }
-.bar:hover { opacity: 0.75; }
-
-.barLabel {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-  margin-bottom: 5px;
-  color: var(--ink);
-}
-
-.barName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.barStat { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
-/* Both are spans inside a button, and an inline box ignores height - without
-   an explicit display they collapse and the chart renders as bare text. */
-.barTrack {
-  display: block;
-  height: 6px;
-  background: rgba(18, 35, 60, 0.08);
-}
-
-.barFill {
-  display: block;
-  height: 6px;
-  background: var(--blue);
-  transform-origin: left center;
-  animation: grow 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-@keyframes grow {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
-.moreLink {
-  display: inline-block;
-  margin-top: 16px;
-  font: 11px var(--data);
-  color: var(--blue);
-}
-
-/* ---------- scatter plot ---------- */
-.plot {
-  position: relative;
-  height: 260px;
-  border-left: 1px solid rgba(18, 35, 60, 0.3);
-  border-bottom: 1px solid rgba(18, 35, 60, 0.3);
-  margin: 20px 8px 4px 46px;
-}
-
-.axis { position: absolute; left: -44px; font: 9px var(--data); color: var(--ink-62); }
-.grid { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(18, 35, 60, 0.15); }
-
-.dot {
-  position: absolute;
-  border-radius: 50%;
-  background: var(--ink);
-  cursor: pointer;
-  border: 0;
-  padding: 0;
-  transition: transform 0.2s ease;
-  animation: dotIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-.dot:hover { transform: scale(1.8); }
-
-/* the flagged point lands, then keeps pulsing the way the mockup does */
-.dotFlagged {
-  background: var(--anomaly);
-  animation:
-    dotIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both,
-    flagPulse 2s 0.6s infinite;
-}
-
-@keyframes dotIn {
-  from { opacity: 0; transform: scale(0.2); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes flagPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.45); }
-  50% { box-shadow: 0 0 0 10px rgba(180, 83, 9, 0); }
-}
-
-.plotFlag {
-  position: absolute;
-  font: 10px var(--data);
-  color: var(--anomaly);
-  white-space: nowrap;
-}
-
-.plotCategory { position: absolute; bottom: -24px; font: 9px var(--data); color: var(--ink-62); }
-
-.method {
-  margin-top: 42px;
-  font: 10px var(--data);
-  color: var(--ink-62);
-  line-height: 1.7;
-}
-
-@media (max-width: 900px) {
-  .header { padding: 0 20px; gap: 16px; }
-  .page { padding: 24px 20px 48px; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .stat { padding: 18px 14px; }
-  .split { grid-template-columns: 1fr; }
-  .splitLeft { border-right: 0; padding-right: 0; padding-bottom: 28px; }
-  .splitRight { padding-left: 0; padding-top: 28px; border-top: var(--rule); }
-}
 
 /* Signed-out landing for a vendor-only screen. Not access control - it explains
    why the page is empty and what an account adds. */
+
 .gatePage {
   display: grid;
   place-items: center;
@@ -459,7 +300,7 @@
 .gateKicker {
   font: 500 10px var(--data);
   color: var(--blue);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--label-tracking);
   margin-bottom: 14px;
 }
 
@@ -497,8 +338,24 @@
 .gateEscape {
   display: inline-block;
   margin-top: 20px;
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: var(--ink-62);
 }
 
 .gateEscape:hover { color: var(--blue); }
+
+/* ---------- account controls (bell + menu), shared with the landing nav ---------- */
+
+.accountControls { display: flex; align-items: center; gap: 14px; }
+
+/* A read item keeps its place in the list but stops asking for attention. */
+
+.bellItemRead .bellItemTitle { color: var(--ink-70); font-weight: 500; }
+
+.bellItemDotRead { background: var(--ink-20); }
+
+.bellMarkRead:disabled { color: var(--ink-62); cursor: default; }
+
+@media (max-width: 900px) {
+  .header { padding: 0 20px; gap: 16px; }
+}

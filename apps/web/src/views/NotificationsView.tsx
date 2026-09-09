@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import styles from "../features/app-shell/screens-2.module.css";
+import styles from "../features/notifications/notifications.module.css";
 import { ALL_NOTIFICATIONS, NOTIFICATION_TABS, type NotificationTabKey } from "../data/notifications";
+import { useNotifications } from "../shared/lib/notifications";
 
 const DOT_CLASS = { match: styles.notifDotMatch, deadline: styles.notifDotWarn, anomaly: styles.notifDotWarn };
 const TAG_CLASS = { match: styles.notifTagMatch, deadline: styles.notifTagWarn, anomaly: styles.notifTagWarn };
@@ -13,19 +14,16 @@ const TAG_CLASS = { match: styles.notifTagMatch, deadline: styles.notifTagWarn, 
  * mockups/TOR Radar App.dc.html, reachable from the header bell's "ดูการแจ้ง
  * เตือนทั้งหมด →" link.
  *
- * The mockup's "อ่านทั้งหมด" button only zeroes the header's own unread
- * counter (`s.unread`), decoupled from each item's own hard-coded `unread`
- * flag — the items never visually change in the prototype either way. This
- * app has no shared client store between the header and this route (see
- * VendorProfileView's starred/bookmarked-list note), so "อ่านทั้งหมด" here
- * instead clears this screen's own local read-state, which is the
- * meaningful, faithful behaviour for a button that lives on this page.
+ * The mockup's "อ่านทั้งหมด" only zeroes the header's own counter, leaving
+ * the list looking untouched. Here it does the thing it says: read state is
+ * shared with the header bell (shared/lib/notifications), so marking all read
+ * clears the badge AND greys every dot, and it survives a reload. Opening one
+ * notification marks that one read.
  */
 export function NotificationsView() {
   const [filter, setFilter] = useState<NotificationTabKey>("all");
-  const [allRead, setAllRead] = useState(false);
+  const { items, unreadCount, markRead, markAllRead } = useNotifications();
 
-  const items = ALL_NOTIFICATIONS.map((n) => ({ ...n, unread: n.unread && !allRead }));
   const shown =
     filter === "all"
       ? items
@@ -41,8 +39,13 @@ export function NotificationsView() {
           <div className={styles.notifCount}>{ALL_NOTIFICATIONS.length} รายการ · เก็บย้อนหลัง 90 วัน</div>
         </div>
         <div className={styles.notifHeadActions}>
-          <button type="button" className={styles.notifMarkReadBtn} onClick={() => setAllRead(true)}>
-            อ่านทั้งหมด
+          <button
+            type="button"
+            className={styles.notifMarkReadBtn}
+            onClick={markAllRead}
+            disabled={unreadCount === 0}
+          >
+            {unreadCount === 0 ? "อ่านแล้วทั้งหมด" : `อ่านทั้งหมด (${unreadCount})`}
           </button>
           <Link href="/profile#notif-settings" className={styles.notifSettingsBtn}>
             ตั้งค่าการแจ้งเตือน
@@ -69,6 +72,7 @@ export function NotificationsView() {
             key={n.id}
             href={`/tors/${n.torSlug}`}
             className={`${styles.notifRow} ${n.unread ? styles.notifRowUnread : ""}`}
+            onClick={() => markRead(n.id)}
           >
             <span className={`${styles.notifDot} ${n.unread ? DOT_CLASS[n.kind] : styles.notifDotRead}`} />
             <div className={styles.notifBody}>

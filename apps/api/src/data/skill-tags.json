@@ -1,0 +1,225 @@
+[
+  {
+    "tag_id": "software-development",
+    "name_th": "พัฒนาซอฟต์แวร์และระบบสารสนเทศ",
+    "name_en": "Software and information system development",
+    "goods_codes": [
+      "4010",
+      "4011"
+    ],
+    "note": "Only ~16 TORs in the current corpus match this; see docs/DATA-SOURCES.md"
+  },
+  {
+    "tag_id": "it-infrastructure",
+    "name_th": "โครงสร้างพื้นฐานไอทีและเครือข่าย",
+    "name_en": "IT infrastructure and networking",
+    "goods_codes": [
+      "1008",
+      "5003",
+      "6011"
+    ]
+  },
+  {
+    "tag_id": "building-construction",
+    "name_th": "ก่อสร้างอาคาร",
+    "name_en": "Building construction",
+    "goods_codes": [
+      "3001",
+      "3007",
+      "1017"
+    ]
+  },
+  {
+    "tag_id": "building-renovation",
+    "name_th": "ปรับปรุงและซ่อมแซมอาคาร",
+    "name_en": "Building renovation and repair",
+    "goods_codes": [
+      "3004"
+    ]
+  },
+  {
+    "tag_id": "road-and-bridge",
+    "name_th": "งานทาง สะพาน และท่อเหลี่ยม",
+    "name_en": "Road, bridge and culvert works",
+    "goods_codes": [
+      "3002",
+      "3005"
+    ]
+  },
+  {
+    "tag_id": "drainage-and-irrigation",
+    "name_th": "งานระบายน้ำและชลประทาน",
+    "name_en": "Drainage and irrigation works",
+    "goods_codes": [
+      "3003",
+      "3006"
+    ]
+  },
+  {
+    "tag_id": "architectural-design",
+    "name_th": "ออกแบบสถาปัตยกรรมและวิศวกรรม",
+    "name_en": "Architectural and engineering design",
+    "goods_codes": [
+      "7001",
+      "7002",
+      "7005",
+      "7006"
+    ]
+  },
+  {
+    "tag_id": "construction-supervision",
+    "name_th": "ควบคุมงานก่อสร้าง",
+    "name_en": "Construction supervision",
+    "goods_codes": [
+      "7003",
+      "7004"
+    ]
+  },
+  {
+    "tag_id": "medical-and-laboratory",
+    "name_th": "เวชภัณฑ์และครุภัณฑ์การแพทย์",
+    "name_en": "Medical and laboratory supply",
+    "goods_codes": [
+      "1006"
+    ]
+  },
+  {
+    "tag_id": "cleaning-services",
+    "name_th": "บริการทำความสะอาด",
+    "name_en": "Cleaning services",
+    "goods_codes": [
+      "4002"
+    ]
+  },
+  {
+    "tag_id": "security-services",
+    "name_th": "บริการรักษาความปลอดภัย",
+    "name_en": "Security services",
+    "goods_codes": [
+      "4001"
+    ]
+  },
+  {
+    "tag_id": "landscaping",
+    "name_th": "ดูแลต้นไม้และภูมิทัศน์",
+    "name_en": "Landscaping and grounds maintenance",
+    "goods_codes": [
+      "4003",
+      "1015"
+    ]
+  },
+  {
+    "tag_id": "vehicle-and-transport",
+    "name_th": "ยานพาหนะและงานขนส่ง",
+    "name_en": "Vehicles and transport services",
+    "goods_codes": [
+      "4004",
+      "4012",
+      "1013",
+      "5002",
+      "6013"
+    ]
+  },
+  {
+    "tag_id": "printing-and-media",
+    "name_th": "งานพิมพ์และผลิตสื่อประชาสัมพันธ์",
+    "name_en": "Printing and communications media",
+    "goods_codes": [
+      "4008",
+      "4009",
+      "1011"
+    ]
+  },
+  {
+    "tag_id": "training-and-hr",
+    "name_th": "ฝึกอบรมและพัฒนาบุคลากร",
+    "name_en": "Training and staff development",
+    "goods_codes": [
+      "4015"
+    ]
+  },
+  {
+    "tag_id": "research-and-evaluation",
+    "name_th": "ศึกษาวิจัยและติดตามประเมินผล",
+    "name_en": "Research, study and evaluation",
+    "goods_codes": [
+      "4005",
+      "4006"
+    ]
+  },
+  {
+    "tag_id": "environmental-services",
+    "name_th": "สิ่งแวดล้อมและสุขาภิบาล",
+    "name_en": "Environmental and sanitation services",
+    "goods_codes": [
+      "6005",
+      "6015"
+    ]
+  },
+  {
+    "tag_id": "urban-planning-consulting",
+    "name_th": "ที่ปรึกษาด้านพัฒนาเมืองและก่อสร้าง",
+    "name_en": "Urban development and construction consulting",
+    "goods_codes": [
+      "6002",
+      "6014"
+    ]
+  },
+  {
+    "tag_id": "office-and-general-supply",
+    "name_th": "วัสดุครุภัณฑ์สำนักงานและงานทั่วไป",
+    "name_en": "Office and general supply",
+    "goods_codes": [
+      "1001",
+      "1002",
+      "1003",
+      "1018",
+      "5001",
+      "5004"
+    ]
+  },
+  {
+    "tag_id": "electrical-and-industrial",
+    "name_th": "งานไฟฟ้า เครื่องจักร และงานสำรวจ",
+    "name_en": "Electrical, machinery and survey equipment",
+    "goods_codes": [
+      "1007",
+      "1009",
+      "1016"
+    ]
+  },
+  {
+    "tag_id": "sports-and-culture",
+    "name_th": "ครุภัณฑ์กีฬา ดนตรี และงานวัฒนธรรม",
+    "name_en": "Sports, music and cultural equipment",
+    "goods_codes": [
+      "1004",
+      "1005"
+    ]
+  },
+  {
+    "tag_id": "specialist-consulting",
+    "name_th": "ที่ปรึกษาเฉพาะสาขา",
+    "name_en": "Specialist sector consulting",
+    "goods_codes": [
+      "6001",
+      "6003",
+      "6004",
+      "6006",
+      "6007",
+      "6008",
+      "6009",
+      "6010",
+      "6012"
+    ]
+  },
+  {
+    "tag_id": "translation-and-certification",
+    "name_th": "งานแปลเอกสารและตรวจรับรองมาตรฐาน",
+    "name_en": "Translation and standards certification",
+    "goods_codes": [
+      "4007",
+      "4013"
+    ]
+  }
+]

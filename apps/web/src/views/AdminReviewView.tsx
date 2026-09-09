@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import base from "../features/app-shell/screens.module.css";
-import styles from "../features/app-shell/screens-2.module.css";
+import labels from "../shared/ui/labels.module.css";
+import styles from "../features/admin/admin.module.css";
 
 type AdminField = { label: string; conf: string; value: string; ok: boolean };
 
@@ -38,7 +38,7 @@ const QUEUE: QueueItem[] = [
     flag: "ขาดงบประมาณ",
     title: "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง",
     src: "ภาพถ่ายเอกสาร · นำเข้า 09:12",
-    docType: "SCANNED IMAGE · JPG",
+    docType: "ภาพสแกน · JPG",
     docRef: "ประกาศ สพฐ. เขตพื้นที่ 3",
     docNote: "ถ่ายด้วยโทรศัพท์ · เอียง 4° · เงาบางส่วน",
     fields: [
@@ -67,10 +67,10 @@ const QUEUE: QueueItem[] = [
   },
   {
     conf: "0.35",
-    flag: "งบ ฿0 (implausible)",
+    flag: "งบ ฿0 (ไม่สมเหตุสมผล)",
     title: "จ้างเหมาดูแลสวนสาธารณะ เทศบาลเมืองอุดรธานี ปีงบ 2570",
     src: "ภาพถ่ายเอกสาร · นำเข้า 08:15",
-    docType: "SCANNED IMAGE · PNG",
+    docType: "ภาพสแกน · PNG",
     docRef: "ประกาศเทศบาลเมืองอุดรธานี",
     docNote: "ตัวเลขงบประมาณอ่านได้ ฿0 — ติด sanity check",
     fields: [
@@ -86,7 +86,7 @@ const QUEUE: QueueItem[] = [
     flag: "ไม่พบหน่วยงานในบัญชีกลาง",
     title: "จ้างก่อสร้างถนน อบต.บางพลี — รอยืนยันหน่วยงาน",
     src: "URL · นำเข้า 07:58",
-    docType: "HTML SOURCE",
+    docType: "ไฟล์ HTML ต้นทาง",
     docRef: "ประกาศจาก URL ภายนอก",
     docNote: "ชื่อหน่วยงานไม่ตรงบัญชีกลาง — รอยืนยัน",
     fields: [
@@ -127,8 +127,8 @@ export function AdminReviewView() {
       <div className={styles.adminBar}>
         <h1 className={styles.adminTitle}>คิวตรวจสอบการสกัดข้อมูล</h1>
         <span className={styles.adminMeta}>
-          QUEUE {QUEUE.length} · UNVERIFIED (NOT QUEUED) {UNVERIFIED_NOT_QUEUED} · เข้าคิวเมื่อ confidence
-          &lt; T_LOW หรือติด sanity check
+          ในคิว {QUEUE.length} · ยังไม่ยืนยันและไม่เข้าคิว {UNVERIFIED_NOT_QUEUED} · เข้าคิวเมื่อความเชื่อมั่น
+          &lt; T_LOW หรือไม่ผ่านการตรวจความสมเหตุสมผล
         </span>
         <Link href="/dashboard" className={styles.adminExitLink}>
           ← ออกจากมุมมองผู้ดูแล
@@ -148,7 +148,7 @@ export function AdminReviewView() {
               }}
             >
               <div className={styles.adminQueueFlag}>
-                CONF {item.conf} · {item.flag}
+                ความเชื่อมั่น {item.conf} · {item.flag}
               </div>
               <div className={styles.adminQueueTitle}>{item.title}</div>
               <div className={styles.adminQueueSrc}>{item.src}</div>
@@ -158,7 +158,7 @@ export function AdminReviewView() {
 
         <div className={styles.adminDetail}>
           <div className={styles.adminDoc}>
-            <div className={base.blockLabel}>[ เอกสารต้นฉบับ — อ่านอย่างเดียว ]</div>
+            <div className={labels.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
             <div className={styles.adminDocPreview}>
               <div className={styles.adminDocPreviewText}>
                 {current.docType}
@@ -167,15 +167,13 @@ export function AdminReviewView() {
                 <br />
                 {current.docNote}
                 <br />
-                <br />
-                [ zoom ] [ rotate ] [ enhance ]
-              </div>
+                <br />[ ซูม ] [ หมุน ] [ เพิ่มความคมชัด ]</div>
             </div>
-            <div className={styles.adminDocHash}>RAW เก็บถาวรไม่แก้ไข · SHA-256 บันทึกแล้ว</div>
+            <div className={styles.adminDocHash}>ต้นฉบับเก็บถาวรไม่แก้ไข · บันทึก SHA-256 แล้ว</div>
           </div>
 
           <div className={styles.adminFields}>
-            <div className={base.blockLabel}>[ ฟิลด์ที่สกัดได้ — แก้ไขได้ ]</div>
+            <div className={labels.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
             <div className={styles.adminFieldList}>
               {current.fields.map((field, fieldIdx) => (
                 <div key={field.label}>

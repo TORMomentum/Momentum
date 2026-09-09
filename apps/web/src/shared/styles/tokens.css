@@ -10,6 +10,8 @@
   --ink-70: rgba(18, 35, 60, 0.7);
   --ink-65: rgba(18, 35, 60, 0.65);
   --ink-62: rgba(18, 35, 60, 0.62);
+  --ink-55: rgba(18, 35, 60, 0.55);   /* section titles: below body text, not faint */
+  --ink-28: rgba(18, 35, 60, 0.28);
   --ink-20: rgba(18, 35, 60, 0.2);
   --ink-18: rgba(18, 35, 60, 0.18);
   --ink-12: rgba(18, 35, 60, 0.12);
@@ -18,6 +20,8 @@
   /* meaning-carrying accents */
   --blue: #1d63d8;          /* actions, links, the platform's own voice */
   --blue-dark: #1746a0;
+  --blue-wash: rgba(29, 99, 216, 0.06);   /* a control that is holding a filter */
+  --blue-ring: rgba(29, 99, 216, 0.12);   /* focus/open ring around one */
   --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
   --verified: #0e7a5f;      /* a check that passed */
   --avatar: #2b6e5a;        /* the account initial's disc */
@@ -35,7 +39,17 @@
   /* type */
   --display: var(--font-display), "IBM Plex Sans Thai", system-ui, sans-serif;
   --body: var(--font-body), system-ui, sans-serif;
-  --data: var(--font-data), ui-monospace, monospace;
+  /* Plex Mono carries no Thai, so Thai characters used to fall through to
+     whatever the system calls ui-monospace - which is what made the bracket
+     labels hard to read. Naming the Thai body face next means the browser
+     falls back per character: Latin and digits stay monospaced, Thai is set
+     in the face designed for it. */
+  --data: var(--font-data), var(--font-body), ui-monospace, monospace;
+
+  /* Tracking for the bracketed data labels. Wide letter-spacing suits Latin
+     caps and hurts Thai, where it pulls tone marks off their consonants, so
+     one token holds the compromise and every label reads from it. */
+  --label-tracking: 0.06em;
 
   /* rhythm */
   --gutter: 40px;

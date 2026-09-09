@@ -2,9 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import styles from "../features/app-shell/screens.module.css";
-import styles2 from "../features/app-shell/screens-2.module.css";
-import { TOR_SAMPLES, type TorSample } from "../data/tor-samples";
+import styles from "../features/profile/profile.module.css";
+import labels from "../shared/ui/labels.module.css";
+import icons from "../shared/ui/tor-actions.module.css";
+import {
+  BUDGET_FILTER_MAX,
+  BUDGET_FILTER_MIN,
+  BUDGET_FILTER_STEP,
+  TOR_SAMPLES,
+  formatBudgetShort,
+  type TorSample,
+} from "../data/tor-samples";
+import { useViewer } from "../shared/lib/viewer";
+import { BudgetRange } from "../shared/ui/BudgetRange";
 
 /**
  * Vendor profile (FR-D). Ported from the "Vendor Profile" screen of
@@ -26,6 +36,19 @@ const DEFAULT_SKILLS: Record<string, boolean> = {
   "Node.js / API": true,
   "ความปลอดภัยไซเบอร์": false,
 };
+
+/**
+ * The vendor's budget interest, editable here because FR-D-2 makes it theirs
+ * to update. It is scored against every published TOR (FR-C-1), so the range
+ * is a real matching input rather than a profile decoration.
+ *
+ * "Past projects" used to sit beside it and has been dropped: the starred list
+ * further down already records "I have done work like this", and two lists
+ * saying the same thing invite two answers. FR-D-2 still names past projects
+ * and portfolio material, so either that requirement gets amended or the field
+ * returns with slice 4's real profile storage.
+ */
+const DEFAULT_BUDGET_RANGE = { min: 500_000, max: 5_000_000 };
 
 const SAMPLE_STARRED_SLUGS = ["TOR-2569-0812-041", "TOR-2569-0810-029"];
 const SAMPLE_BOOKED_SLUGS = ["demo-anomaly", "TOR-2569-0811-038"];
@@ -78,7 +101,13 @@ function statusFor(tor: TorSample) {
 }
 
 export function VendorProfileView() {
+  const { account } = useViewer();
+  const [budget, setBudget] = useState(DEFAULT_BUDGET_RANGE);
+  const [editingBudget, setEditingBudget] = useState(false);
+  // The slider edits a draft, so ยกเลิก can put the saved range back.
+  const [budgetDraft, setBudgetDraft] = useState(DEFAULT_BUDGET_RANGE);
   const [skillOn, setSkillOn] = useState<Record<string, boolean>>(DEFAULT_SKILLS);
+
   const [addingSkill, setAddingSkill] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [preset, setPreset] = useState<"all" | "balanced" | "few">("balanced");
@@ -111,23 +140,23 @@ export function VendorProfileView() {
 
   return (
     <main className={styles.profilePage}>
+      {/* Name and email are the signed-in account's own; everything below is
+          still sample data until slice 4 stores a real vendor profile. */}
       <div className={styles.profileHead}>
         <span className={styles.profileAvatar} aria-hidden="true">
-          น
+          {account?.name.trim().charAt(0) || "ผ"}
         </span>
         <div>
-          <h1 className={styles.profileName}>คุณนก วิภาดา</h1>
+          <h1 className={styles.profileName}>{account?.name}</h1>
           <div className={styles.profileSub}>
-            FREELANCE FULL-STACK · สมาชิกตั้งแต่ มี.ค. 2569 ·{" "}
-            <span className={styles.profileComplete}>PROFILE 90% COMPLETE</span>
+            {account?.email} ·{" "}
+            <span className={styles.profileComplete}>โปรไฟล์สมบูรณ์ 90%</span>
           </div>
         </div>
       </div>
 
       <div className={styles.profileCard}>
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>
-          [ ทักษะ — จาก TAXONOMY กลาง · คลิกเพื่อเปิด/ปิด ]
-        </div>
+        <div className={`${labels.blockLabel} ${labels.blockLabelWide}`}>ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด</div>
         <div className={styles.skillRow}>
           {skillNames.map((name) => (
             <button
@@ -168,37 +197,87 @@ export function VendorProfileView() {
 
         <div className={styles.profileFactGrid}>
           <div>
-            <div className={styles.profileFactTitle}>ช่วงงบประมาณที่สนใจ</div>
-            <div className={styles.profileFactValue}>฿500K — ฿5M</div>
-          </div>
-          <div>
-            <div className={styles.profileFactTitle}>ผลงานภาครัฐ</div>
-            <div className={styles.profileFactText}>ระบบจองคิวออนไลน์ เทศบาลนครขอนแก่น (2568)</div>
+            <div className={styles.profileFactHead}>
+              <div className={styles.profileFactTitle}>ช่วงงบประมาณที่สนใจ</div>
+              {!editingBudget && (
+                <button
+                  type="button"
+                  className={styles.factEdit}
+                  onClick={() => {
+                    setBudgetDraft(budget);
+                    setEditingBudget(true);
+                  }}
+                >
+                  แก้ไข
+                </button>
+              )}
+            </div>
+
+            {!editingBudget && (
+              <div className={styles.profileFactValue}>
+                {formatBudgetShort(budget.min)} — {formatBudgetShort(budget.max)}
+              </div>
+            )}
+
+            {editingBudget && (
+              <div className={styles.factEditor}>
+                {/* The same two-handle slider the Search filters use, so the
+                    range is stated the way it is read. It cannot produce an
+                    invalid range: each handle stops at the other. */}
+                <BudgetRange
+                  min={budgetDraft.min}
+                  max={budgetDraft.max}
+                  floor={BUDGET_FILTER_MIN}
+                  ceiling={BUDGET_FILTER_MAX}
+                  step={BUDGET_FILTER_STEP}
+                  onChange={setBudgetDraft}
+                  minLabel="งบประมาณต่ำสุดที่สนใจ"
+                  maxLabel="งบประมาณสูงสุดที่สนใจ"
+                />
+                <div className={styles.factActions}>
+                  <button
+                    type="button"
+                    className={styles.addSkillConfirm}
+                    onClick={() => {
+                      setBudget(budgetDraft);
+                      setEditingBudget(false);
+                    }}
+                  >
+                    บันทึก
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.addSkillCancel}
+                    onClick={() => setEditingBudget(false)}
+                  >
+                    ยกเลิก
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className={styles.profileCard}>
-        <div id="notif-settings" className={`${styles.blockLabel} ${styles.blockLabelWide}`}>
-          [ การแจ้งเตือน ]
-        </div>
-        <div className={styles2.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
+        <div id="notif-settings" className={`${labels.blockLabel} ${labels.blockLabelWide}`}>การแจ้งเตือน</div>
+        <div className={styles.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
 
-        <div className={styles2.presetList}>
+        <div className={styles.presetList}>
           {NOTIFY_PRESETS.map((p) => (
             <button
               type="button"
               key={p.key}
-              className={`${styles2.presetCard} ${preset === p.key ? styles2.presetCardOn : ""}`}
+              className={`${styles.presetCard} ${preset === p.key ? styles.presetCardOn : ""}`}
               onClick={() => {
                 setPreset(p.key);
                 setMinMatch(p.minMatch);
               }}
             >
-              <span className={`${styles2.presetDot} ${preset === p.key ? styles2.presetDotOn : ""}`} />
+              <span className={`${styles.presetDot} ${preset === p.key ? styles.presetDotOn : ""}`} />
               <span>
-                <div className={styles2.presetTitle}>{p.title}</div>
-                <div className={styles2.presetDesc}>{p.desc}</div>
+                <div className={styles.presetTitle}>{p.title}</div>
+                <div className={styles.presetDesc}>{p.desc}</div>
               </span>
             </button>
           ))}
@@ -206,21 +285,21 @@ export function VendorProfileView() {
 
         <button
           type="button"
-          className={styles2.advancedToggle}
+          className={styles.advancedToggle}
           onClick={() => setAdvanced((v) => !v)}
         >
-          <span className={`${styles2.advancedArrow} ${advanced ? styles2.advancedArrowOpen : ""}`}>▾</span>
-          <span className={styles2.advancedLabel}>
+          <span className={`${styles.advancedArrow} ${advanced ? styles.advancedArrowOpen : ""}`}>▾</span>
+          <span className={styles.advancedLabel}>
             {advanced ? "ซ่อนการตั้งค่าขั้นสูง" : "การตั้งค่าขั้นสูง"}
           </span>
         </button>
 
         {advanced && (
-          <div className={styles2.advancedPanel}>
+          <div className={styles.advancedPanel}>
             <div>
-              <div className={styles2.advancedRow}>
-                <span className={styles2.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
-                <span className={styles2.advancedRowValue}>{minMatch}%</span>
+              <div className={styles.advancedRow}>
+                <span className={styles.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
+                <span className={styles.advancedRowValue}>{minMatch}%</span>
               </div>
               <input
                 type="range"
@@ -232,20 +311,20 @@ export function VendorProfileView() {
                 onChange={(e) => setMinMatch(Number(e.target.value))}
                 aria-label="คะแนนจับคู่ขั้นต่ำ"
               />
-              <div className={styles2.advancedSliderLabels}>
+              <div className={styles.advancedSliderLabels}>
                 <span>50% (กว้าง)</span>
                 <span>95% (เฉพาะที่ตรงมาก)</span>
               </div>
             </div>
 
             <div>
-              <div className={styles2.leadGroupTitle}>เตือนก่อนกำหนดยื่นซอง</div>
-              <div className={styles2.leadGroup}>
+              <div className={styles.leadGroupTitle}>เตือนก่อนกำหนดยื่นซอง</div>
+              <div className={styles.leadGroup}>
                 {LEAD_OPTIONS.map((n) => (
                   <button
                     type="button"
                     key={n}
-                    className={`${styles2.leadOption} ${lead === n ? styles2.leadOptionOn : ""}`}
+                    className={`${styles.leadOption} ${lead === n ? styles.leadOptionOn : ""}`}
                     onClick={() => setLead(n)}
                   >
                     {n} วัน
@@ -255,28 +334,28 @@ export function VendorProfileView() {
             </div>
 
             <div>
-              <div className={styles2.extraGroupTitle}>แจ้งเตือนเพิ่มเติม</div>
-              <div className={styles2.extraList}>
+              <div className={styles.extraGroupTitle}>แจ้งเตือนเพิ่มเติม</div>
+              <div className={styles.extraList}>
                 {EXTRA_OPTIONS.map((x) => (
                   <button
                     type="button"
                     key={x.key}
-                    className={styles2.extraRow}
+                    className={styles.extraRow}
                     onClick={() => setExtras((prev) => ({ ...prev, [x.key]: !prev[x.key] }))}
                   >
                     <span>
-                      <div className={styles2.extraLabel}>{x.label}</div>
-                      <div className={styles2.extraNote}>{x.note}</div>
+                      <div className={styles.extraLabel}>{x.label}</div>
+                      <div className={styles.extraNote}>{x.note}</div>
                     </span>
-                    <span className={`${styles2.switchTrack} ${extras[x.key] ? styles2.switchTrackOn : ""}`}>
-                      <span className={`${styles2.switchKnob} ${extras[x.key] ? styles2.switchKnobOn : ""}`} />
+                    <span className={`${styles.switchTrack} ${extras[x.key] ? styles.switchTrackOn : ""}`}>
+                      <span className={`${styles.switchKnob} ${extras[x.key] ? styles.switchKnobOn : ""}`} />
                     </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className={styles2.advancedFoot}>
+            <div className={styles.advancedFoot}>
               อีเมลส่งภายใน 5 นาทีหลัง TOR เผยแพร่ · ยกเลิกการรับได้ทุกอีเมล (PDPA)
             </div>
           </div>
@@ -285,12 +364,10 @@ export function VendorProfileView() {
 
       <div className={styles.profileCard}>
         <div className={styles.trackLabelRow}>
-          <svg width="13" height="13" viewBox="0 0 24 24" className={styles.starIcon + " " + styles.starIconOn}>
+          <svg width="13" height="13" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
-          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>
-            [ เคยทำงานลักษณะนี้ — ส่วนตัว ]
-          </span>
+          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>เคยทำงานลักษณะนี้ — ส่วนตัว</span>
         </div>
         {starredList.length > 0 ? (
           <div className={styles.trackList}>
@@ -300,7 +377,7 @@ export function VendorProfileView() {
                   <div className={styles.trackTitle}>{tor.title}</div>
                   <div className={styles.trackAgency}>{tor.agency}</div>
                 </div>
-                <svg width="15" height="15" viewBox="0 0 24 24" className={styles.starIcon + " " + styles.starIconOn}>
+                <svg width="15" height="15" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
               </Link>
@@ -314,12 +391,10 @@ export function VendorProfileView() {
 
       <div className={`${styles.profileCard} ${styles.profileCardLast}`}>
         <div className={styles.trackLabelRow}>
-          <svg width="12" height="12" viewBox="0 0 24 24" className={styles.bookIcon + " " + styles.bookIconOn}>
+          <svg width="12" height="12" viewBox="0 0 24 24" className={icons.bookIcon + " " + icons.bookIconOn}>
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
           </svg>
-          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>
-            [ บุ๊กมาร์ก — TOR ที่กำลังดู ]
-          </span>
+          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>บุ๊กมาร์ก — TOR ที่กำลังดู</span>
         </div>
         {bookedList.length > 0 ? (
           <div className={styles.trackList}>

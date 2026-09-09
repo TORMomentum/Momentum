@@ -20,7 +20,7 @@
 .kicker {
   font: 500 10px var(--data);
   color: var(--blue);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--label-tracking);
   margin-bottom: 14px;
 }
 
@@ -123,9 +123,9 @@
 .dividerLine { flex: 1; height: 1px; background: rgba(18, 35, 60, 0.14); }
 
 .dividerWord {
-  font: 9.5px var(--data);
+  font: 11px var(--data);
   color: rgba(18, 35, 60, 0.5);
-  letter-spacing: 0.1em;
+  letter-spacing: var(--label-tracking);
 }
 
 .alternatives { display: flex; flex-direction: column; gap: 10px; }
@@ -154,7 +154,7 @@
 
 .publicEscape {
   margin-top: 12px;
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: var(--ink-62);
 }
 
