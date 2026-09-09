@@ -162,6 +162,10 @@ const isEntry =
   import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isEntry) {
+  // Same as the API server: on a developer machine the configuration lives in
+  // the repository .env; in a container it comes from Compose and there is no
+  // file to read.
+  loadEnvFile();
   startWorker(loadConfig(process.env)).catch((error: Error) => {
     console.error(JSON.stringify({ event: "worker_crashed", message: error.message }));
     process.exit(1);
