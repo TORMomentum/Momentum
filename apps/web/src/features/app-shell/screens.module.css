@@ -6,10 +6,12 @@
  */
 
 /* shared block label used by TOR Detail and Vendor Profile card headers */
+/* Section titles. Body face, not the mono one: these are Thai words, and the
+   hierarchy comes from weight and lighter ink rather than from brackets. */
 .blockLabel {
-  font: 11px var(--data);
-  color: var(--ink-70);
-  letter-spacing: var(--label-tracking);
+  font: 600 11px var(--body);
+  color: var(--ink-55);
+  letter-spacing: 0.04em;
   margin-bottom: 10px;
 }
 
@@ -36,7 +38,7 @@
 }
 
 .sidebarHead { display: flex; justify-content: space-between; align-items: baseline; }
-.sidebarLabel { font: 500 10px var(--data); color: var(--ink-62); letter-spacing: var(--label-tracking); }
+.sidebarLabel { font: 600 11px var(--body); color: var(--ink-55); letter-spacing: 0.04em; }
 
 .clearLink {
   font: 10px var(--data);

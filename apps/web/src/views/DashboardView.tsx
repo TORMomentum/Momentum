@@ -198,22 +198,22 @@ export function DashboardView() {
 
       <div className={styles.stats}>
         <div className={styles.stat}>
-          <div className={styles.statKey}>[ TOR ทั้งหมด ]</div>
+          <div className={styles.statKey}>TOR ทั้งหมด</div>
           <div className={styles.statValue}>{statTor}</div>
           <div className={styles.statNote}>ฉบับ</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statKey}>[ งบประมาณรวม ]</div>
+          <div className={styles.statKey}>งบประมาณรวม</div>
           <div className={styles.statValue}>{statBudget}</div>
           <div className={styles.statNote}>ตามราคากลางที่ประกาศ</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statKey}>[ หน่วยงาน ]</div>
+          <div className={styles.statKey}>หน่วยงาน</div>
           <div className={styles.statValue}>{statAgencyCount}</div>
           <div className={styles.statNote}>หน่วยงานรัฐทั่วประเทศ</div>
         </div>
         <div className={`${styles.stat} ${styles.statFlagged}`}>
-          <div className={styles.statKey}>[ ความผิดปกติทางสถิติ ]</div>
+          <div className={styles.statKey}>ความผิดปกติทางสถิติ</div>
           <div className={styles.statValue}>{statAnomaly}</div>
           <div className={styles.statNote}>เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา</div>
         </div>

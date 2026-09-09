@@ -102,7 +102,7 @@ function Stat({
   const counter = useCountUp(value, decimals);
   return (
     <div className={`${styles.stat} ${flagged ? styles.statFlagged : ""}`}>
-      <div className={styles.statKey}>[ {label} ]</div>
+      <div className={styles.statKey}>{label}</div>
       <div className={styles.statValue}>
         {prefix}
         <span ref={counter.ref}>{counter.text}</span>

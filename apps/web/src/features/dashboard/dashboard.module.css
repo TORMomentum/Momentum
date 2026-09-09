@@ -124,7 +124,7 @@
 
 .stat:last-child { padding-right: 0; border-right: 0; }
 
-.statKey { font: 500 10.5px var(--data); color: var(--ink-70); letter-spacing: var(--label-tracking); }
+.statKey { font: 600 11px var(--body); color: var(--ink-55); letter-spacing: 0.04em; }
 
 .statValue { font: 600 44px/1.15 var(--data); }
 

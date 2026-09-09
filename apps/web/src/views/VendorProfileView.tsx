@@ -155,9 +155,7 @@ export function VendorProfileView() {
       </div>
 
       <div className={styles.profileCard}>
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>
-          [ ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด ]
-        </div>
+        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด</div>
         <div className={styles.skillRow}>
           {skillNames.map((name) => (
             <button
@@ -261,9 +259,7 @@ export function VendorProfileView() {
       </div>
 
       <div className={styles.profileCard}>
-        <div id="notif-settings" className={`${styles.blockLabel} ${styles.blockLabelWide}`}>
-          [ การแจ้งเตือน ]
-        </div>
+        <div id="notif-settings" className={`${styles.blockLabel} ${styles.blockLabelWide}`}>การแจ้งเตือน</div>
         <div className={styles2.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
 
         <div className={styles2.presetList}>
@@ -370,9 +366,7 @@ export function VendorProfileView() {
           <svg width="13" height="13" viewBox="0 0 24 24" className={styles.starIcon + " " + styles.starIconOn}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
-          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>
-            [ เคยทำงานลักษณะนี้ — ส่วนตัว ]
-          </span>
+          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>เคยทำงานลักษณะนี้ — ส่วนตัว</span>
         </div>
         {starredList.length > 0 ? (
           <div className={styles.trackList}>
@@ -399,9 +393,7 @@ export function VendorProfileView() {
           <svg width="12" height="12" viewBox="0 0 24 24" className={styles.bookIcon + " " + styles.bookIconOn}>
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
           </svg>
-          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>
-            [ บุ๊กมาร์ก — TOR ที่กำลังดู ]
-          </span>
+          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>บุ๊กมาร์ก — TOR ที่กำลังดู</span>
         </div>
         {bookedList.length > 0 ? (
           <div className={styles.trackList}>

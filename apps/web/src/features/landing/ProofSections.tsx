@@ -43,7 +43,7 @@ export function HowItWorks() {
       <div className={styles.steps}>
         {STEPS.map((step) => (
           <Reveal className={styles.step} key={step.key}>
-            <div className={styles.stepKey}>[ {step.key} ]</div>
+            <div className={styles.stepKey}>{step.key}</div>
             <div className={styles.stepTitle}>{step.title}</div>
             <p className={styles.stepBody}>{step.body}</p>
             <div
@@ -127,8 +127,7 @@ export function AnomalyPlot() {
           style={{ left: "58%", bottom: "80%" }}
           title="฿9,400,000 · สูงกว่ากลุ่มเทียบ 3.1×IQR"
         />
-        <div className={styles.anomalyLabel} style={{ left: "61.5%", bottom: "86%" }}>
-          [ ความผิดปกติทางสถิติ ] ฿9.4M · 3.1×IQR เหนือกลุ่มเทียบ
+        <div className={styles.anomalyLabel} style={{ left: "61.5%", bottom: "86%" }}>ความผิดปกติทางสถิติ ] ฿9.4M · 3.1×IQR เหนือกลุ่มเทียบ
         </div>
 
         {CATEGORIES.map((category) => (
@@ -152,7 +151,7 @@ export function QualityChecklist() {
     <section className={styles.section} id="quality">
       <div className={styles.quality}>
         <Reveal>
-          <div className={styles.eyebrow}>[ ตรวจคุณภาพข้อกำหนดด้วย AI ]</div>
+          <div className={styles.eyebrow}>[ ตรวจคุณภาพข้อกำหนดด้วย AI</div>
           <h2 className={styles.heading}>
             TOR เขียนดีแค่ไหน
             <br />

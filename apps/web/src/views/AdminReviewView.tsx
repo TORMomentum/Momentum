@@ -158,7 +158,7 @@ export function AdminReviewView() {
 
         <div className={styles.adminDetail}>
           <div className={styles.adminDoc}>
-            <div className={base.blockLabel}>[ เอกสารต้นฉบับ — อ่านอย่างเดียว ]</div>
+            <div className={base.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
             <div className={styles.adminDocPreview}>
               <div className={styles.adminDocPreviewText}>
                 {current.docType}
@@ -167,15 +167,13 @@ export function AdminReviewView() {
                 <br />
                 {current.docNote}
                 <br />
-                <br />
-                [ zoom ] [ rotate ] [ enhance ]
-              </div>
+                <br />[ ซูม ] [ หมุน ] [ เพิ่มความคมชัด ]</div>
             </div>
             <div className={styles.adminDocHash}>ต้นฉบับเก็บถาวรไม่แก้ไข · บันทึก SHA-256 แล้ว</div>
           </div>
 
           <div className={styles.adminFields}>
-            <div className={base.blockLabel}>[ ฟิลด์ที่สกัดได้ — แก้ไขได้ ]</div>
+            <div className={base.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
             <div className={styles.adminFieldList}>
               {current.fields.map((field, fieldIdx) => (
                 <div key={field.label}>

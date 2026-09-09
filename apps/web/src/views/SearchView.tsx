@@ -118,7 +118,7 @@ export function SearchView() {
     <main className={styles.searchPage}>
       <div className={styles.sidebar}>
         <div className={styles.sidebarHead}>
-          <span className={styles.sidebarLabel}>[ ตัวกรอง ]</span>
+          <span className={styles.sidebarLabel}>ตัวกรอง</span>
           <button type="button" className={styles.clearLink} onClick={clearFilters}>
             ล้างทั้งหมด
           </button>
@@ -257,7 +257,7 @@ export function SearchView() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="⌕ ค้นหา เช่น ระบบสารสนเทศ, ปรับปรุงถนน…"
           />
-          <span className={styles.resultCount}>[ {results.length} ผลลัพธ์ ]</span>
+          <span className={styles.resultCount}>{results.length} ผลลัพธ์</span>
         </div>
 
         {ready && !signedIn && (
