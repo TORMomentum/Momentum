@@ -1,5 +1,6 @@
 import { ObjectId, type Db } from "mongodb";
 import { STATUS_HISTORY_KEPT, torEvents, tors, type TorDocument } from "../../core/db.js";
+import type { ExtractedField } from "@tor-radar/shared";
 import type { StoredObject } from "../../ports/storage.port.js";
 
 export interface SourceRefInput {
@@ -46,6 +47,7 @@ export class IntakeRepository {
     contentHash: string,
     storedObject: StoredObject,
     source: SourceRefInput,
+    knownFields?: Record<string, ExtractedField>,
   ): Promise<string> {
     const now = new Date();
     const result = await tors(this.db).insertOne({
@@ -54,7 +56,7 @@ export class IntakeRepository {
       storage: storedObject,
       sourceRefs: [source],
       pipeline: { state: "queued", attempts: 0 },
-      fields: {},
+      fields: knownFields ?? {},
       // The agency's own publication date, extracted in slice 2. Never the
       // ingestion time: FR-E-1's trend and FR-E-3's filter mean the agency's
       // date, and defaulting it here would report a backfill as today's work.
