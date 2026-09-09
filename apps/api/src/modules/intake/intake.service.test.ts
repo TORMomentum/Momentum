@@ -49,6 +49,7 @@ function fakes() {
 
   const records = new Map<string, { id: string; hash: string }>();
   const sourceRefs: string[] = [];
+  const inserted: { id: string; knownFields?: Record<string, unknown> }[] = [];
   const repository = {
     async findByHash(hash: string) {
       const found = [...records.values()].find((record) => record.hash === hash);
@@ -56,9 +57,15 @@ function fakes() {
         ? { id: found.id, contentHash: hash, pipeline: { state: "queued", attempts: 0 } }
         : null;
     },
-    async insert(hash: string) {
+    async insert(
+      hash: string,
+      _stored: StoredObject,
+      _source: unknown,
+      knownFields?: Record<string, unknown>,
+    ) {
       const id = `id-${records.size + 1}`;
       records.set(id, { id, hash });
+      inserted.push({ id, knownFields });
       return id;
     },
     async appendSourceRef(id: string) {
@@ -66,7 +73,7 @@ function fakes() {
     },
   };
 
-  return { storage, queue, repository, enqueued, objects, sourceRefs };
+  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted };
 }
 
 function serviceWith(overrides: Partial<typeof limits> = {}) {
@@ -164,5 +171,32 @@ describe("IntakeService.submit", () => {
     const { service } = serviceWith({ maxUploadBytes: 4 });
 
     await expect(service.submit(pdf, source)).rejects.toThrow(/size|large/i);
+  });
+
+
+  it("records fields the caller already knows, marked verified (FR-B-2)", async () => {
+    const { service, inserted } = serviceWith();
+
+    await service.submit(pdf, {
+      route: "url",
+      url: "https://egp2.bangkok.go.th/api/file/abc/tor.pdf",
+      submittedBy: "admin",
+      knownFields: {
+        agency: { raw: "สำนักการแพทย์", value: "agency-1", confidence: 1, verified: true },
+      },
+    });
+
+    expect(inserted[0].knownFields).toMatchObject({
+      agency: { raw: "สำนักการแพทย์", confidence: 1, verified: true },
+    });
+  });
+
+  it("ingests a plain upload unchanged, with nothing known up front", async () => {
+    const { service, inserted } = serviceWith();
+
+    const result = await service.submit(pdf, source);
+
+    expect(result.duplicate).toBe(false);
+    expect(inserted[0].knownFields).toBeUndefined();
   });
 });
