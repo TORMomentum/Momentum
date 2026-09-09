@@ -102,10 +102,12 @@ describe("IntakeService.submit", () => {
   it("stores the document under its content hash, not its filename", async () => {
     const { service, objects } = serviceWith();
 
-    await service.submit(pdf, source);
+    await service.submit(pdf, { ...source, filename: "แผนงาน ฉบับล่าสุด.pdf" });
 
+    // Sharded and given an extension so the bucket is browsable, but the hash
+    // is still the whole identity — the submitted name changes nothing.
     const [key] = [...objects.keys()];
-    expect(key).toMatch(/^[0-9a-f]{64}$/);
+    expect(key).toMatch(/^tors\/[0-9a-f]{2}\/[0-9a-f]{2}\/[0-9a-f]{64}\.pdf$/);
   });
 
   it("converges a repeat submission on the existing record without re-queueing", async () => {

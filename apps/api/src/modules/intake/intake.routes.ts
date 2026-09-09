@@ -9,6 +9,12 @@ import type { IntakeService } from "./intake.service.js";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
+/** The parsed part: the bytes, and what the submitter called them. */
+interface UploadedFile {
+  bytes: Buffer;
+  filename?: string;
+}
+
 export interface IntakeRouterDeps {
   service: IntakeService;
   adminKeys: string[];
@@ -28,10 +34,14 @@ export interface IntakeRouterDeps {
  * straight to storage would mean writing under a temporary key and copying
  * afterwards. `MAX_UPLOAD_BYTES` bounds what a caller can hold in memory.
  */
-function readSingleFile(req: Request, deps: IntakeRouterDeps): Promise<Buffer> {
+function readSingleFile(req: Request, deps: IntakeRouterDeps): Promise<UploadedFile> {
   return new Promise((resolve, reject) => {
     const parser = busboy({
       headers: req.headers,
+      // busboy decodes multipart parameter values as latin1 by default, which
+      // turns every Thai filename into mojibake. The documents this system
+      // ingests are Thai, so UTF-8 is the only sensible default here.
+      defParamCharset: "utf8",
       limits: {
         files: deps.multipartMaxFiles,
         fileSize: deps.maxUploadBytes,
@@ -42,6 +52,7 @@ function readSingleFile(req: Request, deps: IntakeRouterDeps): Promise<Buffer> {
     const chunks: Buffer[] = [];
     let received = false;
     let settled = false;
+    let filename: string | undefined;
 
     const fail = (error: Error) => {
       if (settled) return;
@@ -49,8 +60,9 @@ function readSingleFile(req: Request, deps: IntakeRouterDeps): Promise<Buffer> {
       reject(error);
     };
 
-    parser.on("file", (_name, stream) => {
+    parser.on("file", (_name, stream, info) => {
       received = true;
+      filename = info.filename;
       stream.on("data", (chunk: Buffer) => chunks.push(chunk));
       stream.on("limit", () =>
         fail(new PayloadTooLargeError("Document exceeds the maximum accepted size")),
@@ -68,7 +80,7 @@ function readSingleFile(req: Request, deps: IntakeRouterDeps): Promise<Buffer> {
         return;
       }
       settled = true;
-      resolve(Buffer.concat(chunks));
+      resolve({ bytes: Buffer.concat(chunks), filename });
     });
 
     req.pipe(parser);
@@ -91,8 +103,12 @@ export function buildIntakeRouter(deps: IntakeRouterDeps): Router {
   const statusFor = (result: { duplicate: boolean }) => (result.duplicate ? 200 : 202);
 
   router.post("/upload", requireKey(deps.adminKeys, "admin"), async (req, res) => {
-    const bytes = await readSingleFile(req, deps);
-    const result = await deps.service.submit(bytes, { route: "upload", submittedBy: "admin" });
+    const file = await readSingleFile(req, deps);
+    const result = await deps.service.submit(file.bytes, {
+      route: "upload",
+      submittedBy: "admin",
+      filename: file.filename,
+    });
     res.status(statusFor(result)).json(result);
   });
 
@@ -103,13 +119,19 @@ export function buildIntakeRouter(deps: IntakeRouterDeps): Router {
       route: "url",
       url: fetched.finalUrl,
       submittedBy: "admin",
+      // The last path segment of the fetched URL is the closest thing to a name.
+      filename: decodeURIComponent(new URL(fetched.finalUrl).pathname.split("/").pop() ?? ""),
     });
     res.status(statusFor(result)).json(result);
   });
 
   router.post("/", requireKey(deps.intakeKeys, "api"), async (req, res) => {
-    const bytes = await readSingleFile(req, deps);
-    const result = await deps.service.submit(bytes, { route: "api", submittedBy: "api" });
+    const file = await readSingleFile(req, deps);
+    const result = await deps.service.submit(file.bytes, {
+      route: "api",
+      submittedBy: "api",
+      filename: file.filename,
+    });
     res.status(statusFor(result)).json(result);
   });
 

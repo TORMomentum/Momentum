@@ -1,5 +1,6 @@
 import type { ExtractedField } from "@tor-radar/shared";
 import { sha256 } from "../../lib/hash.js";
+import { storageKeyFor } from "../../lib/storage-key.js";
 import { detectMimeType } from "../../lib/file-type.js";
 import { BadRequestError, PayloadTooLargeError } from "../../core/errors.js";
 import type { Storage } from "../../ports/storage.port.js";
@@ -10,6 +11,8 @@ export interface SubmitSource {
   route: "upload" | "url" | "api";
   url?: string;
   submittedBy: string;
+  /** What the submitter called the file, when the route knows it. */
+  filename?: string;
   /**
    * Fields the caller already knows authoritatively, because the source published them rather
    * than the document merely containing them (FR-B-2). Recorded verified at full confidence, so
@@ -73,7 +76,13 @@ export class IntakeService {
       return { torId: existing.id, duplicate: true, state: "queued" };
     }
 
-    const storedObject = await this.storage.putIfAbsent(contentHash, bytes, contentType);
+    // The key is derived from the hash, never from the filename: content
+    // addressing is what makes an overwrite impossible and dedupe exact.
+    const storageKey = storageKeyFor(contentHash, contentType);
+    const storedObject = await this.storage.putIfAbsent(storageKey, bytes, contentType, {
+      originalFilename: source.filename,
+      route: source.route,
+    });
 
     let torId: string;
     try {

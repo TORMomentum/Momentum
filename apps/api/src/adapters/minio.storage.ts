@@ -1,5 +1,15 @@
 import { Client } from "minio";
-import type { Storage, StoredObject } from "../ports/storage.port.js";
+import type { Storage, StorageMetadata, StoredObject } from "../ports/storage.port.js";
+
+/**
+ * A filename arrives from the client, so it cannot go into a header as-is: a
+ * newline would let a caller inject headers of their own, and a non-ASCII byte
+ * is not valid there. Thai filenames are common here, so they are percent-
+ * encoded rather than dropped.
+ */
+function sanitiseHeader(value: string): string {
+  return encodeURIComponent(value.replace(/[\r\n]/g, " ")).slice(0, 200);
+}
 
 export interface MinioSettings {
   endPoint: string;
@@ -48,11 +58,22 @@ export class MinioStorage implements Storage {
   }
 
   /** FR-A-2: an existing object is returned untouched, never replaced. */
-  async putIfAbsent(key: string, bytes: Buffer, contentType: string): Promise<StoredObject> {
+  async putIfAbsent(
+    key: string,
+    bytes: Buffer,
+    contentType: string,
+    metadata: StorageMetadata = {},
+  ): Promise<StoredObject> {
     const existing = await this.head(key);
     if (existing) return existing;
     await this.client.putObject(this.settings.bucket, key, bytes, bytes.byteLength, {
       "Content-Type": contentType,
+      // x-amz-meta-* is what an operator sees beside the object. The key itself
+      // is a hash by design, so this is where the human-readable trace lives.
+      ...(metadata.originalFilename
+        ? { "x-amz-meta-original-filename": sanitiseHeader(metadata.originalFilename) }
+        : {}),
+      ...(metadata.route ? { "x-amz-meta-route": metadata.route } : {}),
     });
     return { bucket: this.settings.bucket, key, contentType, bytes: bytes.byteLength };
   }
