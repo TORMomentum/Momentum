@@ -1,0 +1,34 @@
+{
+  "id": "tor-03",
+  "file": "tor-03.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ร่างtor/7.3nov67/ร่างเอกสารประกวดราคาจ้างก่อสร้างด้วยการ.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "invitation",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างปรับปรุงซอยพุทธมณฑลสาย 3 ซอย 19 แยก 10 ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "กรุงเทพมหานคร",
+  "agency_bma_valid": true,
+  "agency_note": "เอกสารระบุเฉพาะ 'กรุงเทพมหานคร'; ไฟล์ต้นทาง (ชุดเอกสารสำนักงานเขตทวีวัฒนา) และพื้นที่ซอยพุทธมณฑลสาย 3 อยู่ในเขตทวีวัฒนา แต่ตัวเอกสารไม่ระบุชื่อสำนักงานเขต",
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "งานก่อสร้าง-ทาง",
+  "scope_summary": "ปรับปรุงซอยพุทธมณฑลสาย 3 ซอย 19 แยก 10 (งานก่อสร้างทาง) จำนวน 1 รายการ",
+  "required_qualifications": [
+    "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้าง สาขางานก่อสร้างทาง ไม่น้อยกว่าชั้น 6 ประเภททั่วไป กับกรมบัญชีกลาง",
+    "ในการปฏิบัติงานต้องมีวิศวกรประจำที่ได้รับใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม"
+  ],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": "พฤศจิกายน 2567 (ไม่ระบุวันที่)",
+  "reference_no": null,
+  "delivery_period": null,
+  "confidence": {
+    "overall": "high",
+    "note": "งบประมาณไม่ปรากฏในเอกสารประกวดราคา (ราคากลางอยู่ในตาราง BOQ แนบท้าย); หลักประกันการเสนอราคาที่ระบุ = 384,400.00 บาท"
+  }
+}

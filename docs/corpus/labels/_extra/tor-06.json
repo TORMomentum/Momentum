@@ -1,0 +1,29 @@
+{
+  "id": "tor-06",
+  "file": "tor-06.pdf",
+  "corpus": "_extra (OCR test, not the labeled 10)",
+  "labeled_by": "Claude (Sonnet 5) - spot-check label from rendered scan pages 1-3 only; budget/deadline marked unverified where they'd be on later pages",
+  "labeled_at": "2026-09-02",
+  "schema": "../SCHEMA.md",
+  "title": "ประกวดราคาจ้างจ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "กรุงเทพมหานคร",
+  "agency_bma_valid": true,
+  "agency_note": "ตัวเอกสารระบุ 'กรุงเทพมหานคร'; งานเป็นของสำนักงานเขตราชเทวี",
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "จ้างเหมาบริการ",
+  "scope_summary": "จ้างเหมาทำความสะอาดอาคารสำนักงานเขตราชเทวี",
+  "required_qualifications": [],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": "2024-09-10",
+  "announcement_date_raw": "10 กันยายน 2567",
+  "reference_no": "1/2568",
+  "delivery_period": null,
+  "confidence": {
+    "overall": "medium",
+    "note": "เอกสารประกวดราคา สแกน; ตรวจหน้า 1-3. budget/submission_deadline ยังไม่ยืนยันจากหน้าท้าย — โมเดลตอบ budget=1,200,000 / deadline=2024-09-16 ต้องตรวจ"
+  }
+}

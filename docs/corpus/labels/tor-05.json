@@ -1,0 +1,34 @@
+{
+  "id": "tor-05",
+  "file": "tor-05.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/56/68/3.ร่างขอบเขตงาน.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "draft-tor",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "จ้างเหมาตัดเย็บชุดลูกเสือ ชุดเนตรนารี ชุดยุวกาชาดและชุดพละ สำหรับนักเรียนโรงเรียนวิชูทิศ จำนวน 7 รายการ ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "โรงเรียนวิชูทิศ สำนักงานเขตดินแดง",
+  "agency_bma_valid": true,
+  "agency_note": "โรงเรียนในสังกัดสำนักงานเขตดินแดง กรุงเทพมหานคร",
+  "budget_thb": 792000,
+  "budget_source": "ข้อ 8 งบประมาณในการจัดจ้าง",
+  "category": "จ้างเหมาบริการ",
+  "scope_summary": "จ้างเหมาตัดเย็บชุดลูกเสือ ชุดเนตรนารี ชุดยุวกาชาด และชุดพละ 7 รายการ รวม 1,819 ชุด สำหรับนักเรียนโรงเรียนวิชูทิศ",
+  "required_qualifications": [
+    "เป็นบุคคลธรรมดาหรือนิติบุคคลผู้มีอาชีพรับจ้างงานที่ประกวดราคาอิเล็กทรอนิกส์",
+    "ได้รับใบอนุญาตแสดงเครื่องหมายมาตรฐานผลิตภัณฑ์อุตสาหกรรม มอก.2137-2559 (เครื่องแบบนักเรียน ข้อกำหนดทั่วไป) และ มอก.2138-2559 (ผ้าเครื่องแบบนักเรียน)"
+  ],
+  "submission_deadline": null,
+  "contact": "โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร 10400 โทร 0 2246 1551 โทรสาร 0 2246 1551 เว็บไซต์ www.wichutit.ac.th",
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": null,
+  "reference_no": null,
+  "delivery_period": "ส่งมอบงานภายใน 45 วัน นับถัดจากวันลงนามในสัญญาจ้าง",
+  "confidence": {
+    "overall": "high",
+    "note": "ช่อง 'ราคากลาง' ในหัวเอกสารเว้นว่าง; ใช้ตัวเลขจากข้อ 8 'งบประมาณ' = 792,000 บาท"
+  }
+}

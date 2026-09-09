@@ -1,0 +1,33 @@
+{
+  "id": "tor-08",
+  "file": "tor-08.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ร่างtor/14.3nov68/ร่างเอกสารประกวดราคา.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "invitation",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างปรับปรุงซอยสุขาภิบาลบางระมาด 5/1 ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตทวีวัฒนา",
+  "agency_bma_valid": true,
+  "agency_note": null,
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "งานก่อสร้าง-ทาง",
+  "scope_summary": "ปรับปรุงซอยสุขาภิบาลบางระมาด 5/1 (งานก่อสร้างทาง) จำนวน 1 รายการ",
+  "required_qualifications": [
+    "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้าง สาขางานก่อสร้างทาง ไม่น้อยกว่าชั้น 6 ประเภททั่วไป กับกรมบัญชีกลาง"
+  ],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": "พฤศจิกายน 2568 (ไม่ระบุวันที่)",
+  "reference_no": null,
+  "delivery_period": null,
+  "confidence": {
+    "overall": "high",
+    "note": "งบประมาณ/ราคากลางไม่ปรากฏในเอกสาร; หลักประกันการเสนอราคาที่ระบุ = 356,400.00 บาท"
+  }
+}

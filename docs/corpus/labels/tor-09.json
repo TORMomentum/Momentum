@@ -1,0 +1,34 @@
+{
+  "id": "tor-09",
+  "file": "tor-09.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ร่างtor/23.1june66/1.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "announcement",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างปรับปรุงซอยศาลาธรรมสพน์ 27 ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตทวีวัฒนา",
+  "agency_bma_valid": true,
+  "agency_note": null,
+  "budget_thb": 4768116.11,
+  "budget_source": "ราคากลางของงานจ้างก่อสร้าง",
+  "category": "งานก่อสร้าง-ทาง",
+  "scope_summary": "ปรับปรุงซอยศาลาธรรมสพน์ 27 จำนวน 1 รายการ",
+  "required_qualifications": [
+    "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้าง สาขางานก่อสร้างทาง ไม่น้อยกว่าชั้น 6 ประเภททั่วไป กับกรมบัญชีกลาง",
+    "ในการปฏิบัติงานต้องมีวิศวกรประจำที่ได้รับใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม"
+  ],
+  "submission_deadline": null,
+  "contact": "สำนักงานเขตทวีวัฒนา โทร 0-2441-4973 ต่อ 5507; www.bangkok.go.th/thawiwatthana; www.gprocurement.go.th",
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": "มิถุนายน พ.ศ. 2566 (ไม่ระบุวันที่)",
+  "reference_no": null,
+  "delivery_period": null,
+  "confidence": {
+    "overall": "high",
+    "note": "ช่องวันยื่นข้อเสนอในประกาศเว้นว่าง; ผู้ลงนาม: นางสาวสุดใจ คงทน ผู้ช่วยผู้อำนวยการเขตทวีวัฒนา"
+  }
+}

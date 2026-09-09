@@ -19,5 +19,13 @@ export default tseslint.config(
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },
     },
+    rules: {
+      // `const { OMITTED, ...rest } = obj` is the idiomatic way to drop a key,
+      // and the omitted binding is the point of the expression, not dead code.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { ignoreRestSiblings: true, argsIgnorePattern: "^_" },
+      ],
+    },
   },
 );

@@ -1,0 +1,33 @@
+{
+  "id": "tor-06",
+  "file": "tor-06.pdf",
+  "source_url": "https://webportal.bangkok.go.th/public/user_files_editor/60/procurement/ร่างtor/11.1dec67/ร่างเอกสารประกวดราคา.pdf",
+  "pdf_text_layer": "digital",
+  "doc_stage": "invitation",
+  "labeled_by": "Claude (Sonnet 5) - assisted hand-label, reviewed against pdftotext / page images",
+  "labeled_at": "2026-09-02",
+  "schema": "SCHEMA.md",
+  "title": "ประกวดราคาจ้างก่อสร้างโครงการก่อสร้างเขื่อน ค.ส.ล. และถนนเลียบคลองเนินทราย ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "กรุงเทพมหานคร",
+  "agency_bma_valid": true,
+  "agency_note": "เอกสารระบุเฉพาะ 'กรุงเทพมหานคร'; ไฟล์ต้นทางอยู่ในชุดเอกสารของสำนักงานเขตทวีวัฒนา แต่ตัวเอกสารไม่ระบุชื่อสำนักงานเขต",
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "งานก่อสร้าง-ชลประทาน",
+  "scope_summary": "ก่อสร้างเขื่อน ค.ส.ล. และถนนเลียบคลองเนินทราย",
+  "required_qualifications": [
+    "เป็นผู้ประกอบการที่ขึ้นทะเบียนงานก่อสร้าง สาขางานก่อสร้างชลประทาน ไม่น้อยกว่าชั้น 4 ประเภททั่วไป กับกรมบัญชีกลาง"
+  ],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "announced",
+  "procurement_method": "e-bidding",
+  "announcement_date": null,
+  "announcement_date_raw": "ธันวาคม 2567 (ไม่ระบุวันที่)",
+  "reference_no": null,
+  "delivery_period": null,
+  "confidence": {
+    "overall": "medium",
+    "note": "ไม่มีวงเงินงบประมาณ/ราคากลางระบุตรง ๆ (ราคากลางอยู่ใน BOQ แนบท้าย). เอกสารระบุ 'หลักประกันการเสนอราคา ... จำนวน 2,965,700.00 บาท' หากคิดเป็น 5% ของราคากลางจะได้ราคากลางประมาณ 59,314,000 บาท - ยังไม่ยืนยัน. budget_thb จึงตั้งเป็น null เพื่อทดสอบว่าตัวสกัดจะหยิบเลขหลักประกันมาเป็นงบประมาณผิดหรือไม่"
+  }
+}

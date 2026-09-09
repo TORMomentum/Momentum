@@ -1,53 +1,153 @@
-# CLAUDE.md — TOR Radar BKK
+# CLAUDE.md — TOR Radar
 
-Phase-1 product build: centralized Thai-language platform for Bangkok (BMA) procurement TORs — ingest any format, AI-extract, match to vendor skill profiles, notify by email, public transparency dashboard with pricing-anomaly visualization.
+Phase-1 build: a Thai-language platform that collects published Thai government procurement TORs,
+extracts their fields with AI, matches them to vendor skill profiles, notifies vendors by email, and
+publishes a public transparency dashboard with a documented statistical-anomaly rule.
 
-**Read [PROJECT.md](PROJECT.md) first** — it is the single source of truth for problem statement, stakeholders, user stories (US-01…16), functional requirements (FR-A…G), MoSCoW feature analysis, cost breakdown, sprint plan, and risks. Do not re-derive requirements; extend that file when they change.
+## Read these first, in this order
+
+| Document | Holds | Do not |
+| :---- | :---- | :---- |
+| [docs/SRS.md](docs/SRS.md) **v2.0** | Every requirement, as a testable statement, with verification method and traceability | Re-derive requirements; extend the SRS when they change |
+| [docs/superpowers/specs/](docs/superpowers/specs/) | How it is built: structure, data model, seams, security, containers | Invent a different structure; the current spec is the 2026-09-01 foundation-and-intake design |
+| [docs/PROJECT.md](docs/PROJECT.md) | Why it exists, stakeholders, user stories, prioritisation, cost, delivery plan | Look here for requirements — it delegates to the SRS |
+
+Requirement identifiers are the v2.0 scheme: `FR-A-1`…`FR-G-3`, feature-level `NFR-F1`…`NFR-F7`,
+system-level `NFR-S1`…`NFR-S7`, features `F1`…`F12`, use cases `UC-1`…`UC-10`. Anything citing the
+old `FR-A1` / `NFR-2` style is stale — see PROJECT.md §6 for the mapping.
 
 ## Stack (decided — do not substitute)
 
 | Layer | Choice |
-|---|---|
-| Frontend | Next.js |
+| :---- | :---- |
+| Frontend | Next.js (App Router) |
 | API | Node.js + Express (REST) |
-| DB | MongoDB Atlas (metadata/extracted fields only — raw docs go to MinIO, never into Mongo documents) |
-| Raw storage | MinIO (S3-compatible, self-hosted in Docker Compose) |
-| AI | Vertex AI (Document AI / Gemini) — Thai OCR, field extraction, qualification normalization |
-| Notifications | Email only (Nodemailer/Resend) — no Discord webhook, no in-app inbox |
-| Infra | Docker Compose; CI on PR; secrets in `.env` (gitignored, `.env.example` committed) |
+| Database | MongoDB Atlas — metadata and extracted fields only; document bytes never go in a Mongo document |
+| Object storage | MinIO (S3-compatible, in Docker Compose) behind a `Storage` port |
+| AI | Vertex AI — Document AI for Thai OCR, Gemini for extraction and normalisation |
+| Notifications | Email only (SMTP). No in-app inbox, no chat webhook, no SMS |
+| Infrastructure | Docker Compose; CI on every pull request; secrets in `.env`, `.env.example` committed |
 | Process | Scrum · Jira (epics ≈ FR groups) · Discord standups |
 
-## Hard rules (from PROJECT.md — enforce in code review)
+## Structure
 
-- **Bangkok-only:** every ingested record validates against the canonical BMA agency list (seeded JSON); reject/tag non-BMA (FR-A4).
-- **Raw documents immutable** in MinIO; every displayed record links to its source (FR-A2, NFR-2).
-- **No agency-facing features:** agencies are a data source, not users — no upload portal, no draft-TOR flow, no QR ingestion (out of scope, PROJECT.md §2).
-- **Thai UI** (NFR-7) — user-facing strings in Thai.
-- **Low-confidence extractions auto-publish TAGGED, never clean:** two-tier policy (FR-B3/FR-G1) — medium confidence publishes with an "unverified extraction" tag; only very-low/suspicious records also hit the admin review queue. Below-threshold fields never feed anomaly stats or match notifications until verified. Both thresholds come from the Sprint-1 accuracy benchmark, not from a guess.
-- **Anomaly wording:** "statistical anomaly" / "specification-quality check" — never "suspicious" or corruption claims (FR-E2, FR-F2; defamation risk).
-- **PDPA:** consent at signup, export/delete, PII minimized in displayed extractions (FR-B5, FR-D3). Say "PDPA-aligned", never "PDPA-compliant" — no legal certification claimed (NFR-5). Takedown = access restriction with audit trail, never silent edit/delete of the original (NFR-2).
-- **All AI outputs labeled AI-generated + explainable** (NFR-6); every TOR shows extraction provenance (timestamp + model), and the dashboard always shows "data last updated" + a coverage note (FR-E1/FR-E4) — never imply the corpus is complete or live.
-- **MVP discipline:** 12-week window, feature-freeze target at week 8; weeks 9–12 are Transition/reserve (test/hardening only). Could items (bookmarks/archive, CSV export) cut first; never build Stretch (scraping, taxonomy UI) before Must is done.
+```
+apps/web/     Next.js — app/ is routing ONLY; UI code lives in src/ as views → features → entities → shared
+              src/features/<feature>/ holds that screen's components AND its stylesheet
+              (dashboard, search, tor-detail, profile, notifications, admin, auth,
+              app-shell, landing); anything two features share lives in src/shared/ui/
+apps/api/     Express — modules/ per feature, ports/ interfaces, adapters/ implementations, workers/
+packages/     shared/ (types + Zod schemas) · seeds/ (taxonomy, categories, sources)
+docs/         SRS.md · PROJECT.md · superpowers/specs/
+mockups/      design-canvas source — reference only, never built or linted
+```
+
+Both apps are packaged **by feature, not by layer**, with domain-prefixed filenames
+(`intake.service.ts`, never `service.ts`).
+
+Four rules the structure exists to enforce:
+
+1. Only `*.repository.ts` imports the database.
+2. `modules/` imports `ports/`, never `adapters/`. Wiring happens once, in `app.ts`.
+3. Every threshold and tunable lives in `core/config.ts`.
+4. A feature is one folder, so removing it is one operation.
+
+Web imports flow one direction: `views → features → entities → shared`. Never upward.
+
+## Hard rules
+
+**Scope is national.** TOR Radar covers Thai government agencies (SRS §1.2, Appendix B). The old
+Bangkok-only rule — validating against a canonical BMA agency list and rejecting non-BMA records —
+is withdrawn. Issuing agency is a plain extracted field; nothing is rejected for being outside
+Bangkok. The seeded corpus starts with Bangkok sources as a sequencing choice, not a scope rule.
+
+**Originals are immutable.** Every document is stored in object storage and never deleted or
+overwritten (`FR-A-2`, `NFR-S3`). The storage adapter exposes `putIfAbsent`, not `put`. An accepted
+takedown restricts access and writes an audit entry; it never alters or removes the stored file
+(`FR-B-6`). Every displayed record links to its source.
+
+**Confidence controls marking, not visibility.** Every readable record publishes (SRS §4.2.1). High
+confidence publishes clean; medium publishes marked "unverified extraction", with below-threshold
+fields excluded from anomaly statistics and matching; low publishes marked and enters the review
+queue. `T_low` and `T_high` come from the accuracy measurement in `NFR-F3` — never from a guess.
+
+**Wording is constrained** (`NFR-F5`). Only "statistical anomaly" and "specification-quality check".
+Never "suspicious", "corrupt", "irregular", or any equivalent, about a TOR, a budget, or an agency.
+
+**AI output is labelled and explainable** (`NFR-F6`). Every AI-produced value carries its confidence,
+the model and version that produced it, and a link to the source document. Checklist results break
+into named reasons. The dashboard always shows the last-updated time and the coverage note stating
+the figures cover only the collected corpus (`FR-E-6`).
+
+**PDPA-aligned, never "PDPA-compliant"** (`NFR-S2`) — no certification is claimed. Consent at
+registration, export and deletion on request, personal data minimised in what is displayed
+(`FR-B-5`, `FR-D-3`). Redaction lives in one serializer.
+
+**No hard-coded values.** Every host, port, bucket, credential, model name, and threshold comes from
+configuration with an overridable default (`NFR-S7`). `localhost` appears in no source file. Storage
+has two endpoints: `MINIO_ENDPOINT` (internal, server-side) and `MINIO_PUBLIC_URL` (browser-
+reachable). Signed URLs are generated on demand and never persisted.
+
+**Never share a filesystem path between services.** Services exchange storage keys; whoever needs
+bytes fetches them from object storage. A path written by one container does not exist in another.
+
+**Agencies are not users.** No agency portal, no upload flow for agencies, no QR ingestion. They are
+a data source (SRS §1.3 S8).
+
+**Thai UI** (`NFR-F7`). User-facing strings are Thai, and extracted values are displayed exactly as
+extracted — never re-worded, re-formatted, or silently corrected.
+
+## Security baseline (`NFR-S1`, spec §5.6)
+
+Passwords with bcrypt or argon2 · HTTPS in deployed environments · access level enforced on admin
+and API routes · intake API rate-limited and key-authenticated with a constant-time compare ·
+dependency audit in CI. Plus: SSRF defence on the URL intake route (scheme allowlist, resolved-
+address range checks, re-check after every redirect, size and timeout caps, through one helper);
+magic-byte verification because the declared content type is attacker-controlled; originals served
+as attachments with `nosniff`; Zod primitives-only filter parsing so no operator object reaches a
+Mongo query; streamed uploads with multipart caps.
 
 ## Working style
 
-- Plan before building for non-trivial work; fix root causes, not symptoms; no magic numbers — derive values from named constants, config, or env.
-- Check current library/framework documentation before implementing against version-sensitive APIs.
-- Small verified loops: implement → review → test → verify. One concern per commit; Conventional Commits (`type(scope): subject`).
-- Never claim a fix works without running the real thing (live app, real request against the API) — unit tests passing alone is not verification.
+- **Plan before building.** Non-trivial work goes through `superpowers:brainstorming` →
+  a design spec in `docs/superpowers/specs/` → `superpowers:writing-plans` → implementation.
+- Research version-sensitive APIs against current primary documentation before writing against them.
+- Small verified loops: implement → review → test → verify. One concern per commit, Conventional
+  Commits (`type(scope): subject`).
+- Never claim a fix works without running the real thing — a live request against the running stack.
+  Unit tests passing is not verification.
+- Run tests and builds inside containers, not on the host. Never commit secrets.
 - Definition of Done: reviewed, tests pass, runs in shared Docker Compose, demoable.
-- Run tests/builds inside containers, not on the host. Never commit secrets; `.env` stays untracked with a committed `.env.example`.
+
+## Build order
+
+Four slices, each with its own design spec, plan, and build cycle. Slice 1 comes first because every
+later slice reads the records it writes.
+
+| Slice | Features | Delivers |
+| :---- | :---- | :---- |
+| 1 | F1 | Foundation and intake: config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens |
+| 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue |
+| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export |
+| 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown |
+
+## Open values (SRS §8) — never invent these
+
+`T_low` / `T_high` await the accuracy measurement. `MIN_BID_WINDOW_DAYS` awaits calibration, and
+until then checklist C2 reports "not evaluated". `MIN_SCOPE_CHARS` and `MIN_SCOPE_SECTIONS` await
+calibration. Whether IQR or ZSCORE is the active anomaly method awaits comparison on real budget
+data. All are declared in `core/config.ts` with their open status recorded.
 
 ## Commands
 
 ```
-docker compose up          # full stack: web :3000, api :4000, mongo :27017, minio :9000/:9001
-npm install                # workspaces: apps/web (Next.js), apps/api (Express)
-npm run dev                # web + api dev servers (no Docker)
-npm test                   # vitest (all workspaces)
-npm run lint               # eslint (flat config, root)
-npm run build              # build all apps
-python tools/jira_seed.py  # (re)seed Jira issues — needs JIRA_EMAIL + JIRA_TOKEN env vars, never hardcode tokens
+docker compose up                 # full stack: web :3000 · api :4000 · mongo · minio :9000/:9001
+npm run dev                       # web + api dev servers (no containers)
+npm test                          # vitest
+npm run lint                      # eslint
+npm run build                     # build all workspaces
+python tools/jira_seed.py         # (re)seed Jira — needs JIRA_EMAIL + JIRA_TOKEN, never hardcoded
 ```
 
-Jira: project **TOR** at momentumm.atlassian.net (team-managed Scrum, six dated 2-week sprints, epics ≈ FR groups, phase labels + priorities + story points). Jira is the operational truth for sprint contents; PROJECT.md §7 is the summary.
+Jira: project **TOR** at momentumm.atlassian.net. Jira is the operational truth for sprint contents;
+PROJECT.md is the summary.

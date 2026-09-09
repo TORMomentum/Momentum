@@ -1,0 +1,29 @@
+{
+  "id": "tor-17",
+  "file": "tor-17.pdf",
+  "corpus": "_extra (OCR test, not the labeled 10)",
+  "labeled_by": "Claude (Sonnet 5) - spot-check label from rendered scan pages 1-3 only; budget/deadline marked unverified where they'd be on later pages",
+  "labeled_at": "2026-09-02",
+  "schema": "../SCHEMA.md",
+  "title": "ยกเลิกประกาศประกวดราคาซื้อครุภัณฑ์เครื่องดนตรีสากลและเครื่องดนตรีวงโยธวาทิต 42 รายการ (โรงเรียนมัธยมประชานิเวศน์) (ครั้งที่ 2) ด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)",
+  "agency": "สำนักงานเขตจตุจักร",
+  "agency_bma_valid": true,
+  "agency_note": "เอกสารเดียวกับ corpus tor-02 (สแกนคนละไฟล์/มุม)",
+  "budget_thb": null,
+  "budget_source": null,
+  "category": "ซื้อครุภัณฑ์",
+  "scope_summary": "ประกาศยกเลิกการประกวดราคาซื้อครุภัณฑ์เครื่องดนตรีสากลและวงโยธวาทิต 42 รายการ สำหรับโรงเรียนมัธยมประชานิเวศน์",
+  "required_qualifications": [],
+  "submission_deadline": null,
+  "contact": null,
+  "status": "cancelled",
+  "procurement_method": "e-bidding",
+  "announcement_date": "2026-03-05",
+  "announcement_date_raw": "5 มีนาคม 2569",
+  "reference_no": "3/2569 (ประกาศเดิมที่ถูกยกเลิก)",
+  "delivery_period": null,
+  "confidence": {
+    "overall": "high",
+    "note": "ประกาศยกเลิก 1 หน้าอ่านครบ; = corpus tor-02"
+  }
+}

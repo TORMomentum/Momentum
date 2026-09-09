@@ -1,0 +1,143 @@
+/*
+ * Admin extraction-review queue: the queue list, the field editor and the
+ * source-document panel beside it.
+ */
+
+/* =========================================================================
+   Admin Review Queue
+   ========================================================================= */
+
+.adminPage { min-height: calc(100vh - 62px); }
+
+.adminBar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 36px;
+  border-bottom: var(--rule);
+  background: var(--panel);
+}
+
+.adminTitle { margin: 0; font: 700 19px var(--display); }
+
+.adminMeta { font: 10px var(--data); color: var(--ink-65); letter-spacing: 0.06em; }
+
+.adminExitLink { margin-left: auto; white-space: nowrap; font: 11px var(--data); color: var(--blue); }
+
+.adminBody { display: grid; grid-template-columns: 330px 1fr; }
+
+.adminQueueList { border-right: var(--rule); padding: 18px 0; }
+
+.adminQueueItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 22px;
+  border-left: 3px solid transparent;
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  cursor: pointer;
+  opacity: 0.72;
+  font: inherit;
+  color: inherit;
+}
+
+.adminQueueItem:hover { background: rgba(29, 99, 216, 0.05); }
+
+.adminQueueItemOn { border-left-color: var(--blue); background: rgba(29, 99, 216, 0.06); opacity: 1; }
+
+.adminQueueFlag { font: 600 10px var(--data); color: var(--anomaly); margin-bottom: 5px; }
+
+.adminQueueTitle { font-size: 12.5px; font-weight: 600; line-height: 1.55; }
+
+.adminQueueSrc { font-size: 10.5px; color: var(--ink-62); margin-top: 4px; }
+
+.adminDetail { display: grid; grid-template-columns: 1fr 1fr; }
+
+.adminDoc { border-right: var(--rule); padding: 24px; background: var(--panel); }
+
+.adminDocPreview {
+  border: 1px dashed rgba(18, 35, 60, 0.35);
+  border-radius: 6px;
+  height: 430px;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+}
+
+.adminDocPreviewText { text-align: center; font: 11px var(--data); color: var(--ink-62); line-height: 2; }
+
+.adminDocHash { margin-top: 10px; font: 10px var(--data); color: var(--ink-62); }
+
+.adminFields { padding: 24px; }
+
+.adminFieldList { display: flex; flex-direction: column; gap: 12px; }
+
+.adminFieldHead { display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px; }
+
+.adminFieldLabel { color: var(--ink-65); }
+
+.adminFieldLabelWarn { color: var(--anomaly); font-weight: 600; }
+
+.adminFieldConfOk { color: var(--verified); }
+
+.adminFieldConfWarn { color: var(--anomaly); }
+
+.adminFieldInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(18, 35, 60, 0.25);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--ink);
+  font-family: var(--body);
+}
+
+.adminFieldInputWarn { border-color: var(--anomaly); background: rgba(180, 83, 9, 0.06); color: rgba(18, 35, 60, 0.75); }
+
+.adminActions { display: flex; gap: 10px; margin-top: 22px; }
+
+.adminApproveBtn {
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+  font: 600 12.5px var(--body);
+  background: var(--blue);
+  color: var(--paper);
+  padding: 11px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 0;
+}
+
+.adminApproveBtn:hover { background: var(--blue-dark); }
+
+.adminSecondaryBtn {
+  white-space: nowrap;
+  font: 600 12.5px var(--body);
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  padding: 11px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+}
+
+.adminSecondaryBtn:hover { border-color: var(--blue); color: var(--blue); }
+
+.adminRejectBtn { color: rgba(18, 35, 60, 0.65); }
+
+.adminRejectBtn:hover { border-color: var(--danger); color: var(--danger); }
+
+.adminToast { margin-top: 12px; font: 10px var(--data); color: var(--ink-62); line-height: 1.7; }
+
+@media (max-width: 900px) {
+  .adminBody { grid-template-columns: 1fr; }
+  .adminDetail { grid-template-columns: 1fr; }
+  .adminDoc { border-right: 0; border-bottom: var(--rule); }
+}

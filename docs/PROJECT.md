@@ -1,29 +1,36 @@
-# TOR Radar BKK — BMA TOR Platform
+# TOR Radar — Thai Procurement TOR Platform
 
-> Product specification & Phase-1 delivery plan.
-> Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, Vertex AI.
-> _v2 — revised after internal review; 22 findings addressed._
+> Problem framing, stakeholders, user stories, prioritisation, cost, delivery plan, and risks.
+> Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, MinIO, Vertex AI.
+>
+> **Requirements live in [SRS.md](SRS.md) v2.0** — the testable statements, verification methods,
+> and traceability. **Architecture and structure live in
+> [superpowers/specs/](superpowers/specs/2026-09-01-tor-radar-foundation-intake-design.md).**
+> This document holds everything those two do not: why the project exists, who it serves, what
+> order it gets built in, and what it costs.
+>
+> _v3 (2026-09-01) — scope corrected to national, requirements delegated to the SRS._
 
 ---
 
 ## 1. Problem Statement
 
-Bangkok Metropolitan Administration (BMA) agencies publish
-procurement TORs (Terms of Reference) for projects, but they are scattered, hard to discover,
-and come in inconsistent formats (PDF text, scanned images, photographs). As a result:
+Thai government agencies publish procurement TORs (Terms of Reference) for
+projects, but they are scattered, hard to discover, and come in inconsistent formats (PDF text,
+scanned images, photographs). As a result:
 
 - Capable vendors and freelance professionals never see opportunities that match their skills.
 - Agencies struggle to reach qualified bidders for their TORs.
 - The public has no easy way to see what is being procured, at what price, or spot pricing anomalies.
 - TOR quality varies and there is no systematic quality check.
 
-**Vision:** a centralized, Thai-language platform, Bangkok-only scope, that (1) ingests publicly
-announced BMA TORs regardless of format, (2) extracts and normalizes the data with AI, (3) matches
+**Vision:** a centralized, Thai-language platform that (1) ingests publicly
+announced Thai government TORs regardless of format, (2) extracts and normalizes the data with AI, (3) matches
 TORs to registered vendors by qualification (skill profiles + stated preferences) and notifies them
 by email, (4) exposes a public transparency dashboard with pricing visualizations and
 statistical-anomaly detection, and (5) runs an AI-assisted quality checklist on each TOR.
 
-**Purpose (single sentence):** give vendors and the public easier access to Bangkok TORs, with
+**Purpose (single sentence):** give vendors and the public easier access to Thai procurement TORs, with
 skill/preference-based filtering, matching, and email notification — the platform works entirely
 from publicly announced TORs and requires no agency cooperation.
 
@@ -34,16 +41,19 @@ below is treated as a hypothesis until validated (Sprint 1 has explicit validati
 
 ## 2. Scope
 
-**In scope:** BMA/Bangkok TORs only · ingestion by file upload/URL (corpus seeded by the admin team
-from public announcements) · AI extraction with manual correction · vendor skill profiles +
+**In scope:** TORs published by Thai government agencies · ingestion by file upload, URL, and an
+authenticated intake API (corpus seeded by the admin team from public announcements) · AI extraction with manual correction · vendor skill profiles +
 matching + email notifications · public dashboard (per-agency view, pricing plots, statistical
 anomalies) · AI quality checklist (heuristic, explainable) · Thai-language UI.
 
-**Bangkok-only rule (explicit):** the system keeps a canonical list of BMA agencies and district
-offices. Ingested records are matched against it; non-BMA records are rejected or tagged
-out-of-scope. (National e-GP data is NOT assumed — it mixes non-Bangkok entities.)
+**Scope is national (corrected 2026-09-01).** The earlier Bangkok-only rule — which validated every
+record against a canonical BMA agency list and rejected or tagged non-BMA records — is withdrawn.
+SRS v2.0 §1.2 covers Thai government agencies, and its Appendix B lists national sources alongside
+the Bangkok one. Issuing agency is a plain extracted field; nothing is rejected for being outside
+Bangkok. The seeded corpus still starts with Bangkok sources, because that is where the team has
+material and contacts — that is a sequencing choice, not a scope rule.
 
-**Out of scope (Phase 1):** other provinces · agency-facing upload or draft-TOR portal (the
+**Out of scope (Phase 1):** agency-facing upload or draft-TOR portal (the
 platform reads public announcements; agencies are a data source, not platform users) · QR-code
 ingestion · bid submission through the platform · payments/contracts · contract-award analysis
 beyond a coarse status label · mobile native apps · non-Thai UI.
@@ -156,7 +166,9 @@ browsing TORs uses the same public views as any citizen._
   medium-confidence records carry the "unverified" tag but stay out of the queue; edit + approve
   clears the tag and lets the fields feed anomaly stats and matching.*
 - **US-15** As an admin, I want to manage the taxonomy (skill tags, categories, canonical BMA agency
-  list), so matching and the Bangkok-only filter stay consistent. *Accept: seeded from JSON; editable in UI (stretch).*
+  list), so matching and agency naming stay consistent. *Accept: seeded from JSON; editable in UI
+  (stretch). The agency list is a canonicalisation aid for display and filtering — it is not a gate,
+  and no record is rejected for being outside it (§2).*
 - **US-16** As an admin, I want ingestion-source health monitoring, so a silently broken source
   doesn't create a coverage gap. *(Stretch — only relevant once scraping (FR-A-S1) exists.)*
 
@@ -196,7 +208,12 @@ Requirements are split **MVP** vs **Stretch** so core scope is not conflated wit
     admin review queue (FR-G1) for priority correction.
 
   Both thresholds set empirically AFTER measuring extraction accuracy on a 10–20-document
-  benchmark set (see NFR-1); full automation is not promised.
+  benchmark set (see NFR-1); full automation is not promised. **Sprint-1 result
+  (`docs/corpus/BENCHMARK.md`, TOR-18):** phase gate PASSED. Model confidence alone
+  does not discriminate correct from wrong, so the two tiers are gated by
+  deterministic per-field rules first (BMA check, budget-range sanity,
+  `cancelled ⇒ no deadline`, OCR'd doc ⇒ `budget_thb`/dates never "clean"), then
+  model confidence at **T_low = 0.80 / T_high = 0.95**.
 - **FR-B4** Normalize extracted qualifications into the shared skill taxonomy used by profiles.
 - **FR-B5** PII handling inside TOR documents: displayed extractions minimize personal data (e.g.
   officer personal phone numbers, signatures); original documents remain available via source link;
@@ -353,6 +370,25 @@ reserve is the plan's main schedule-risk defense.
 | Notifications | Email (Nodemailer/Resend) | Match alerts |
 | Infra | Docker Compose; deploy target = one small VM or Cloud Run (decide Sprint 1); secrets via env vars | Dev parity + demo hosting |
 | Process | Scrum, Jira (epics ≈ FR groups), Discord | Sprints, board, comms |
+
+### 8.1 Repository structure
+
+Full rationale in the [foundation and intake design](superpowers/specs/2026-09-01-tor-radar-foundation-intake-design.md) §3; the shape is:
+
+```
+tor-radar/
+├── apps/web/     Next.js — app/ is routing only; UI code in src/ as views → features → entities → shared
+├── apps/api/     Express — modules/ per feature, ports/ interfaces, adapters/ implementations, workers/
+├── packages/     shared/ (types + Zod schemas) · seeds/ (taxonomy, categories, sources)
+├── docs/         SRS.md · PROJECT.md · superpowers/specs/
+└── mockups/      design-canvas source — reference, never built
+```
+
+Both apps are packaged **by feature, not by layer**, with domain-prefixed filenames
+(`intake.service.ts`), which keeps cohesion high and coupling low and makes removing a feature a
+single-folder operation. Four rules the structure enforces: only `*.repository.ts` touches the
+database; `modules/` depends on `ports/` and never on `adapters/`; every threshold lives in
+`core/config.ts`; a feature is one folder.
 
 ---
 
