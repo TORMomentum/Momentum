@@ -1,5 +1,6 @@
 import type { ConfidenceLevel, ExtractedField, TorFields } from "@tor-radar/shared";
 import type { RawExtraction, RawField } from "../../ports/ai.port.js";
+import { mapQualifications } from "./extraction.taxonomy.js";
 
 export interface GradingContext {
   /** Digital PDF text layer vs an OCR'd scan/photo (spec D6). */
@@ -56,8 +57,8 @@ function structurallyOk(name: keyof TorFields, raw: RawExtraction, ctx: GradingC
     case "scopeSummary":
       return (raw.scopeSummary.value ?? "").trim().length >= SCOPE_MIN_CHARS;
     case "qualifications":
-      // TOR-92 tightens this to "at least one qualification mapped to a taxonomy tag".
-      return raw.qualifications.value !== null && raw.qualifications.value.length >= 1;
+      // FR-B-4: usable only if at least one qualification maps to a taxonomy tag.
+      return mapQualifications(raw.qualifications.value).length >= 1;
     case "contact":
       // No structural gate (§6): `verified` on contact tracks display confidence only,
       // and contact never feeds the anomaly rule or matching.
@@ -116,7 +117,9 @@ export function grade(raw: RawExtraction, ctx: GradingContext): GradingResult {
     budget: buildField(raw.budget, verifiedOf("budget"), { currency: "THB" }),
     category: buildField(raw.category, verifiedOf("category")),
     scopeSummary: buildField(raw.scopeSummary, verifiedOf("scopeSummary")),
-    qualifications: buildField(raw.qualifications, verifiedOf("qualifications"), { tags: [] }),
+    qualifications: buildField(raw.qualifications, verifiedOf("qualifications"), {
+      tags: mapQualifications(raw.qualifications.value),
+    }),
     deadline: buildField(raw.deadline, verifiedOf("deadline")),
     contact: buildField(raw.contact, verifiedOf("contact")),
     torStatus: buildField(raw.status, verifiedOf("torStatus")),
