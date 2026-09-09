@@ -197,10 +197,15 @@ _Design: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpow
       policy; 10 table-driven cases. Built with TOR-89 as one testable unit. `dc4cfcf`
 - [x] **TOR-91 — sanity checks** — `grading.ts` Pass 3 (missing critical field, implausible budget,
       deadline before announcement, cancelled-with-deadline, copy-through). Corpus-validated. `dc4cfcf`
-- [ ] TOR-92 — qualification → taxonomy mapping (`extraction.taxonomy.ts`, `packages/seeds`) — spec §10 Q1
-- [ ] TOR-93 — PII minimisation (`lib/redact.ts`)
-- [ ] TOR-120 — tests: two-tier logic + sanity checks — mostly covered by the grading/service/corpus
-      suites; final pass once TOR-92/93 land
+- [x] **TOR-92 — qualification → taxonomy mapping** — `extraction.taxonomy.ts` + `taxonomy.seed.json`
+      (~30 tags, keyword aliases; pulled forward from F9, `.tags` recomputable). `a317daf`
+- [x] **TOR-93 — PII minimisation** — `lib/redact.ts`, the single serializer: `redactTor(record,
+      "public")` reduces `fields.contact` (office name / landline / gov URL kept; name / mobile /
+      email / signature removed). Slice 3's read API + CSV export call it. `a317daf`
+- [x] **TOR-120 — tests: two-tier logic + sanity checks** — grading (10 cases) + service + worker +
+      taxonomy + redact + pdf-text + the corpus gate. 125/125 CI unit run.
+- [ ] **TOR-88 (parent) — in review** — PR open; Sudha (epic TOR-3 owner) to read the Slice-2
+      spec §4 / §6 / §10 before approving. Design has NOT had the external cross-check Slice 1 got.
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
