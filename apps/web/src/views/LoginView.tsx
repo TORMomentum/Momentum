@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import styles from "../features/app-shell/login.module.css";
+import styles from "../features/auth/auth.module.css";
 import { useViewer } from "../shared/lib/viewer";
 
 /**

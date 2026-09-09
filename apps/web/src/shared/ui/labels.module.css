@@ -1,0 +1,20 @@
+/*
+ * Section titles. Body face at 600 on lighter ink - the hierarchy comes from
+ * weight and colour, which is what Thai section headings need.
+ */
+
+/* Section titles. Body face, not the mono one: these are Thai words, and the
+   hierarchy comes from weight and lighter ink rather than from brackets. */
+
+.blockLabel {
+  font: 600 11px var(--body);
+  color: var(--ink-55);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.blockLabelMid { margin-bottom: 12px; }
+
+.blockLabelWide { margin-bottom: 14px; }
+
+.blockLabelInline { margin-bottom: 0; }

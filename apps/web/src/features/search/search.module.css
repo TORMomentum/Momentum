@@ -1,0 +1,220 @@
+/*
+ * TOR search: the filter sidebar, the result rows and their badges.
+ */
+
+/* =========================================================================
+   Search
+   ========================================================================= */
+
+.searchPage {
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  min-height: calc(100vh - 62px);
+}
+
+.sidebar {
+  border-right: var(--rule);
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.sidebarHead { display: flex; justify-content: space-between; align-items: baseline; }
+
+.sidebarLabel { font: 600 11px var(--body); color: var(--ink-55); letter-spacing: 0.04em; }
+
+.clearLink {
+  font: 10px var(--data);
+  color: var(--blue);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.filterGroupTitle { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+
+.toggleList { display: flex; flex-direction: column; gap: 7px; font-size: 12px; }
+
+.toggleItem {
+  cursor: pointer;
+  color: rgba(18, 35, 60, 0.8);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+}
+
+.toggleItemOn { color: var(--blue); }
+
+/* ---- category pills ---- */
+
+.pillList { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.pill {
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  color: rgba(18, 35, 60, 0.8);
+  padding: 4px 10px;
+  border-radius: 99px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.pillOn { background: var(--blue); border-color: var(--blue); color: var(--paper); }
+
+.sidebarFoot { margin-top: auto; font: 10px var(--data); color: rgba(18, 35, 60, 0.55); line-height: 1.7; }
+
+/* ---- results ---- */
+
+.results { padding: 26px 32px; }
+
+.searchBar { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+
+.searchInput {
+  flex: 1;
+  min-width: 280px;
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  border-radius: 6px;
+  padding: 11px 16px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--body);
+}
+
+.resultCount { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
+
+.resultList { display: flex; flex-direction: column; }
+
+.resultRow {
+  display: grid;
+  grid-template-columns: 1fr 150px 130px 64px;
+  gap: 18px;
+  padding: 16px 10px;
+  border-top: 1px solid rgba(18, 35, 60, 0.14);
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.resultRow:hover { background: rgba(29, 99, 216, 0.05); }
+
+.resultRowClosed { opacity: 0.55; }
+
+.badgeRow { display: flex; gap: 8px; align-items: center; margin-bottom: 5px; flex-wrap: wrap; }
+
+.badge {
+  white-space: nowrap;
+  font: 600 10px var(--data);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+.badgeAnomaly { background: var(--anomaly); border-color: var(--anomaly); color: var(--paper); }
+
+.badgeUnverified { background: transparent; border-color: var(--anomaly); color: var(--anomaly); }
+
+.badgeClosed { background: transparent; border-color: rgba(18, 35, 60, 0.35); color: rgba(18, 35, 60, 0.6); }
+
+.badgeMatch { background: var(--match); border-color: var(--match); color: var(--paper); }
+
+.badgeOpen { background: transparent; border-color: rgba(18, 35, 60, 0.35); color: rgba(18, 35, 60, 0.75); }
+
+.resultId { font: 10px var(--data); color: rgba(18, 35, 60, 0.6); }
+
+.resultTitle { font-size: 14px; font-weight: 600; }
+
+.resultMeta { font-size: 11.5px; color: var(--ink-65); margin-top: 3px; }
+
+.resultPrice { font: 600 15px var(--data); }
+
+.priceAnomaly { color: var(--anomaly); }
+
+.priceUnverified { color: var(--ink-65); }
+
+.priceNormal { color: var(--ink); }
+
+.resultDeadline { font-size: 12px; color: rgba(18, 35, 60, 0.8); }
+
+.resultDeadlineValue { display: block; font: 600 12px var(--data); color: var(--ink); }
+
+.resultActions { display: flex; gap: 6px; justify-content: flex-end; }
+
+.actionBtn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.actionBtn:hover { transform: scale(1.12); }
+
+.starBtn:hover { background: rgba(232, 147, 12, 0.12); }
+
+.bookBtn:hover { background: rgba(29, 99, 216, 0.12); }
+
+.starBtnOn { background: rgba(232, 147, 12, 0.14); animation: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+.bookBtnOn { background: rgba(29, 99, 216, 0.12); animation: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+.emptyState {
+  border-top: 1px solid rgba(18, 35, 60, 0.14);
+  padding: 44px 10px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(18, 35, 60, 0.6);
+}
+
+.emptyClear { color: var(--blue); cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+
+.resultsFootHint {
+  border-top: 1px solid rgba(18, 35, 60, 0.14);
+  padding: 14px 10px;
+  font: 11px var(--data);
+  color: rgba(18, 35, 60, 0.6);
+}
+
+/* Signed-out notice on Search: says what an account adds, in the mockup's words. */
+
+.publicBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(29, 99, 216, 0.35);
+  background: rgba(29, 99, 216, 0.06);
+  border-radius: 6px;
+  padding: 13px 18px;
+  margin-bottom: 18px;
+}
+
+.publicBannerText { font-size: 12.5px; color: rgba(18, 35, 60, 0.8); }
+
+.publicBannerCta {
+  white-space: nowrap;
+  font: 600 12px var(--body);
+  background: var(--blue);
+  color: var(--paper);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  transition: background 0.2s ease;
+}
+
+.publicBannerCta:hover { background: var(--blue-dark); color: var(--paper); }
+
+@media (max-width: 900px) {
+  .searchPage { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; border-bottom: var(--rule); }
+  .resultRow { grid-template-columns: 1fr; }
+  .resultActions { justify-content: flex-start; }
+}

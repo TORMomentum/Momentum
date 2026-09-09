@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import styles from "../features/app-shell/screens.module.css";
-import styles2 from "../features/app-shell/screens-2.module.css";
+import styles from "../features/profile/profile.module.css";
+import labels from "../shared/ui/labels.module.css";
+import icons from "../shared/ui/tor-actions.module.css";
 import {
   BUDGET_FILTER_MAX,
   BUDGET_FILTER_MIN,
@@ -155,7 +156,7 @@ export function VendorProfileView() {
       </div>
 
       <div className={styles.profileCard}>
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด</div>
+        <div className={`${labels.blockLabel} ${labels.blockLabelWide}`}>ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด</div>
         <div className={styles.skillRow}>
           {skillNames.map((name) => (
             <button
@@ -259,24 +260,24 @@ export function VendorProfileView() {
       </div>
 
       <div className={styles.profileCard}>
-        <div id="notif-settings" className={`${styles.blockLabel} ${styles.blockLabelWide}`}>การแจ้งเตือน</div>
-        <div className={styles2.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
+        <div id="notif-settings" className={`${labels.blockLabel} ${labels.blockLabelWide}`}>การแจ้งเตือน</div>
+        <div className={styles.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
 
-        <div className={styles2.presetList}>
+        <div className={styles.presetList}>
           {NOTIFY_PRESETS.map((p) => (
             <button
               type="button"
               key={p.key}
-              className={`${styles2.presetCard} ${preset === p.key ? styles2.presetCardOn : ""}`}
+              className={`${styles.presetCard} ${preset === p.key ? styles.presetCardOn : ""}`}
               onClick={() => {
                 setPreset(p.key);
                 setMinMatch(p.minMatch);
               }}
             >
-              <span className={`${styles2.presetDot} ${preset === p.key ? styles2.presetDotOn : ""}`} />
+              <span className={`${styles.presetDot} ${preset === p.key ? styles.presetDotOn : ""}`} />
               <span>
-                <div className={styles2.presetTitle}>{p.title}</div>
-                <div className={styles2.presetDesc}>{p.desc}</div>
+                <div className={styles.presetTitle}>{p.title}</div>
+                <div className={styles.presetDesc}>{p.desc}</div>
               </span>
             </button>
           ))}
@@ -284,21 +285,21 @@ export function VendorProfileView() {
 
         <button
           type="button"
-          className={styles2.advancedToggle}
+          className={styles.advancedToggle}
           onClick={() => setAdvanced((v) => !v)}
         >
-          <span className={`${styles2.advancedArrow} ${advanced ? styles2.advancedArrowOpen : ""}`}>▾</span>
-          <span className={styles2.advancedLabel}>
+          <span className={`${styles.advancedArrow} ${advanced ? styles.advancedArrowOpen : ""}`}>▾</span>
+          <span className={styles.advancedLabel}>
             {advanced ? "ซ่อนการตั้งค่าขั้นสูง" : "การตั้งค่าขั้นสูง"}
           </span>
         </button>
 
         {advanced && (
-          <div className={styles2.advancedPanel}>
+          <div className={styles.advancedPanel}>
             <div>
-              <div className={styles2.advancedRow}>
-                <span className={styles2.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
-                <span className={styles2.advancedRowValue}>{minMatch}%</span>
+              <div className={styles.advancedRow}>
+                <span className={styles.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
+                <span className={styles.advancedRowValue}>{minMatch}%</span>
               </div>
               <input
                 type="range"
@@ -310,20 +311,20 @@ export function VendorProfileView() {
                 onChange={(e) => setMinMatch(Number(e.target.value))}
                 aria-label="คะแนนจับคู่ขั้นต่ำ"
               />
-              <div className={styles2.advancedSliderLabels}>
+              <div className={styles.advancedSliderLabels}>
                 <span>50% (กว้าง)</span>
                 <span>95% (เฉพาะที่ตรงมาก)</span>
               </div>
             </div>
 
             <div>
-              <div className={styles2.leadGroupTitle}>เตือนก่อนกำหนดยื่นซอง</div>
-              <div className={styles2.leadGroup}>
+              <div className={styles.leadGroupTitle}>เตือนก่อนกำหนดยื่นซอง</div>
+              <div className={styles.leadGroup}>
                 {LEAD_OPTIONS.map((n) => (
                   <button
                     type="button"
                     key={n}
-                    className={`${styles2.leadOption} ${lead === n ? styles2.leadOptionOn : ""}`}
+                    className={`${styles.leadOption} ${lead === n ? styles.leadOptionOn : ""}`}
                     onClick={() => setLead(n)}
                   >
                     {n} วัน
@@ -333,28 +334,28 @@ export function VendorProfileView() {
             </div>
 
             <div>
-              <div className={styles2.extraGroupTitle}>แจ้งเตือนเพิ่มเติม</div>
-              <div className={styles2.extraList}>
+              <div className={styles.extraGroupTitle}>แจ้งเตือนเพิ่มเติม</div>
+              <div className={styles.extraList}>
                 {EXTRA_OPTIONS.map((x) => (
                   <button
                     type="button"
                     key={x.key}
-                    className={styles2.extraRow}
+                    className={styles.extraRow}
                     onClick={() => setExtras((prev) => ({ ...prev, [x.key]: !prev[x.key] }))}
                   >
                     <span>
-                      <div className={styles2.extraLabel}>{x.label}</div>
-                      <div className={styles2.extraNote}>{x.note}</div>
+                      <div className={styles.extraLabel}>{x.label}</div>
+                      <div className={styles.extraNote}>{x.note}</div>
                     </span>
-                    <span className={`${styles2.switchTrack} ${extras[x.key] ? styles2.switchTrackOn : ""}`}>
-                      <span className={`${styles2.switchKnob} ${extras[x.key] ? styles2.switchKnobOn : ""}`} />
+                    <span className={`${styles.switchTrack} ${extras[x.key] ? styles.switchTrackOn : ""}`}>
+                      <span className={`${styles.switchKnob} ${extras[x.key] ? styles.switchKnobOn : ""}`} />
                     </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className={styles2.advancedFoot}>
+            <div className={styles.advancedFoot}>
               อีเมลส่งภายใน 5 นาทีหลัง TOR เผยแพร่ · ยกเลิกการรับได้ทุกอีเมล (PDPA)
             </div>
           </div>
@@ -363,10 +364,10 @@ export function VendorProfileView() {
 
       <div className={styles.profileCard}>
         <div className={styles.trackLabelRow}>
-          <svg width="13" height="13" viewBox="0 0 24 24" className={styles.starIcon + " " + styles.starIconOn}>
+          <svg width="13" height="13" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
-          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>เคยทำงานลักษณะนี้ — ส่วนตัว</span>
+          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>เคยทำงานลักษณะนี้ — ส่วนตัว</span>
         </div>
         {starredList.length > 0 ? (
           <div className={styles.trackList}>
@@ -376,7 +377,7 @@ export function VendorProfileView() {
                   <div className={styles.trackTitle}>{tor.title}</div>
                   <div className={styles.trackAgency}>{tor.agency}</div>
                 </div>
-                <svg width="15" height="15" viewBox="0 0 24 24" className={styles.starIcon + " " + styles.starIconOn}>
+                <svg width="15" height="15" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
               </Link>
@@ -390,10 +391,10 @@ export function VendorProfileView() {
 
       <div className={`${styles.profileCard} ${styles.profileCardLast}`}>
         <div className={styles.trackLabelRow}>
-          <svg width="12" height="12" viewBox="0 0 24 24" className={styles.bookIcon + " " + styles.bookIconOn}>
+          <svg width="12" height="12" viewBox="0 0 24 24" className={icons.bookIcon + " " + icons.bookIconOn}>
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
           </svg>
-          <span className={`${styles.blockLabel} ${styles.blockLabelInline}`}>บุ๊กมาร์ก — TOR ที่กำลังดู</span>
+          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>บุ๊กมาร์ก — TOR ที่กำลังดู</span>
         </div>
         {bookedList.length > 0 ? (
           <div className={styles.trackList}>

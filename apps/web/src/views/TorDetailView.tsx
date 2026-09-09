@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import styles from "../features/app-shell/screens.module.css";
+import styles from "../features/tor-detail/tor-detail.module.css";
+import labels from "../shared/ui/labels.module.css";
 import { formatBudgetFull, getTorBySlug } from "../data/tor-samples";
 
 /**
@@ -74,12 +75,12 @@ export function TorDetailView() {
         </div>
 
         <div className={styles.scopeBlock}>
-          <div className={styles.blockLabel}>ขอบเขตงาน — สรุปโดย AI</div>
+          <div className={labels.blockLabel}>ขอบเขตงาน — สรุปโดย AI</div>
           <p className={styles.scopeText}>{tor.scope}</p>
         </div>
 
         <div className={styles.qualsBlock}>
-          <div className={styles.blockLabel}>คุณสมบัติผู้ยื่นข้อเสนอ</div>
+          <div className={labels.blockLabel}>คุณสมบัติผู้ยื่นข้อเสนอ</div>
           <div className={styles.qualsRow}>
             {tor.quals.map((qual) => (
               <span
@@ -114,7 +115,7 @@ export function TorDetailView() {
           </button>
         </div>
 
-        <div className={`${styles.blockLabel} ${styles.blockLabelWide}`}>ตรวจคุณภาพข้อกำหนดด้วย AI</div>
+        <div className={`${labels.blockLabel} ${labels.blockLabelWide}`}>ตรวจคุณภาพข้อกำหนดด้วย AI</div>
         <div className={styles.qualityRow}>
           <span className={styles.qualityValue}>{tor.quality}</span>
           <span className={styles.qualityUnit}>/ 10 · คุณภาพข้อกำหนด</span>
@@ -135,7 +136,7 @@ export function TorDetailView() {
         </div>
 
         <div className={styles.docBlock}>
-          <div className={`${styles.blockLabel} ${styles.blockLabelMid}`}>เอกสารต้นฉบับ</div>
+          <div className={`${labels.blockLabel} ${labels.blockLabelMid}`}>เอกสารต้นฉบับ</div>
           <div className={styles.docPreview}>
             <div className={styles.docPreviewText}>
               ตัวอย่างเอกสาร PDF

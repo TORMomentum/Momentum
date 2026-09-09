@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import base from "../features/app-shell/screens.module.css";
-import styles from "../features/app-shell/screens-2.module.css";
+import labels from "../shared/ui/labels.module.css";
+import styles from "../features/admin/admin.module.css";
 
 type AdminField = { label: string; conf: string; value: string; ok: boolean };
 
@@ -158,7 +158,7 @@ export function AdminReviewView() {
 
         <div className={styles.adminDetail}>
           <div className={styles.adminDoc}>
-            <div className={base.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
+            <div className={labels.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
             <div className={styles.adminDocPreview}>
               <div className={styles.adminDocPreviewText}>
                 {current.docType}
@@ -173,7 +173,7 @@ export function AdminReviewView() {
           </div>
 
           <div className={styles.adminFields}>
-            <div className={base.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
+            <div className={labels.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
             <div className={styles.adminFieldList}>
               {current.fields.map((field, fieldIdx) => (
                 <div key={field.label}>

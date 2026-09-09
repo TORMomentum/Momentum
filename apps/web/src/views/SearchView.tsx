@@ -3,7 +3,9 @@
 import { useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styles from "../features/app-shell/screens.module.css";
+import styles from "../features/search/search.module.css";
+import icons from "../shared/ui/tor-actions.module.css";
+import slider from "../shared/ui/budget-range.module.css";
 import { useViewer } from "../shared/lib/viewer";
 import {
   BUDGET_FILTER_MAX,
@@ -142,7 +144,7 @@ export function SearchView() {
 
         <div className={styles.filterGroup}>
           <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
-          <div className={styles.sliderWrap}>
+          <div className={slider.sliderWrap}>
             <svg width="0" height="0" style={{ position: "absolute" }}>
               <defs>
                 <filter id={gooId}>
@@ -152,29 +154,29 @@ export function SearchView() {
                 </filter>
               </defs>
             </svg>
-            <div className={styles.sliderTrackBg} />
-            <div className={styles.sliderGoo} style={{ filter: `url(#${gooId})` }}>
-              <div className={styles.sliderFill} style={{ left: `${minPct}%`, right: `${maxPct}%` }} />
+            <div className={slider.sliderTrackBg} />
+            <div className={slider.sliderGoo} style={{ filter: `url(#${gooId})` }}>
+              <div className={slider.sliderFill} style={{ left: `${minPct}%`, right: `${maxPct}%` }} />
               <div
-                className={styles.sliderBall}
+                className={slider.sliderBall}
                 style={{ left: `${minPct}%`, width: minBallSize, height: minBallSize }}
               />
               <div
-                className={`${styles.sliderBall} ${styles.sliderBallMax}`}
+                className={`${slider.sliderBall} ${slider.sliderBallMax}`}
                 style={{ right: `${maxPct}%`, width: maxBallSize, height: maxBallSize }}
               />
             </div>
             <div
-              className={styles.sliderHole}
+              className={slider.sliderHole}
               style={{ left: `${minPct}%`, width: minHoleSize, height: minHoleSize }}
             />
             <div
-              className={`${styles.sliderHole} ${styles.sliderHoleMax}`}
+              className={`${slider.sliderHole} ${slider.sliderHoleMax}`}
               style={{ right: `${maxPct}%`, width: maxHoleSize, height: maxHoleSize }}
             />
             <input
               type="range"
-              className={styles.rangeInput}
+              className={slider.rangeInput}
               min={BUDGET_FILTER_MIN}
               max={BUDGET_FILTER_MAX}
               step={BUDGET_FILTER_STEP}
@@ -188,7 +190,7 @@ export function SearchView() {
             />
             <input
               type="range"
-              className={styles.rangeInput}
+              className={slider.rangeInput}
               min={BUDGET_FILTER_MIN}
               max={BUDGET_FILTER_MAX}
               step={BUDGET_FILTER_STEP}
@@ -201,9 +203,9 @@ export function SearchView() {
               aria-label="งบประมาณสูงสุด"
             />
           </div>
-          <div className={styles.sliderLabels}>
+          <div className={slider.sliderLabels}>
             <span>฿500K</span>
-            <span className={styles.sliderLabelActive}>
+            <span className={slider.sliderLabelActive}>
               {formatBudgetShort(minBudget)} — {formatBudgetShort(maxBudget)}
             </span>
             <span>฿9.4M</span>
@@ -326,7 +328,7 @@ export function SearchView() {
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
-                      className={`${styles.starIcon} ${starSel[row.id] ? styles.starIconOn : ""}`}
+                      className={`${icons.starIcon} ${starSel[row.id] ? icons.starIconOn : ""}`}
                       strokeWidth="2"
                       strokeLinejoin="round"
                     >
@@ -350,7 +352,7 @@ export function SearchView() {
                       width="15"
                       height="15"
                       viewBox="0 0 24 24"
-                      className={`${styles.bookIcon} ${bookSel[row.id] ? styles.bookIconOn : ""}`}
+                      className={`${icons.bookIcon} ${bookSel[row.id] ? icons.bookIconOn : ""}`}
                       strokeWidth="2"
                       strokeLinejoin="round"
                     >

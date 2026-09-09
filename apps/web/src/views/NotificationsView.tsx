@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import styles from "../features/app-shell/screens-2.module.css";
+import styles from "../features/notifications/notifications.module.css";
 import { ALL_NOTIFICATIONS, NOTIFICATION_TABS, type NotificationTabKey } from "../data/notifications";
 import { useNotifications } from "../shared/lib/notifications";
 

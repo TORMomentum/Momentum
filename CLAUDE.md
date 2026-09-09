@@ -33,6 +33,9 @@ old `FR-A1` / `NFR-2` style is stale — see PROJECT.md §6 for the mapping.
 
 ```
 apps/web/     Next.js — app/ is routing ONLY; UI code lives in src/ as views → features → entities → shared
+              src/features/<feature>/ holds that screen's components AND its stylesheet
+              (dashboard, search, tor-detail, profile, notifications, admin, auth,
+              app-shell, landing); anything two features share lives in src/shared/ui/
 apps/api/     Express — modules/ per feature, ports/ interfaces, adapters/ implementations, workers/
 packages/     shared/ (types + Zod schemas) · seeds/ (taxonomy, categories, sources)
 docs/         SRS.md · PROJECT.md · superpowers/specs/

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import styles from "../../features/app-shell/screens.module.css";
+import styles from "./budget-range.module.css";
 import { formatBudgetShort } from "../../data/tor-samples";
 
 /**
@@ -10,9 +10,8 @@ import { formatBudgetShort } from "../../data/tor-samples";
  * handles included).
  *
  * The vendor profile states its budget interest with it (FR-D-2). The Search
- * screen still carries its own copy of this markup; folding that one in here
- * belongs to the features/ tidy-up, not to this change. Styles are read from
- * screens.module.css, which is where the slider's classes already live.
+ * screen still carries its own copy of this markup and reads the same
+ * stylesheet; folding that copy in here is a separate change.
  */
 export function BudgetRange({
   min,
