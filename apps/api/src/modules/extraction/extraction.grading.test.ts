@@ -100,6 +100,32 @@ describe("grade — Pass 3 sanity checks", () => {
     expect(result.confidenceLevel).toBe("low");
   });
 
+  it("a closed TOR whose deadline has already passed is NOT flagged for that alone", () => {
+    // The rule was narrowed in review: a finished procurement legitimately has a
+    // past deadline, and the original check flagged every historical closed
+    // record that stated one - which is most of them.
+    const result = grade(
+      goodDigital({
+        status: rf<"announced" | "closed" | "awarded" | "cancelled">("closed"),
+        deadline: rf("2026-02-01"),
+      }),
+      ctx({ announcedAt: new Date("2026-01-05") }),
+    );
+    expect(result.confidenceLevel).not.toBe("low");
+  });
+
+  it("a closed TOR whose deadline is still in the future is low", () => {
+    const future = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const result = grade(
+      goodDigital({
+        status: rf<"announced" | "closed" | "awarded" | "cancelled">("closed"),
+        deadline: rf(future),
+      }),
+      ctx(),
+    );
+    expect(result.confidenceLevel).toBe("low");
+  });
+
   it("three fields sharing an identical raw string is a copy-through failure", () => {
     const same = rf("ประกวดราคาอิเล็กทรอนิกส์", 0.99, "ประกวดราคาอิเล็กทรอนิกส์");
     const result = grade(

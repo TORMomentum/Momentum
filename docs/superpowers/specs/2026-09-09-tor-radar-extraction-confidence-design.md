@@ -293,16 +293,21 @@ The record is **low** if any of:
   deadline that is *present but implausible* still trips the checks below.
 - `budget.value` present but outside `[BUDGET_MIN_THB, BUDGET_MAX_THB]`;
 - `deadline.value` present and **before** `announcedAt`;
-- `torStatus.value` is `closed` / `awarded` / `cancelled` **and** a `deadline.value` was extracted
-  (the benchmark's `submission_deadline` hallucination signature);
+- `torStatus.value` is `cancelled` **and** a `deadline.value` was extracted — a cancellation notice
+  states no submission date, so one that carries a deadline is the benchmark's
+  `submission_deadline` hallucination signature;
+- `torStatus.value` is `closed` / `awarded` **and** the deadline is still in the **future** — a
+  finished procurement legitimately has a past deadline, so only a future one is a contradiction
+  (narrowed 2026-09-09 in review: the original rule flagged every historical closed record that
+  stated its deadline, which is most of them);
 - the model returned identical `raw` for three or more distinct fields (a copy-through failure).
 
 ### Record `confidenceLevel`
 
 | Level | Condition |
 | :---- | :---- |
-| **low** | any Pass-3 sanity check fired, **or** any of {agency, budget, deadline} failed Pass 1 |
-| **high** | not low, **and** every critical field {agency, budget, deadline} is `verified` |
+| **low** | any Pass-3 sanity check fired, **or** either of {agency, budget} failed Pass 1 |
+| **high** | not low, **and** both critical fields {agency, budget} are `verified` |
 | **medium** | otherwise |
 
 `unverified = confidenceLevel !== "high"`. A `low` record is the review queue (D8).

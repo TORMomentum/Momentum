@@ -1,11 +1,12 @@
 import { ObjectId, type Db } from "mongodb";
 import { pathToFileURL } from "node:url";
 import { loadConfig, type Config } from "../core/config.js";
-import { connect, ensureIndexes, tors } from "../core/db.js";
+import { connect, ensureIndexes } from "../core/db.js";
 import { MongoQueue } from "../adapters/mongo.queue.js";
 import { MinioStorage } from "../adapters/minio.storage.js";
 import { VertexAi } from "../adapters/vertex.ai.js";
 import type { Queue } from "../ports/queue.port.js";
+import { HistoryRepository } from "../modules/history/history.repository.js";
 import { ExtractionRepository } from "../modules/extraction/extraction.repository.js";
 import { ExtractionService } from "../modules/extraction/extraction.service.js";
 import { reconcileOrphanedRecords } from "./reconcile.js";
@@ -90,28 +91,31 @@ export async function runOnce(deps: RunOnceDeps): Promise<RunOnceResult> {
   }
 }
 
-// --- state transitions on the tors record (the worker owns pipeline.state) ---
+// --- state transitions on the tors record ---
 
-function setPipelineState(db: Db, torId: string, patch: Record<string, unknown>) {
-  return tors(db).updateOne(
-    { _id: new ObjectId(torId) },
-    { $set: { ...patch, updatedAt: new Date() } },
-  );
-}
-
+/**
+ * The worker owns `pipeline.state`, but not the writing of it: every transition
+ * goes through HistoryRepository so it lands in the audit trail (FR-E-5) as
+ * well as on the record. Writing `pipeline.state` straight into `tors` from
+ * here would leave extraction invisible to the trail - the exact place a
+ * reader most wants to see what happened.
+ */
 export function torTransitions(db: Db): Omit<RunOnceDeps, "queue" | "handle"> {
+  const history = new HistoryRepository(db);
+
   return {
     onExtracting: async (torId) => {
-      await setPipelineState(db, torId, { "pipeline.state": "extracting" });
+      await history.record(torId, { from: "queued", to: "extracting", actor: "worker", source: "worker" });
     },
     onPublished: async (torId) => {
-      await setPipelineState(db, torId, { "pipeline.state": "published" });
+      await history.record(torId, { from: "extracting", to: "published", actor: "worker", source: "worker" });
     },
     onFailed: async (torId, reason) => {
-      await setPipelineState(db, torId, {
-        "pipeline.state": "failed",
-        "pipeline.failedReason": reason,
-      });
+      await history.record(
+        torId,
+        { from: "extracting", to: "failed", actor: "worker", source: "worker", reason },
+        { "pipeline.failedReason": reason },
+      );
     },
   };
 }

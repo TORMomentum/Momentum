@@ -141,11 +141,18 @@ export function grade(raw: RawExtraction, ctx: GradingContext): GradingResult {
   if (deadline && ctx.announcedAt && deadline.getTime() < ctx.announcedAt.getTime()) {
     sanity.push("deadline-before-announcement");
   }
-  if (
-    (raw.status.value === "closed" || raw.status.value === "awarded" || raw.status.value === "cancelled") &&
-    raw.deadline.value !== null
-  ) {
-    sanity.push("closed-with-deadline");
+  // A closed or awarded TOR legitimately HAS a submission deadline - that is what
+  // closed means - so the presence of one is not a signal. What is a signal is a
+  // deadline still in the future on a record that says the procurement is over,
+  // which is the benchmark's hallucination signature. Cancellation notices state
+  // no deadline at all, so any deadline on one stays suspect.
+  const statusValue = raw.status.value;
+  const finished = statusValue === "closed" || statusValue === "awarded";
+  const deadlineDate = isValidDate(raw.deadline.value);
+  if (statusValue === "cancelled" && raw.deadline.value !== null) {
+    sanity.push("cancelled-with-deadline");
+  } else if (finished && deadlineDate && deadlineDate.getTime() > Date.now()) {
+    sanity.push("closed-with-future-deadline");
   }
   const rawCounts = new Map<string, number>();
   for (const name of Object.keys(RAW_TO_TOR) as (keyof TorFields)[]) {

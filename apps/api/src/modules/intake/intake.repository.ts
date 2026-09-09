@@ -1,5 +1,5 @@
 import { ObjectId, type Db } from "mongodb";
-import { STATUS_HISTORY_KEPT, torEvents, tors, type TorDocument } from "../../core/db.js";
+import { torEvents, tors, type TorDocument } from "../../core/db.js";
 import type { ExtractedField } from "@tor-radar/shared";
 import type { StoredObject } from "../../ports/storage.port.js";
 
@@ -90,32 +90,6 @@ export class IntakeRepository {
     return torId;
   }
 
-  /**
-   * Appends a transition: the full trail to `tor_events`, and a capped copy to
-   * the record for display. Slice 2's worker records its transitions the same
-   * way, which is why this lives on the repository rather than inside insert().
-   */
-  async recordTransition(
-    torId: string,
-    transition: { from: string | null; to: string; actor: string; source: string; reason?: string },
-  ): Promise<void> {
-    const at = new Date();
-    await torEvents(this.db).insertOne({ torId, ...transition, at });
-    await tors(this.db).updateOne(
-      { _id: new ObjectId(torId) },
-      {
-        // $slice keeps the newest STATUS_HISTORY_KEPT entries, so the document
-        // has a fixed ceiling however many times a record is corrected.
-        $push: {
-          statusHistory: {
-            $each: [{ from: transition.from, to: transition.to, at, actor: transition.actor, source: transition.source }],
-            $slice: -STATUS_HISTORY_KEPT,
-          },
-        },
-        $set: { updatedAt: at },
-      },
-    );
-  }
 
   /** FR-A-3: the same document arriving again records the new source, not a new record. */
   async appendSourceRef(id: string, source: SourceRefInput): Promise<void> {

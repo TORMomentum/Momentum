@@ -4,11 +4,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "mongodb";
 import { STATUS_HISTORY_KEPT, connect, disconnect, ensureIndexes, torEvents, tors } from "../../core/db.js";
 import { IntakeRepository } from "./intake.repository.js";
+import { HistoryRepository } from "../history/history.repository.js";
 import { loadConfig } from "../../core/config.js";
 
 const config = loadConfig(process.env);
 let db: Db;
 let repository: IntakeRepository;
+let history: HistoryRepository;
 
 const stored = { bucket: "tor-raw", key: "abc", contentType: "application/pdf", bytes: 10 };
 const source = { route: "upload" as const, submittedBy: "admin", submittedAt: new Date() };
@@ -17,6 +19,7 @@ beforeAll(async () => {
   db = await connect(config.mongoUrl);
   await ensureIndexes(db);
   repository = new IntakeRepository(db);
+  history = new HistoryRepository(db);
 });
 
 beforeEach(async () => {
@@ -96,13 +99,16 @@ describe("IntakeRepository", () => {
   });
 
   it("keeps every transition in the events collection but caps the copy on the record", async () => {
+    // The write lives on HistoryRepository now: intake, the worker and an admin
+    // all record a transition the same way, so the cap cannot be honoured in one
+    // caller and forgotten in another.
     const torId = await repository.insert("abc", stored, source);
 
     // Well past the cap: a record corrected many times must not grow the
     // document, which is the whole point of the split.
     const transitions = STATUS_HISTORY_KEPT + 5;
     for (let i = 0; i < transitions; i++) {
-      await repository.recordTransition(torId, {
+      await history.record(torId, {
         from: "queued",
         to: "extracting",
         actor: "worker",
