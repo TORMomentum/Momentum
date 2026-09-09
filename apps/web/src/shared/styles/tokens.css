@@ -1,0 +1,124 @@
+/*
+ * Design tokens lifted from mockups/TOR Radar Landing.dc.html.
+ * Every colour, type step and rule in the app resolves to a token here —
+ * no component may hard-code a hex value (NFR-S7 in spirit: one source).
+ */
+:root {
+  /* ink and paper */
+  --paper: #ffffff;
+  --ink: #12233c;
+  --ink-70: rgba(18, 35, 60, 0.7);
+  --ink-65: rgba(18, 35, 60, 0.65);
+  --ink-62: rgba(18, 35, 60, 0.62);
+  --ink-20: rgba(18, 35, 60, 0.2);
+  --ink-18: rgba(18, 35, 60, 0.18);
+  --ink-12: rgba(18, 35, 60, 0.12);
+  --ink-02: rgba(18, 35, 60, 0.02);
+
+  /* meaning-carrying accents */
+  --blue: #1d63d8;          /* actions, links, the platform's own voice */
+  --blue-dark: #1746a0;
+  --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
+  --verified: #0e7a5f;      /* a check that passed */
+  --avatar: #2b6e5a;        /* the account initial's disc */
+
+  /* the sign-in page's trust panel */
+  --navy: #0e2440;
+  --navy-ink: #e8eef7;
+  --navy-soft: rgba(232, 238, 247, 0.78);
+  --navy-accent: #7fb0f0;
+  --match: #2b6e5a;         /* match-score badge, signed-in avatar */
+  --star: #e8930c;          /* "worked on something like this" marker */
+  --danger: #be2026;        /* destructive/reject action hover (admin review queue) */
+  --panel: #f4f7fb;         /* secondary panel surface (detail sidebar, profile cards) */
+
+  /* type */
+  --display: var(--font-display), "IBM Plex Sans Thai", system-ui, sans-serif;
+  --body: var(--font-body), system-ui, sans-serif;
+  --data: var(--font-data), ui-monospace, monospace;
+
+  /* rhythm */
+  --gutter: 40px;
+  --gutter-tight: 20px;
+  --radius: 4px;
+  --radius-card: 8px;
+  --rule: 1px solid var(--ink-18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+}
+
+::selection {
+  background: var(--blue);
+  color: var(--paper);
+}
+
+a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #3b82f6;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.45); }
+  50% { box-shadow: 0 0 0 14px rgba(180, 83, 9, 0); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(10px); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.45) rotate(-8deg); }
+  70% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+/* Sections fade up as they enter the viewport; see useReveal. */
+/* Distance, duration and curve are the mockup's own initReveals values. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(44px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.6, 0.2, 1),
+              transform 0.8s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Instant jumps instead of smooth scrolling is the one reduction kept: it is
+     the setting's clearest intent and costs the design nothing. The ambient
+     motion stays, because browsers here report this preference without anyone
+     having asked for it. */
+  html { scroll-behavior: auto; }
+}
