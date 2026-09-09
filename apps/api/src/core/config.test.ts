@@ -34,4 +34,27 @@ describe("loadConfig", () => {
   it("rejects a non-numeric override instead of silently coercing", () => {
     expect(() => loadConfig({ ...base, MAX_UPLOAD_BYTES: "big" })).toThrow();
   });
+
+  it("carries the measured confidence thresholds and their version (O1 closed)", () => {
+    const config = loadConfig(base);
+    expect(config.tLow).toBe(0.8);
+    expect(config.tHigh).toBe(0.95);
+    expect(config.thresholdsVersion).toBe("2026-09-03");
+  });
+
+  it("does not require the Vertex credential to load — the adapter checks it at call time", () => {
+    const config = loadConfig(base);
+    expect(config.vertex.project).toBeUndefined();
+    expect(config.vertex.model).toBe("gemini-3.5-flash");
+  });
+
+  it("carries the budget sanity bounds", () => {
+    const config = loadConfig(base);
+    expect(config.budgetMinThb).toBe(10_000);
+    expect(config.budgetMaxThb).toBe(100_000_000_000);
+  });
+
+  it("rejects a T_LOW above T_HIGH", () => {
+    expect(() => loadConfig({ ...base, T_LOW: "0.99", T_HIGH: "0.9" })).toThrow(/T_LOW/);
+  });
 });

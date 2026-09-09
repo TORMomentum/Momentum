@@ -37,7 +37,27 @@ const schema = z.object({
   RECONCILE_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   RECONCILE_MIN_AGE_MS: z.coerce.number().int().positive().default(120_000),
 
+  // Extraction (Slice 2). The credential is optional so the config loads in CI
+  // and in tests that use a fake Ai; vertex.ai.ts checks it when actually called.
+  GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
+  VERTEX_LOCATION: z.string().min(1).default("global"),
+  GOOGLE_CLOUD_PROJECT: z.string().min(1).optional(),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
+  EXTRACT_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+
+  // Confidence thresholds — measured, not chosen (O1 closed; docs/corpus/BENCHMARK.md).
+  T_LOW: z.coerce.number().min(0).max(1).default(0.8),
+  T_HIGH: z.coerce.number().min(0).max(1).default(0.95),
+  THRESHOLDS_VERSION: z.string().min(1).default("2026-09-03"),
+
+  // Budget plausibility bounds for the §4.2.1 sanity check.
+  BUDGET_MIN_THB: z.coerce.number().positive().default(10_000),
+  BUDGET_MAX_THB: z.coerce.number().positive().default(100_000_000_000),
+
   API_PORT: z.coerce.number().int().positive().default(4000),
+}).refine((v) => v.T_LOW <= v.T_HIGH, {
+  message: "T_LOW must not exceed T_HIGH",
+  path: ["T_LOW"],
 });
 
 export interface Config {
@@ -67,18 +87,29 @@ export interface Config {
   jobPollMs: number;
   reconcileIntervalMs: number;
   reconcileMinAgeMs: number;
+  vertex: {
+    model: string;
+    location: string;
+    project?: string;
+    credentialsPath?: string;
+    timeoutMs: number;
+  };
+  tLow: number;
+  tHigh: number;
+  thresholdsVersion: string;
+  budgetMinThb: number;
+  budgetMaxThb: number;
   apiPort: number;
 }
 
 /**
  * Values awaiting measurement or calibration (SRS §8). They are declared here so
  * no later slice writes them as literals, and are read only once settled.
- * O1 T_LOW / T_HIGH · O2 MIN_BID_WINDOW_DAYS · O3 MIN_SCOPE_CHARS / MIN_SCOPE_SECTIONS
+ * O1 (T_LOW / T_HIGH) is closed — measured by TOR-18, now a real config field.
+ * O2 MIN_BID_WINDOW_DAYS · O3 MIN_SCOPE_CHARS / MIN_SCOPE_SECTIONS
  * O4 ANOMALY_METHOD (IQR or ZSCORE)
  */
 export const OPEN_VALUES = [
-  "T_LOW",
-  "T_HIGH",
   "MIN_BID_WINDOW_DAYS",
   "MIN_SCOPE_CHARS",
   "MIN_SCOPE_SECTIONS",
@@ -114,6 +145,18 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     jobPollMs: parsed.JOB_POLL_MS,
     reconcileIntervalMs: parsed.RECONCILE_INTERVAL_MS,
     reconcileMinAgeMs: parsed.RECONCILE_MIN_AGE_MS,
+    vertex: {
+      model: parsed.GEMINI_MODEL,
+      location: parsed.VERTEX_LOCATION,
+      project: parsed.GOOGLE_CLOUD_PROJECT,
+      credentialsPath: parsed.GOOGLE_APPLICATION_CREDENTIALS,
+      timeoutMs: parsed.EXTRACT_TIMEOUT_MS,
+    },
+    tLow: parsed.T_LOW,
+    tHigh: parsed.T_HIGH,
+    thresholdsVersion: parsed.THRESHOLDS_VERSION,
+    budgetMinThb: parsed.BUDGET_MIN_THB,
+    budgetMaxThb: parsed.BUDGET_MAX_THB,
     apiPort: parsed.API_PORT,
   };
 }
