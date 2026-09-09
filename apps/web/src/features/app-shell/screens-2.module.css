@@ -168,7 +168,7 @@
   margin-bottom: 24px;
 }
 .notifTitle { margin: 0; font: 700 26px var(--display); }
-.notifCount { font: 10.5px var(--data); color: var(--ink-62); margin-top: 4px; }
+.notifCount { font: 11px var(--data); color: var(--ink-62); margin-top: 4px; }
 
 .notifHeadActions { display: flex; gap: 10px; }
 .notifMarkReadBtn {
@@ -229,7 +229,7 @@
 .notifTagRow { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
 .notifTag {
   white-space: nowrap;
-  font: 600 9.5px var(--data);
+  font: 600 11px var(--data);
   padding: 2px 7px;
   border-radius: 3px;
   letter-spacing: 0.06em;
@@ -244,7 +244,7 @@
 .notifFoot {
   border-top: 1px solid rgba(18, 35, 60, 0.14);
   padding: 16px 14px;
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: rgba(18, 35, 60, 0.55);
 }
 

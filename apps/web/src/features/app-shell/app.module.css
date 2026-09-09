@@ -113,7 +113,7 @@
 }
 
 .menuName { font-size: 12.5px; font-weight: 600; line-height: 1.6; color: var(--ink); }
-.menuRole { font: 9.5px var(--data); color: var(--blue); letter-spacing: 0.04em; }
+.menuRole { font: 11px var(--data); color: var(--blue); letter-spacing: 0.04em; }
 
 .menuItem,
 .menuSignOut {
@@ -170,7 +170,7 @@
   border-radius: 99px;
   background: var(--blue);
   color: var(--paper);
-  font: 600 9.5px var(--data);
+  font: 600 11px var(--data);
   display: grid;
   place-items: center;
   border: 2px solid var(--paper);
@@ -273,7 +273,7 @@
 .pageTitle { margin: 0; font: 700 30px var(--display); }
 
 .coverage {
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: var(--ink-62);
   text-align: right;
   line-height: 1.8;
@@ -373,7 +373,7 @@
 .stat:first-child { padding-left: 0; }
 .stat:last-child { padding-right: 0; border-right: 0; }
 
-.statKey { font: 500 10px var(--data); color: var(--ink-62); letter-spacing: 0.12em; }
+.statKey { font: 500 10.5px var(--data); color: var(--ink-70); letter-spacing: var(--label-tracking); }
 .statValue { font: 600 44px/1.15 var(--data); }
 .statNote { font-size: 11px; color: var(--ink-62); }
 .statFlagged .statKey, .statFlagged .statValue { color: var(--anomaly); }
@@ -450,7 +450,7 @@
   margin: 20px 8px 4px 46px;
 }
 
-.axis { position: absolute; left: -44px; font: 9px var(--data); color: var(--ink-62); }
+.axis { position: absolute; left: -44px; font: 11px var(--data); color: var(--ink-62); }
 .grid { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(18, 35, 60, 0.15); }
 
 .dot {
@@ -491,7 +491,7 @@
   white-space: nowrap;
 }
 
-.plotCategory { position: absolute; bottom: -24px; font: 9px var(--data); color: var(--ink-62); }
+.plotCategory { position: absolute; bottom: -24px; font: 11px var(--data); color: var(--ink-62); }
 
 .method {
   margin-top: 42px;
@@ -531,7 +531,7 @@
 .gateKicker {
   font: 500 10px var(--data);
   color: var(--blue);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--label-tracking);
   margin-bottom: 14px;
 }
 
@@ -569,7 +569,7 @@
 .gateEscape {
   display: inline-block;
   margin-top: 20px;
-  font: 10.5px var(--data);
+  font: 11px var(--data);
   color: var(--ink-62);
 }
 
