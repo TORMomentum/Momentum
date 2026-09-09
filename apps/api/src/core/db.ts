@@ -11,12 +11,36 @@ export interface TorDocument {
   sourceUrl: string | null;
   confidenceLevel?: string;
   unverified: boolean;
+  /**
+   * The most recent transitions only, for the detail screen (FR-E-5). Capped at
+   * STATUS_HISTORY_KEPT on every write: an array that only ever grows is
+   * MongoDB's first-listed anti-pattern, because the whole document is read and
+   * rewritten as one unit. The complete trail lives in `tor_events`.
+   */
   statusHistory: Array<{ from: string | null; to: string; at: Date; actor: string; source: string }>;
   access: { restricted: boolean; reason?: string; auditRef?: string };
   duplicateOf: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** One transition, appended and never updated. The audit trail (FR-E-5). */
+export interface TorEventDocument {
+  torId: string;
+  from: string | null;
+  to: string;
+  at: Date;
+  actor: string;
+  source: string;
+  reason?: string;
+}
+
+/**
+ * How many transitions the TOR document itself keeps for display. The events
+ * collection keeps all of them, so this is a display budget, not a retention
+ * policy - lowering it loses nothing.
+ */
+export const STATUS_HISTORY_KEPT = 10;
 
 export interface JobDocument {
   torId: string;
@@ -51,6 +75,10 @@ export function jobs(db: Db): Collection<JobDocument> {
   return db.collection<JobDocument>("ingest_jobs");
 }
 
+export function torEvents(db: Db): Collection<TorEventDocument> {
+  return db.collection<TorEventDocument>("tor_events");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
@@ -67,6 +95,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
     "fields.torStatus.value": 1,
   });
   await tors(db).createIndex({ "access.restricted": 1 });
+  // Every audit read is "this TOR, newest first". A collection growing to
+  // millions of small documents is ordinary; a document growing is not.
+  await torEvents(db).createIndex({ torId: 1, at: -1 });
   await jobs(db).createIndex({ state: 1, nextRunAt: 1 });
   await jobs(db).createIndex({ torId: 1, state: 1 });
 }

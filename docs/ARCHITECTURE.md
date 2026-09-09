@@ -298,6 +298,7 @@ record stores a storage key, and whoever needs the bytes fetches them.
 
 ```mermaid
 erDiagram
+    TORS ||--o{ TOR_EVENTS : "every transition, append-only"
     TORS ||--o{ INGEST_JOBS : "one job per extraction attempt"
     TORS ||--o{ SOURCE_REFS : "every route that submitted it"
     SOURCES ||--o{ TORS : "collected from (slice 2+)"
@@ -315,9 +316,18 @@ erDiagram
         string confidenceLevel "high | medium | low"
         bool unverified "drives the marking, never the visibility"
         object provenance "model, version, extractedAt, thresholdsVersion"
-        array statusHistory "FR-E-5 audit trail"
+        array statusHistory "last 10 transitions, for display only"
         object access "restricted, reason, auditRef · FR-B-6 takedown"
         date createdAt "when WE ingested it"
+    }
+    TOR_EVENTS {
+        objectId _id PK
+        objectId torId FK
+        string from "null on the first transition"
+        string to "queued | extracting | published | failed | restricted"
+        date at
+        string actor "who or what caused it"
+        string source "route, worker, or admin"
     }
     INGEST_JOBS {
         objectId _id PK
@@ -353,19 +363,26 @@ erDiagram
 
 Three shapes are load-bearing:
 
-1. **Every extracted field is an object, not a bare value** —
+1. **No array inside a record grows without limit.** `statusHistory` keeps the last ten transitions
+   for the detail screen and is capped by the write itself (`$push` with `$slice`); every transition
+   is also appended to `tor_events`, which is built to grow. A document is what MongoDB reads,
+   rewrites and indexes as one unit, so a document that grows makes every read and every write of
+   that record more expensive — while a collection that grows costs nothing per read, because an
+   index finds the page you asked for. Referencing when embedded data grows without bounds is
+   [MongoDB's own rule](https://www.mongodb.com/docs/manual/data-modeling/best-practices/).
+2. **Every extracted field is an object, not a bare value** —
    `budget: { raw: "๑,๒๐๐,๐๐๐ บาท", amount: 1200000, confidence: 0.82 }`. `raw` is what the
    interface displays, exactly as extracted; `amount` is what the anomaly rule computes on.
    Statistics never parse display strings, and a formatting change can never alter a displayed
    budget.
-2. **`announcedAt` ≠ `createdAt`.** Ingesting a batch of last year's documents today must not look
+3. **`announcedAt` ≠ `createdAt`.** Ingesting a batch of last year's documents today must not look
    like today's procurement activity. Records without `announcedAt` are excluded from trends rather
    than defaulted.
-3. **Provenance is recorded at both levels.** Each field carries its own `confidence`; the record
+4. **Provenance is recorded at both levels.** Each field carries its own `confidence`; the record
    carries the model, version, extraction time, and the thresholds version that graded it. NFR-F6
    asks that every AI-produced value be attributable, and one extraction run produces every field on
    a record, so the run's identity lives once and the per-field certainty lives on the field.
-4. **`contentHash` is both the dedupe key and the storage key.** One value, so a stored object and
+5. **`contentHash` is both the dedupe key and the storage key.** One value, so a stored object and
    its record can never disagree about identity.
 
 ### Indexes
@@ -378,6 +395,7 @@ Three shapes are load-bearing:
 | `tors.announcedAt` | Date-range selection and trends (FR-E-1, FR-E-3) |
 | `tors.fields.agency.value + announcedAt + fields.torStatus.value` | The combined filters of FR-E-3 |
 | `tors.access.restricted` | Keeps restricted records out of public queries |
+| `tor_events.torId + at` | The audit read: one TOR's history, newest first |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
 
 ---
@@ -389,6 +407,7 @@ not do — because those are the ones a well-meaning change quietly breaks.
 
 | Invariant | Why | Enforced by |
 | :--- | :--- | :--- |
+| No in-document array grows without bound | A document is read and rewritten whole; an array with no ceiling makes every operation on that record slower forever | `$push` + `$slice`, with the full trail in `tor_events` |
 | Originals are never altered or deleted | FR-A-2, NFR-S3 — a takedown restricts access and writes an audit entry, it does not touch the file | `Storage` port exposes `putIfAbsent`, never `put` |
 | No filesystem path is ever shared between services | Separate containers do not share a filesystem; the pointer travels, the bytes do not | Services exchange storage keys only |
 | Signed URLs are never persisted | They expire, so a stored one becomes a broken link at an unpredictable date | Generated on demand from the key |

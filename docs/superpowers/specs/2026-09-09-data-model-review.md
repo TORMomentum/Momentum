@@ -99,7 +99,32 @@ matched?" without recomputing.
 
 **Held open at the reviewer's request** for a fuller explanation before deciding.
 
-### 3.3 Status history growth
+### 2.4 Status history is split — decided and built
+
+`tors.statusHistory[]` recorded every transition inside the document, forever. MongoDB's
+[best-practice guidance](https://www.mongodb.com/docs/manual/data-modeling/best-practices/) is
+explicit that data which "grows without bounds" belongs in a referenced collection, and the
+unbounded array is the first-listed anti-pattern.
+
+**Decision, implemented:** the record keeps the newest `STATUS_HISTORY_KEPT` (10) transitions for the
+detail screen, capped by the write itself (`$push` with `$slice: -10`), and every transition is
+appended to a `tor_events` collection indexed on `{ torId: 1, at: -1 }`.
+
+- The total data is the same; growth moved from inside a document — where it makes every read and
+  write of that record more expensive, and where 16 MB is a hard ceiling — into a collection, which
+  is what collections are for.
+- Ordering on intake is record-first, then event: the unique index on `contentHash` is what rejects
+  a duplicate submission, so writing the event first would leave events behind for records that were
+  never created. For later transitions there is no such race and the event is written first.
+- Retention is deliberately not a TTL. An audit trail that silently evaporates is not an audit
+  trail; the documents are ~150 bytes, so a corpus of 500k TORs with four transitions each is a few
+  hundred megabytes. If that ever matters, the archive pattern moves old events, it does not delete
+  them.
+
+Verified against live MongoDB: 15 transitions on one record leave `statusHistory` at 10 entries and
+`tor_events` at 16 documents. Full suite 87 tests, green.
+
+### 3.3 (settled — see §2.4) Status history growth
 
 `tors.statusHistory[]` records every transition, in the document, forever. Unbounded arrays are the
 first-listed MongoDB anti-pattern: the document grows without limit, and every index on it pays for
