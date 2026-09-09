@@ -36,6 +36,29 @@ export class PayloadTooLargeError extends AppError {
 }
 
 /**
+ * Extraction failures. These never reach the HTTP error middleware - the worker
+ * catches them. `retryable` decides whether the worker backs off and tries
+ * again or fails the record immediately (NFR-S5: a failed extraction keeps the
+ * raw document and records the reason).
+ */
+export class ExtractionError extends Error {
+  readonly retryable = true;
+  constructor(message: string) {
+    super(message);
+    this.name = "ExtractionError";
+  }
+}
+
+/** The model returned nothing usable for the critical fields; retrying will not help. */
+export class DocumentUnreadableError extends Error {
+  readonly retryable = false;
+  constructor(message: string) {
+    super(message);
+    this.name = "DocumentUnreadableError";
+  }
+}
+
+/**
  * The single translation point from thrown errors to responses. Stack traces
  * never leave the process.
  */

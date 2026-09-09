@@ -24,7 +24,9 @@ describe("knownFieldsFromProject", () => {
     const fields = knownFieldsFromProject({ masterOrgGroupName: "เทศบาลนครเชียงใหม่" });
 
     expect(fields?.agency.raw).toBe("เทศบาลนครเชียงใหม่");
-    expect(fields?.agency.value).toBeUndefined();
+    // null, not undefined: TOR-88 tightened ExtractedField.value to `string | null`,
+    // so "no canonical id" is expressed as null rather than an absent key.
+    expect(fields?.agency.value).toBeNull();
     expect(fields?.agency.verified).toBe(true);
   });
 

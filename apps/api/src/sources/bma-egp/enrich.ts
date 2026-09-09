@@ -35,7 +35,7 @@ export function knownFieldsFromProject(
       // The canonical id when the name is on the seeded list; otherwise the record keeps the
       // agency's own wording and carries no id. Scope is national, so an unrecognised agency is
       // never a reason to reject the document or to discard the name it published under.
-      value: agency?.agency_id,
+      value: agency?.agency_id ?? null,
       confidence: 1,
       verified: true,
     },

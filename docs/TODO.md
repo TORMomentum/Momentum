@@ -36,7 +36,7 @@ _last updated: 2026-09-09_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (10/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (11/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -133,7 +133,22 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] found and fixed a real fault: a malformed URL answered 500 because a ZodError fell through
         to the generic handler. Schema rejections now answer 400 with the failing paths
   - [x] 20 cases across routes and auth; 78/78 at the root, lint and tsc clean
-- [ ] **Task 11 — extraction worker and orphan reconciler** ← next
+- [x] **Task 11 — extraction worker and orphan reconciler** — pulled into TOR-88's branch as
+      subtask **TOR-126** (the worker is the harness the extraction runs in, not a TOR-73 concern)
+  - [x] `workers/reconcile.ts` + 4 integration cases — requeues an orphaned `queued` record,
+        leaves a live-job record alone, ignores records younger than `RECONCILE_MIN_AGE_MS`,
+        ignores records past `queued`
+  - [x] `workers/extract.worker.ts` — `runOnce` (claim → extracting → handler → published |
+        retry | failed), a pass-through `ExtractionHandler` as the slice-2 seam, `startWorker`
+        loop with scheduled reconcile, entry guard so importing the module in tests starts nothing
+  - [x] `runOnce` unit-tested with a fake queue; the seam integration-tested against real Mongo
+        (`queued → published`, handler runs while `extracting`, exhausted retries → `failed` with
+        the reason, NFR-S5)
+  - [x] `worker` / `worker:dev` scripts; `worker` Compose service (shared env anchor with `api`,
+        which also gained the `MINIO_PUBLIC_URL` / key vars it was missing)
+  - [x] per-file isolated test DBs (`test/mongo.ts`) so `tors`-touching integration files stop
+        racing each other under vitest parallelism
+  - [x] 89/89 at the root, lint and tsc clean; worker verified live against Mongo
 - [ ] Task 12 — TOR read API, signed links, redaction
 - [ ] Task 13 — design tokens and the admin upload screen
 - [ ] Task 14 — workspace-aware Dockerfiles
@@ -170,9 +185,35 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [ ] starred and bookmarked lists on the profile are seeded samples; they need real cross-route state once accounts exist
   - [ ] `/tors/demo-anomaly` is a hard-coded slug pointing at the sample anomaly TOR; replaced by real ids when ingestion lands
 
+## 2c. Slice 2 — extraction and confidence (TOR-88) — IN PROGRESS
+
+_Design: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpowers/specs/2026-09-09-tor-radar-extraction-confidence-design.md) — drafted on this branch, NOT yet externally cross-checked; §10 holds the open questions. Reviewed at PR time._
+
+- [x] **TOR-126 — extraction worker + reconciler (pipeline harness)** — see §2 Task 11
+- [x] **Slice-2 design spec** — decisions D1–D11, the §6 confidence policy, §10 questions
+      (Q2/Q3/Q5 resolved after the corpus gate ran)
+- [x] **TOR-89 — Vertex AI extraction service** — `ports/ai.port.ts`, `adapters/vertex.ai.ts`,
+      `modules/extraction/{service,repository}.ts`, `lib/pdf-text.ts`, config (T_low/T_high promoted).
+      Corpus gate (spec §8, real Vertex, `extraction.corpus.test.ts`): 10/10 — agency/budget/status
+      match the labels; grade distribution high:5 / low:5. `dc4cfcf`
+- [x] **TOR-90 — per-field confidence + tier logic** — `extraction.grading.ts`, the §6 three-pass
+      policy; 10 table-driven cases. Built with TOR-89 as one testable unit. `dc4cfcf`
+- [x] **TOR-91 — sanity checks** — `grading.ts` Pass 3 (missing critical field, implausible budget,
+      deadline before announcement, cancelled-with-deadline, copy-through). Corpus-validated. `dc4cfcf`
+- [x] **TOR-92 — qualification → taxonomy mapping** — `extraction.taxonomy.ts` + `taxonomy.seed.json`
+      (~30 tags, keyword aliases; pulled forward from F9, `.tags` recomputable). `a317daf`
+- [x] **TOR-93 — PII minimisation** — `lib/redact.ts`, the single serializer: `redactTor(record,
+      "public")` reduces `fields.contact` (office name / landline / gov URL kept; name / mobile /
+      email / signature removed). Slice 3's read API + CSV export call it. `a317daf`
+- [x] **TOR-120 — tests: two-tier logic + sanity checks** — grading (10 cases) + service + worker +
+      taxonomy + redact + pdf-text + the corpus gate. 125/125 CI unit run.
+- [ ] **TOR-88 (parent) — in review** — PR open; Sudha (epic TOR-3 owner) to read the Slice-2
+      spec §4 / §6 / §10 before approving. Design has NOT had the external cross-check Slice 1 got.
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
-- [ ] O1 — `T_low` / `T_high`, from the accuracy measurement (NFR-F3)
+- [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
+      (`docs/corpus/BENCHMARK.md`, NFR-F3). Promoted from `OPEN_VALUES` to real config in TOR-89.
 - [ ] O2 — `MIN_BID_WINDOW_DAYS`; checklist C2 reports "not evaluated" until then
 - [ ] O3 — `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`
 - [ ] O4 — IQR or ZSCORE as the active anomaly method

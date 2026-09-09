@@ -75,6 +75,13 @@ export class MongoQueue implements Queue {
     );
   }
 
+  async abandon(jobId: string, reason: string): Promise<void> {
+    await jobs(this.db).updateOne(
+      { _id: new ObjectId(jobId) },
+      { $set: { state: "failed", lastError: reason, updatedAt: new Date() }, $unset: { lockedUntil: "" } },
+    );
+  }
+
   async fail(jobId: string, reason: string): Promise<{ willRetry: boolean }> {
     const now = new Date();
     const job = await jobs(this.db).findOne({ _id: new ObjectId(jobId) });
