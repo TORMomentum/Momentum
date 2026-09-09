@@ -29,6 +29,12 @@ import sys
 import urllib.error
 import urllib.request
 
+# Summaries are Thai and the console here runs on cp874, which cannot encode them
+# (or the tree arrows). Print UTF-8 regardless of the console's codepage.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
 def load_env_file() -> None:
     """Read the repo's untracked .env, so a token never has to be typed on a
     command line (where it lands in shell history and process listings).
