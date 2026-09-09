@@ -1,4 +1,4 @@
-import { ObjectId, type Db } from "mongodb";
+import type { Db } from "mongodb";
 import { pathToFileURL } from "node:url";
 import { loadConfig, type Config } from "../core/config.js";
 import { connect, ensureIndexes } from "../core/db.js";
