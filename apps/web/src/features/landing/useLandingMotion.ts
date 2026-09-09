@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const COUNT_DURATION_MS = 1400;
-const REVEAL_THRESHOLD = 0.16;
+// Every figure below is taken from the mockup's own initCounters/initReveals,
+// so the motion reads exactly as the design does rather than approximately.
+const COUNT_DURATION_MS = 1600;
+const COUNT_THRESHOLD = 0.5;
+const REVEAL_THRESHOLD = 0.15;
 const NAV_HIDE_AFTER_PX = 120;
 const NAV_SHADOW_AFTER_PX = 20;
 
@@ -50,14 +53,23 @@ export function useCountUp(target: number, decimals = 0) {
         };
         requestAnimationFrame(step);
       },
-      { threshold: REVEAL_THRESHOLD },
+      // Half the element must be on screen before the count starts, so the
+      // reader is looking at the figure when it moves.
+      { threshold: COUNT_THRESHOLD },
     );
 
     observer.observe(node);
     return () => observer.disconnect();
   }, [target]);
 
-  return { ref, text: value.toFixed(decimals) };
+  // Whole numbers carry thousands separators (1,284), decimals do not — the
+  // mockup's own rule, and the reason a budget must not read "1284".
+  const text =
+    decimals > 0
+      ? value.toFixed(decimals)
+      : Math.round(value).toLocaleString("en-US");
+
+  return { ref, text };
 }
 
 /** Fades a section up the first time it enters the viewport. */
