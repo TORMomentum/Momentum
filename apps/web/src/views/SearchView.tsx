@@ -1,8 +1,10 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../features/app-shell/screens.module.css";
+import { useViewer } from "../shared/lib/viewer";
 import {
   BUDGET_FILTER_MAX,
   BUDGET_FILTER_MIN,
@@ -29,11 +31,16 @@ type Badge = {
   className: string;
 };
 
-function badgeFor(row: TorSample): Badge {
+/**
+ * A match score is a vendor's own number, so a signed-out reader sees the
+ * document's status instead. The mockup does the same: MATCH % is the reason
+ * its public banner invites you to register.
+ */
+function badgeFor(row: TorSample, signedIn: boolean): Badge {
   if (row.anomaly) return { label: "◆ STATISTICAL ANOMALY", className: styles.badgeAnomaly };
   if (row.unverified) return { label: "⚠ UNVERIFIED EXTRACTION", className: styles.badgeUnverified };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };
-  if (row.match != null) return { label: `MATCH ${row.match}%`, className: styles.badgeMatch };
+  if (signedIn && row.match != null) return { label: `MATCH ${row.match}%`, className: styles.badgeMatch };
   return { label: "เปิดรับข้อเสนอ", className: styles.badgeOpen };
 }
 
@@ -47,6 +54,7 @@ const BUDGET_SPAN = BUDGET_FILTER_MAX - BUDGET_FILTER_MIN;
 
 export function SearchView() {
   const router = useRouter();
+  const { signedIn, ready } = useViewer();
   const gooId = useId().replace(/[:]/g, "");
 
   const [agencySel, setAgencySel] = useState<Record<string, boolean>>({});
@@ -252,9 +260,21 @@ export function SearchView() {
           <span className={styles.resultCount}>[ {results.length} ผลลัพธ์ ]</span>
         </div>
 
+        {ready && !signedIn && (
+          <div className={styles.publicBanner}>
+            <div className={styles.publicBannerText}>
+              คุณกำลังดูแบบสาธารณะ — ลงทะเบียนเพื่อรับคะแนนจับคู่ (MATCH %) และแจ้งเตือนอีเมลภายใน 5
+              นาที
+            </div>
+            <Link href="/login?mode=signup" className={styles.publicBannerCta}>
+              ลงทะเบียนฟรี
+            </Link>
+          </div>
+        )}
+
         <div className={styles.resultList}>
           {results.map((row) => {
-            const badge = badgeFor(row);
+            const badge = badgeFor(row, signedIn);
             return (
               <div
                 key={row.slug}
@@ -287,6 +307,7 @@ export function SearchView() {
                   {row.open ? "ยื่นภายใน" : "ปิดรับ"}
                   <span className={styles.resultDeadlineValue}>{row.deadline}</span>
                 </div>
+                {signedIn && (
                 <div className={styles.resultActions}>
                   <span
                     className={`${styles.actionBtn} ${styles.starBtn} ${starSel[row.id] ? styles.starBtnOn : ""}`}
@@ -337,6 +358,7 @@ export function SearchView() {
                     </svg>
                   </span>
                 </div>
+                )}
               </div>
             );
           })}

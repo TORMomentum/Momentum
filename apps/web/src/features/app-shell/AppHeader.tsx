@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import styles from "./app.module.css";
 import { ALL_NOTIFICATIONS, HEADER_NOTIFICATIONS } from "../../data/notifications";
+import { useViewer } from "../../shared/lib/viewer";
 
-const TABS = [
+/** โปรไฟล์ของฉัน is vendor-only: the mockup hides that tab when signed out. */
+const PUBLIC_TABS = [
   { href: "/dashboard", label: "แดชบอร์ด" },
   { href: "/search", label: "ค้นหา TOR" },
-  { href: "/profile", label: "โปรไฟล์ของฉัน" },
 ];
+const VENDOR_TABS = [...PUBLIC_TABS, { href: "/profile", label: "โปรไฟล์ของฉัน" }];
 
 const DOT_CLASS: Record<string, string> = {
   match: styles.bellItemDotMatch,
@@ -29,6 +31,7 @@ const DOT_CLASS: Record<string, string> = {
  */
 export function AppHeader() {
   const pathname = usePathname();
+  const { signedIn, ready, signOut } = useViewer();
   const [bellOpen, setBellOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Local to the header, matching the mockup's own `unread` counter — it is
@@ -45,7 +48,7 @@ export function AppHeader() {
         TOR RADAR
       </Link>
       <nav className={styles.tabs}>
-        {TABS.map((tab) => {
+        {(signedIn ? VENDOR_TABS : PUBLIC_TABS).map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
             <Link
@@ -59,6 +62,23 @@ export function AppHeader() {
         })}
       </nav>
       <div className={styles.headerRight}>
+        {/*
+          Nothing is rendered until the stored viewer state has been read, so
+          the header never flashes the wrong branch on first paint.
+        */}
+        {ready && !signedIn && (
+          <>
+            <Link href="/login" className={styles.signIn}>
+              เข้าสู่ระบบ
+            </Link>
+            <Link href="/login?mode=signup" className={styles.registerCta}>
+              ลงทะเบียนผู้ประกอบการ
+            </Link>
+          </>
+        )}
+
+        {ready && signedIn && (
+        <>
         <div className={styles.bellWrap}>
           <button
             type="button"
@@ -194,13 +214,18 @@ export function AppHeader() {
                 href="/"
                 role="menuitem"
                 className={styles.menuSignOut}
-                onClick={() => setMenuOpen(false)}
+                onClick={() => {
+                  setMenuOpen(false);
+                  signOut();
+                }}
               >
                 ออกจากระบบ
               </Link>
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
     </header>
   );

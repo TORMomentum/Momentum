@@ -53,6 +53,27 @@
   gap: 12px;
 }
 
+.signIn {
+  white-space: nowrap;
+  font: 11px var(--data);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.signIn:hover { color: var(--blue); }
+
+.registerCta {
+  white-space: nowrap;
+  font: 600 12px var(--body);
+  background: var(--blue);
+  color: var(--paper);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  transition: background 0.2s ease;
+}
+
+.registerCta:hover { background: var(--blue-dark); color: var(--paper); }
+
 .menuWrap { position: relative; }
 
 .avatar {

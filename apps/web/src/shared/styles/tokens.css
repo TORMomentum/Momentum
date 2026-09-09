@@ -19,8 +19,14 @@
   --blue: #1d63d8;          /* actions, links, the platform's own voice */
   --blue-dark: #1746a0;
   --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
-  --verified: #0e7a5f;
-  --avatar: #2b6e5a;       /* the account initial's disc */      /* a check that passed */
+  --verified: #0e7a5f;      /* a check that passed */
+  --avatar: #2b6e5a;        /* the account initial's disc */
+
+  /* the sign-in page's trust panel */
+  --navy: #0e2440;
+  --navy-ink: #e8eef7;
+  --navy-soft: rgba(232, 238, 247, 0.78);
+  --navy-accent: #7fb0f0;
   --match: #2b6e5a;         /* match-score badge, signed-in avatar */
   --star: #e8930c;          /* "worked on something like this" marker */
   --danger: #be2026;        /* destructive/reject action hover (admin review queue) */

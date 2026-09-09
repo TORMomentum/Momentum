@@ -519,3 +519,31 @@
   .profilePage { padding: 24px 20px 48px; }
   .profileFactGrid { grid-template-columns: 1fr; }
 }
+
+/* Signed-out notice on Search: says what an account adds, in the mockup's words. */
+.publicBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(29, 99, 216, 0.35);
+  background: rgba(29, 99, 216, 0.06);
+  border-radius: 6px;
+  padding: 13px 18px;
+  margin-bottom: 18px;
+}
+
+.publicBannerText { font-size: 12.5px; color: rgba(18, 35, 60, 0.8); }
+
+.publicBannerCta {
+  white-space: nowrap;
+  font: 600 12px var(--body);
+  background: var(--blue);
+  color: var(--paper);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  transition: background 0.2s ease;
+}
+
+.publicBannerCta:hover { background: var(--blue-dark); color: var(--paper); }
