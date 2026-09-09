@@ -1,5 +1,6 @@
 import type { Db } from "mongodb";
 import { pathToFileURL } from "node:url";
+import { loadEnvFile } from "../core/env-file.js";
 import { loadConfig, type Config } from "../core/config.js";
 import { connect, ensureIndexes } from "../core/db.js";
 import { MongoQueue } from "../adapters/mongo.queue.js";
