@@ -13,4 +13,6 @@ export interface Queue {
   complete(jobId: string): Promise<void>;
   /** Records the failure and either schedules a retry or gives up permanently. */
   fail(jobId: string, reason: string): Promise<{ willRetry: boolean }>;
+  /** Gives up immediately, no retry - for a failure that retrying cannot fix. */
+  abandon(jobId: string, reason: string): Promise<void>;
 }

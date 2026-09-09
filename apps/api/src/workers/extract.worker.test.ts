@@ -14,6 +14,7 @@ function oneJobQueue(job: Job, failResult: { willRetry: boolean }) {
     }),
     complete: vi.fn(async () => {}),
     fail: vi.fn(async () => failResult),
+    abandon: vi.fn(async () => {}),
   } satisfies Queue;
 }
 
@@ -82,5 +83,20 @@ describe("runOnce", () => {
     expect(result).toBe("failed");
     expect(queue.fail).toHaveBeenCalledWith("job-1", "unreadable document");
     expect(t.onFailed).toHaveBeenCalledWith("tor-1", "unreadable document");
+  });
+
+  it("a terminal error abandons the job immediately, without a retry", async () => {
+    const queue = oneJobQueue(job, { willRetry: true });
+    const handle = vi.fn(async () => {
+      throw Object.assign(new Error("no title, no agency"), { retryable: false });
+    });
+    const t = transitions();
+
+    const result = await runOnce({ queue, handle, ...t });
+
+    expect(result).toBe("failed");
+    expect(queue.abandon).toHaveBeenCalledWith("job-1", "no title, no agency");
+    expect(queue.fail).not.toHaveBeenCalled();
+    expect(t.onFailed).toHaveBeenCalledWith("tor-1", "no title, no agency");
   });
 });

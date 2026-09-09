@@ -1,16 +1,21 @@
 import { MongoClient, type Collection, type Db } from "mongodb";
+import type { ConfidenceLevel, Provenance, TorFields } from "@tor-radar/shared";
 
 export interface TorDocument {
   contentHash: string;
   storage: { bucket: string; key: string; contentType: string; bytes: number };
   sourceRefs: Array<{ route: string; url?: string; submittedBy: string; submittedAt: Date }>;
   pipeline: { state: string; attempts: number; failedReason?: string };
-  fields: Record<string, unknown>;
+  /** The nine FR-B-2 fields, populated in slice 2. Empty until extraction runs. */
+  fields: Partial<TorFields>;
   /** The TOR's own publication date, extracted in slice 2 - never the ingestion time. */
   announcedAt: Date | null;
   sourceUrl: string | null;
-  confidenceLevel?: string;
+  confidenceLevel?: ConfidenceLevel;
   unverified: boolean;
+  /** Digital PDF text layer vs an OCR'd scan - drives grading (SRS §4.2.1). */
+  hasTextLayer?: boolean;
+  provenance?: Provenance;
   statusHistory: Array<{ from: string | null; to: string; at: Date; actor: string; source: string }>;
   access: { restricted: boolean; reason?: string; auditRef?: string };
   duplicateOf: string | null;

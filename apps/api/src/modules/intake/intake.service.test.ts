@@ -45,6 +45,7 @@ function fakes() {
     async fail() {
       return { willRetry: false };
     },
+    async abandon() {},
   };
 
   const records = new Map<string, { id: string; hash: string }>();
