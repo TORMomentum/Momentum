@@ -5,7 +5,10 @@ a box is expanded into sub-boxes **when it is entered**, nesting goes as deep as
 to be, and a parent is never ticked while a child is open. Step-level detail for slice 1 lives in
 [the plan](superpowers/plans/2026-09-01-slice1-foundation-intake.md).
 
-_last updated: 2026-09-02_
+Decisions that are NOT yet made live in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) — this file is work,
+that file is questions.
+
+_last updated: 2026-09-09_
 
 ---
 

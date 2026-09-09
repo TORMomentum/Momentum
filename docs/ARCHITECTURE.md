@@ -523,7 +523,8 @@ are complete.
 | IQR vs Z-score as the anomaly method | Comparison on real budget data |
 
 They are declared in `core/config.ts` with their open status recorded. Inventing one is a defect,
-not a shortcut.
+not a shortcut. The full register, including the design questions that block slices, is
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
 
 ---
 
@@ -531,6 +532,7 @@ not a shortcut.
 
 | Question | Document |
 | :--- | :--- |
+| What is still undecided? | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) — every open question, what it blocks, what unblocks it |
 | Is the data model right? | [superpowers/specs/2026-09-09-data-model-review.md](superpowers/specs/2026-09-09-data-model-review.md) — workload, decisions, what is still open |
 | What must the system do? | [SRS.md](SRS.md) — every requirement, testable, with verification method |
 | Why does it exist, and for whom? | [PROJECT.md](PROJECT.md) — problem, stakeholders, personas, user stories |
