@@ -182,9 +182,24 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [ ] starred and bookmarked lists on the profile are seeded samples; they need real cross-route state once accounts exist
   - [ ] `/tors/demo-anomaly` is a hard-coded slug pointing at the sample anomaly TOR; replaced by real ids when ingestion lands
 
+## 2c. Slice 2 — extraction and confidence (TOR-88) — IN PROGRESS
+
+_Design: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpowers/specs/2026-09-09-tor-radar-extraction-confidence-design.md) — drafted on this branch, NOT yet externally cross-checked; §10 holds the open questions. Reviewed at PR time._
+
+- [x] **TOR-126 — extraction worker + reconciler (pipeline harness)** — see §2 Task 11
+- [x] **Slice-2 design spec** — decisions D1–D11, the §6 confidence policy, §10 open questions
+- [ ] **TOR-89 — Vertex AI extraction service** — `ai.port.ts`, `vertex.ai.ts`, `extraction.service.ts`;
+      gated on the corpus check (spec §8) before the rest stack on the grade
+- [ ] TOR-90 — per-field confidence + tier logic (`extraction.grading.ts`, the §6 policy)
+- [ ] TOR-91 — sanity checks (folded into `grading.ts` Pass 3)
+- [ ] TOR-92 — qualification → taxonomy mapping (`extraction.taxonomy.ts`, `packages/seeds`) — spec §10 Q1
+- [ ] TOR-93 — PII minimisation (`lib/redact.ts`)
+- [ ] TOR-120 — tests: two-tier logic + sanity checks
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
-- [ ] O1 — `T_low` / `T_high`, from the accuracy measurement (NFR-F3)
+- [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
+      (`docs/corpus/BENCHMARK.md`, NFR-F3). Promoted from `OPEN_VALUES` to real config in TOR-89.
 - [ ] O2 — `MIN_BID_WINDOW_DAYS`; checklist C2 reports "not evaluated" until then
 - [ ] O3 — `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`
 - [ ] O4 — IQR or ZSCORE as the active anomaly method
