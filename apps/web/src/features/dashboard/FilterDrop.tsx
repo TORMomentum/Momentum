@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import styles from "./app.module.css";
+import styles from "./dashboard.module.css";
 
 export interface DropOption {
   value: string;

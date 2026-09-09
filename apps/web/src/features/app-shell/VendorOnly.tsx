@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import styles from "./app.module.css";
+import styles from "./app-shell.module.css";
 import { useViewer } from "../../shared/lib/viewer";
 
 /**

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import styles from "./app.module.css";
+import styles from "./app-shell.module.css";
 import { HEADER_NOTIFICATIONS } from "../../data/notifications";
 import { useNotifications } from "../../shared/lib/notifications";
 import { useViewer } from "../../shared/lib/viewer";

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import styles from "../features/app-shell/app.module.css";
-import { FilterDrop } from "../features/app-shell/FilterDrop";
+import styles from "../features/dashboard/dashboard.module.css";
+import { FilterDrop } from "../features/dashboard/FilterDrop";
 
 /**
  * Public transparency dashboard (FR-E-1, FR-E-2). Figures are placeholders
