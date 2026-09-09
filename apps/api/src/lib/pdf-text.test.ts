@@ -17,8 +17,8 @@ describe("hasTextLayer", () => {
   });
 
   it("is false for a scanned TOR (image-only PDF)", () => {
-    expect(hasTextLayer(readFileSync(CORPUS + "_extra/tor-03.pdf"), "application/pdf")).toBe(false);
-    expect(hasTextLayer(readFileSync(CORPUS + "_extra/tor-06.pdf"), "application/pdf")).toBe(false);
+    // tor-02 is the one image-only scan in the committed corpus (the rest are digital drafts).
+    expect(hasTextLayer(readFileSync(CORPUS + "tor-02.pdf"), "application/pdf")).toBe(false);
   });
 
   it("does not crash on bytes that are not a real PDF", () => {

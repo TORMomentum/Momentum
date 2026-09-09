@@ -82,7 +82,7 @@ describe("ExtractionService.run", () => {
   });
 
   it("treats a scan's budget as unverified and the record as low", async () => {
-    const scan = readFileSync(fileURLToPath(new URL("../../../../../docs/corpus/_extra/tor-03.pdf", import.meta.url)));
+    const scan = readFileSync(fileURLToPath(new URL("../../../../../docs/corpus/tor-02.pdf", import.meta.url)));
     const { service, repo } = fakes({ bytes: scan });
 
     await service.run("tor-1");
