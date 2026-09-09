@@ -1,0 +1,452 @@
+[
+  {
+    "agency_id": "b0ed3c71-1707-436f-a6c4-8db1cc9fa3ca",
+    "name_th": "บริษัท กรุงเทพธนาคม จำกัด",
+    "category": "state_enterprise",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "93890845-476d-4db4-83df-4ca56492d772",
+    "name_th": "สำนักการคลัง",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "7caa2152-1fa7-4ef3-95d7-016b97baf863",
+    "name_th": "สำนักการจราจรและขนส่ง",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "ec323e5e-2d43-4b2b-b67c-bc56a8d3c7fb",
+    "name_th": "สำนักการระบายน้ำ",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "fb57c7b2-5d3c-4ac8-8f69-3a8ff010c2ff",
+    "name_th": "สำนักการวางผังและพัฒนาเมือง",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "dbb912d2-6630-4f0d-b33a-2a54282ff14a",
+    "name_th": "สำนักการศึกษา",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "e4fb99f2-6343-4523-9936-a18e2f71e26e",
+    "name_th": "สำนักการแพทย์",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "5c01f9bf-fcf1-4e56-83cc-acb97bd4dc8b",
+    "name_th": "สำนักการโยธา",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "e4ecb2ea-86d6-49f2-83b7-2f163b437ce1",
+    "name_th": "สำนักงบประมาณกรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "eabc0815-e3cc-498a-a283-5fc96454fab1",
+    "name_th": "สำนักงานคณะกรรมการข้าราชการ กรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "6210f586-e40e-411a-8198-724950e4eec6",
+    "name_th": "สำนักงานตลาด",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "bfce5c18-9ac6-4ade-a6d8-84db8bfbe95c",
+    "name_th": "สำนักงานพัฒนาที่อยู่อาศัย",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "4bd5da72-7207-4fdb-b09f-3dc94b81e643",
+    "name_th": "สำนักงานยุทธศาสตร์การป้องกันสาธารณภัย สำนักป้องกันและบรรเทาสาธารณภัย",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "1e9f8c85-5dfa-4d8d-8bbc-9aabdcf5a1a7",
+    "name_th": "สำนักงานสถานธนานุบาลกรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "4ecd8366-add7-4e0e-90e1-8f1c818245d7",
+    "name_th": "สำนักงานเขตคลองสาน",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "8abb21c2-a2e0-4857-bd01-236fa0f330f7",
+    "name_th": "สำนักงานเขตคลองสามวา",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "51171353-b645-421e-bb91-5a7fdb653a26",
+    "name_th": "สำนักงานเขตคลองเตย",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "53e7aabf-e95b-481e-8191-53821f068999",
+    "name_th": "สำนักงานเขตคันนายาว",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "9841ed40-926a-4057-b2eb-22a1f15347bd",
+    "name_th": "สำนักงานเขตจตุจักร",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "952f9c02-06f0-4be9-b187-251b1f90e318",
+    "name_th": "สำนักงานเขตจอมทอง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "29969758-2abb-4484-8c58-35e9b0f77950",
+    "name_th": "สำนักงานเขตดอนเมือง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "0aba5579-8af0-419b-a620-d29e15b2e244",
+    "name_th": "สำนักงานเขตดินแดง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "d5aac80a-fff2-4e8d-919e-b69846af7bfd",
+    "name_th": "สำนักงานเขตดุสิต",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "0beb42c2-8c2c-4fc5-99ec-358b146538f8",
+    "name_th": "สำนักงานเขตตลิ่งชัน",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "86869d2c-d53f-409d-ae6f-43aa6d4a2f99",
+    "name_th": "สำนักงานเขตทวีวัฒนา",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "8575c065-f9dd-4e3b-ac62-07b6c585923e",
+    "name_th": "สำนักงานเขตทุ่งครุ",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "ad273064-55cd-4eee-93ec-760455489df5",
+    "name_th": "สำนักงานเขตธนบุรี",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "8f7fd526-d977-4659-872e-8083b80e167e",
+    "name_th": "สำนักงานเขตบางกอกน้อย",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "0c3c78be-0f8c-47b9-9a39-768de76e1cab",
+    "name_th": "สำนักงานเขตบางกอกใหญ่",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "2f771aee-ea0e-4495-8be2-ff85d6c9e1c5",
+    "name_th": "สำนักงานเขตบางกะปิ",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "6207ba09-7e23-4f38-8804-1076b0ec21e1",
+    "name_th": "สำนักงานเขตบางขุนเทียน",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "8c4d6381-6cad-4da4-8121-74eaf3915520",
+    "name_th": "สำนักงานเขตบางคอแหลม",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "6447d3f3-4bcb-41c3-913e-81f1049c2d72",
+    "name_th": "สำนักงานเขตบางซื่อ",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "c45d02d2-b659-45b5-aea9-8f43c62a51be",
+    "name_th": "สำนักงานเขตบางนา",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "bf55ec98-2aba-4e60-ae83-692f2e2dd271",
+    "name_th": "สำนักงานเขตบางบอน",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "79e28b0f-ad9e-40d5-9874-0a4187a90666",
+    "name_th": "สำนักงานเขตบางพลัด",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "302b22e2-fa96-4eb1-b797-93af087902c2",
+    "name_th": "สำนักงานเขตบางรัก",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "2aa2ba88-a0cc-4116-b86f-00a8f1f034fb",
+    "name_th": "สำนักงานเขตบางเขน",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "dc878101-5fdf-4566-80d7-36b6223b9c5e",
+    "name_th": "สำนักงานเขตบางแค",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "563a6466-3867-4064-9aae-bc9cddc9d194",
+    "name_th": "สำนักงานเขตบึงกุ่ม",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "e8c69562-b5a3-4287-8475-7fed7bb76dd0",
+    "name_th": "สำนักงานเขตปทุมวัน",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "09609aa5-c850-42ad-ad62-99e1989aaf97",
+    "name_th": "สำนักงานเขตประเวศ",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "9c506d94-d777-4e24-93b3-0d6231e861e4",
+    "name_th": "สำนักงานเขตป้อมปราบศัตรูพ่าย",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "b409d0d1-0434-4c28-bc2a-24fa35a388eb",
+    "name_th": "สำนักงานเขตพญาไท",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "0704e1bc-1a5b-4583-98ea-97538effb411",
+    "name_th": "สำนักงานเขตพระนคร",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "38224b78-1f7e-4c60-8a69-d6906d889d49",
+    "name_th": "สำนักงานเขตพระโขนง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "d116de0b-5819-44e6-8897-d3c2aed5576b",
+    "name_th": "สำนักงานเขตภาษีเจริญ",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "838842b8-0d98-40ea-b33d-c12111a3a9a3",
+    "name_th": "สำนักงานเขตมีนบุรี",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "fce2561c-4ee6-46a6-bbb7-d67b9431bd94",
+    "name_th": "สำนักงานเขตยานนาวา",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "73eece70-67aa-4e52-b197-e88ec5b9a0c8",
+    "name_th": "สำนักงานเขตราชเทวี",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "e5f800ac-d308-4865-9ccc-65abbcd87218",
+    "name_th": "สำนักงานเขตราษฎร์บูรณะ",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "c91d6b75-0bc9-43df-ab24-18b98127628c",
+    "name_th": "สำนักงานเขตลาดกระบัง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "3d1e7ed0-260e-4e4d-8ff3-3a4eec77382d",
+    "name_th": "สำนักงานเขตลาดพร้าว",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "ccf4ef1f-108f-476d-86ca-89aeff6b67ab",
+    "name_th": "สำนักงานเขตวังทองหลาง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "2994d3cd-6ed1-46ad-869b-9c140716ce68",
+    "name_th": "สำนักงานเขตวัฒนา",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "7c1ee360-6ac9-4707-9036-3e9928024a19",
+    "name_th": "สำนักงานเขตสวนหลวง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "0d3f0df1-a440-4d30-8b5b-37ca0c0de69f",
+    "name_th": "สำนักงานเขตสะพานสูง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "87aa7db3-7e28-4f7e-aaad-4f8acb27e707",
+    "name_th": "สำนักงานเขตสัมพันธวงศ์",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "c8c56c36-5f77-4ed8-a276-39b74a5847c2",
+    "name_th": "สำนักงานเขตสาทร",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "d4895b53-b298-4b04-a343-53bb5e73bbf9",
+    "name_th": "สำนักงานเขตสายไหม",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "67f7b661-a8d8-4e03-beab-cf1329ab3ed9",
+    "name_th": "สำนักงานเขตหนองจอก",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "32066b71-0cfa-49bd-a8e6-54c8b4809890",
+    "name_th": "สำนักงานเขตหนองแขม",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "3000bbc5-cd18-4f52-b11c-05c1e0e97372",
+    "name_th": "สำนักงานเขตหลักสี่",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "7f5059ae-d062-4b6c-9274-5811f15f202e",
+    "name_th": "สำนักงานเขตห้วยขวาง",
+    "category": "district_office",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "82c77898-5db9-4af9-86f1-604ecc7fc844",
+    "name_th": "สำนักงานเลขานุการผู้ว่าราชการกรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "e2e02097-16a4-461c-9d7f-a9d578ab7305",
+    "name_th": "สำนักงานเลขานุการสภากรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "f00eb0ca-2147-497c-8f46-0b4845bf9031",
+    "name_th": "สำนักดิจิทัลกรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "3443562c-9582-40e0-8d32-44262c8a07d7",
+    "name_th": "สำนักปลัดกรุงเทพมหานคร",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "51eaffff-61c8-409d-ba90-84471cc978db",
+    "name_th": "สำนักป้องกันและบรรเทาสาธารณภัย",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "d81f5a4b-c9db-4dcd-b44f-23e074271687",
+    "name_th": "สำนักพัฒนาสังคม",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "b5692973-02c7-4ae5-9a0b-55c34a2bd2b8",
+    "name_th": "สำนักยุทธศาสตร์และประเมินผล",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "832b981d-6ca1-44fc-8be5-34c159027103",
+    "name_th": "สำนักวัฒนธรรม กีฬา และการท่องเที่ยว",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "7c4ca511-4f85-4ecc-b8ff-a6cf228f7244",
+    "name_th": "สำนักสิ่งแวดล้อม",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "2483011f-fe22-4c43-9f31-6619775593df",
+    "name_th": "สำนักอนามัย",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  },
+  {
+    "agency_id": "3d9b3f50-6820-4727-b577-db0567ba0754",
+    "name_th": "สำนักเทศกิจ",
+    "category": "central_bureau",
+    "source": "egp2.bangkok.go.th MasterOrgGroups"
+  }
+]

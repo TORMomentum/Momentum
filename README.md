@@ -48,7 +48,7 @@ apps/api/         Express 5 — feature modules, ports, adapters, worker
 packages/shared/  types + Zod schemas both apps import
 docs/             requirements, architecture, design specs, benchmark evidence
 mockups/          design-canvas source the UI was ported from — never built
-tools/            Jira seeding, Vertex checks, extraction scoring
+tools/            source collection, seed generation, Jira seeding, Vertex checks, scoring
 ```
 
 ---
@@ -66,6 +66,7 @@ Start with whichever question you have:
 | **What is being built right now** | [docs/TODO.md](docs/TODO.md) — the live checklist |
 | **How the current slice is executed** — task by task, with tests | [docs/superpowers/plans/](docs/superpowers/plans/) |
 | **What was already built and verified** | [docs/work-log.md](docs/work-log.md) |
+| **Where the TORs come from** — the BMA eGP API, document formats, taxonomy seeds | [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md) |
 | **How accurate the extraction is** | [docs/corpus/BENCHMARK.md](docs/corpus/BENCHMARK.md) |
 | **How to set up Vertex AI** | [docs/gcp-setup.md](docs/gcp-setup.md) |
 

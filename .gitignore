@@ -19,3 +19,6 @@ docs/corpus/_extra/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Python bytecode cache from tools/
+__pycache__/
