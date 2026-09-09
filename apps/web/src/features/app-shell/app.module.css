@@ -429,3 +429,68 @@
   .splitLeft { border-right: 0; padding-right: 0; padding-bottom: 28px; }
   .splitRight { padding-left: 0; padding-top: 28px; border-top: var(--rule); }
 }
+
+/* Signed-out landing for a vendor-only screen. Not access control - it explains
+   why the page is empty and what an account adds. */
+.gatePage {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 62px);
+  padding: 40px 20px;
+}
+
+.gateCard {
+  max-width: 460px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 40px 36px;
+  background: var(--paper);
+}
+
+.gateKicker {
+  font: 500 10px var(--data);
+  color: var(--blue);
+  letter-spacing: 0.16em;
+  margin-bottom: 14px;
+}
+
+.gateTitle { margin: 0 0 12px; font: 700 24px/1.4 var(--display); }
+
+.gateBody {
+  margin: 0 0 26px;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: var(--ink-70);
+}
+
+.gateActions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+.gatePrimary {
+  font: 600 13px var(--body);
+  background: var(--blue);
+  color: var(--paper);
+  padding: 11px 22px;
+  border-radius: var(--radius);
+}
+
+.gatePrimary:hover { background: var(--blue-dark); color: var(--paper); }
+
+.gateSecondary {
+  font: 600 13px var(--body);
+  border: 1px solid rgba(18, 35, 60, 0.3);
+  color: var(--ink);
+  padding: 11px 22px;
+  border-radius: var(--radius);
+}
+
+.gateSecondary:hover { border-color: var(--blue); color: var(--blue); }
+
+.gateEscape {
+  display: inline-block;
+  margin-top: 20px;
+  font: 10.5px var(--data);
+  color: var(--ink-62);
+}
+
+.gateEscape:hover { color: var(--blue); }
