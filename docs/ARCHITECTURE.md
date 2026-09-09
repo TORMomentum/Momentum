@@ -382,8 +382,14 @@ Three shapes are load-bearing:
    carries the model, version, extraction time, and the thresholds version that graded it. NFR-F6
    asks that every AI-produced value be attributable, and one extraction run produces every field on
    a record, so the run's identity lives once and the per-field certainty lives on the field.
-5. **`contentHash` is both the dedupe key and the storage key.** One value, so a stored object and
-   its record can never disagree about identity.
+5. **`contentHash` identifies the document everywhere.** It is the dedupe key, and it is the
+   identity inside the storage key, so a stored object and its record can never disagree about which
+   document they are. Objects live at `tors/<year>/<month>/<hash>.<ext>`: grouped by arrival month
+   because the console renders prefixes as folders and an intake question is usually scoped to a
+   month, and given an extension so an operator and a downloading browser both know what the file
+   is. The submitted filename is object metadata, never the key — a key built from a name gives one
+   document two homes, and a name known only after extraction would require renaming, which in
+   object storage is copy-then-delete and `FR-A-2` forbids touching a stored original.
 
 ### Indexes
 
