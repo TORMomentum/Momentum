@@ -64,6 +64,7 @@ Start with whichever question you have:
 | **Why it exists** — problem, stakeholders, personas, user stories, plan | [docs/PROJECT.md](docs/PROJECT.md) |
 | **How the current slice is built** — decisions, seams, security, containers | [docs/superpowers/specs/](docs/superpowers/specs/) |
 | **What is being built right now** | [docs/TODO.md](docs/TODO.md) — the live checklist |
+| **What has not been decided yet** — and what it blocks | [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) |
 | **How the current slice is executed** — task by task, with tests | [docs/superpowers/plans/](docs/superpowers/plans/) |
 | **What was already built and verified** | [docs/work-log.md](docs/work-log.md) |
 | **Where the TORs come from** — the BMA eGP API, document formats, taxonomy seeds | [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md) |
