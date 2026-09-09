@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 import styles from "./landing.module.css";
-import { useCountUp, useReveal } from "./useLandingMotion";
+import { useCountUp } from "./useLandingMotion";
+import { Reveal } from "./Reveal";
 
 /** Placeholder figures. Replaced by the API in slice 3; see SampleDataNotice. */
 const SAMPLE = {
@@ -36,9 +39,9 @@ export function Hero() {
           <a className={styles.primary} href="/dashboard">
             สำรวจแดชบอร์ด →
           </a>
-          <button type="button" className={styles.secondary}>
+          <Link href="/login?mode=signup" className={styles.secondary}>
             รับการแจ้งเตือน TOR
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -111,11 +114,9 @@ function Stat({
 }
 
 export function Stats() {
-  const reveal = useReveal<HTMLElement>();
-
   return (
-    <section className={styles.section} ref={reveal} data-reveal>
-      <div className={styles.stats}>
+    <section className={styles.section}>
+      <Reveal className={styles.stats}>
         <Stat label="TOR ทั้งหมด" value={SAMPLE.corpus} note="ฉบับ จากประกาศสาธารณะ" />
         <Stat
           label="งบประมาณรวม"
@@ -131,7 +132,7 @@ export function Stats() {
           note="เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา"
           flagged
         />
-      </div>
+      </Reveal>
     </section>
   );
 }

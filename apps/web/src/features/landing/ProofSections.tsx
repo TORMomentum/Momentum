@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 import styles from "./landing.module.css";
-import { useCountUp, useReveal } from "./useLandingMotion";
+import { useCountUp } from "./useLandingMotion";
+import { Reveal } from "./Reveal";
 
 const STEPS = [
   {
@@ -26,22 +29,20 @@ const STEPS = [
 ] as const;
 
 export function HowItWorks() {
-  const reveal = useReveal<HTMLElement>();
-
   return (
-    <section className={styles.section} id="how" ref={reveal} data-reveal>
-      <div className={styles.headingRow}>
+    <section className={styles.section} id="how">
+      <Reveal className={styles.headingRow}>
         <span className={styles.index}>01 — 03</span>
         <h2 className={styles.heading}>
           เอกสารกระจัดกระจาย
           <br />
           <span>→ ข้อมูลที่ใช้งานได้</span>
         </h2>
-      </div>
+      </Reveal>
 
       <div className={styles.steps}>
         {STEPS.map((step) => (
-          <div className={styles.step} key={step.key}>
+          <Reveal className={styles.step} key={step.key}>
             <div className={styles.stepKey}>[ {step.key} ]</div>
             <div className={styles.stepTitle}>{step.title}</div>
             <p className={styles.stepBody}>{step.body}</p>
@@ -50,7 +51,7 @@ export function HowItWorks() {
             >
               {step.foot}
             </div>
-          </div>
+          </Reveal>
         ))}
       </div>
     </section>
@@ -90,11 +91,9 @@ const CATEGORIES = [
 ];
 
 export function AnomalyPlot() {
-  const reveal = useReveal<HTMLElement>();
-
   return (
-    <section className={styles.section} id="data" ref={reveal} data-reveal>
-      <div className={styles.plotHead}>
+    <section className={styles.section} id="data">
+      <Reveal className={styles.plotHead}>
         <h2 className={styles.heading}>
           ราคาที่<em> โดดจากกลุ่ม</em>
           <br />
@@ -105,9 +104,9 @@ export function AnomalyPlot() {
           <br />
           ธง = นอกช่วง 1.5×IQR · &quot;ความผิดปกติทางสถิติ&quot; ไม่ใช่ข้อกล่าวหา
         </div>
-      </div>
+      </Reveal>
 
-      <div className={styles.plot}>
+      <Reveal className={styles.plot}>
         <span className={styles.axisLabel} style={{ top: -5 }}>฿10M</span>
         <span className={styles.axisLabel} style={{ top: 165 }}>฿5M</span>
         <span className={styles.axisLabel} style={{ bottom: -5 }}>฿0</span>
@@ -137,23 +136,22 @@ export function AnomalyPlot() {
             {category.name}
           </div>
         ))}
-      </div>
+      </Reveal>
 
-      <div className={styles.plotFoot}>
+      <Reveal className={styles.plotFoot}>
         HOVER A DOT · 1 จุด = 1 TOR · ข้อมูลตัวอย่างจาก corpus นำร่อง
-      </div>
+      </Reveal>
     </section>
   );
 }
 
 export function QualityChecklist() {
-  const reveal = useReveal<HTMLElement>();
   const score = useCountUp(8.5, 1);
 
   return (
-    <section className={styles.section} id="quality" ref={reveal} data-reveal>
+    <section className={styles.section} id="quality">
       <div className={styles.quality}>
-        <div>
+        <Reveal>
           <div className={styles.eyebrow}>[ AI QUALITY CHECKLIST ]</div>
           <h2 className={styles.heading}>
             TOR เขียนดีแค่ไหน
@@ -164,9 +162,9 @@ export function QualityChecklist() {
             เช็กลิสต์แบบอธิบายได้: งบประมาณระบุไหม กำหนดเวลาสมเหตุสมผลไหม ขอบเขตเฉพาะเจาะจงไหม —
             ทุกคะแนนมาพร้อมเหตุผลตามกฎ ไม่ใช่กล่องดำ และไม่ใช่คำตัดสินทางกฎหมาย
           </p>
-        </div>
+        </Reveal>
 
-        <div className={styles.qualityCard}>
+        <Reveal className={styles.qualityCard}>
           <div className={styles.score}>
             <span className={styles.scoreValue} ref={score.ref}>
               {score.text}
@@ -198,17 +196,16 @@ export function QualityChecklist() {
             <br />
             NOT A LEGAL OR CORRUPTION JUDGMENT
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
 export function Closing() {
-  const reveal = useReveal<HTMLElement>();
-
   return (
-    <section className={styles.closing} ref={reveal} data-reveal>
+    <section className={styles.closing}>
+      <Reveal>
       <h2 className={styles.closingTitle}>
         งานที่ใช่ ไม่ควร
         <br />
@@ -218,13 +215,14 @@ export function Closing() {
         สร้างโปรไฟล์ทักษะครั้งเดียว — ให้ TOR ที่ตรงกับคุณวิ่งมาหาเอง ภายใน 5 นาทีหลังประกาศ
       </p>
       <div className={styles.closingActions}>
-        <button type="button" className={`${styles.primary} ${styles.ctaLarge}`}>
+        <Link href="/login?mode=signup" className={`${styles.primary} ${styles.ctaLarge}`}>
           ลงทะเบียนฟรี
-        </button>
+        </Link>
         <a className={`${styles.secondary} ${styles.ctaLarge}`} href="/dashboard">
           ดูแดชบอร์ดสาธารณะ
         </a>
       </div>
+      </Reveal>
     </section>
   );
 }

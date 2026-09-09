@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import styles from "./landing.module.css";
 import { useNavVisibility } from "./useLandingMotion";
 
@@ -23,12 +25,12 @@ export function SiteNav() {
         <a href="#quality">QUALITY</a>
       </nav>
       <div className={styles.auth}>
-        <button type="button" className={styles.signIn}>
+        <Link href="/login" className={styles.signIn}>
           เข้าสู่ระบบ
-        </button>
-        <button type="button" className={`${styles.primary} ${styles.navCta}`}>
+        </Link>
+        <Link href="/login?mode=signup" className={`${styles.primary} ${styles.navCta}`}>
           ลงทะเบียนผู้ประกอบการ
-        </button>
+        </Link>
       </div>
     </header>
   );

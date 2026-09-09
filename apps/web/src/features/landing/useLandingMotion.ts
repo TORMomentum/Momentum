@@ -10,13 +10,6 @@ const REVEAL_THRESHOLD = 0.15;
 const NAV_HIDE_AFTER_PX = 120;
 const NAV_SHADOW_AFTER_PX = 20;
 
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
 /**
  * Counts up to `target` once the element is on screen. Returns the value to
  * render and the ref to attach. Renders the final value immediately when the
@@ -33,11 +26,8 @@ export function useCountUp(target: number, decimals = 0) {
     const node = ref.current;
     if (!node) return;
 
-    if (prefersReducedMotion()) {
-      setValue(target);
-      return;
-    }
-
+    // Same reasoning as the reveals: a spuriously reported preference was
+    // skipping the count entirely and printing the final figure.
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
@@ -80,11 +70,10 @@ export function useReveal<T extends HTMLElement>() {
     const node = ref.current;
     if (!node) return;
 
-    if (prefersReducedMotion()) {
-      node.dataset.reveal = "shown";
-      return;
-    }
-
+    // No reduced-motion gate, for the same reason the radar dropped its own:
+    // browsers here report that preference without anyone having asked, which
+    // marked every section "shown" on load and removed the reveal entirely.
+    // This is an 0.8s fade-and-rise, not flashing or parallax.
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
