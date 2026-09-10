@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import labels from "../shared/ui/labels.module.css";
 import styles from "../features/admin/admin.module.css";
@@ -150,6 +151,34 @@ export function AdminReviewView({
 
       {offline && <div className={styles.overviewOffline}>{offline}</div>}
 
+      {/*
+        With nothing in the queue there is nothing to put beside anything, so
+        the split gives way to one state rather than two panels each saying the
+        queue is empty in different words.
+
+        Which state depends on WHY it is empty, and the two are not the same
+        news: an unreachable API means we do not know what is waiting, and
+        saying "nothing to review" there would be a reassurance we cannot make.
+      */}
+      {queue.length === 0 ? (
+        <div className={`${styles.adminBody} ${styles.adminBodyBlank}`}>
+          <div className={styles.adminBlank}>
+            <h2 className={styles.adminBlankTitle}>
+              {offline ? "ยังไม่ทราบว่ามีอะไรรอตรวจสอบ" : "ไม่มีเอกสารรอตรวจสอบ"}
+            </h2>
+            <p className={styles.adminBlankBody}>
+              {offline
+                ? "ยังเชื่อมต่อกับ API ไม่ได้ คิวจะปรากฏเมื่อบริการทำงาน"
+                : "ทุกระเบียนผ่านเกณฑ์ความเชื่อมั่นหรือได้รับการตรวจสอบแล้ว เอกสารใหม่จะเข้าคิวเองเมื่อความเชื่อมั่นต่ำกว่าเกณฑ์หรือไม่ผ่านการตรวจความสมเหตุสมผล"}
+            </p>
+            {!offline && (
+              <Link href="/admin/log" className={styles.adminBlankLink}>
+                ดูบันทึกกิจกรรม →
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className={`${styles.adminBody} ${queueOpen ? "" : styles.adminBodyCollapsed}`}>
         {/* One control, on the seam between the columns, in both states — the
             rail beside it only reports how many are still waiting. */}
@@ -362,12 +391,12 @@ export function AdminReviewView({
           </div>
         ) : (
           <div className={styles.adminDetail}>
-            <div className={styles.queueEmpty}>
-              {queue.length > 0 ? "เลือกรายการจากคิวเพื่อเริ่มตรวจสอบ" : "ไม่มีอะไรต้องตรวจสอบตอนนี้"}
-            </div>
+            {/* The queue has work in it; this panel is waiting on a choice. */}
+            <div className={styles.queueEmpty}>เลือกรายการจากคิวเพื่อเริ่มตรวจสอบ</div>
           </div>
         )}
       </div>
+      )}
     </main>
   );
 }
