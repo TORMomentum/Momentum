@@ -360,15 +360,20 @@
   .header { padding: 0 20px; gap: 16px; }
 }
 
-/* Staff mode: the same header, marked so nobody mistakes it for the public site. */
-.headerAdmin { border-bottom: 2px solid var(--anomaly); }
+/*
+ * Staff mode: the same header, marked so nobody mistakes it for the public
+ * site. Blue rather than amber on purpose — amber means "needs attention" here
+ * (flagged fields, queue reasons, statistical anomalies), and spending it on a
+ * mode indicator would dilute the one colour meant to make a reviewer look.
+ */
+.headerAdmin { border-bottom: 2px solid var(--blue); }
 
 .adminBadge {
   font: 600 9.5px var(--data);
   letter-spacing: 0.1em;
-  color: var(--anomaly);
-  background: rgba(180, 83, 9, 0.1);
-  border: 1px solid rgba(180, 83, 9, 0.3);
+  color: var(--blue);
+  background: var(--blue-wash);
+  border: 1px solid var(--blue-ring);
   border-radius: 3px;
   padding: 3px 7px;
   margin-left: -10px;

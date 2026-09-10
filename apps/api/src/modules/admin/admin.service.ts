@@ -58,6 +58,13 @@ export class AdminService {
       if (empty || field.confidence < this.deps.tLow) flags.add(name);
     }
 
+    // A field a reviewer has already corrected is settled, whatever the
+    // record-level reason still says: the reason outlives the fix, and leaving
+    // the field marked would ask someone to look at work already done.
+    for (const [name, field] of Object.entries(record.fields)) {
+      if (field?.verified) flags.delete(name);
+    }
+
     return [...flags];
   }
 
