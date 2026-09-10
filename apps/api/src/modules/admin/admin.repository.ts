@@ -17,6 +17,8 @@ export interface QueueEntry {
 
 /** Everything the side-by-side editor needs for one record. */
 export interface ReviewRecord extends QueueEntry {
+  /** Filled by the service, which knows the thresholds. */
+  flaggedFields?: string[];
   fields: Partial<TorFields>;
   storage: { key: string; contentType: string; bytes: number };
   hasTextLayer: boolean;

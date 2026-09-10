@@ -36,6 +36,8 @@ export interface ExtractedFieldView {
 }
 
 export interface ReviewRecord extends QueueEntry {
+  /** The fields that put this record in the queue — the only ones marked. */
+  flaggedFields?: string[];
   fields: Record<string, ExtractedFieldView | undefined>;
   storage: { key: string; contentType: string; bytes: number };
   hasTextLayer: boolean;

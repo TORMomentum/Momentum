@@ -6,6 +6,8 @@ export interface AdminDeps {
   repo: AdminRepository;
   history: HistoryRepository;
   queue: Queue;
+  /** Below this, a field is what put the record in the queue (SRS §4.2.1). */
+  tLow: number;
 }
 
 export interface QueueView {
@@ -33,8 +35,35 @@ export class AdminService {
     return { items, unverifiedNotQueued };
   }
 
+  /**
+   * Which fields a reviewer has to look at.
+   *
+   * NOT "every unverified field": on a low-confidence record none of them are
+   * verified, so marking those would paint the whole form as a problem and say
+   * nothing. A field earns attention when it is missing, when its own
+   * confidence is below T_LOW, or when it is named in the reasons the grader
+   * recorded — the same three things that put the record here.
+   */
+  private flagged(record: ReviewRecord): string[] {
+    const flags = new Set<string>();
+
+    for (const reason of record.reviewReasons) {
+      const field = reason.split("-")[0];
+      if (field) flags.add(field);
+    }
+
+    for (const [name, field] of Object.entries(record.fields)) {
+      if (!field) continue;
+      const empty = field.value === null || field.value === undefined || field.raw.trim() === "";
+      if (empty || field.confidence < this.deps.tLow) flags.add(name);
+    }
+
+    return [...flags];
+  }
+
   async load(torId: string): Promise<ReviewRecord> {
-    return this.deps.repo.load(torId);
+    const record = await this.deps.repo.load(torId);
+    return { ...record, flaggedFields: this.flagged(record) };
   }
 
   async overview() {

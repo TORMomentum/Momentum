@@ -30,7 +30,11 @@ const field = (raw, value, confidence, verified = false, evidence = undefined) =
   ...(evidence ? { evidence } : {}),
 });
 
-/** Three failure shapes the grader actually produces, not three variations of one. */
+/**
+ * Three failure shapes the grader actually produces, not three variations of
+ * one. Every record carries all nine fields, because a real extraction does —
+ * a sparse seed makes the review screen look alarming for the wrong reason.
+ */
 const RECORDS = [
   {
     reviewReasons: ["budget-unreadable"],
@@ -40,8 +44,16 @@ const RECORDS = [
       title: field("จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", 0.91),
       agency: field("สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", "สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", 0.88),
       budget: field("", null, 0.12, false, "ตัวเลขในภาพเบลอ — หน้า 2 ย่อหน้า 3"),
-      deadline: field("29 ส.ค. 2569", "2026-08-29", 0.54),
       category: field("ก่อสร้าง / ปรับปรุงอาคาร", "ก่อสร้าง", 0.83),
+      scopeSummary: field(
+        "ปรับปรุงอาคารเรียน 2 ชั้น 8 ห้องเรียน เปลี่ยนหลังคาและระบบไฟฟ้า พร้อมทาสีภายในภายนอก",
+        "ปรับปรุงอาคารเรียน 2 ชั้น 8 ห้องเรียน เปลี่ยนหลังคาและระบบไฟฟ้า พร้อมทาสีภายในภายนอก",
+        0.86,
+      ),
+      qualifications: field("ผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป", ["ผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป"], 0.81),
+      deadline: field("29 ส.ค. 2569", "2026-08-29", 0.79),
+      contact: field("กลุ่มบริหารงานการเงิน 043-xxx-xxx", "กลุ่มบริหารงานการเงิน 043-xxx-xxx", 0.77),
+      torStatus: field("ประกาศ", "announced", 0.9),
     },
   },
   {
@@ -51,9 +63,17 @@ const RECORDS = [
     fields: {
       title: field("ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง สำนักงานจังหวัดลำปาง", "ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง", 0.87),
       agency: field("สำนักงานจังหวัดลำปาง", "สำนักงานจังหวัดลำปาง", 0.9),
-      budget: field("1,850,000 บาท", 1850000, 0.79),
-      deadline: field("2 ก.ค. 2569", "2026-07-02", 0.61, false, "กำหนดยื่นซองก่อนวันประกาศ"),
+      budget: field("1,850,000 บาท", 1850000, 0.84),
       category: field("ไอที/ซอฟต์แวร์", "ไอที/ซอฟต์แวร์", 0.85),
+      scopeSummary: field(
+        "จัดซื้อเครื่องคอมพิวเตอร์สำนักงาน 45 ชุด พร้อมติดตั้งและรับประกัน 3 ปี",
+        "จัดซื้อเครื่องคอมพิวเตอร์สำนักงาน 45 ชุด พร้อมติดตั้งและรับประกัน 3 ปี",
+        0.88,
+      ),
+      qualifications: field("ผู้ขายที่ขึ้นทะเบียนกับกรมบัญชีกลาง", ["ผู้ขายที่ขึ้นทะเบียนกับกรมบัญชีกลาง"], 0.8),
+      deadline: field("2 ก.ค. 2569", "2026-07-02", 0.61, false, "กำหนดยื่นซองก่อนวันประกาศ 12 ส.ค. 2569"),
+      contact: field("ฝ่ายพัสดุ 054-xxx-xxx", "ฝ่ายพัสดุ 054-xxx-xxx", 0.82),
+      torStatus: field("ประกาศ", "announced", 0.89),
     },
   },
   {
@@ -61,10 +81,19 @@ const RECORDS = [
     hasTextLayer: true,
     contentType: "application/pdf",
     fields: {
-      title: field("ประกวดราคาอิเล็กทรอนิกส์", "ประกวดราคาอิเล็กทรอนิกส์", 0.44),
-      agency: field("ประกวดราคาอิเล็กทรอนิกส์", null, 0.31),
-      budget: field("3,200,000 บาท", 3200000, 0.72),
+      title: field("ประกวดราคาอิเล็กทรอนิกส์", "ประกวดราคาอิเล็กทรอนิกส์", 0.44, false, "หัวกระดาษซ้ำทุกหน้า"),
+      agency: field("ประกวดราคาอิเล็กทรอนิกส์", null, 0.31, false, "อ่านชื่อหน่วยงานไม่ได้"),
+      budget: field("3,200,000 บาท", 3200000, 0.86),
       category: field("ประกวดราคาอิเล็กทรอนิกส์", null, 0.29),
+      scopeSummary: field(
+        "จ้างเหมาบริการทำความสะอาดอาคารสำนักงาน ระยะเวลา 12 เดือน",
+        "จ้างเหมาบริการทำความสะอาดอาคารสำนักงาน ระยะเวลา 12 เดือน",
+        0.83,
+      ),
+      qualifications: field("นิติบุคคลที่มีประสบการณ์งานทำความสะอาด", ["นิติบุคคลที่มีประสบการณ์งานทำความสะอาด"], 0.78),
+      deadline: field("15 ก.ย. 2569", "2026-09-15", 0.85),
+      contact: field("งานพัสดุ 02-xxx-xxxx", "งานพัสดุ 02-xxx-xxxx", 0.8),
+      torStatus: field("ประกาศ", "announced", 0.87),
     },
   },
 ];

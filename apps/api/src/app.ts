@@ -75,6 +75,7 @@ export function buildApp(config: Config, db: Db): Express {
         repo: new AdminRepository(db),
         history: new HistoryRepository(db),
         queue,
+        tLow: config.tLow,
       }),
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,

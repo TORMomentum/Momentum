@@ -325,3 +325,6 @@
   color: var(--ink-62);
   text-align: center;
 }
+
+/* A field a human has confirmed — the only green on this screen. */
+.fieldVerified { font: 10px var(--data); color: var(--verified); margin-top: 4px; }

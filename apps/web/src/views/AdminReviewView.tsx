@@ -208,9 +208,13 @@ export function AdminReviewView({
                 {FIELD_ORDER.map(({ key, label }) => {
                   const field = record.fields[key];
                   const confidence = field?.confidence ?? 0;
-                  // A field is "ok" once a human or the grader verified it; the
-                  // confidence number alone does not decide (BENCHMARK.md).
-                  const ok = field?.verified ?? false;
+                  // Marked ONLY if this field is why the record is here. On a
+                  // low-confidence record nothing is verified yet, so marking
+                  // "not verified" would paint every row orange and tell a
+                  // reviewer nothing. The server decides, because the threshold
+                  // lives with the config.
+                  const flagged = !field || (record.flaggedFields ?? []).includes(key);
+                  const ok = !flagged;
                   const value = edits[key] ?? field?.raw ?? "";
 
                   return (
@@ -232,6 +236,7 @@ export function AdminReviewView({
                           setEdits((prev) => ({ ...prev, [key]: event.target.value }))
                         }
                       />
+                      {field?.verified && <div className={styles.fieldVerified}>✓ ตรวจแล้ว</div>}
                       {field?.evidence && <div className={styles.adminQueueSrc}>“{field.evidence}”</div>}
                     </div>
                   );
