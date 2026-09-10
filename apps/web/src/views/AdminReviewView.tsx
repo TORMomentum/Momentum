@@ -1,125 +1,110 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useMemo, useState, useTransition } from "react";
 import labels from "../shared/ui/labels.module.css";
 import styles from "../features/admin/admin.module.css";
-
-type AdminField = { label: string; conf: string; value: string; ok: boolean };
-
-type QueueItem = {
-  conf: string;
-  flag: string;
-  title: string;
-  src: string;
-  docType: string;
-  docRef: string;
-  docNote: string;
-  fields: AdminField[];
-};
-
-/** The default toast shown for a freshly-selected queue item — matches the
- * mockup's initial `adminToast` state and its `pick` handler. */
-const DEFAULT_TOAST = "การแก้ไขถูกเก็บเป็น few-shot example ให้ extractor (FR-G2)";
-
-const APPROVE_TOAST = "✓ อนุมัติแล้ว — ล้างแท็ก unverified และเผยแพร่สู่หน้าค้นหา · บันทึกเป็น few-shot example";
-const REEXTRACT_TOAST = "↻ ส่งกลับเข้าคิวสกัดใหม่ด้วย prompt เฉพาะฟิลด์ที่ขาด";
-const REJECT_TOAST = "✕ ปฏิเสธ — เอกสารถูกทำเครื่องหมายว่าไม่ใช่ TOR ที่เกี่ยวข้อง";
-
-/** Records below the low-confidence threshold (T_LOW) or flagged by a sanity
- * check — sample size only, matching the mockup's "UNVERIFIED (NOT QUEUED)
- * 34" figure (records that stayed below-threshold and unverified without
- * tripping a sanity check, so they never entered this queue). */
-const UNVERIFIED_NOT_QUEUED = 34;
-
-const QUEUE: QueueItem[] = [
-  {
-    conf: "0.31",
-    flag: "ขาดงบประมาณ",
-    title: "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง",
-    src: "ภาพถ่ายเอกสาร · นำเข้า 09:12",
-    docType: "ภาพสแกน · JPG",
-    docRef: "ประกาศ สพฐ. เขตพื้นที่ 3",
-    docNote: "ถ่ายด้วยโทรศัพท์ · เอียง 4° · เงาบางส่วน",
-    fields: [
-      { label: "ชื่อโครงการ", conf: "0.91", value: "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", ok: true },
-      { label: "หน่วยงาน", conf: "0.88", value: "สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", ok: true },
-      { label: "งบประมาณ (฿) — ขาดหาย", conf: "0.12", value: "OCR อ่านไม่ได้ — ดูหน้า 2 ย่อหน้า 3", ok: false },
-      { label: "กำหนดยื่นซอง", conf: "0.54", value: "29 ส.ค. 2569", ok: false },
-      { label: "หมวดหมู่", conf: "0.83", value: "ก่อสร้าง / ปรับปรุงอาคาร", ok: true },
-    ],
-  },
-  {
-    conf: "0.28",
-    flag: "วันที่ไม่สมเหตุสมผล",
-    title: "ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง สำนักงานจังหวัดลำปาง",
-    src: "สแกน PDF · นำเข้า 08:47",
-    docType: "SCANNED PDF · 4 หน้า",
-    docRef: "ประกาศสำนักงานจังหวัดลำปาง",
-    docNote: "กำหนดยื่นซองก่อนวันประกาศ — ติด sanity check",
-    fields: [
-      { label: "ชื่อโครงการ", conf: "0.89", value: "ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง", ok: true },
-      { label: "หน่วยงาน", conf: "0.92", value: "สำนักงานจังหวัดลำปาง", ok: true },
-      { label: "งบประมาณ (฿)", conf: "0.86", value: "1,350,000", ok: true },
-      { label: "กำหนดยื่นซอง — ไม่สมเหตุสมผล", conf: "0.19", value: "2 ส.ค. 2569 (ก่อนวันประกาศ)", ok: false },
-      { label: "หมวดหมู่", conf: "0.81", value: "ไอที/ซอฟต์แวร์ · ครุภัณฑ์", ok: true },
-    ],
-  },
-  {
-    conf: "0.35",
-    flag: "งบ ฿0 (ไม่สมเหตุสมผล)",
-    title: "จ้างเหมาดูแลสวนสาธารณะ เทศบาลเมืองอุดรธานี ปีงบ 2570",
-    src: "ภาพถ่ายเอกสาร · นำเข้า 08:15",
-    docType: "ภาพสแกน · PNG",
-    docRef: "ประกาศเทศบาลเมืองอุดรธานี",
-    docNote: "ตัวเลขงบประมาณอ่านได้ ฿0 — ติด sanity check",
-    fields: [
-      { label: "ชื่อโครงการ", conf: "0.87", value: "จ้างเหมาดูแลสวนสาธารณะ ปีงบ 2570", ok: true },
-      { label: "หน่วยงาน", conf: "0.9", value: "เทศบาลเมืองอุดรธานี", ok: true },
-      { label: "งบประมาณ (฿) — ไม่น่าเป็นไปได้", conf: "0.15", value: "0", ok: false },
-      { label: "กำหนดยื่นซอง", conf: "0.72", value: "3 ก.ย. 2569", ok: true },
-      { label: "หมวดหมู่", conf: "0.79", value: "จ้างเหมาบริการ", ok: true },
-    ],
-  },
-  {
-    conf: "0.38",
-    flag: "ไม่พบหน่วยงานในบัญชีกลาง",
-    title: "จ้างก่อสร้างถนน อบต.บางพลี — รอยืนยันหน่วยงาน",
-    src: "URL · นำเข้า 07:58",
-    docType: "ไฟล์ HTML ต้นทาง",
-    docRef: "ประกาศจาก URL ภายนอก",
-    docNote: "ชื่อหน่วยงานไม่ตรงบัญชีกลาง — รอยืนยัน",
-    fields: [
-      { label: "ชื่อโครงการ", conf: "0.84", value: "จ้างก่อสร้างถนน คสล. หมู่ 4", ok: true },
-      { label: "หน่วยงาน — ไม่พบในบัญชีกลาง", conf: "0.22", value: "อบต.บางพลี", ok: false },
-      { label: "งบประมาณ (฿)", conf: "0.9", value: "2,780,000", ok: true },
-      { label: "กำหนดยื่นซอง", conf: "0.85", value: "27 ส.ค. 2569", ok: true },
-      { label: "หมวดหมู่", conf: "0.88", value: "ก่อสร้าง", ok: true },
-    ],
-  },
-];
+import {
+  approveRecordAction,
+  reextractRecordAction,
+  rejectRecordAction,
+  saveCorrections,
+} from "../features/admin/admin.actions";
+import type { QueueEntry, ReviewRecord } from "../shared/lib/admin-api";
 
 /**
- * Admin Review Queue (FR-B-3/FR-G-1) — staff-only. Ported from the "Admin
- * Review Queue" screen of mockups/TOR Radar App.dc.html. Records land here
- * when extraction confidence is below T_LOW or a sanity check trips;
- * medium-confidence records publish tagged "unverified extraction" without
- * reaching this queue at all (see CLAUDE.md's two-tier review policy).
+ * The extraction review queue (FR-G-1, FR-G-2). Ported from the "Admin Queue"
+ * screen of mockups/TOR Radar App.dc.html and wired to the real records.
+ *
+ * The data arrives from the server component that renders this — the admin key
+ * lives there and never reaches the browser. Edits and decisions go back out as
+ * server actions for the same reason.
  */
-export function AdminReviewView() {
-  const [qIdx, setQIdx] = useState(0);
+
+/** The nine extracted fields, in the order a reviewer reads a document. */
+const FIELD_ORDER = [
+  { key: "title", label: "ชื่อโครงการ" },
+  { key: "agency", label: "หน่วยงาน" },
+  { key: "budget", label: "งบประมาณ (฿)" },
+  { key: "deadline", label: "กำหนดยื่นซอง" },
+  { key: "category", label: "หมวดหมู่" },
+  { key: "scopeSummary", label: "ขอบเขตงาน" },
+  { key: "qualifications", label: "คุณสมบัติผู้ยื่นข้อเสนอ" },
+  { key: "contact", label: "ติดต่อ" },
+  { key: "torStatus", label: "สถานะ" },
+] as const;
+
+/** Machine reasons from grading, in the words a reviewer uses. */
+const REASON_LABELS: Record<string, string> = {
+  "agency-missing": "ขาดหน่วยงาน",
+  "agency-unreadable": "อ่านหน่วยงานไม่ได้",
+  "budget-missing": "ขาดงบประมาณ",
+  "budget-unreadable": "อ่านงบประมาณไม่ได้",
+  "budget-implausible": "งบประมาณไม่สมเหตุสมผล",
+  "deadline-before-announcement": "วันยื่นก่อนวันประกาศ",
+  "cancelled-with-deadline": "ประกาศยกเลิกแต่มีวันยื่น",
+  "closed-with-future-deadline": "ปิดรับแล้วแต่วันยื่นยังไม่ถึง",
+  "copy-through": "หลายฟิลด์ซ้ำกัน",
+};
+
+const ROUTE_LABELS: Record<string, string> = {
+  upload: "อัปโหลด",
+  url: "URL",
+  api: "API",
+};
+
+function reasonLabel(reason: string): string {
+  return REASON_LABELS[reason] ?? reason;
+}
+
+export function AdminReviewView({
+  queue,
+  unverifiedNotQueued,
+  record,
+  offline,
+  activeReason,
+}: {
+  queue: QueueEntry[];
+  unverifiedNotQueued: number;
+  record: ReviewRecord | null;
+  offline: string | null;
+  activeReason?: string;
+}) {
+  const [search, setSearch] = useState("");
   const [edits, setEdits] = useState<Record<string, string>>({});
-  const [toast, setToast] = useState(DEFAULT_TOAST);
+  const [toast, setToast] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  const current = QUEUE[qIdx];
+  /** Search filters what is already loaded — no round trip while typing. */
+  const shown = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return queue;
+    return queue.filter((item) =>
+      [item.title, item.agency, item.id, ...item.reviewReasons.map(reasonLabel)]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [queue, search]);
 
-  function valueFor(fieldIdx: number, field: AdminField) {
-    const key = `${qIdx}:${fieldIdx}`;
-    return edits[key] ?? field.value;
-  }
+  /** Every reason present in the queue, for the triage chips. */
+  const reasons = useMemo(
+    () => [...new Set(queue.flatMap((item) => item.reviewReasons))],
+    [queue],
+  );
 
-  function editField(fieldIdx: number, value: string) {
-    setEdits((prev) => ({ ...prev, [`${qIdx}:${fieldIdx}`]: value }));
+  const pendingEdits = Object.entries(edits).map(([field, value]) => ({ field, value }));
+
+  function run(action: () => Promise<void>, message: string) {
+    setToast(null);
+    startTransition(async () => {
+      try {
+        await action();
+        setEdits({});
+        setToast(message);
+      } catch (error) {
+        setToast(`ไม่สำเร็จ: ${String(error)}`);
+      }
+    });
   }
 
   return (
@@ -127,95 +112,199 @@ export function AdminReviewView() {
       <div className={styles.adminBar}>
         <h1 className={styles.adminTitle}>คิวตรวจสอบการสกัดข้อมูล</h1>
         <span className={styles.adminMeta}>
-          ในคิว {QUEUE.length} · ยังไม่ยืนยันและไม่เข้าคิว {UNVERIFIED_NOT_QUEUED} · เข้าคิวเมื่อความเชื่อมั่น
+          ในคิว {queue.length} · ยังไม่ยืนยันและไม่เข้าคิว {unverifiedNotQueued} · เข้าคิวเมื่อความเชื่อมั่น
           &lt; T_LOW หรือไม่ผ่านการตรวจความสมเหตุสมผล
         </span>
-        <Link href="/dashboard" className={styles.adminExitLink}>
-          ← ออกจากมุมมองผู้ดูแล
-        </Link>
       </div>
+
+      {offline && <div className={styles.overviewOffline}>{offline}</div>}
 
       <div className={styles.adminBody}>
         <div className={styles.adminQueueList}>
-          {QUEUE.map((item, index) => (
-            <button
-              type="button"
-              key={item.title}
-              className={`${styles.adminQueueItem} ${index === qIdx ? styles.adminQueueItemOn : ""}`}
-              onClick={() => {
-                setQIdx(index);
-                setToast(DEFAULT_TOAST);
-              }}
+          <div className={styles.queueTools}>
+            <input
+              className={styles.queueSearch}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="ค้นหาในคิว — ชื่อโครงการ หน่วยงาน หรือเหตุผล"
+              aria-label="ค้นหาในคิวตรวจสอบ"
+            />
+
+            {reasons.length > 0 && (
+              <div className={styles.queueReasons}>
+                <a
+                  href="/admin/review"
+                  className={`${styles.queueReason} ${activeReason ? "" : styles.queueReasonOn}`}
+                >
+                  ทั้งหมด
+                </a>
+                {reasons.map((reason) => (
+                  <a
+                    key={reason}
+                    href={`/admin/review?reason=${encodeURIComponent(reason)}`}
+                    className={`${styles.queueReason} ${activeReason === reason ? styles.queueReasonOn : ""}`}
+                  >
+                    {reasonLabel(reason)}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <span className={styles.queueCount}>
+              แสดง {shown.length} จาก {queue.length}
+            </span>
+          </div>
+
+          {shown.length === 0 && (
+            <div className={styles.queueEmpty}>
+              {queue.length === 0
+                ? "ไม่มีเอกสารรอตรวจสอบ — ทุกระเบียนผ่านเกณฑ์หรือได้รับการอนุมัติแล้ว"
+                : "ไม่พบรายการที่ตรงกับคำค้น"}
+            </div>
+          )}
+
+          {shown.map((item) => (
+            <a
+              key={item.id}
+              href={`/admin/review?id=${item.id}${activeReason ? `&reason=${encodeURIComponent(activeReason)}` : ""}`}
+              className={`${styles.adminQueueItem} ${record?.id === item.id ? styles.adminQueueItemOn : ""}`}
             >
               <div className={styles.adminQueueFlag}>
-                ความเชื่อมั่น {item.conf} · {item.flag}
+                ความเชื่อมั่น {item.confidence.toFixed(2)} ·{" "}
+                {item.reviewReasons.map(reasonLabel).join(" · ") || "ต่ำกว่าเกณฑ์"}
               </div>
-              <div className={styles.adminQueueTitle}>{item.title}</div>
-              <div className={styles.adminQueueSrc}>{item.src}</div>
-            </button>
+              <div className={styles.adminQueueTitle}>{item.title || "(ไม่มีชื่อโครงการที่สกัดได้)"}</div>
+              <div className={styles.adminQueueSrc}>
+                {ROUTE_LABELS[item.route] ?? item.route} · นำเข้า{" "}
+                {new Date(item.submittedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+              </div>
+            </a>
           ))}
         </div>
 
-        <div className={styles.adminDetail}>
-          <div className={styles.adminDoc}>
-            <div className={labels.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
-            <div className={styles.adminDocPreview}>
-              <div className={styles.adminDocPreviewText}>
-                {current.docType}
-                <br />
-                {current.docRef}
-                <br />
-                {current.docNote}
-                <br />
-                <br />[ ซูม ] [ หมุน ] [ เพิ่มความคมชัด ]</div>
-            </div>
-            <div className={styles.adminDocHash}>ต้นฉบับเก็บถาวรไม่แก้ไข · บันทึก SHA-256 แล้ว</div>
-          </div>
-
-          <div className={styles.adminFields}>
-            <div className={labels.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
-            <div className={styles.adminFieldList}>
-              {current.fields.map((field, fieldIdx) => (
-                <div key={field.label}>
-                  <div className={styles.adminFieldHead}>
-                    <span className={field.ok ? styles.adminFieldLabel : styles.adminFieldLabelWarn}>
-                      {field.label}
-                    </span>
-                    <span className={field.ok ? styles.adminFieldConfOk : styles.adminFieldConfWarn}>
-                      {field.conf}
-                    </span>
-                  </div>
-                  <input
-                    className={`${styles.adminFieldInput} ${field.ok ? "" : styles.adminFieldInputWarn}`}
-                    value={valueFor(fieldIdx, field)}
-                    onChange={(e) => editField(fieldIdx, e.target.value)}
-                  />
+        {record ? (
+          <div className={styles.adminDetail}>
+            <div className={styles.adminDoc}>
+              <div className={labels.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
+              <div className={styles.adminDocPreview}>
+                <div className={styles.adminDocPreviewText}>
+                  {record.contentType}
+                  <br />
+                  {record.hasTextLayer ? "มีชั้นข้อความ (ดิจิทัล)" : "ไม่มีชั้นข้อความ — ผ่าน OCR"}
+                  <br />
+                  {(record.storage.bytes / 1024).toFixed(0)} KB
+                  <br />
+                  <br />[ ซูม ] [ หมุน ] [ เพิ่มความคมชัด ]
                 </div>
-              ))}
+              </div>
+              <div className={styles.adminDocHash}>
+                ต้นฉบับเก็บถาวรไม่แก้ไข · SHA-256 {record.contentHash.slice(0, 16)}…
+              </div>
             </div>
 
-            <div className={styles.adminActions}>
-              <button type="button" className={styles.adminApproveBtn} onClick={() => setToast(APPROVE_TOAST)}>
-                ✓ อนุมัติ — ล้างแท็ก unverified
-              </button>
-              <button
-                type="button"
-                className={styles.adminSecondaryBtn}
-                onClick={() => setToast(REEXTRACT_TOAST)}
-              >
-                สกัดใหม่
-              </button>
-              <button
-                type="button"
-                className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
-                onClick={() => setToast(REJECT_TOAST)}
-              >
-                ปฏิเสธ
-              </button>
+            <div className={styles.adminFields}>
+              <div className={labels.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
+              <div className={styles.adminFieldList}>
+                {FIELD_ORDER.map(({ key, label }) => {
+                  const field = record.fields[key];
+                  const confidence = field?.confidence ?? 0;
+                  // A field is "ok" once a human or the grader verified it; the
+                  // confidence number alone does not decide (BENCHMARK.md).
+                  const ok = field?.verified ?? false;
+                  const value = edits[key] ?? field?.raw ?? "";
+
+                  return (
+                    <div key={key}>
+                      <div className={styles.adminFieldHead}>
+                        <span className={ok ? styles.adminFieldLabel : styles.adminFieldLabelWarn}>
+                          {label}
+                          {!field && " — ขาดหาย"}
+                        </span>
+                        <span className={ok ? styles.adminFieldConfOk : styles.adminFieldConfWarn}>
+                          {confidence.toFixed(2)}
+                        </span>
+                      </div>
+                      <input
+                        className={`${styles.adminFieldInput} ${ok ? "" : styles.adminFieldInputWarn}`}
+                        value={value}
+                        placeholder={field ? "" : "ไม่พบค่าในเอกสาร — กรอกจากต้นฉบับ"}
+                        onChange={(event) =>
+                          setEdits((prev) => ({ ...prev, [key]: event.target.value }))
+                        }
+                      />
+                      {field?.evidence && <div className={styles.adminQueueSrc}>“{field.evidence}”</div>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={styles.adminActions}>
+                <button
+                  type="button"
+                  className={styles.adminApproveBtn}
+                  disabled={pending}
+                  onClick={() =>
+                    run(
+                      () => approveRecordAction(record.id, pendingEdits),
+                      "✓ อนุมัติแล้ว — ล้างแท็กยังไม่ยืนยัน และเผยแพร่สู่หน้าค้นหา · บันทึกการแก้ไขเป็นตัวอย่างสอน extractor",
+                    )
+                  }
+                >
+                  ✓ อนุมัติ — ล้างแท็กยังไม่ยืนยัน
+                </button>
+                <button
+                  type="button"
+                  className={styles.adminSecondaryBtn}
+                  disabled={pending || pendingEdits.length === 0}
+                  onClick={() =>
+                    run(
+                      () => saveCorrections(record.id, pendingEdits),
+                      `บันทึกการแก้ไข ${pendingEdits.length} ฟิลด์ — เก็บเป็นตัวอย่างสอน extractor (FR-G-2)`,
+                    )
+                  }
+                >
+                  บันทึกการแก้ไข
+                </button>
+                <button
+                  type="button"
+                  className={styles.adminSecondaryBtn}
+                  disabled={pending}
+                  onClick={() =>
+                    run(
+                      () => reextractRecordAction(record.id),
+                      "↻ ส่งกลับเข้าคิวสกัดใหม่แล้ว",
+                    )
+                  }
+                >
+                  สกัดใหม่
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
+                  disabled={pending}
+                  onClick={() =>
+                    run(
+                      () => rejectRecordAction(record.id, "ไม่ใช่ TOR ที่เกี่ยวข้อง"),
+                      "✕ ปฏิเสธ — จำกัดการเข้าถึงและบันทึกเหตุผล ต้นฉบับยังเก็บไว้",
+                    )
+                  }
+                >
+                  ปฏิเสธ
+                </button>
+              </div>
+
+              <div className={styles.adminToast}>
+                {toast ?? "การแก้ไขถูกเก็บเป็นตัวอย่างสอน extractor (FR-G-2) · ต้นฉบับไม่ถูกแก้ไข"}
+              </div>
             </div>
-            <div className={styles.adminToast}>{toast}</div>
           </div>
-        </div>
+        ) : (
+          <div className={styles.adminDetail}>
+            <div className={styles.queueEmpty}>
+              {queue.length > 0 ? "เลือกรายการจากคิวเพื่อเริ่มตรวจสอบ" : "ไม่มีอะไรต้องตรวจสอบตอนนี้"}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

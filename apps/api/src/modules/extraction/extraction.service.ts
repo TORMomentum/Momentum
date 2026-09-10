@@ -53,7 +53,7 @@ export class ExtractionService {
     const raw = await this.deps.ai.extract({ bytes, contentType });
     const announcedAt = parseDate(raw.announcementDate.value);
 
-    const { fields, confidenceLevel, unverified } = grade(raw, {
+    const { fields, confidenceLevel, unverified, reviewReasons } = grade(raw, {
       hasTextLayer: textLayer,
       announcedAt,
       tLow: this.deps.config.tLow,
@@ -75,6 +75,7 @@ export class ExtractionService {
       announcedAt,
       confidenceLevel,
       unverified,
+      reviewReasons,
       hasTextLayer: textLayer,
       provenance,
     });

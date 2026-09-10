@@ -17,6 +17,13 @@ export interface GradingResult {
   fields: TorFields;
   confidenceLevel: ConfidenceLevel;
   unverified: boolean;
+  /**
+   * Why this record needs a human, as machine-readable reasons (FR-G-1). The
+   * checks that produced them ran here, so recording them here is the only
+   * place they are known - a reviewer opening the queue would otherwise have to
+   * re-derive them by eye.
+   */
+  reviewReasons: string[];
 }
 
 /**
@@ -170,5 +177,17 @@ export function grade(raw: RawExtraction, ctx: GradingContext): GradingResult {
   else if (allCriticalVerified) confidenceLevel = "high";
   else confidenceLevel = "medium";
 
-  return { fields, confidenceLevel, unverified: confidenceLevel !== "high" };
+  // Structural failures are reasons too: "no readable budget" is what a
+  // reviewer needs to see, not just a confidence number.
+  const reasons = [...sanity];
+  for (const c of CRITICAL) {
+    if (!structOk[c] && !reasons.includes(`${c}-missing`)) reasons.push(`${c}-unreadable`);
+  }
+
+  return {
+    fields,
+    confidenceLevel,
+    unverified: confidenceLevel !== "high",
+    reviewReasons: confidenceLevel === "low" ? reasons : [],
+  };
 }

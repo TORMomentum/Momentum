@@ -54,6 +54,8 @@ const schema = z.object({
   BUDGET_MIN_THB: z.coerce.number().positive().default(10_000),
   BUDGET_MAX_THB: z.coerce.number().positive().default(100_000_000_000),
 
+  /** How many review-queue rows one request returns (FR-G-1). */
+  ADMIN_QUEUE_PAGE_SIZE: z.coerce.number().int().positive().max(200).default(25),
   API_PORT: z.coerce.number().int().positive().default(4000),
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
@@ -99,6 +101,7 @@ export interface Config {
   thresholdsVersion: string;
   budgetMinThb: number;
   budgetMaxThb: number;
+  adminQueuePageSize: number;
   apiPort: number;
 }
 
@@ -157,6 +160,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     thresholdsVersion: parsed.THRESHOLDS_VERSION,
     budgetMinThb: parsed.BUDGET_MIN_THB,
     budgetMaxThb: parsed.BUDGET_MAX_THB,
+    adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
     apiPort: parsed.API_PORT,
   };
 }

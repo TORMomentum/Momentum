@@ -14,6 +14,17 @@ const PUBLIC_TABS = [
 const VENDOR_TABS = [...PUBLIC_TABS, { href: "/profile", label: "โปรไฟล์ของฉัน" }];
 
 /**
+ * Inside the staff area the header carries the staff sections instead of the
+ * vendor ones. One navigation bar, not a second band under the first — a
+ * reviewer is in a different mode, not on a different site.
+ */
+const ADMIN_TABS = [
+  { href: "/admin", label: "ภาพรวม", exact: true },
+  { href: "/admin/review", label: "คิวตรวจสอบ" },
+  { href: "/admin/log", label: "บันทึกกิจกรรม" },
+];
+
+/**
  * Shared chrome for every in-app screen. The active tab follows the route.
  * Ported from the header block of mockups/TOR Radar App.dc.html (above its
  * `data-screen-label="Dashboard"` main). The ADMIN/EMAIL chips are prototype
@@ -22,15 +33,18 @@ const VENDOR_TABS = [...PUBLIC_TABS, { href: "/profile", label: "โปรไฟ
 export function AppHeader() {
   const pathname = usePathname();
   const { signedIn, ready } = useViewer();
+  const inAdmin = pathname.startsWith("/admin");
+  const tabs = inAdmin ? ADMIN_TABS : signedIn ? VENDOR_TABS : PUBLIC_TABS;
 
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${inAdmin ? styles.headerAdmin : ""}`}>
       <Link href="/" className={styles.brand}>
         TOR RADAR
       </Link>
+      {inAdmin && <span className={styles.adminBadge}>ผู้ดูแลระบบ</span>}
       <nav className={styles.tabs}>
-        {(signedIn ? VENDOR_TABS : PUBLIC_TABS).map((tab) => {
-          const active = pathname.startsWith(tab.href);
+        {tabs.map((tab) => {
+          const active = "exact" in tab && tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
@@ -47,7 +61,13 @@ export function AppHeader() {
           Nothing is rendered until the stored viewer state has been read, so
           the header never flashes the wrong branch on first paint.
         */}
-        {ready && !signedIn && (
+        {inAdmin && (
+          <Link href="/dashboard" className={styles.signIn}>
+            ออกจากมุมมองผู้ดูแล
+          </Link>
+        )}
+
+        {ready && !signedIn && !inAdmin && (
           <>
             <Link href="/login" className={styles.signIn}>
               เข้าสู่ระบบ

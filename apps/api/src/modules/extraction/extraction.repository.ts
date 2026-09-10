@@ -13,6 +13,8 @@ export interface ExtractionResult {
   announcedAt: Date | null;
   confidenceLevel: ConfidenceLevel;
   unverified: boolean;
+  /** Why a reviewer is needed — empty unless the record graded low (FR-G-1). */
+  reviewReasons: string[];
   hasTextLayer: boolean;
   provenance: Provenance;
 }
@@ -44,6 +46,7 @@ export class ExtractionRepository {
           announcedAt: result.announcedAt,
           confidenceLevel: result.confidenceLevel,
           unverified: result.unverified,
+          reviewReasons: result.reviewReasons,
           hasTextLayer: result.hasTextLayer,
           provenance: result.provenance,
           updatedAt: new Date(),

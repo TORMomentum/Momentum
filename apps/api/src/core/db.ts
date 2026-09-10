@@ -15,6 +15,8 @@ export interface TorDocument {
   unverified: boolean;
   /** Digital PDF text layer vs an OCR'd scan - drives grading (SRS §4.2.1). */
   hasTextLayer?: boolean;
+  /** Why the record is in the review queue (FR-G-1); absent or empty otherwise. */
+  reviewReasons?: string[];
   provenance?: Provenance;
   /**
    * The most recent transitions only, for the detail screen (FR-E-5). Capped at
@@ -46,6 +48,20 @@ export interface TorEventDocument {
  * policy - lowering it loses nothing.
  */
 export const STATUS_HISTORY_KEPT = 10;
+
+/**
+ * One admin edit to one field, kept forever (FR-G-2): the correction is the
+ * training signal for a later extractor, and the audit trail for a published
+ * value that a human changed. Never updated, only appended.
+ */
+export interface CorrectionDocument {
+  torId: string;
+  field: string;
+  before: unknown;
+  after: unknown;
+  actor: string;
+  at: Date;
+}
 
 export interface JobDocument {
   torId: string;
@@ -84,6 +100,10 @@ export function torEvents(db: Db): Collection<TorEventDocument> {
   return db.collection<TorEventDocument>("tor_events");
 }
 
+export function corrections(db: Db): Collection<CorrectionDocument> {
+  return db.collection<CorrectionDocument>("corrections");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
@@ -103,6 +123,13 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // Every audit read is "this TOR, newest first". A collection growing to
   // millions of small documents is ordinary; a document growing is not.
   await torEvents(db).createIndex({ torId: 1, at: -1 });
+  // The review queue: records still needing a human, oldest first so nothing
+  // starves. `unverified` leads because approval clears it, which is what takes
+  // a record out of the queue.
+  await tors(db).createIndex({ unverified: 1, confidenceLevel: 1, createdAt: 1 });
+  // Corrections are read per record (audit) and per field (few-shot examples).
+  await corrections(db).createIndex({ torId: 1, at: -1 });
+  await corrections(db).createIndex({ field: 1, at: -1 });
   await jobs(db).createIndex({ state: 1, nextRunAt: 1 });
   await jobs(db).createIndex({ torId: 1, state: 1 });
 }

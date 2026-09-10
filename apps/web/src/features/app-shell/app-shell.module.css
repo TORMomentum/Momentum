@@ -359,3 +359,17 @@
 @media (max-width: 900px) {
   .header { padding: 0 20px; gap: 16px; }
 }
+
+/* Staff mode: the same header, marked so nobody mistakes it for the public site. */
+.headerAdmin { border-bottom: 2px solid var(--anomaly); }
+
+.adminBadge {
+  font: 600 9.5px var(--data);
+  letter-spacing: 0.1em;
+  color: var(--anomaly);
+  background: rgba(180, 83, 9, 0.1);
+  border: 1px solid rgba(180, 83, 9, 0.3);
+  border-radius: 3px;
+  padding: 3px 7px;
+  margin-left: -10px;
+}

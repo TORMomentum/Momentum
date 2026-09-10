@@ -52,12 +52,17 @@ export interface TorFields {
   referenceNo?: ExtractedField;
 }
 
+/** Why a record entered the review queue (FR-G-1), as stable machine keys. */
+export type ReviewReason = string;
+
 export interface TorRecord {
   id: string;
   contentHash: string;
   storage: { bucket: string; key: string; contentType: string; bytes: number };
   sourceRefs: SourceRef[];
   pipeline: { state: PipelineState; attempts: number; failedReason?: string };
+  /** Empty unless the record is queued for review. */
+  reviewReasons?: ReviewReason[];
   fields: Partial<TorFields>;
   announcedAt: string | null;
   sourceUrl: string | null;

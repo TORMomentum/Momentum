@@ -8,6 +8,10 @@ import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
 import { IntakeService } from "./modules/intake/intake.service.js";
 import { buildIntakeRouter } from "./modules/intake/intake.routes.js";
+import { HistoryRepository } from "./modules/history/history.repository.js";
+import { AdminRepository } from "./modules/admin/admin.repository.js";
+import { AdminService } from "./modules/admin/admin.service.js";
+import { buildAdminRouter } from "./modules/admin/admin.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -55,6 +59,25 @@ export function buildApp(config: Config, db: Db): Express {
         maxBytes: config.fetchMaxBytes,
       },
       rateLimitPerMinute: config.intakeRateLimit,
+    }),
+  );
+
+  const queue = new MongoQueue(db, {
+    maxAttempts: config.jobMaxAttempts,
+    backoffMs: config.jobBackoffMs,
+    lockMs: config.jobLockMs,
+  });
+
+  app.use(
+    `${API_PREFIX}/admin`,
+    buildAdminRouter({
+      service: new AdminService({
+        repo: new AdminRepository(db),
+        history: new HistoryRepository(db),
+        queue,
+      }),
+      adminKeys: config.adminApiKeys,
+      queuePageSize: config.adminQueuePageSize,
     }),
   );
 
