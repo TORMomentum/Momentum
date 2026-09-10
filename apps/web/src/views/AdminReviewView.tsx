@@ -56,6 +56,23 @@ function reasonLabel(reason: string): string {
   return REASON_LABELS[reason] ?? reason;
 }
 
+/** Inline, because two chevrons do not justify an icon dependency. */
+function ChevronLeft() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
 export function AdminReviewView({
   queue,
   unverifiedNotQueued,
@@ -70,6 +87,9 @@ export function AdminReviewView({
   activeReason?: string;
 }) {
   const [search, setSearch] = useState("");
+  // Collapsing the queue gives the document and the fields the whole width,
+  // which is what a reviewer wants once they have chosen what to work on.
+  const [queueOpen, setQueueOpen] = useState(true);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -127,9 +147,36 @@ export function AdminReviewView({
 
       {offline && <div className={styles.overviewOffline}>{offline}</div>}
 
-      <div className={styles.adminBody}>
-        <div className={styles.adminQueueList}>
+      <div className={`${styles.adminBody} ${queueOpen ? "" : styles.adminBodyCollapsed}`}>
+        {!queueOpen && (
+          <button
+            type="button"
+            className={styles.queueRail}
+            onClick={() => setQueueOpen(true)}
+            title="แสดงคิว"
+            aria-label="แสดงคิว"
+            aria-expanded={false}
+          >
+            <ChevronRight />
+            <span className={styles.queueRailCount}>{queue.length}</span>
+          </button>
+        )}
+
+        <div className={`${styles.adminQueueList} ${queueOpen ? "" : styles.adminQueueListHidden}`}>
           <div className={styles.queueTools}>
+            <div className={styles.queueToolsHead}>
+              <span className={styles.queueToolsTitle}>คิวตรวจสอบ</span>
+              <button
+                type="button"
+                className={styles.queueCollapse}
+                onClick={() => setQueueOpen(false)}
+                title="ย่อคิว"
+                aria-label="ย่อคิว"
+                aria-expanded
+              >
+                <ChevronLeft />
+              </button>
+            </div>
             <input
               className={styles.queueSearch}
               value={search}
