@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styles from "./app-shell.module.css";
 import { HEADER_NOTIFICATIONS } from "../../data/notifications";
 import { useNotifications } from "../../shared/lib/notifications";
 import { useViewer } from "../../shared/lib/viewer";
+import { endStaffSessionAction } from "./session.actions";
 
 const DOT_CLASS: Record<string, string> = {
   match: styles.bellItemDotMatch,
@@ -23,6 +25,7 @@ const DOT_CLASS: Record<string, string> = {
  * pair for these controls once someone is signed in.
  */
 export function AccountControls() {
+  const router = useRouter();
   const { account, signOut } = useViewer();
   const { items, unreadCount, markRead, markAllRead } = useNotifications();
   const [bellOpen, setBellOpen] = useState(false);
@@ -198,22 +201,29 @@ export function AccountControls() {
             <div className={styles.menuDivider} />
 
             {/*
-              This ends the prototype session — it forgets the stored account
-              and returns to the public landing page. There is no server-side
-              session to tear down until slice 4; when there is, the teardown
-              call goes here and the item itself does not move.
+              Signing out ends BOTH sessions: the prototype viewer in browser
+              storage, which the client forgets, and the staff session, which
+              is an httpOnly cookie only the server can clear. Dropping the
+              visible identity while leaving privileges live is the failure
+              this call exists to prevent.
             */}
-            <Link
-              href="/"
+            <button
+              type="button"
               role="menuitem"
               className={styles.menuSignOut}
-              onClick={() => {
+              onClick={async () => {
                 setMenuOpen(false);
                 signOut();
+                // Awaited, not fired and forgotten: navigating first cancels
+                // the request, and the staff cookie survives a sign-out that
+                // looked like it worked.
+                await endStaffSessionAction();
+                router.replace("/");
+                router.refresh();
               }}
             >
               ออกจากระบบ
-            </Link>
+            </button>
           </div>
         )}
       </div>

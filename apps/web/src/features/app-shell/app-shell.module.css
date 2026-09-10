@@ -378,3 +378,20 @@
   padding: 3px 7px;
   margin-left: -10px;
 }
+
+/* The way back into the staff area, shown on the public side while a staff
+   session is live. It wears the same blue as the badge on purpose: blue is
+   this product's "you are in a different mode", and the alarm colour stays
+   reserved for things that need a person. */
+.staffReturn {
+  font: 600 10px var(--data);
+  letter-spacing: 0.08em;
+  color: var(--blue);
+  background: var(--blue-wash);
+  border: 1px solid var(--blue-ring);
+  border-radius: 999px;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.staffReturn:hover { background: var(--blue-ring); }

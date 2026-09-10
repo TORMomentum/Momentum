@@ -30,7 +30,7 @@ const ADMIN_TABS = [
  * `data-screen-label="Dashboard"` main). The ADMIN/EMAIL chips are prototype
  * navigation for jumping between demo states and are deliberately absent.
  */
-export function AppHeader() {
+export function AppHeader({ staff = false }: { staff?: boolean }) {
   const pathname = usePathname();
   const { signedIn, ready } = useViewer();
   const inAdmin = pathname.startsWith("/admin");
@@ -61,9 +61,28 @@ export function AppHeader() {
           Nothing is rendered until the stored viewer state has been read, so
           the header never flashes the wrong branch on first paint.
         */}
+        {/*
+          One slot, two states. Inside the staff area it leaves; outside it,
+          while the staff session is still alive, it goes back — otherwise
+          leaving the area is a one-way door, which is what it was.
+
+          Leaving the VIEW is not ending the SESSION. Ending it lives in the
+          account menu, with the other sign-out.
+        */}
         {inAdmin && (
           <Link href="/dashboard" className={styles.signIn}>
             ออกจากมุมมองผู้ดูแล
+          </Link>
+        )}
+
+        {/*
+          Worded to mirror the exit above it — ออกจาก / กลับสู่ acting on the
+          same มุมมองผู้ดูแล. A noun like "ส่วนผู้ดูแลระบบ" reads as a label
+          for where you are, not as the way back to where you were.
+        */}
+        {!inAdmin && staff && (
+          <Link href="/admin" className={styles.staffReturn}>
+            กลับสู่มุมมองผู้ดูแล
           </Link>
         )}
 
