@@ -52,6 +52,11 @@ export interface FieldEdit {
   value: string;
 }
 
+/** The nine required FR-B-2 fields; optional display extras are not review fields. */
+export type ReviewFieldName = {
+  [Field in keyof TorFields]-?: object extends Pick<TorFields, Field> ? never : Field;
+}[keyof TorFields];
+
 /**
  * The only admin code that touches MongoDB.
  *
@@ -168,6 +173,23 @@ export class AdminRepository {
     }
 
     await tors(this.db).updateOne({ _id: new ObjectId(torId) }, { $set: set });
+  }
+
+  /**
+   * Records a human affirmation without turning it into extractor training
+   * data. In particular, this deliberately does not touch `corrections`, the
+   * field confidence, or the record confidence level.
+   */
+  async setFieldVerification(
+    torId: string,
+    field: ReviewFieldName,
+    confirmed: boolean,
+  ): Promise<void> {
+    const result = await tors(this.db).updateOne(
+      { _id: new ObjectId(torId) },
+      { $set: { [`fields.${field}.verified`]: confirmed, updatedAt: new Date() } },
+    );
+    if (result.matchedCount === 0) throw new NotFoundError(`tor ${torId} not found`);
   }
 
   /**

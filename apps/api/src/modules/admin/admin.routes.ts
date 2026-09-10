@@ -1,6 +1,8 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
+import type { TorFields } from "@tor-radar/shared";
 import { requireKey } from "../intake/intake.auth.js";
+import type { ReviewFieldName } from "./admin.repository.js";
 import type { AdminService } from "./admin.service.js";
 
 export interface AdminRouterDeps {
@@ -19,26 +21,34 @@ const queueQuerySchema = z.object({
   reason: z.string().min(1).max(64).optional(),
 });
 
+const reviewFieldNames = [
+  "title",
+  "agency",
+  "budget",
+  "category",
+  "scopeSummary",
+  "qualifications",
+  "deadline",
+  "contact",
+  "torStatus",
+] as const satisfies readonly ReviewFieldName[];
+
+const editableFieldNames = [
+  ...reviewFieldNames,
+  "procurementMethod",
+  "referenceNo",
+] as const satisfies readonly (keyof TorFields)[];
+
 const editSchema = z.object({
-  field: z.enum([
-    "title",
-    "agency",
-    "budget",
-    "category",
-    "scopeSummary",
-    "qualifications",
-    "deadline",
-    "contact",
-    "torStatus",
-    "procurementMethod",
-    "referenceNo",
-  ]),
+  field: z.enum(editableFieldNames),
   value: z.string().max(4000),
 });
 
 const editsBodySchema = z.object({ edits: z.array(editSchema).max(20).default([]) });
 
 const rejectSchema = z.object({ reason: z.string().min(3).max(300) });
+const verificationParamsSchema = z.object({ field: z.enum(reviewFieldNames) });
+const verificationBodySchema = z.object({ confirmed: z.boolean() });
 
 /**
  * The review queue's HTTP surface (FR-G-1, FR-G-2).
@@ -73,9 +83,20 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
     res.json(await deps.service.load(req.params.id));
   });
 
+  router.get("/tors/:id/document", async (req, res) => {
+    res.json(await deps.service.document(req.params.id));
+  });
+
   router.patch("/tors/:id/fields", async (req, res) => {
     const { edits } = editsBodySchema.parse(req.body);
     const record = await deps.service.correct(req.params.id, edits, actorOf(req));
+    res.json(record);
+  });
+
+  router.patch("/tors/:id/fields/:field/verification", async (req, res) => {
+    const { field } = verificationParamsSchema.parse(req.params);
+    const { confirmed } = verificationBodySchema.parse(req.body);
+    const record = await deps.service.verifyField(req.params.id, field, confirmed, actorOf(req));
     res.json(record);
   });
 

@@ -23,6 +23,7 @@ export const API_PREFIX = "/api/v1";
  */
 export function buildApp(config: Config, db: Db): Express {
   const app = express();
+  const storage = new MinioStorage(config.minio);
 
   app.use(express.json());
 
@@ -34,7 +35,7 @@ export function buildApp(config: Config, db: Db): Express {
   app.use("/sources", sourcesRouter);
 
   const service = new IntakeService(
-    new MinioStorage(config.minio),
+    storage,
     new MongoQueue(db, {
       maxAttempts: config.jobMaxAttempts,
       backoffMs: config.jobBackoffMs,
@@ -75,6 +76,8 @@ export function buildApp(config: Config, db: Db): Express {
         repo: new AdminRepository(db),
         history: new HistoryRepository(db),
         queue,
+        storage,
+        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
         tLow: config.tLow,
       }),
       adminKeys: config.adminApiKeys,
