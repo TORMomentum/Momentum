@@ -25,7 +25,16 @@
 
 .adminExitLink { margin-left: auto; white-space: nowrap; font: 11px var(--data); color: var(--blue); }
 
-.adminBody { display: grid; grid-template-columns: 330px 1fr; }
+/* The queue's two widths are named once, because three things read them: the
+   grid, the collapsed grid, and the edge toggle that sits on the seam between
+   the columns. A literal repeated in three places drifts on the first change. */
+.adminBody {
+  --queue-width: 330px;
+  --queue-width-collapsed: 44px;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--queue-width) 1fr;
+}
 
 .adminQueueList { border-right: var(--rule); padding: 18px 0; }
 
@@ -331,26 +340,55 @@
 
 /* ---------- collapsing the queue column ---------- */
 /* The grid drives it, so the editor simply takes the width back. */
-.adminBodyCollapsed { grid-template-columns: 44px 1fr; }
+.adminBodyCollapsed { grid-template-columns: var(--queue-width-collapsed) 1fr; }
+
+/* The toggle rides the seam between the two columns rather than sitting inside
+   the queue's heading, where it read as part of the title. One control, present
+   in both states, centred on the divider it moves. */
+.queueEdgeToggle {
+  position: absolute;
+  top: 16px;
+  left: var(--queue-width);
+  transform: translateX(-50%);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--ink-28);
+  border-radius: 99px;
+  background: var(--paper);
+  color: var(--ink-70);
+  cursor: pointer;
+}
+
+.adminBodyCollapsed .queueEdgeToggle { left: var(--queue-width-collapsed); }
+
+.queueEdgeToggle:hover { border-color: var(--blue); color: var(--blue); }
+
+.queueEdgeToggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Below the breakpoint the columns stack, so there is no seam to ride and
+   nothing to collapse. */
+@media (max-width: 900px) {
+  .queueEdgeToggle { display: none; }
+}
 
 .adminQueueListHidden { display: none; }
 
+/* Not a control any more — it reports what is still waiting while the column is
+   folded. The toggle on the seam is what opens it. The count sits below the
+   toggle rather than beside it, so the two do not overlap. */
 .queueRail {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 18px 0;
+  padding: 74px 0 18px;
   border-right: var(--rule);
   background: var(--panel);
   color: var(--ink-70);
-  border-top: 0;
-  border-left: 0;
-  border-bottom: 0;
-  cursor: pointer;
 }
-
-.queueRail:hover { color: var(--blue); }
 
 .queueRailCount {
   font: 600 10px var(--data);
@@ -364,16 +402,3 @@
 
 .queueToolsTitle { font: 600 11px var(--body); color: var(--ink-55); letter-spacing: 0.04em; }
 
-.queueCollapse {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--ink-28);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink-70);
-  cursor: pointer;
-}
-
-.queueCollapse:hover { border-color: var(--blue); color: var(--blue); }

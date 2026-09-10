@@ -21,6 +21,9 @@ import type { QueueEntry, ReviewRecord } from "../shared/lib/admin-api";
  */
 
 /** The nine extracted fields, in the order a reviewer reads a document. */
+/** The toggle names the region it opens, so a screen reader is told what moved. */
+const QUEUE_LIST_ID = "admin-review-queue";
+
 const FIELD_ORDER = [
   { key: "title", label: "ชื่อโครงการ" },
   { key: "agency", label: "หน่วยงาน" },
@@ -148,34 +151,33 @@ export function AdminReviewView({
       {offline && <div className={styles.overviewOffline}>{offline}</div>}
 
       <div className={`${styles.adminBody} ${queueOpen ? "" : styles.adminBodyCollapsed}`}>
+        {/* One control, on the seam between the columns, in both states — the
+            rail beside it only reports how many are still waiting. */}
+        <button
+          type="button"
+          className={styles.queueEdgeToggle}
+          onClick={() => setQueueOpen(!queueOpen)}
+          title={queueOpen ? "ย่อคิว" : "แสดงคิว"}
+          aria-label={queueOpen ? "ย่อคิว" : "แสดงคิว"}
+          aria-expanded={queueOpen}
+          aria-controls={QUEUE_LIST_ID}
+        >
+          {queueOpen ? <ChevronLeft /> : <ChevronRight />}
+        </button>
+
         {!queueOpen && (
-          <button
-            type="button"
-            className={styles.queueRail}
-            onClick={() => setQueueOpen(true)}
-            title="แสดงคิว"
-            aria-label="แสดงคิว"
-            aria-expanded={false}
-          >
-            <ChevronRight />
+          <div className={styles.queueRail}>
             <span className={styles.queueRailCount}>{queue.length}</span>
-          </button>
+          </div>
         )}
 
-        <div className={`${styles.adminQueueList} ${queueOpen ? "" : styles.adminQueueListHidden}`}>
+        <div
+          id={QUEUE_LIST_ID}
+          className={`${styles.adminQueueList} ${queueOpen ? "" : styles.adminQueueListHidden}`}
+        >
           <div className={styles.queueTools}>
             <div className={styles.queueToolsHead}>
               <span className={styles.queueToolsTitle}>คิวตรวจสอบ</span>
-              <button
-                type="button"
-                className={styles.queueCollapse}
-                onClick={() => setQueueOpen(false)}
-                title="ย่อคิว"
-                aria-label="ย่อคิว"
-                aria-expanded
-              >
-                <ChevronLeft />
-              </button>
             </div>
             <input
               className={styles.queueSearch}
