@@ -386,7 +386,7 @@
    in both states, centred on the divider it moves. */
 .queueEdgeToggle {
   position: absolute;
-  top: 16px;
+  top: 44px;
   left: var(--queue-width);
   transform: translateX(-50%);
   z-index: 2;
@@ -416,25 +416,11 @@
 
 .adminQueueListHidden { display: none; }
 
-/* Not a control any more — it reports what is still waiting while the column is
-   folded. The toggle on the seam is what opens it. The count sits below the
-   toggle rather than beside it, so the two do not overlap. */
+/* The folded column: a divider and a tint. It carries no count — see the note
+   in AdminReviewView for why nothing goes here. */
 .queueRail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 74px 0 18px;
   border-right: var(--rule);
   background: var(--panel);
-  color: var(--ink-70);
-}
-
-.queueRailCount {
-  font: 600 10px var(--data);
-  color: var(--paper);
-  background: var(--anomaly);
-  border-radius: 99px;
-  padding: 2px 6px;
 }
 
 .queueToolsHead { display: flex; align-items: center; justify-content: space-between; }

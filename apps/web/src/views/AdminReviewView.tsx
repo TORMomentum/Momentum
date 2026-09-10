@@ -21,10 +21,10 @@ import type { QueueEntry, ReviewRecord } from "../shared/lib/admin-api";
  * server actions for the same reason.
  */
 
-/** The nine extracted fields, in the order a reviewer reads a document. */
 /** The toggle names the region it opens, so a screen reader is told what moved. */
 const QUEUE_LIST_ID = "admin-review-queue";
 
+/** The nine extracted fields, in the order a reviewer reads a document. */
 const FIELD_ORDER = [
   { key: "title", label: "ชื่อโครงการ" },
   { key: "agency", label: "หน่วยงาน" },
@@ -180,8 +180,7 @@ export function AdminReviewView({
         </div>
       ) : (
       <div className={`${styles.adminBody} ${queueOpen ? "" : styles.adminBodyCollapsed}`}>
-        {/* One control, on the seam between the columns, in both states — the
-            rail beside it only reports how many are still waiting. */}
+        {/* One control, on the seam between the columns, in both states. */}
         <button
           type="button"
           className={styles.queueEdgeToggle}
@@ -194,11 +193,17 @@ export function AdminReviewView({
           {queueOpen ? <ChevronLeft /> : <ChevronRight />}
         </button>
 
-        {!queueOpen && (
-          <div className={styles.queueRail}>
-            <span className={styles.queueRailCount}>{queue.length}</span>
-          </div>
-        )}
+        {/*
+          The folded column is a divider and a tint, and carries no count.
+
+          The count was tried on the seam, on the toggle, and on a rail icon,
+          and every position looked arbitrary for the same reason: it is the
+          number the header already states two lines above, on a screen the
+          reader is already looking at, painted in the colour reserved for
+          things that need a person. There was no right place for a mark that
+          should not be there.
+        */}
+        {!queueOpen && <div className={styles.queueRail} />}
 
         <div
           id={QUEUE_LIST_ID}
