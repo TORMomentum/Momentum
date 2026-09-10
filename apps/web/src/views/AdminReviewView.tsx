@@ -74,16 +74,24 @@ export function AdminReviewView({
   const [toast, setToast] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  /** Search filters what is already loaded — no round trip while typing. */
+  /**
+   * Search filters what is already loaded — no round trip while typing.
+   *
+   * The record id is matched by PREFIX, never as a substring. A 24-character
+   * hex id contains most letters and digits, so including it in the free-text
+   * haystack made "a" or "2f" match every row — a search that returns
+   * everything is the same as no search at all.
+   */
   const shown = useMemo(() => {
     const needle = search.trim().toLowerCase();
     if (!needle) return queue;
-    return queue.filter((item) =>
-      [item.title, item.agency, item.id, ...item.reviewReasons.map(reasonLabel)]
+
+    return queue.filter((item) => {
+      const text = [item.title, item.agency, ...item.reviewReasons.map(reasonLabel)]
         .join(" ")
-        .toLowerCase()
-        .includes(needle),
-    );
+        .toLowerCase();
+      return text.includes(needle) || item.id.toLowerCase().startsWith(needle);
+    });
   }, [queue, search]);
 
   /** Every reason present in the queue, for the triage chips. */
