@@ -379,11 +379,14 @@
   margin-left: -10px;
 }
 
-/* The way back into the staff area, shown on the public side while a staff
-   session is live. It wears the same blue as the badge on purpose: blue is
-   this product's "you are in a different mode", and the alarm colour stays
-   reserved for things that need a person. */
-.staffReturn {
+/* The mode switch, worn by BOTH directions — ออกจาก inside the staff area and
+   กลับสู่ outside it. One control in two states, so one style: two treatments
+   for one job made them read as unrelated links that happened to sit in the
+   same corner.
+
+   Blue because blue is this product's "you are in a different mode"; the alarm
+   colour stays reserved for things that need a person. */
+.modeSwitch {
   font: 600 10px var(--data);
   letter-spacing: 0.08em;
   color: var(--blue);
@@ -394,4 +397,4 @@
   white-space: nowrap;
 }
 
-.staffReturn:hover { background: var(--blue-ring); }
+.modeSwitch:hover { background: var(--blue-ring); }

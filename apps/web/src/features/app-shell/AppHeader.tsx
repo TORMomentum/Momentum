@@ -70,7 +70,7 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
           account menu, with the other sign-out.
         */}
         {inAdmin && (
-          <Link href="/dashboard" className={styles.signIn}>
+          <Link href="/dashboard" className={styles.modeSwitch}>
             ออกจากมุมมองผู้ดูแล
           </Link>
         )}
@@ -81,7 +81,7 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
           for where you are, not as the way back to where you were.
         */}
         {!inAdmin && staff && (
-          <Link href="/admin" className={styles.staffReturn}>
+          <Link href="/admin" className={styles.modeSwitch}>
             กลับสู่มุมมองผู้ดูแล
           </Link>
         )}
