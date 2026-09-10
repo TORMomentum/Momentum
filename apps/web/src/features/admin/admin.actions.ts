@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../../shared/lib/staff-session";
 import {
   approve as approveRecord,
   reextract as reextractRecord,
@@ -24,21 +25,33 @@ import {
 const REVIEW_PATH = "/admin/review";
 
 export async function saveCorrections(id: string, edits: FieldEdit[]): Promise<void> {
+  // Server Actions are public HTTP entry points, so every mutation checks the
+  // staff session itself before the server-held admin key can be spent.
+  await requireStaff();
   await saveEdits(id, edits);
   revalidatePath(REVIEW_PATH);
 }
 
 export async function approveRecordAction(id: string, edits: FieldEdit[]): Promise<void> {
+  // Server Actions are public HTTP entry points, so every mutation checks the
+  // staff session itself before the server-held admin key can be spent.
+  await requireStaff();
   await approveRecord(id, edits);
   revalidatePath(REVIEW_PATH);
 }
 
 export async function reextractRecordAction(id: string): Promise<void> {
+  // Server Actions are public HTTP entry points, so every mutation checks the
+  // staff session itself before the server-held admin key can be spent.
+  await requireStaff();
   await reextractRecord(id);
   revalidatePath(REVIEW_PATH);
 }
 
 export async function rejectRecordAction(id: string, reason: string): Promise<void> {
+  // Server Actions are public HTTP entry points, so every mutation checks the
+  // staff session itself before the server-held admin key can be spent.
+  await requireStaff();
   await rejectRecord(id, reason);
   revalidatePath(REVIEW_PATH);
 }

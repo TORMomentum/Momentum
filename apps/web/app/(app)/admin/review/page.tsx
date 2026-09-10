@@ -1,10 +1,14 @@
 import { AdminReviewView } from "../../../../src/views/AdminReviewView";
+import { redirect } from "next/navigation";
 import {
   AdminApiUnavailable,
   fetchQueue,
   fetchRecord,
   type ReviewRecord,
 } from "../../../../src/shared/lib/admin-api";
+import {
+  isStaff,
+} from "../../../../src/shared/lib/staff-session";
 
 /**
  * Staff-only screen (FR-G-1). The queue and the selected record are fetched on
@@ -18,6 +22,10 @@ export default async function AdminReviewPage({
 }: {
   searchParams: Promise<{ id?: string; reason?: string }>;
 }) {
+  // Page checks protect reads; the separate checks inside Server Actions
+  // protect direct mutation requests that never render this page.
+  if (!(await isStaff())) redirect("/admin/login");
+
   const { id, reason } = await searchParams;
 
   let queue: Awaited<ReturnType<typeof fetchQueue>> = { items: [], unverifiedNotQueued: 0 };

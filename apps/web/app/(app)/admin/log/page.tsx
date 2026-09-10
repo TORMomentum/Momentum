@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import styles from "../../../../src/features/admin/admin.module.css";
 import { fetchEvents, AdminApiUnavailable } from "../../../../src/shared/lib/admin-api";
+import {
+  isStaff,
+} from "../../../../src/shared/lib/staff-session";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +36,10 @@ function label(value: string | null, table: Record<string, string>): string {
  * record holds only the last few entries, for the detail screen.
  */
 export default async function AdminLogPage() {
+  // Page checks protect reads; the separate checks inside Server Actions
+  // protect direct mutation requests that never render this page.
+  if (!(await isStaff())) redirect("/admin/login");
+
   let events: Awaited<ReturnType<typeof fetchEvents>> = [];
   let offline: string | null = null;
 

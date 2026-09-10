@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import styles from "../../../src/features/admin/admin.module.css";
 import { fetchOverview, AdminApiUnavailable } from "../../../src/shared/lib/admin-api";
+import { isStaff } from "../../../src/shared/lib/staff-session";
 
 /**
  * The staff landing page: what needs doing, and where the rest of the area is.
@@ -12,6 +14,10 @@ import { fetchOverview, AdminApiUnavailable } from "../../../src/shared/lib/admi
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
+  // Page checks protect reads; the separate checks inside Server Actions
+  // protect direct mutation requests that never render this page.
+  if (!(await isStaff())) redirect("/admin/login");
+
   let overview = null;
   let offline: string | null = null;
 
