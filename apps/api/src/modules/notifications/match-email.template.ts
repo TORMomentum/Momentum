@@ -81,6 +81,14 @@ const URGENT_DAYS = 7;
 const FONT = "'IBM Plex Sans Thai', 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif";
 const MONO = "'IBM Plex Mono', Consolas, monospace";
 
+/**
+ * Every date in this product is a Thai calendar date: the announcement said
+ * "25 ส.ค." and the vendor's deadline is that day in Bangkok, whatever the
+ * server's clock is set to. Formatting with the local-time getters printed one
+ * day earlier on a UTC host — which CI is, and so is every deployment.
+ */
+const DISPLAY_TIME_ZONE = "Asia/Bangkok";
+
 const THAI_MONTHS = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
@@ -103,9 +111,18 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Buddhist-era, matching every date shown in the interface. */
+/** Buddhist-era, in Bangkok time, matching every date shown in the interface. */
 export function formatThaiDate(date: Date): string {
-  return `${date.getDate()} ${THAI_MONTHS[date.getMonth()]} ${date.getFullYear() + 543}`;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DISPLAY_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? "0");
+
+  return `${value("day")} ${THAI_MONTHS[value("month") - 1]} ${value("year") + 543}`;
 }
 
 export function formatBaht(amount: number): string {

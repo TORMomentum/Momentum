@@ -39,6 +39,19 @@ describe("match email", () => {
     expect(render([tor()]).html).toContain("25 ส.ค. 2569");
   });
 
+  it("formats in Bangkok time, not the server's — a deadline must not shift a day", () => {
+    // Midnight in Bangkok is 17:00 the previous day in UTC. Formatting with the
+    // local-time getters printed the day before on any UTC host, which is CI
+    // and every deployment. The vendor acts on this date.
+    const bangkokMidnight = new Date("2026-08-25T00:00:00+07:00");
+    expect(formatThaiDate(bangkokMidnight)).toBe("25 ส.ค. 2569");
+
+    // Late evening in Bangkok is still the same Thai day, though already the
+    // next day in UTC.
+    const lateEvening = new Date("2026-08-25T23:30:00+07:00");
+    expect(formatThaiDate(lateEvening)).toBe("25 ส.ค. 2569");
+  });
+
   it("escapes extracted values — a TOR title is untrusted input", () => {
     // Titles come from AI extraction of a document this system did not write.
     const attack = '<img src=x onerror="alert(1)">';
