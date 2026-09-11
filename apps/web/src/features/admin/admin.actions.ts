@@ -62,7 +62,17 @@ export async function reextractRecordAction(id: string): Promise<void> {
 export async function rejectRecordAction(id: string, reason: string): Promise<void> {
   // Server Actions are public HTTP entry points, so every mutation checks the
   // staff session itself before the server-held admin key can be spent.
+  //
+  // Authentication comes before validation, not after: answering "the reason is
+  // required" to a caller who has no session tells them the action exists and
+  // how it validates, for free.
   await requireStaff();
-  await rejectRecord(id, reason);
+
+  // FR-B-6: a restriction has to be explainable, so the audit entry cannot be
+  // written with an empty reason. The dialog enforces it too; this is the
+  // boundary that actually holds.
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) throw new Error("reject reason is required");
+  await rejectRecord(id, trimmedReason);
   revalidatePath(REVIEW_PATH);
 }

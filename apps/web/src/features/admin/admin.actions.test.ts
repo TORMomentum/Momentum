@@ -70,3 +70,36 @@ describe("admin Server Action authorization", () => {
     expect(mocks.setFieldVerification).not.toHaveBeenCalled();
   });
 });
+
+describe("rejectRecordAction reason", () => {
+  it("checks the staff session before it checks the reason", async () => {
+    await expect(rejectRecordAction("tor-1", "   ")).rejects.toThrow(
+      "staff authentication required",
+    );
+    expect(mocks.reject).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty or whitespace-only reason", async () => {
+    // Signed in, so the call reaches the reason guard. Authentication is
+    // checked first by design: an unauthenticated caller must not learn how
+    // the action validates.
+    mocks.requireStaff.mockResolvedValue(undefined);
+
+    await expect(rejectRecordAction("tor-1", "   ")).rejects.toThrow(
+      "reject reason is required",
+    );
+    expect(mocks.requireStaff).toHaveBeenCalled();
+    expect(mocks.reject).not.toHaveBeenCalled();
+  });
+
+  it("passes the reviewer's typed reason to the audit-producing API call", async () => {
+    mocks.requireStaff.mockResolvedValue(undefined);
+
+    await rejectRecordAction("tor-1", "  เอกสารไม่ตรงกับระเบียนที่นำเข้า  ");
+
+    expect(mocks.reject).toHaveBeenCalledWith(
+      "tor-1",
+      "เอกสารไม่ตรงกับระเบียนที่นำเข้า",
+    );
+  });
+});

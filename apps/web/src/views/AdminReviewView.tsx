@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { useMemo, useState, useTransition } from "react";
 import styles from "../features/admin/admin.module.css";
+import { AdminConfirmDialog } from "../features/admin/admin-confirm-dialog";
 import {
   approveRecordAction,
   reextractRecordAction,
@@ -87,6 +88,7 @@ export function AdminReviewView({
   const [queueOpen, setQueueOpen] = useState(true);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<"approve" | "reextract" | "reject" | null>(null);
   /** The signed URL that failed to load, if any — see the viewer below. */
   const [brokenDocUrl, setBrokenDocUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -116,9 +118,9 @@ export function AdminReviewView({
     ? FIELD_ORDER.filter(({ key }) => record.fields[key]?.verified).length
     : 0;
 
-  function run(action: () => Promise<void>, message: string, clearEdits = true) {
+  function run(action: () => Promise<void>, message: string, clearEdits = true): Promise<void> {
     setToast(null);
-    startTransition(async () => {
+    const result = (async () => {
       try {
         await action();
         if (clearEdits) setEdits({});
@@ -128,7 +130,9 @@ export function AdminReviewView({
         console.error("[admin/review] action failed", error);
         setToast("ทำรายการไม่สำเร็จ — ลองใหม่อีกครั้ง");
       }
-    });
+    })();
+    startTransition(() => result);
+    return result;
   }
 
   return (
@@ -396,7 +400,13 @@ export function AdminReviewView({
                     type="button"
                     className={styles.adminApproveBtn}
                     disabled={pending}
-                    onClick={() => run(() => approveRecordAction(record.id, pendingEdits), "✓ ยืนยันและเผยแพร่แล้ว · บันทึกการแก้ไขเป็นตัวอย่างสอน extractor")}
+                    onClick={() => {
+                      if (verifiedCount === FIELD_ORDER.length) {
+                        void run(() => approveRecordAction(record.id, pendingEdits), "✓ ยืนยันและเผยแพร่แล้ว · บันทึกการแก้ไขเป็นตัวอย่างสอน extractor");
+                      } else {
+                        setConfirmation("approve");
+                      }
+                    }}
                   >
                     ยืนยันและเผยแพร่
                   </button>
@@ -406,7 +416,7 @@ export function AdminReviewView({
                       type="button"
                       className={styles.adminSecondaryBtn}
                       disabled={pending}
-                      onClick={() => run(() => reextractRecordAction(record.id), "↻ ส่งกลับเข้าคิวสกัดใหม่แล้ว")}
+                      onClick={() => setConfirmation("reextract")}
                     >
                       สกัดใหม่
                     </button>
@@ -414,13 +424,60 @@ export function AdminReviewView({
                       type="button"
                       className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
                       disabled={pending}
-                      onClick={() => run(() => rejectRecordAction(record.id, "ไม่ใช่ TOR ที่เกี่ยวข้อง"), "✕ ปฏิเสธ — จำกัดการเข้าถึงและบันทึกเหตุผล ต้นฉบับยังเก็บไว้")}
+                      onClick={() => setConfirmation("reject")}
                     >
                       ปฏิเสธ
                     </button>
                   </div>
 
                 </footer>
+
+                <AdminConfirmDialog
+                  open={confirmation === "approve"}
+                  title="ยืนยันและเผยแพร่ระเบียนนี้หรือไม่"
+                  body={`ยังมี ${FIELD_ORDER.length - verifiedCount} ฟิลด์ที่ไม่ได้ยืนยัน การเผยแพร่จะนำระเบียนนี้ขึ้นเว็บไซต์สาธารณะ`}
+                  cancelLabel="ยกเลิก"
+                  confirmLabel="ยืนยันและเผยแพร่"
+                  tone="primary"
+                  onClose={() => setConfirmation(null)}
+                  onConfirm={() => run(
+                    () => approveRecordAction(record.id, pendingEdits),
+                    "✓ ยืนยันและเผยแพร่แล้ว · บันทึกการแก้ไขเป็นตัวอย่างสอน extractor",
+                  )}
+                />
+
+                <AdminConfirmDialog
+                  open={confirmation === "reextract"}
+                  title="สกัดข้อมูลใหม่หรือไม่"
+                  body={
+                    pendingEdits.length > 0
+                      ? "โมเดลจะเขียนทับค่าปัจจุบัน และการแก้ไขในแบบฟอร์มที่ยังไม่ได้บันทึกจะสูญหาย"
+                      : "โมเดลจะเขียนทับค่าปัจจุบันด้วยค่าที่สกัดใหม่"
+                  }
+                  cancelLabel="ยกเลิก"
+                  confirmLabel="สกัดใหม่"
+                  tone="primary"
+                  onClose={() => setConfirmation(null)}
+                  onConfirm={() => run(
+                    () => reextractRecordAction(record.id),
+                    "↻ ส่งกลับเข้าคิวสกัดใหม่แล้ว",
+                  )}
+                />
+
+                <AdminConfirmDialog
+                  open={confirmation === "reject"}
+                  title="ปฏิเสธระเบียนนี้หรือไม่"
+                  body="การปฏิเสธจะจำกัดการเข้าถึงสาธารณะและเขียนรายการลงบันทึกการตรวจสอบ เอกสารต้นฉบับจะยังถูกเก็บไว้และจะไม่ถูกลบ"
+                  cancelLabel="ยกเลิก"
+                  confirmLabel="ปฏิเสธ"
+                  tone="danger"
+                  reason={{ label: "เหตุผลในการปฏิเสธ" }}
+                  onClose={() => setConfirmation(null)}
+                  onConfirm={(reason) => run(
+                    () => rejectRecordAction(record.id, reason ?? ""),
+                    "✕ ปฏิเสธ — จำกัดการเข้าถึงและบันทึกเหตุผล ต้นฉบับยังเก็บไว้",
+                  )}
+                />
               </section>
             </>
           ) : (
