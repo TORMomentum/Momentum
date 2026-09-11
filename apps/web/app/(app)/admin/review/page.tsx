@@ -2,9 +2,12 @@ import { AdminReviewView } from "../../../../src/views/AdminReviewView";
 import { redirect } from "next/navigation";
 import {
   AdminApiUnavailable,
+  AdminRecordNotFound,
+  fetchDocument,
   fetchQueue,
   fetchRecord,
   type ReviewRecord,
+  type ReviewDocument,
 } from "../../../../src/shared/lib/admin-api";
 import {
   isStaff,
@@ -30,19 +33,51 @@ export default async function AdminReviewPage({
 
   let queue: Awaited<ReturnType<typeof fetchQueue>> = { items: [], unverifiedNotQueued: 0 };
   let record: ReviewRecord | null = null;
+  let document: ReviewDocument | null = null;
+  let documentError: string | null = null;
   let offline: string | null = null;
+
+  let missingRecord = false;
 
   try {
     queue = await fetchQueue(reason);
     // Opening the first item by default: a reviewer lands ready to work, and a
     // deep link from the activity log still wins.
-    const target = id ?? queue.items[0]?.id;
-    if (target) record = await fetchRecord(target);
+    const requested = id ?? queue.items[0]?.id;
+    let opened: string | undefined = requested;
+
+    if (requested) {
+      try {
+        record = await fetchRecord(requested);
+      } catch (error) {
+        // A deep link can outlive the record it points at — rejected, cleared,
+        // or merged since the link was made. That is not an outage, so the
+        // screen says so and falls back to the queue rather than going dark.
+        if (!(error instanceof AdminRecordNotFound)) throw error;
+        missingRecord = true;
+        opened = queue.items.find((item) => item.id !== requested)?.id;
+        record = opened ? await fetchRecord(opened) : null;
+      }
+    }
+
+    if (record && opened) {
+      try {
+        document = await fetchDocument(opened);
+      } catch (error) {
+        // The fields are still reviewable without the original beside them, so
+        // this degrades the panel rather than the page.
+        console.error("[admin/review] document url failed", error);
+        documentError = "เปิดต้นฉบับไม่ได้ในขณะนี้";
+      }
+    }
   } catch (error) {
+    // The detail goes to the server log; the reader gets a sentence. An API
+    // path and a JSON body are not something a reviewer can act on.
+    console.error("[admin/review] queue load failed", error);
     offline =
       error instanceof AdminApiUnavailable
         ? "ยังไม่ได้เชื่อมต่อกับ API — คิวจะปรากฏเมื่อบริการทำงาน"
-        : String(error);
+        : "โหลดคิวตรวจสอบไม่สำเร็จ — ลองใหม่อีกครั้ง";
   }
 
   return (
@@ -50,7 +85,10 @@ export default async function AdminReviewPage({
       queue={queue.items}
       unverifiedNotQueued={queue.unverifiedNotQueued}
       record={record}
+      document={document}
+      documentError={documentError}
       offline={offline}
+      missingRecord={missingRecord}
       activeReason={reason}
     />
   );

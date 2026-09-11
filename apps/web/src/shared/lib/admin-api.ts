@@ -55,7 +55,26 @@ function adminKey(): string {
   return (process.env.ADMIN_API_KEYS ?? "").split(",")[0]?.trim() ?? "";
 }
 
+/** The API could not be reached at all — a real outage. */
 export class AdminApiUnavailable extends Error {}
+
+/**
+ * The API answered, and the record is not there.
+ *
+ * Distinct from an outage on purpose: a deep link to a record that has since
+ * been rejected, merged or cleared is an ordinary thing for a reviewer to
+ * click, and telling them the service is down would be false.
+ */
+export class AdminRecordNotFound extends Error {}
+
+/**
+ * The API answered with a failure we have no specific handling for.
+ *
+ * It carries the detail for the server log; nothing renders `message` to a
+ * reader. An API path, a status code and a JSON body are not an error message
+ * a person can act on, and they do not belong on a Thai-language screen.
+ */
+export class AdminApiFailed extends Error {}
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
@@ -74,7 +93,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`${init.method ?? "GET"} ${path} → ${response.status}: ${body.slice(0, 300)}`);
+    const detail = `${init.method ?? "GET"} ${path} → ${response.status}: ${body.slice(0, 300)}`;
+    if (response.status === 404) throw new AdminRecordNotFound(detail);
+    throw new AdminApiFailed(detail);
   }
   return (await response.json()) as T;
 }
@@ -116,6 +137,17 @@ export function fetchRecord(id: string): Promise<ReviewRecord> {
   return call<ReviewRecord>(`/admin/tors/${encodeURIComponent(id)}`);
 }
 
+export interface ReviewDocument {
+  url: string;
+  expiresInSeconds: number;
+  contentType: string;
+  bytes: number;
+}
+
+export function fetchDocument(id: string): Promise<ReviewDocument> {
+  return call<ReviewDocument>(`/admin/tors/${encodeURIComponent(id)}/document`);
+}
+
 export interface FieldEdit {
   field: string;
   value: string;
@@ -126,6 +158,20 @@ export function saveEdits(id: string, edits: FieldEdit[]): Promise<ReviewRecord>
     method: "PATCH",
     body: JSON.stringify({ edits }),
   });
+}
+
+export function setFieldVerification(
+  id: string,
+  field: string,
+  confirmed: boolean,
+): Promise<ReviewRecord> {
+  return call<ReviewRecord>(
+    `/admin/tors/${encodeURIComponent(id)}/fields/${encodeURIComponent(field)}/verification`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ confirmed }),
+    },
+  );
 }
 
 export function approve(id: string, edits: FieldEdit[]): Promise<{ id: string }> {

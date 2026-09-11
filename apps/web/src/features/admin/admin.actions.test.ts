@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   approve: vi.fn(),
   reextract: vi.fn(),
   reject: vi.fn(),
+  setFieldVerification: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ vi.mock("../../shared/lib/admin-api", () => ({
   approve: mocks.approve,
   reextract: mocks.reextract,
   reject: mocks.reject,
+  setFieldVerification: mocks.setFieldVerification,
 }));
 
 import {
@@ -26,6 +28,7 @@ import {
   reextractRecordAction,
   rejectRecordAction,
   saveCorrections,
+  setFieldVerificationAction,
 } from "./admin.actions";
 
 beforeEach(() => {
@@ -58,5 +61,12 @@ describe("admin Server Action authorization", () => {
       "staff authentication required",
     );
     expect(mocks.reject).not.toHaveBeenCalled();
+  });
+
+  it("refuses setFieldVerificationAction before calling the admin API", async () => {
+    await expect(setFieldVerificationAction("tor-1", "budget", true)).rejects.toThrow(
+      "staff authentication required",
+    );
+    expect(mocks.setFieldVerification).not.toHaveBeenCalled();
   });
 });

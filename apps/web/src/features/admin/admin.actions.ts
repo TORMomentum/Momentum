@@ -7,6 +7,7 @@ import {
   reextract as reextractRecord,
   reject as rejectRecord,
   saveEdits,
+  setFieldVerification,
   type FieldEdit,
 } from "../../shared/lib/admin-api";
 
@@ -23,6 +24,16 @@ import {
  */
 
 const REVIEW_PATH = "/admin/review";
+
+export async function setFieldVerificationAction(
+  id: string,
+  field: string,
+  confirmed: boolean,
+): Promise<void> {
+  await requireStaff();
+  await setFieldVerification(id, field, confirmed);
+  revalidatePath(REVIEW_PATH);
+}
 
 export async function saveCorrections(id: string, edits: FieldEdit[]): Promise<void> {
   // Server Actions are public HTTP entry points, so every mutation checks the

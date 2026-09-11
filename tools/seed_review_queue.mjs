@@ -10,6 +10,8 @@
  * those and nothing else.
  */
 import { MongoClient, ObjectId } from "mongodb";
+import { Client as MinioClient } from "minio";
+import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -41,19 +43,19 @@ const RECORDS = [
     hasTextLayer: false,
     contentType: "image/jpeg",
     fields: {
-      title: field("จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", 0.91),
-      agency: field("สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", "สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", 0.88),
+      title: field("จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", 0.91, false, "เรื่อง จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง — หน้า 1 บรรทัดหัวเรื่อง"),
+      agency: field("สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", "สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", 0.88, false, "ประกาศ สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3 — หน้า 1 หัวกระดาษ"),
       budget: field("", null, 0.12, false, "ตัวเลขในภาพเบลอ — หน้า 2 ย่อหน้า 3"),
-      category: field("ก่อสร้าง / ปรับปรุงอาคาร", "ก่อสร้าง", 0.83),
+      category: field("ก่อสร้าง / ปรับปรุงอาคาร", "ก่อสร้าง", 0.83, false, "งานปรับปรุงอาคารเรียนและระบบไฟฟ้า — หน้า 1 ย่อหน้า 2"),
       scopeSummary: field(
         "ปรับปรุงอาคารเรียน 2 ชั้น 8 ห้องเรียน เปลี่ยนหลังคาและระบบไฟฟ้า พร้อมทาสีภายในภายนอก",
         "ปรับปรุงอาคารเรียน 2 ชั้น 8 ห้องเรียน เปลี่ยนหลังคาและระบบไฟฟ้า พร้อมทาสีภายในภายนอก",
         0.86,
       ),
-      qualifications: field("ผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป", ["ผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป"], 0.81),
-      deadline: field("29 ส.ค. 2569", "2026-08-29", 0.79),
-      contact: field("กลุ่มบริหารงานการเงิน 043-xxx-xxx", "กลุ่มบริหารงานการเงิน 043-xxx-xxx", 0.77),
-      torStatus: field("ประกาศ", "announced", 0.9),
+      qualifications: field("ผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป", ["ผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป"], 0.81, false, "ผู้ยื่นข้อเสนอต้องเป็นผู้รับเหมางานก่อสร้างชั้น 5 ขึ้นไป — หน้า 2 ข้อ 3"),
+      deadline: field("29 ส.ค. 2569", "2026-08-29", 0.79, false, "กำหนดยื่นข้อเสนอวันที่ ๒๙ ส.ค. ๒๕๖๙ เวลา ๑๖.๓๐ น. — หน้า 2 ข้อ 5"),
+      contact: field("กลุ่มบริหารงานการเงิน 043-xxx-xxx", "กลุ่มบริหารงานการเงิน 043-xxx-xxx", 0.77, false, "ติดต่อสอบถาม กลุ่มบริหารงานการเงิน โทร. 043-xxx-xxx — หน้า 3 ท้ายประกาศ"),
+      torStatus: field("ประกาศ", "announced", 0.9, false, "ประกาศเชิญชวนทั่วไป — หน้า 1 หัวเรื่อง"),
     },
   },
   {
@@ -110,6 +112,23 @@ if (process.argv.includes("--clear")) {
   process.exit(0);
 }
 
+const BUCKET = process.env.MINIO_BUCKET ?? "tor-raw";
+
+// The seeder talks to storage the same way the API does: the INTERNAL endpoint,
+// never MINIO_PUBLIC_URL, which is the browser-reachable one.
+const minio = new MinioClient({
+  endPoint: process.env.MINIO_ENDPOINT ?? "localhost",
+  port: Number(process.env.MINIO_PORT ?? 9000),
+  useSSL: false,
+  accessKey: process.env.MINIO_ACCESS_KEY ?? "",
+  secretKey: process.env.MINIO_SECRET_KEY ?? "",
+});
+
+if (!(await minio.bucketExists(BUCKET))) {
+  console.error(`bucket ${BUCKET} does not exist — is docker compose up?`);
+  process.exit(1);
+}
+
 const now = new Date();
 let created = 0;
 
@@ -118,16 +137,27 @@ for (const [index, record] of RECORDS.entries()) {
   const at = new Date(now.getTime() - (RECORDS.length - index) * 3_600_000);
   const contentHash = `seed${id.toString().padStart(60, "0")}`.slice(0, 64);
 
+  // A record whose document is not in object storage gives the review screen a
+  // signed URL to nothing, which renders as a broken viewer. Seeds carry a real
+  // document: one of the corpus PDFs, so the panel shows an actual Thai TOR and
+  // the browser's own viewer supplies zoom and paging.
+  const sourcePdf = `docs/corpus/tor-${String(index + 1).padStart(2, "0")}.pdf`;
+  const bytes = await readFile(sourcePdf);
+  const storageKey = `tors/${at.getUTCFullYear()}/${String(at.getUTCMonth() + 1).padStart(2, "0")}/${contentHash}.pdf`;
+  await minio.putObject(BUCKET, storageKey, bytes, bytes.length, {
+    "Content-Type": "application/pdf",
+  });
+
   await db.collection("tors").insertOne({
     _id: id,
     seed: true,
     schemaVersion: 1,
     contentHash,
     storage: {
-      bucket: process.env.MINIO_BUCKET ?? "tor-raw",
-      key: `tors/${at.getUTCFullYear()}/${String(at.getUTCMonth() + 1).padStart(2, "0")}/${contentHash}.pdf`,
-      contentType: record.contentType,
-      bytes: 240_000 + index * 40_000,
+      bucket: BUCKET,
+      key: storageKey,
+      contentType: "application/pdf",
+      bytes: bytes.length,
     },
     sourceRefs: [{ route: "upload", submittedBy: "admin", submittedAt: at }],
     pipeline: { state: "published", attempts: 1 },

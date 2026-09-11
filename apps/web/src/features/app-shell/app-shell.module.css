@@ -19,7 +19,7 @@
   display: flex;
   align-items: center;
   gap: 28px;
-  height: 62px;
+  height: var(--app-header-h);
   padding: 0 36px;
   border-bottom: var(--rule);
   background: rgba(255, 255, 255, 0.96);
@@ -284,7 +284,7 @@
 .gatePage {
   display: grid;
   place-items: center;
-  min-height: calc(100vh - 62px);
+  min-height: calc(100vh - var(--app-header-h));
   padding: 40px 20px;
 }
 

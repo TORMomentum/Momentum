@@ -1,30 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { useMemo, useState, useTransition } from "react";
-import labels from "../shared/ui/labels.module.css";
 import styles from "../features/admin/admin.module.css";
 import {
   approveRecordAction,
   reextractRecordAction,
   rejectRecordAction,
-  saveCorrections,
+  setFieldVerificationAction,
 } from "../features/admin/admin.actions";
-import type { QueueEntry, ReviewRecord } from "../shared/lib/admin-api";
+import type { QueueEntry, ReviewDocument, ReviewRecord } from "../shared/lib/admin-api";
 
-/**
- * The extraction review queue (FR-G-1, FR-G-2). Ported from the "Admin Queue"
- * screen of mockups/TOR Radar App.dc.html and wired to the real records.
- *
- * The data arrives from the server component that renders this — the admin key
- * lives there and never reaches the browser. Edits and decisions go back out as
- * server actions for the same reason.
- */
-
-/** The toggle names the region it opens, so a screen reader is told what moved. */
 const QUEUE_LIST_ID = "admin-review-queue";
 
-/** The nine extracted fields, in the order a reviewer reads a document. */
 const FIELD_ORDER = [
   { key: "title", label: "ชื่อโครงการ" },
   { key: "agency", label: "หน่วยงาน" },
@@ -37,7 +26,6 @@ const FIELD_ORDER = [
   { key: "torStatus", label: "สถานะ" },
 ] as const;
 
-/** Machine reasons from grading, in the words a reviewer uses. */
 const REASON_LABELS: Record<string, string> = {
   "agency-missing": "ขาดหน่วยงาน",
   "agency-unreadable": "อ่านหน่วยงานไม่ได้",
@@ -50,17 +38,10 @@ const REASON_LABELS: Record<string, string> = {
   "copy-through": "หลายฟิลด์ซ้ำกัน",
 };
 
-const ROUTE_LABELS: Record<string, string> = {
-  upload: "อัปโหลด",
-  url: "URL",
-  api: "API",
-};
-
 function reasonLabel(reason: string): string {
   return REASON_LABELS[reason] ?? reason;
 }
 
-/** Inline, because two chevrons do not justify an icon dependency. */
 function ChevronLeft() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -77,39 +58,43 @@ function ChevronRight() {
   );
 }
 
+function percentStyle(value: number, property: "--confidence-width" | "--progress-width") {
+  const percent = Math.max(0, Math.min(100, value * 100));
+  return { [property]: `${percent}%` } as CSSProperties;
+}
+
 export function AdminReviewView({
   queue,
   unverifiedNotQueued,
   record,
+  document,
+  documentError,
   offline,
+  missingRecord = false,
   activeReason,
 }: {
   queue: QueueEntry[];
   unverifiedNotQueued: number;
   record: ReviewRecord | null;
+  document: ReviewDocument | null;
+  documentError: string | null;
   offline: string | null;
+  /** A deep link pointed at a record that no longer exists. */
+  missingRecord?: boolean;
   activeReason?: string;
 }) {
   const [search, setSearch] = useState("");
-  // Collapsing the queue gives the document and the fields the whole width,
-  // which is what a reviewer wants once they have chosen what to work on.
   const [queueOpen, setQueueOpen] = useState(true);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
+  /** The signed URL that failed to load, if any — see the viewer below. */
+  const [brokenDocUrl, setBrokenDocUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  /**
-   * Search filters what is already loaded — no round trip while typing.
-   *
-   * The record id is matched by PREFIX, never as a substring. A 24-character
-   * hex id contains most letters and digits, so including it in the free-text
-   * haystack made "a" or "2f" match every row — a search that returns
-   * everything is the same as no search at all.
-   */
+  /** ObjectIds match by prefix only; all reviewer-facing text uses substring search. */
   const shown = useMemo(() => {
     const needle = search.trim().toLowerCase();
     if (!needle) return queue;
-
     return queue.filter((item) => {
       const text = [item.title, item.agency, ...item.reviewReasons.map(reasonLabel)]
         .join(" ")
@@ -118,23 +103,30 @@ export function AdminReviewView({
     });
   }, [queue, search]);
 
-  /** Every reason present in the queue, for the triage chips. */
   const reasons = useMemo(
     () => [...new Set(queue.flatMap((item) => item.reviewReasons))],
     [queue],
   );
-
+  const queueIndexes = useMemo(
+    () => new Map(queue.map((item, index) => [item.id, index + 1])),
+    [queue],
+  );
   const pendingEdits = Object.entries(edits).map(([field, value]) => ({ field, value }));
+  const verifiedCount = record
+    ? FIELD_ORDER.filter(({ key }) => record.fields[key]?.verified).length
+    : 0;
 
-  function run(action: () => Promise<void>, message: string) {
+  function run(action: () => Promise<void>, message: string, clearEdits = true) {
     setToast(null);
     startTransition(async () => {
       try {
         await action();
-        setEdits({});
+        if (clearEdits) setEdits({});
         setToast(message);
       } catch (error) {
-        setToast(`ไม่สำเร็จ: ${String(error)}`);
+        // The detail belongs in the log, not in a Thai sentence on screen.
+        console.error("[admin/review] action failed", error);
+        setToast("ทำรายการไม่สำเร็จ — ลองใหม่อีกครั้ง");
       }
     });
   }
@@ -151,15 +143,13 @@ export function AdminReviewView({
 
       {offline && <div className={styles.overviewOffline}>{offline}</div>}
 
-      {/*
-        With nothing in the queue there is nothing to put beside anything, so
-        the split gives way to one state rather than two panels each saying the
-        queue is empty in different words.
+      {/* Not an error state: the link is stale, the queue is fine. */}
+      {missingRecord && !offline && (
+        <div className={styles.adminNotice}>
+          รายการที่เปิดจากลิงก์นี้ไม่อยู่ในระบบแล้ว — อาจถูกปฏิเสธหรือตรวจสอบเสร็จแล้ว
+        </div>
+      )}
 
-        Which state depends on WHY it is empty, and the two are not the same
-        news: an unreachable API means we do not know what is waiting, and
-        saying "nothing to review" there would be a reassurance we cannot make.
-      */}
       {queue.length === 0 ? (
         <div className={`${styles.adminBody} ${styles.adminBodyBlank}`}>
           <div className={styles.adminBlank}>
@@ -179,228 +169,264 @@ export function AdminReviewView({
           </div>
         </div>
       ) : (
-      <div className={`${styles.adminBody} ${queueOpen ? "" : styles.adminBodyCollapsed}`}>
-        {/* One control, on the seam between the columns, in both states. */}
-        <button
-          type="button"
-          className={styles.queueEdgeToggle}
-          onClick={() => setQueueOpen(!queueOpen)}
-          title={queueOpen ? "ย่อคิว" : "แสดงคิว"}
-          aria-label={queueOpen ? "ย่อคิว" : "แสดงคิว"}
-          aria-expanded={queueOpen}
-          aria-controls={QUEUE_LIST_ID}
-        >
-          {queueOpen ? <ChevronLeft /> : <ChevronRight />}
-        </button>
+        <div className={`${styles.adminBody} ${queueOpen ? "" : styles.adminBodyCollapsed}`}>
+          <button
+            type="button"
+            className={styles.queueEdgeToggle}
+            onClick={() => setQueueOpen(!queueOpen)}
+            title={queueOpen ? "ย่อคิว" : "แสดงคิว"}
+            aria-label={queueOpen ? "ย่อคิว" : "แสดงคิว"}
+            aria-expanded={queueOpen}
+            aria-controls={QUEUE_LIST_ID}
+          >
+            {queueOpen ? <ChevronLeft /> : <ChevronRight />}
+          </button>
 
-        {/*
-          The folded column is a divider and a tint, and carries no count.
+          {!queueOpen && <div className={styles.queueRail} />}
 
-          The count was tried on the seam, on the toggle, and on a rail icon,
-          and every position looked arbitrary for the same reason: it is the
-          number the header already states two lines above, on a screen the
-          reader is already looking at, painted in the colour reserved for
-          things that need a person. There was no right place for a mark that
-          should not be there.
-        */}
-        {!queueOpen && <div className={styles.queueRail} />}
-
-        <div
-          id={QUEUE_LIST_ID}
-          className={`${styles.adminQueueList} ${queueOpen ? "" : styles.adminQueueListHidden}`}
-        >
-          <div className={styles.queueTools}>
-            <div className={styles.queueToolsHead}>
-              <span className={styles.queueToolsTitle}>คิวตรวจสอบ</span>
-            </div>
-            <input
-              className={styles.queueSearch}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="ค้นหาในคิว — ชื่อโครงการ หน่วยงาน หรือเหตุผล"
-              aria-label="ค้นหาในคิวตรวจสอบ"
-            />
-
-            {reasons.length > 0 && (
-              <div className={styles.queueReasons}>
-                <a
-                  href="/admin/review"
-                  className={`${styles.queueReason} ${activeReason ? "" : styles.queueReasonOn}`}
-                >
-                  ทั้งหมด
-                </a>
-                {reasons.map((reason) => (
-                  <a
-                    key={reason}
-                    href={`/admin/review?reason=${encodeURIComponent(reason)}`}
-                    className={`${styles.queueReason} ${activeReason === reason ? styles.queueReasonOn : ""}`}
-                  >
-                    {reasonLabel(reason)}
+          <aside
+            id={QUEUE_LIST_ID}
+            className={`${styles.adminQueueList} ${queueOpen ? "" : styles.adminQueueListHidden}`}
+          >
+            <div className={styles.queueTools}>
+              <div className={styles.queueToolsHead}>
+                <span className={styles.queueToolsTitle}>คิวตรวจสอบ · {queue.length}</span>
+              </div>
+              <input
+                className={styles.queueSearch}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="ค้นหาชื่อโครงการ หน่วยงาน หรือเหตุผล"
+                aria-label="ค้นหาในคิวตรวจสอบ"
+              />
+              {reasons.length > 0 && (
+                <div className={styles.queueReasons}>
+                  <a href="/admin/review" className={`${styles.queueReason} ${activeReason ? "" : styles.queueReasonOn}`}>
+                    ทั้งหมด
                   </a>
-                ))}
-              </div>
-            )}
-
-            <span className={styles.queueCount}>
-              แสดง {shown.length} จาก {queue.length}
-            </span>
-          </div>
-
-          {shown.length === 0 && (
-            <div className={styles.queueEmpty}>
-              {queue.length === 0
-                ? "ไม่มีเอกสารรอตรวจสอบ — ทุกระเบียนผ่านเกณฑ์หรือได้รับการอนุมัติแล้ว"
-                : "ไม่พบรายการที่ตรงกับคำค้น"}
-            </div>
-          )}
-
-          {shown.map((item) => (
-            <a
-              key={item.id}
-              href={`/admin/review?id=${item.id}${activeReason ? `&reason=${encodeURIComponent(activeReason)}` : ""}`}
-              className={`${styles.adminQueueItem} ${record?.id === item.id ? styles.adminQueueItemOn : ""}`}
-            >
-              <div className={styles.adminQueueFlag}>
-                ความเชื่อมั่น {item.confidence.toFixed(2)} ·{" "}
-                {item.reviewReasons.map(reasonLabel).join(" · ") || "ต่ำกว่าเกณฑ์"}
-              </div>
-              <div className={styles.adminQueueTitle}>{item.title || "(ไม่มีชื่อโครงการที่สกัดได้)"}</div>
-              <div className={styles.adminQueueSrc}>
-                {ROUTE_LABELS[item.route] ?? item.route} · นำเข้า{" "}
-                {new Date(item.submittedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
-              </div>
-            </a>
-          ))}
-        </div>
-
-        {record ? (
-          <div className={styles.adminDetail}>
-            <div className={styles.adminDoc}>
-              <div className={labels.blockLabel}>เอกสารต้นฉบับ — อ่านอย่างเดียว</div>
-              <div className={styles.adminDocPreview}>
-                <div className={styles.adminDocPreviewText}>
-                  {record.contentType}
-                  <br />
-                  {record.hasTextLayer ? "มีชั้นข้อความ (ดิจิทัล)" : "ไม่มีชั้นข้อความ — ผ่าน OCR"}
-                  <br />
-                  {(record.storage.bytes / 1024).toFixed(0)} KB
-                  <br />
-                  <br />[ ซูม ] [ หมุน ] [ เพิ่มความคมชัด ]
+                  {reasons.map((reason) => (
+                    <a
+                      key={reason}
+                      href={`/admin/review?reason=${encodeURIComponent(reason)}`}
+                      className={`${styles.queueReason} ${activeReason === reason ? styles.queueReasonOn : ""}`}
+                    >
+                      {reasonLabel(reason)}
+                    </a>
+                  ))}
                 </div>
-              </div>
-              <div className={styles.adminDocHash}>
-                ต้นฉบับเก็บถาวรไม่แก้ไข · SHA-256 {record.contentHash.slice(0, 16)}…
-              </div>
+              )}
             </div>
 
-            <div className={styles.adminFields}>
-              <div className={labels.blockLabel}>ฟิลด์ที่สกัดได้ — แก้ไขได้</div>
-              <div className={styles.adminFieldList}>
-                {FIELD_ORDER.map(({ key, label }) => {
-                  const field = record.fields[key];
-                  const confidence = field?.confidence ?? 0;
-                  // Marked ONLY if this field is why the record is here. On a
-                  // low-confidence record nothing is verified yet, so marking
-                  // "not verified" would paint every row orange and tell a
-                  // reviewer nothing. The server decides, because the threshold
-                  // lives with the config.
-                  const flagged = !field || (record.flaggedFields ?? []).includes(key);
-                  const ok = !flagged;
-                  const value = edits[key] ?? field?.raw ?? "";
+            {shown.length === 0 && <div className={styles.queueEmpty}>ไม่พบรายการที่ตรงกับคำค้น</div>}
 
-                  return (
-                    <div key={key}>
-                      <div className={styles.adminFieldHead}>
-                        <span className={ok ? styles.adminFieldLabel : styles.adminFieldLabelWarn}>
-                          {label}
-                          {!field && " — ขาดหาย"}
-                        </span>
-                        <span className={ok ? styles.adminFieldConfOk : styles.adminFieldConfWarn}>
-                          {confidence.toFixed(2)}
-                        </span>
-                      </div>
-                      <input
-                        className={`${styles.adminFieldInput} ${ok ? "" : styles.adminFieldInputWarn}`}
-                        value={value}
-                        placeholder={field ? "" : "ไม่พบค่าในเอกสาร — กรอกจากต้นฉบับ"}
-                        onChange={(event) =>
-                          setEdits((prev) => ({ ...prev, [key]: event.target.value }))
-                        }
+            {shown.map((item) => (
+              <a
+                key={item.id}
+                href={`/admin/review?id=${item.id}${activeReason ? `&reason=${encodeURIComponent(activeReason)}` : ""}`}
+                className={`${styles.adminQueueItem} ${record?.id === item.id ? styles.adminQueueItemOn : ""}`}
+              >
+                <span className={styles.adminQueueIndex}>
+                  {String(queueIndexes.get(item.id) ?? 0).padStart(2, "0")}
+                </span>
+                <span className={styles.adminQueueItemBody}>
+                  <span className={styles.adminQueueTitle}>{item.title || "(ไม่มีชื่อโครงการที่สกัดได้)"}</span>
+                  <span className={styles.adminQueueConfidence}>
+                    <span className={styles.adminQueueConfidenceTrack} style={percentStyle(item.confidence, "--confidence-width")}>
+                      <span className={styles.adminQueueConfidenceFill} />
+                    </span>
+                    <span>{item.confidence.toFixed(2)}</span>
+                  </span>
+                  <span className={styles.adminQueueFlag}>
+                    {item.reviewReasons.map(reasonLabel).join(" · ") || "ต่ำกว่าเกณฑ์"}
+                  </span>
+                </span>
+              </a>
+            ))}
+          </aside>
+
+          {record ? (
+            <>
+              <section className={styles.adminDoc} aria-label="เอกสารต้นฉบับ">
+                <div className={styles.adminDocToolbar}>
+                  <span>{document?.contentType ?? record.contentType}</span>
+                  <span>{(document?.bytes ?? record.storage.bytes).toLocaleString("th-TH")} ไบต์</span>
+                </div>
+                <div className={styles.adminDocViewer}>
+                  {/*
+                    Three outcomes, not two. The URL can fail to be issued, and
+                    it can be issued correctly and point at nothing — a signed
+                    link to a missing object loads as a broken image, which
+                    tells a reviewer nothing. The failure is tracked by URL
+                    rather than by a flag, so moving to the next record clears
+                    it without a reset.
+                  */}
+                  {document && brokenDocUrl !== document.url ? (
+                    document.contentType.startsWith("image/") ? (
+                      <img
+                        src={document.url}
+                        alt="ต้นฉบับ TOR"
+                        className={styles.adminDocImage}
+                        onError={() => setBrokenDocUrl(document.url)}
                       />
-                      {field?.verified && <div className={styles.fieldVerified}>✓ ตรวจแล้ว</div>}
-                      {field?.evidence && <div className={styles.adminQueueSrc}>“{field.evidence}”</div>}
-                    </div>
-                  );
-                })}
-              </div>
+                    ) : (
+                      <iframe
+                        src={document.url}
+                        title="ต้นฉบับ TOR"
+                        className={styles.adminDocFrame}
+                        referrerPolicy="no-referrer"
+                        onError={() => setBrokenDocUrl(document.url)}
+                      />
+                    )
+                  ) : (
+                    <p className={styles.adminDocError}>
+                      {document
+                        ? "เปิดต้นฉบับไม่ได้ — ไฟล์อาจยังไม่ถูกจัดเก็บ ข้อมูลที่สกัดได้ยังตรวจสอบได้ตามปกติ"
+                        : (documentError ?? "ไม่พบลิงก์ต้นฉบับ")}
+                    </p>
+                  )}
+                </div>
+                {document && (
+                  <a href={document.url} target="_blank" rel="noreferrer" className={styles.adminDocFallback}>
+                    เปิดต้นฉบับในแท็บใหม่ ↗
+                  </a>
+                )}
+                <footer className={styles.adminDocHash}>
+                  ต้นฉบับเก็บถาวรไม่แก้ไข · SHA-256 {record.contentHash.slice(0, 12)}
+                  <p className={styles.adminFieldsNote}>
+                    การแก้ไขถูกเก็บเป็นตัวอย่างสอน extractor (FR-G-2) · ต้นฉบับไม่ถูกแก้ไข
+                  </p>
+                </footer>
+              </section>
 
-              <div className={styles.adminActions}>
-                <button
-                  type="button"
-                  className={styles.adminApproveBtn}
-                  disabled={pending}
-                  onClick={() =>
-                    run(
-                      () => approveRecordAction(record.id, pendingEdits),
-                      "✓ อนุมัติแล้ว — ล้างแท็กยังไม่ยืนยัน และเผยแพร่สู่หน้าค้นหา · บันทึกการแก้ไขเป็นตัวอย่างสอน extractor",
-                    )
-                  }
-                >
-                  ✓ อนุมัติ — ล้างแท็กยังไม่ยืนยัน
-                </button>
-                <button
-                  type="button"
-                  className={styles.adminSecondaryBtn}
-                  disabled={pending || pendingEdits.length === 0}
-                  onClick={() =>
-                    run(
-                      () => saveCorrections(record.id, pendingEdits),
-                      `บันทึกการแก้ไข ${pendingEdits.length} ฟิลด์ — เก็บเป็นตัวอย่างสอน extractor (FR-G-2)`,
-                    )
-                  }
-                >
-                  บันทึกการแก้ไข
-                </button>
-                <button
-                  type="button"
-                  className={styles.adminSecondaryBtn}
-                  disabled={pending}
-                  onClick={() =>
-                    run(
-                      () => reextractRecordAction(record.id),
-                      "↻ ส่งกลับเข้าคิวสกัดใหม่แล้ว",
-                    )
-                  }
-                >
-                  สกัดใหม่
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
-                  disabled={pending}
-                  onClick={() =>
-                    run(
-                      () => rejectRecordAction(record.id, "ไม่ใช่ TOR ที่เกี่ยวข้อง"),
-                      "✕ ปฏิเสธ — จำกัดการเข้าถึงและบันทึกเหตุผล ต้นฉบับยังเก็บไว้",
-                    )
-                  }
-                >
-                  ปฏิเสธ
-                </button>
-              </div>
+              <section className={styles.adminFields} aria-label="ฟิลด์ที่สกัดได้">
+                <header className={styles.adminFieldsHeader}>
+                  <h2 className={styles.adminFieldsTitle}>ฟิลด์ที่สกัดได้</h2>
+                  {/* The reason rides the same line as the title: a stacked block
+                      spent 125px saying two short things, and the label
+                      "เหตุผลที่ต้องตรวจสอบ" repeated what the reason already says. */}
+                  <span className={styles.adminReasonNote} title="เหตุผลที่ต้องตรวจสอบ">
+                    {record.reviewReasons.map(reasonLabel).join(" · ") || "ความเชื่อมั่นต่ำกว่าเกณฑ์"}
+                  </span>
+                </header>
 
-              <div className={styles.adminToast}>
-                {toast ?? "การแก้ไขถูกเก็บเป็นตัวอย่างสอน extractor (FR-G-2) · ต้นฉบับไม่ถูกแก้ไข"}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.adminDetail}>
-            {/* The queue has work in it; this panel is waiting on a choice. */}
-            <div className={styles.queueEmpty}>เลือกรายการจากคิวเพื่อเริ่มตรวจสอบ</div>
-          </div>
-        )}
-      </div>
+                {toast && <div className={styles.adminToast}>{toast}</div>}
+
+                <div className={styles.adminFieldList}>
+                  {FIELD_ORDER.map(({ key, label }) => {
+                    const field = record.fields[key];
+                    const confidence = field?.confidence ?? 0;
+                    const value = edits[key] ?? field?.raw ?? "";
+                    const modified = edits[key] !== undefined && edits[key] !== (field?.raw ?? "");
+
+                    return (
+                      <div className={styles.adminFieldRow} key={key}>
+                        <div className={styles.adminFieldHead}>
+                          <button
+                            type="button"
+                            className={`${styles.adminFieldTick} ${field?.verified ? styles.adminFieldTickOn : ""}`}
+                          aria-label={`${field?.verified ? "ยกเลิกการยืนยัน" : "ยืนยัน"} ${label}`}
+                          aria-pressed={field?.verified ?? false}
+                          disabled={pending}
+                          onClick={() =>
+                            run(
+                              () => setFieldVerificationAction(record.id, key, !field?.verified),
+                              field?.verified ? `ยกเลิกการยืนยัน ${label} แล้ว` : `ยืนยัน ${label} แล้ว`,
+                              false,
+                            )
+                          }
+                          >
+                            ✓
+                          </button>
+                          <span className={styles.adminFieldLabel}>{label}{!field && " — ขาดหาย"}</span>
+                          {!field?.verified && <span className={styles.adminFieldBadge}>ต้องยืนยัน</span>}
+                          {modified && <span className={styles.adminFieldEdited}>แก้ไขแล้ว</span>}
+                          <span className={styles.adminFieldConfidence}>{confidence.toFixed(2)}</span>
+                        </div>
+                        <input
+                          className={`${styles.adminFieldInput} ${field?.verified ? "" : styles.adminFieldInputWarn}`}
+                          value={value}
+                          placeholder={field ? "" : "ไม่พบค่าในเอกสาร — กรอกจากต้นฉบับ"}
+                          onChange={(event) => setEdits((previous) => ({ ...previous, [key]: event.target.value }))}
+                        />
+                        <div className={styles.adminFieldNote}>
+                          {field?.evidence ? `อ้างอิง: “${field.evidence}”` : "ไม่มีข้อความอ้างอิงจากการสกัด"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <footer className={styles.adminFieldsFooter}>
+                  <div className={styles.adminProgressHead}>
+                    <span>ยืนยันแล้ว {verifiedCount} / {FIELD_ORDER.length}</span>
+                    <button
+                      type="button"
+                      className={styles.adminConfirmAll}
+                      disabled={pending || verifiedCount === FIELD_ORDER.length}
+                      onClick={() =>
+                        run(
+                          async () => {
+                            await Promise.all(
+                              FIELD_ORDER.filter(({ key }) => !record.fields[key]?.verified).map(({ key }) =>
+                                setFieldVerificationAction(record.id, key, true),
+                              ),
+                            );
+                          },
+                          "ยืนยันทุกฟิลด์แล้ว",
+                          false,
+                        )
+                      }
+                    >
+                      ยืนยันทั้งหมด
+                    </button>
+                  </div>
+                  <div
+                    className={styles.adminProgressTrack}
+                    style={percentStyle(verifiedCount / FIELD_ORDER.length, "--progress-width")}
+                    role="progressbar"
+                    aria-label="ความคืบหน้าการยืนยันฟิลด์"
+                    aria-valuemin={0}
+                    aria-valuemax={FIELD_ORDER.length}
+                    aria-valuenow={verifiedCount}
+                  >
+                    <span className={styles.adminProgressFill} />
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.adminApproveBtn}
+                    disabled={pending}
+                    onClick={() => run(() => approveRecordAction(record.id, pendingEdits), "✓ ยืนยันและเผยแพร่แล้ว · บันทึกการแก้ไขเป็นตัวอย่างสอน extractor")}
+                  >
+                    ยืนยันและเผยแพร่
+                  </button>
+
+                  <div className={styles.adminActions}>
+                    <button
+                      type="button"
+                      className={styles.adminSecondaryBtn}
+                      disabled={pending}
+                      onClick={() => run(() => reextractRecordAction(record.id), "↻ ส่งกลับเข้าคิวสกัดใหม่แล้ว")}
+                    >
+                      สกัดใหม่
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
+                      disabled={pending}
+                      onClick={() => run(() => rejectRecordAction(record.id, "ไม่ใช่ TOR ที่เกี่ยวข้อง"), "✕ ปฏิเสธ — จำกัดการเข้าถึงและบันทึกเหตุผล ต้นฉบับยังเก็บไว้")}
+                    >
+                      ปฏิเสธ
+                    </button>
+                  </div>
+
+                </footer>
+              </section>
+            </>
+          ) : (
+            <div className={styles.adminSelectionEmpty}>เลือกรายการจากคิวเพื่อเริ่มตรวจสอบ</div>
+          )}
+        </div>
       )}
     </main>
   );

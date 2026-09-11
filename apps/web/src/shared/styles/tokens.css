@@ -23,6 +23,7 @@
   --blue-wash: rgba(29, 99, 216, 0.06);   /* a control that is holding a filter */
   --blue-ring: rgba(29, 99, 216, 0.12);   /* focus/open ring around one */
   --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
+  --anomaly-wash: rgba(180, 83, 9, 0.06); /* pending human confirmation */
   --verified: #0e7a5f;      /* a check that passed */
   --avatar: #2b6e5a;        /* the account initial's disc */
 
@@ -57,6 +58,10 @@
   --radius: 4px;
   --radius-card: 8px;
   --rule: 1px solid var(--ink-18);
+
+  /* The app header's height. Five rules measure against it — the shell, the
+     admin page, its gate and the signed-out notice — so it is named once. */
+  --app-header-h: 62px;
 }
 
 * {

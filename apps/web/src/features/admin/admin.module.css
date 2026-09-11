@@ -7,9 +7,20 @@
    Admin Review Queue
    ========================================================================= */
 
-.adminPage { min-height: calc(100vh - 62px); }
+/* A workbench, not a document: the shell holds still and each column scrolls
+   inside itself. Scrolling the whole page pushed the queue, the toolbar and the
+   approve button off screen — a reviewer should never have to scroll the page
+   to reach the button that finishes the job. */
+.adminPage {
+  height: calc(100vh - var(--app-header-h));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper);
+}
 
 .adminBar {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -25,24 +36,30 @@
 
 .adminExitLink { margin-left: auto; white-space: nowrap; font: 11px var(--data); color: var(--blue); }
 
-/* The queue's two widths are named once, because three things read them: the
-   grid, the collapsed grid, and the edge toggle that sits on the seam between
-   the columns. A literal repeated in three places drifts on the first change. */
+/* All three column widths are named here. The queue seam, expanded grid and
+   collapsed grid must keep reading the same values as the layout evolves. */
 .adminBody {
   --queue-width: 330px;
   --queue-width-collapsed: 44px;
+  --document-width: minmax(420px, 1.15fr);
+  --fields-width: minmax(390px, 0.85fr);
   position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: var(--queue-width) 1fr;
+  grid-template-columns: var(--queue-width) var(--document-width) var(--fields-width);
 }
 
-.adminQueueList { border-right: var(--rule); padding: 18px 0; }
+.adminQueueList { min-width: 0; overflow-y: auto; border-right: var(--rule); padding: 18px 0; }
 
 .adminQueueItem {
-  display: block;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
   width: 100%;
   text-align: left;
-  padding: 14px 22px;
+  padding: 15px 22px;
   border-left: 3px solid transparent;
   background: transparent;
   border-top: 0;
@@ -54,51 +71,209 @@
   color: inherit;
 }
 
-.adminQueueItem:hover { background: rgba(29, 99, 216, 0.05); }
+.adminQueueItem:hover { background: var(--blue-wash); }
 
-.adminQueueItemOn { border-left-color: var(--blue); background: rgba(29, 99, 216, 0.06); opacity: 1; }
+.adminQueueItemOn { border-left-color: var(--blue); background: var(--blue-wash); opacity: 1; }
 
-.adminQueueFlag { font: 600 10px var(--data); color: var(--anomaly); margin-bottom: 5px; }
+.adminQueueIndex { padding-top: 2px; font: 10px var(--data); color: var(--ink-55); }
+
+.adminQueueItemBody { display: flex; min-width: 0; flex-direction: column; }
 
 .adminQueueTitle { font-size: 12.5px; font-weight: 600; line-height: 1.55; }
 
-.adminQueueSrc { font-size: 10.5px; color: var(--ink-62); margin-top: 4px; }
-
-.adminDetail { display: grid; grid-template-columns: 1fr 1fr; }
-
-.adminDoc { border-right: var(--rule); padding: 24px; background: var(--panel); }
-
-.adminDocPreview {
-  border: 1px dashed rgba(18, 35, 60, 0.35);
-  border-radius: 6px;
-  height: 430px;
+.adminQueueConfidence {
   display: grid;
-  place-items: center;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 8px;
+  font: 10px var(--data);
+  color: var(--ink-62);
+}
+
+.adminQueueConfidenceTrack { display: block; height: 3px; background: var(--ink-12); }
+
+.adminQueueConfidenceFill {
+  display: block;
+  width: var(--confidence-width);
+  height: 100%;
+  background: var(--anomaly);
+}
+
+.adminQueueFlag {
+  margin-top: 5px;
+  font: 600 10px var(--data);
+  color: var(--anomaly);
+}
+
+.adminDoc {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: var(--rule);
+  background: var(--panel);
+}
+
+.adminDocToolbar {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 18px;
+  border-bottom: var(--rule);
+  font: 10px var(--data);
+  color: var(--ink-62);
   background: var(--paper);
 }
 
-.adminDocPreviewText { text-align: center; font: 11px var(--data); color: var(--ink-62); line-height: 2; }
+.adminDocViewer { flex: 1; min-height: 0; padding: 18px; }
 
-.adminDocHash { margin-top: 10px; font: 10px var(--data); color: var(--ink-62); }
+/* No min-height: the frame takes the pane it is given. A floor here is what
+   made the whole page grow a scrollbar instead of the viewer scrolling. */
+.adminDocFrame,
+.adminDocImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: var(--rule);
+  background: var(--paper);
+}
 
-.adminFields { padding: 24px; }
+.adminDocImage { object-fit: contain; }
 
-.adminFieldList { display: flex; flex-direction: column; gap: 12px; }
+.adminDocError {
+  display: grid;
+  height: 100%;
+  margin: 0;
+  place-items: center;
+  border: 1px dashed var(--ink-28);
+  color: var(--ink-62);
+  font-size: 12px;
+}
 
-.adminFieldHead { display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px; }
+.adminDocFallback {
+  flex: none;
+  padding: 0 18px 12px;
+  font: 600 11px var(--body);
+  color: var(--blue);
+}
 
-.adminFieldLabel { color: var(--ink-65); }
+.adminDocHash {
+  flex: none;
+  padding: 12px 18px;
+  border-top: var(--rule);
+  font: 10px var(--data);
+  color: var(--ink-62);
+  background: var(--paper);
+}
 
-.adminFieldLabelWarn { color: var(--anomaly); font-weight: 600; }
+.adminFields {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--paper);
+}
 
-.adminFieldConfOk { color: var(--verified); }
+/* One line: title left, the reason it is here on the right. */
+.adminFieldsHeader {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 11px 22px;
+  border-bottom: 1px solid var(--ink-12);
+}
 
-.adminFieldConfWarn { color: var(--anomaly); }
+.adminFieldsTitle { margin: 0; font: 700 15px var(--display); }
+
+.adminReasonNote {
+  margin-left: auto;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: var(--anomaly-wash);
+  color: var(--anomaly);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.adminFieldList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* The mockup's card: one header row carrying the tick, then the input, then
+   the note. The tick sits IN that row rather than in a column of its own. */
+.adminFieldRow {
+  padding: 12px 22px 14px;
+  border-bottom: 1px solid var(--ink-12);
+}
+
+.adminFieldRow:hover { background: var(--ink-02); }
+
+/* 16px, filled, no border — a state marker, not a bordered control.
+
+   The unverified state keeps a MUTED check rather than a transparent one: a
+   12%-opacity disc with an invisible glyph reads as empty space, so the control
+   a reviewer is meant to press disappeared. Grey check = pressable and not yet
+   done; green check = done. */
+.adminFieldTick {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink-18);
+  color: var(--ink-55);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.adminFieldTick:hover { background: var(--ink-20); color: var(--ink); }
+
+.adminFieldTick:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.adminFieldTickOn,
+.adminFieldTickOn:hover { background: var(--verified); color: var(--paper); }
+.adminFieldTick:disabled { cursor: wait; opacity: 0.55; }
+.adminFieldTick:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.adminFieldContent { min-width: 0; }
+
+.adminFieldHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 5px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.adminFieldLabel { font-size: 11.5px; font-weight: 500; line-height: 1.5; color: var(--ink); }
+
+.adminFieldBadge {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--anomaly-wash);
+  color: var(--anomaly);
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adminFieldEdited { flex: none; color: var(--blue); font: 9.5px var(--data); white-space: nowrap; }
+
+.adminFieldConfidence { flex: none; margin-left: auto; color: var(--ink-62); font: 9.5px var(--data); }
 
 .adminFieldInput {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid rgba(18, 35, 60, 0.25);
+  border: 1px solid var(--ink-28);
   background: var(--paper);
   border-radius: 4px;
   padding: 9px 12px;
@@ -107,18 +282,72 @@
   font-family: var(--body);
 }
 
-.adminFieldInputWarn { border-color: var(--anomaly); background: rgba(180, 83, 9, 0.06); color: rgba(18, 35, 60, 0.75); }
+.adminFieldInputWarn { border-color: var(--anomaly); background: var(--anomaly-wash); color: var(--ink-70); }
 
-.adminActions { display: flex; gap: 10px; margin-top: 22px; }
+/* The border answers the pointer, the way the drawing's controls do. Stated
+   after the warn variant so a flagged field still picks up the blue on hover
+   rather than staying amber under the cursor. */
+.adminFieldInput:hover,
+.adminFieldInputWarn:hover { border-color: var(--blue); }
+
+.adminFieldInput:focus,
+.adminFieldInputWarn:focus { border-color: var(--blue); outline: none; }
+
+.adminFieldNote { margin-top: 6px; font-size: 10px; line-height: 1.5; color: var(--ink-55); }
+
+/* Where the mockup puts it: below the fields, pinned. It only felt like it was
+   in the way while the whole page scrolled — with the shell locked, the list
+   scrolls above it and the actions never move. */
+.adminFieldsFooter {
+  flex: none;
+  padding: 10px 22px 12px;
+  border-top: 1px solid var(--ink-12);
+  background: var(--panel);
+}
+
+.adminProgressHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--ink-65);
+}
+
+.adminProgressHead { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; }
+
+.adminConfirmAll {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: 10px var(--body);
+  cursor: pointer;
+}
+
+.adminConfirmAll:hover:enabled { text-decoration: underline; }
+.adminConfirmAll:disabled { color: var(--ink-28); cursor: default; }
+
+.adminProgressTrack {
+  height: 3px;
+  margin: 6px 0 9px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--ink-12);
+}
+
+.adminProgressFill { display: block; width: var(--progress-width); height: 100%; background: var(--blue); }
+
+.adminActions { display: flex; gap: 8px; margin-top: 7px; }
 
 .adminApproveBtn {
-  white-space: nowrap;
-  flex: 1;
+  display: block;
+  width: 100%;
   text-align: center;
   font: 600 12.5px var(--body);
   background: var(--blue);
   color: var(--paper);
-  padding: 11px 0;
+  padding: 9px 0;
   border-radius: 4px;
   cursor: pointer;
   border: 0;
@@ -127,10 +356,12 @@
 .adminApproveBtn:hover { background: var(--blue-dark); }
 
 .adminSecondaryBtn {
+  flex: 1;
   white-space: nowrap;
-  font: 600 12.5px var(--body);
-  border: 1px solid rgba(18, 35, 60, 0.35);
-  padding: 11px 16px;
+  text-align: center;
+  font: 500 11.5px var(--body);
+  border: 1px solid var(--ink-28);
+  padding: 8px 0;
   border-radius: 4px;
   cursor: pointer;
   background: transparent;
@@ -139,21 +370,24 @@
 
 .adminSecondaryBtn:hover { border-color: var(--blue); color: var(--blue); }
 
-.adminRejectBtn { color: rgba(18, 35, 60, 0.65); }
+.adminRejectBtn { color: var(--ink-65); }
 
 .adminRejectBtn:hover { border-color: var(--danger); color: var(--danger); }
 
 .adminToast { margin-top: 12px; font: 10px var(--data); color: var(--ink-62); line-height: 1.7; }
 
+.adminSelectionEmpty { grid-column: 2 / -1; display: grid; place-items: center; color: var(--ink-62); }
+
 @media (max-width: 900px) {
   .adminBody { grid-template-columns: 1fr; }
-  .adminDetail { grid-template-columns: 1fr; }
+  .adminQueueList { border-right: 0; border-bottom: var(--rule); }
   .adminDoc { border-right: 0; border-bottom: var(--rule); }
+  .adminSelectionEmpty { grid-column: auto; min-height: 260px; }
 }
 
 
 /* ---------- staff area chrome ---------- */
-.adminShell { min-height: calc(100vh - 62px); }
+.adminShell { min-height: calc(100vh - var(--app-header-h)); }
 
 .adminBand {
   display: flex;
@@ -183,7 +417,7 @@
 .adminBandExit:hover { color: var(--paper); }
 
 /* ---------- signed-out gate ---------- */
-.adminGate { display: grid; place-items: center; min-height: calc(100vh - 62px); padding: 40px 20px; }
+.adminGate { display: grid; place-items: center; min-height: calc(100vh - var(--app-header-h)); padding: 40px 20px; }
 
 .adminGateCard {
   max-width: 460px;
@@ -340,7 +574,9 @@
 
 /* ---------- collapsing the queue column ---------- */
 /* The grid drives it, so the editor simply takes the width back. */
-.adminBodyCollapsed { grid-template-columns: var(--queue-width-collapsed) 1fr; }
+.adminBodyCollapsed {
+  grid-template-columns: var(--queue-width-collapsed) var(--document-width) var(--fields-width);
+}
 
 /* ---------- nothing in the queue ---------- */
 /* One column, and tall enough that the page does not stop halfway down with a
@@ -425,5 +661,45 @@
 
 .queueToolsHead { display: flex; align-items: center; justify-content: space-between; }
 
-.queueToolsTitle { font: 600 11px var(--body); color: var(--ink-55); letter-spacing: 0.04em; }
+.queueToolsTitle { font: 700 13px var(--display); color: var(--ink); }
 
+@media (max-width: 900px) {
+  .adminBodyCollapsed { grid-template-columns: 1fr; }
+  .adminQueueListHidden { display: block; }
+  .queueRail { display: none; }
+}
+
+
+/* A stale deep link is news, not a failure — it reads in the platform's own
+   blue rather than the alarm colour, which stays for things needing a person. */
+.adminNotice {
+  margin: 0;
+  padding: 11px 36px;
+  border-bottom: var(--rule);
+  background: var(--blue-wash);
+  color: var(--blue);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* The standing explanation sits at the foot of the column, said once, rather
+   than riding the toolbar where it competed with the actions. */
+/* Inside the footer, as the mockup has it — a separate block below cost a
+   border and its own padding for one line of standing text. */
+.adminFieldsNote {
+  margin: 7px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ink-55);
+}
+
+.adminToast {
+  flex: none;
+  padding: 8px 22px;
+  border-top: var(--rule);
+  background: var(--blue-wash);
+  color: var(--blue);
+  font-size: 11.5px;
+  line-height: 1.6;
+}

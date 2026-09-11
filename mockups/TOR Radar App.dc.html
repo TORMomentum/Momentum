@@ -443,48 +443,129 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;bac
 </sc-if>
 
 <sc-if value="{{ showAdmin }}" hint-placeholder-val="{{ false }}">
-<main data-screen-label="Admin Review Queue" style="min-height:calc(100vh - 62px)">
-  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 36px;border-bottom:1px solid rgba(18,35,60,.18);background:#f4f7fb">
-    <h1 style="margin:0;font:700 19px 'Anuphan',sans-serif">คิวตรวจสอบการสกัดข้อมูล</h1>
-    <span style="font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.65);letter-spacing:.06em">QUEUE {{ queueCount }} · UNVERIFIED (NOT QUEUED) 34 · เข้าคิวเมื่อ confidence &lt; T_LOW หรือติด sanity check</span>
-    <span onClick="{{ goDash }}" style="margin-left:auto;white-space:nowrap;font:11px 'IBM Plex Mono',monospace;color:#1d63d8;cursor:pointer">← ออกจากมุมมองผู้ดูแล</span>
-  </div>
-  <div style="display:grid;grid-template-columns:330px 1fr">
-    <div style="border-right:1px solid rgba(18,35,60,.18);padding:18px 0">
-      <sc-for list="{{ queue }}" as="q" hint-placeholder-count="4">
-        <div onClick="{{ q.pick }}" style="padding:14px 22px;border-left:3px solid {{ q.mark }};background:{{ q.bg }};cursor:pointer;opacity:{{ q.op }}" style-hover="background:rgba(29,99,216,.05)">
-          <div style="font:600 10px 'IBM Plex Mono',monospace;color:#b45309;margin-bottom:5px">CONF {{ q.conf }} · {{ q.flag }}</div>
-          <div style="font-size:12.5px;font-weight:600;line-height:1.55">{{ q.title }}</div>
-          <div style="font-size:10.5px;color:rgba(18,35,60,.62);margin-top:4px">{{ q.src }}</div>
+
+<div style="display:flex;align-items:center;gap:16px;padding:13px 24px;border-bottom:1px solid rgba(18,35,60,.12);background:#fff">
+  <span style="font:600 14px 'Anuphan',sans-serif;white-space:nowrap;flex:none">ตรวจสอบการสกัดข้อมูล</span>
+  <span style="font:10.5px 'IBM Plex Sans Thai',sans-serif;color:#4e5e75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ bTitle }}</span>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;font:10.5px 'IBM Plex Mono',monospace;color:#4e5e75">
+    <span onClick="{{ bPrev }}" style="border:1px solid rgba(18,35,60,.2);border-radius:3px;padding:3px 8px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">‹</span>
+    <span>{{ bPos }}</span>
+    <span onClick="{{ bNext }}" style="border:1px solid rgba(18,35,60,.2);border-radius:3px;padding:3px 8px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">›</span>
+  </span>
+</div>
+<main data-screen-label="Admin Validation" style="display:grid;grid-template-columns:{{ bCols }};align-items:stretch;background:#fff;min-height:calc(100vh - 118px)">
+  <sc-if value="{{ qShut }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toggleQueue }}" title="{{ qHandleTitle }}" style="background:#f4f7fb;border-right:1px solid rgba(18,35,60,.14);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 0" style-hover="background:#eef2f8">
+      <span style="width:24px;height:24px;border:1px solid rgba(18,35,60,.22);border-radius:4px;background:#fff;display:grid;place-items:center;font:11px 'IBM Plex Mono',monospace;color:#4e5e75">›</span>
+      <span style="width:24px;height:20px;border-radius:4px;background:rgba(214,158,46,.18);display:grid;place-items:center;font:600 10px 'IBM Plex Mono',monospace;color:#8a5a10">{{ queueCount }}</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ qOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#f4f7fb;border-right:1px solid rgba(18,35,60,.14);display:flex;flex-direction:column">
+      <div style="padding:14px 16px 12px;border-bottom:1px solid rgba(18,35,60,.1)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.11em;color:#5f6f86;white-space:nowrap">คิวตรวจสอบ · {{ queueCount }}</span>
+          <span onClick="{{ toggleQueue }}" title="{{ qHandleTitle }}" style="margin-left:auto;width:22px;height:22px;border:1px solid rgba(18,35,60,.22);border-radius:3px;background:#fff;display:grid;place-items:center;cursor:pointer;font:10px 'IBM Plex Mono',monospace;color:#4e5e75" style-hover="border-color:#1d63d8;color:#1d63d8">‹</span>
+        </div>
+        <input value="{{ qSearch }}" onInput="{{ onQSearch }}" placeholder="ค้นหาชื่อโครงการ / หน่วยงาน" style="width:100%;box-sizing:border-box;margin-top:11px;border:1px solid rgba(18,35,60,.2);background:#fff;border-radius:4px;padding:7px 10px;font:11.5px 'IBM Plex Sans Thai',sans-serif;color:#12233c;outline:none" style-focus="border-color:#1d63d8">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+          <sc-for list="{{ qChips }}" as="c" hint-placeholder-count="4">
+            <span onClick="{{ c.pick }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.c }};font-weight:{{ c.fw }};font-size:10px;padding:4px 8px;border-radius:999px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1d63d8">{{ c.label }}</span>
+          </sc-for>
+        </div>
+      </div>
+      <sc-for list="{{ qList }}" as="q" hint-placeholder-count="4">
+        <div onClick="{{ q.pick }}" style="display:grid;grid-template-columns:22px 1fr;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(18,35,60,.08);background:{{ q.bg }};box-shadow:inset 2px 0 0 {{ q.mark }};cursor:pointer" style-hover="background:#fff">
+          <div style="font:11px 'IBM Plex Mono',monospace;color:{{ q.numC }};padding-top:1px">{{ q.num }}</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;line-height:1.5;color:{{ q.titleC }}">{{ q.title }}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+              <div style="flex:1;height:3px;background:rgba(18,35,60,.13);border-radius:2px;overflow:hidden"><div style="width:{{ q.barW }};height:100%;background:#d69e2e"></div></div>
+              <span style="font:9.5px 'IBM Plex Mono',monospace;color:#4e5e75">{{ q.conf }}</span>
+            </div>
+            <div style="font-size:10px;color:#586880;margin-top:6px;line-height:1.5">{{ q.flag }}</div>
+          </div>
         </div>
       </sc-for>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr">
-      <div style="border-right:1px solid rgba(18,35,60,.18);padding:24px;background:#f4f7fb">
-        <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:12px">[ เอกสารต้นฉบับ — อ่านอย่างเดียว ]</div>
-        <div style="border:1px dashed rgba(18,35,60,.35);border-radius:6px;height:430px;display:grid;place-items:center;background:#fff"><div style="text-align:center;font:11px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.62);line-height:2">{{ qDocType }}<br>{{ qDocRef }}<br>{{ qDocNote }}<br><br>[ zoom ] [ rotate ] [ enhance ]</div></div>
-        <div style="margin-top:10px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6)">RAW เก็บถาวรไม่แก้ไข · SHA-256 บันทึกแล้ว</div>
-      </div>
-      <div style="padding:24px">
-        <div style="font:9px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);letter-spacing:.12em;margin-bottom:12px">[ ฟิลด์ที่สกัดได้ — แก้ไขได้ ]</div>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <sc-for list="{{ qFields }}" as="f" hint-placeholder-count="5">
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:4px"><span style="color:{{ f.labelColor }};font-weight:{{ f.labelWeight }}">{{ f.label }}</span><span style="font:10px 'IBM Plex Mono',monospace;color:{{ f.confColor }}">{{ f.conf }}</span></div>
-              <input value="{{ f.value }}" onInput="{{ f.onEdit }}" style="width:100%;box-sizing:border-box;border:1px solid {{ f.border }};background:{{ f.bg }};border-radius:4px;padding:9px 12px;font-size:12.5px;color:{{ f.color }}">
+  </sc-if>
+  <div style="background:#eceff3;border-right:1px solid rgba(18,35,60,.14);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid rgba(18,35,60,.12);background:#f4f7fb;font:10px 'IBM Plex Mono',monospace;color:#4e5e75">
+      <span style="flex:none;white-space:nowrap">{{ bDocType }}</span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex:none">
+        <span style="border:1px solid rgba(18,35,60,.18);background:#fff;padding:3px 8px;border-radius:3px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">−</span>
+        <span style="border:1px solid rgba(18,35,60,.18);background:#fff;padding:3px 8px;border-radius:3px">92%</span>
+        <span style="border:1px solid rgba(18,35,60,.18);background:#fff;padding:3px 8px;border-radius:3px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">+</span>
+      </span>
+      <span style="flex:none;white-space:nowrap">หน้า 1 / 4</span>
+    </div>
+    <div style="flex:1;padding:28px 24px;display:flex;justify-content:center;align-items:flex-start;position:sticky;top:62px">
+      <div style="width:100%;max-width:470px;background:#fff;border:1px solid rgba(18,35,60,.16);box-shadow:0 6px 22px rgba(18,35,60,.1);padding:34px 38px 30px">
+        <div style="text-align:center;font:600 13px 'Anuphan',sans-serif;color:#12233c">{{ bDocRef }}</div>
+        <div style="text-align:center;font-size:11px;color:#4e5e75;margin-top:6px;line-height:1.6">เรื่อง ประกวดราคาจ้างด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ (e-bidding)</div>
+        <div style="height:1px;background:rgba(18,35,60,.18);margin:18px 0 16px"></div>
+        <sc-for list="{{ bDocLines }}" as="l" hint-placeholder-count="2">
+          <div style="font-size:11px;line-height:2;color:#41506a;margin-bottom:9px">{{ l.txt }}</div>
+        </sc-for>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:20px">
+          <sc-for list="{{ bDocRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:30% 1fr;gap:12px;align-items:start;font-size:11px;line-height:1.7">
+              <span style="color:#586880">{{ r.k }}</span>
+              <span onMouseEnter="{{ r.hover }}" style="position:relative;color:{{ r.vc }};border:1.5px solid {{ r.bd }};background:{{ r.bg }};border-radius:3px;padding:2px 5px;margin:-2px -5px">
+                {{ r.v }}
+                <span style="display:{{ r.labelShow }};position:absolute;top:-19px;left:-2px;white-space:nowrap;font:9px 'IBM Plex Mono',monospace;background:#1d63d8;color:#fff;padding:2px 6px;border-radius:2px">{{ r.boxLabel }}</span>
+              </span>
             </div>
           </sc-for>
         </div>
-        <div style="display:flex;gap:10px;margin-top:22px">
-          <span onClick="{{ approve }}" style="white-space:nowrap;flex:1;text-align:center;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#fff;padding:11px 0;border-radius:4px;cursor:pointer" style-hover="background:#1746a0">✓ อนุมัติ — ล้างแท็ก unverified</span>
-          <span onClick="{{ reextract }}" style="white-space:nowrap;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.35);padding:11px 16px;border-radius:4px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">สกัดใหม่</span>
-          <span onClick="{{ reject }}" style="white-space:nowrap;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.35);padding:11px 16px;border-radius:4px;cursor:pointer;color:rgba(18,35,60,.65)" style-hover="border-color:#be2026;color:#be2026">ปฏิเสธ</span>
-        </div>
-        <div style="margin-top:12px;font:10px 'IBM Plex Mono',monospace;color:rgba(18,35,60,.6);line-height:1.7">{{ adminToast }}</div>
+        <div style="margin-top:32px;text-align:right;font-size:10.5px;color:#586880;line-height:2">ลงชื่อ ..............................<br>ผู้อำนวยการ</div>
       </div>
+    </div>
+    <div style="padding:11px 20px;border-top:1px solid rgba(18,35,60,.12);background:#f4f7fb;font:9.5px 'IBM Plex Mono',monospace;color:#4e5e75;display:flex;gap:20px;flex-wrap:wrap;line-height:1.7">
+      <span style="white-space:nowrap">กรอบน้ำเงิน = ตำแหน่งที่ AI อ่านค่า</span>
+      <span style="margin-left:auto;white-space:nowrap">RAW เก็บถาวรไม่แก้ไข · SHA-256 ✓</span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;background:#fff">
+    <div style="padding:15px 22px 14px;border-bottom:1px solid rgba(18,35,60,.1)">
+      <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#5f6f86">ฟิลด์ที่สกัดได้</div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;background:rgba(214,158,46,.1);border-radius:4px;padding:8px 10px">
+        <span style="width:5px;height:5px;border-radius:50%;background:#d69e2e;flex:none;margin-top:5px"></span>
+        <span style="font-size:10.5px;color:#8a5a10;line-height:1.6">{{ bFlagNote }}</span>
+      </div>
+    </div>
+
+    <sc-for list="{{ bRows }}" as="f" hint-placeholder-count="5">
+      <div onClick="{{ f.focus }}" onMouseEnter="{{ f.focus }}" style="padding:12px 22px 14px;border-bottom:1px solid rgba(18,35,60,.08);background:{{ f.bg }};box-shadow:{{ f.shadow }};cursor:pointer" style-hover="background:#fafbfc">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:5px;gap:8px;margin-bottom:8px">
+          <span onClick="{{ f.toggle }}" title="{{ f.tickTitle }}" style="width:16px;height:16px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:9px;line-height:1;background:{{ f.tickBg }};color:{{ f.tickC }};cursor:pointer">{{ f.tick }}</span>
+          <span style="font-size:11.5px;font-weight:500;color:#12233c;line-height:1.5">{{ f.label }}</span>
+          <span style="display:{{ f.badgeShow }};flex:none;font-size:9.5px;font-weight:600;color:#8a5a10;background:rgba(214,158,46,.18);padding:2px 6px;border-radius:3px;white-space:nowrap">ต้องยืนยัน</span>
+          <span style="display:{{ f.dirtyShow }};flex:none;font:9.5px 'IBM Plex Mono',monospace;color:#1d63d8;white-space:nowrap">แก้ไขแล้ว</span>
+          <span style="margin-left:auto;flex:none;font:9.5px 'IBM Plex Mono',monospace;color:#5f6f86">{{ f.conf }}</span>
+        </div>
+        <input value="{{ f.value }}" onInput="{{ f.onEdit }}" onFocus="{{ f.focus }}" style="width:100%;box-sizing:border-box;border:1px solid {{ f.border }};background:{{ f.inputBg }};border-radius:4px;padding:8px 10px;font:12.5px 'IBM Plex Sans Thai',sans-serif;color:#12233c;outline:none">
+        <div style="margin-top:6px;font-size:10px;line-height:1.5;color:{{ f.noteC }}">{{ f.note }}</div>
+      </div>
+    </sc-for>
+
+    <div style="padding:15px 22px 22px;background:#f4f7fb;border-top:1px solid rgba(18,35,60,.1)">
+      <div style="display:flex;align-items:center;gap:10px;font-size:10.5px;color:#4e5e75">
+        <span>ยืนยันแล้ว {{ bProgress }}</span>
+        <span onClick="{{ bConfirmAll }}" style="margin-left:auto;font:10px 'IBM Plex Sans Thai',sans-serif;color:#1d63d8;cursor:pointer" style-hover="text-decoration:underline">{{ bAllLabel }}</span>
+      </div>
+      <div style="height:3px;background:rgba(18,35,60,.14);border-radius:2px;overflow:hidden;margin:8px 0 14px"><div style="width:{{ bProgW }};height:100%;background:#1d63d8"></div></div>
+      <span onClick="{{ approve }}" style="display:block;text-align:center;font:600 12.5px 'IBM Plex Sans Thai',sans-serif;background:#1d63d8;color:#fff;padding:11px 0;border-radius:4px;cursor:pointer" style-hover="background:#1746a0">ยืนยันและเผยแพร่</span>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <span onClick="{{ reextract }}" style="flex:1;text-align:center;font:500 11.5px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.3);background:#fff;padding:9px 0;border-radius:4px;cursor:pointer" style-hover="border-color:#1d63d8;color:#1d63d8">สกัดใหม่</span>
+        <span onClick="{{ reject }}" style="flex:1;text-align:center;font:500 11.5px 'IBM Plex Sans Thai',sans-serif;border:1px solid rgba(18,35,60,.3);background:#fff;padding:9px 0;border-radius:4px;cursor:pointer;color:#4e5e75" style-hover="border-color:#be2026;color:#be2026">ปฏิเสธ</span>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#586880;text-align:center">{{ bRemain }}</div>
     </div>
   </div>
 </main>
+</sc-if>
 </sc-if>
 
 <sc-if value="{{ showEmail }}" hint-placeholder-val="{{ false }}">
@@ -534,7 +615,8 @@ class Component extends DCLogic {
     starSel: {}, bookSel: {},
     bellOpen: false, menuOpen: false, unread: 3, advanced: false,
     preset: 'balanced', lead: 7, extras: { anomaly: false, deadline: true },
-    notifFilter: 'all', qIdx: 0, qEdits: {},
+    notifFilter: 'all', qIdx: 0, qEdits: {}, adminVer: 'b', afIdx: 0, qConfirm: {}, adminLog: [],
+    qShut: typeof window === 'undefined' ? false : window.innerWidth < 1150,
     openDrop: null, dashPeriod: '12 เดือน',
     authMode: 'login', authEmail: '', authPw: '', authErr: '', consent: false, adminToast: 'การแก้ไขถูกเก็บเป็น few-shot example ให้ extractor (FR-G2)',
     skillOn: { 'Next.js': true, 'GIS / แผนที่ดิจิทัล': true, 'พัฒนาเว็บแอปพลิเคชัน': true, 'Node.js / API': true, 'ความปลอดภัยไซเบอร์': false },
@@ -590,8 +672,8 @@ class Component extends DCLogic {
         fields: [
           { label: 'ชื่อโครงการ', conf: '0.91', value: 'จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง', ok: true },
           { label: 'หน่วยงาน', conf: '0.88', value: 'สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3', ok: true },
-          { label: 'งบประมาณ (฿) — ขาดหาย', conf: '0.12', value: 'OCR อ่านไม่ได้ — ดูหน้า 2 ย่อหน้า 3', ok: false },
-          { label: 'กำหนดยื่นซอง', conf: '0.54', value: '29 ส.ค. 2569', ok: false },
+          { label: 'งบประมาณ (฿) — ขาดหาย', conf: '0.12', value: '', ok: false, src: '๑,๘๕๐,๐๐๐.๐๐ (เงาทับตัวเลข)' },
+          { label: 'กำหนดยื่นซอง', conf: '0.54', value: '29 ส.ค. 2569', ok: false, src: '๒๙ ส.ค. ๒๕๖๙ เวลา ๑๖.๓๐ น.' },
           { label: 'หมวดหมู่', conf: '0.83', value: 'ก่อสร้าง / ปรับปรุงอาคาร', ok: true },
         ] },
       { conf: '0.28', flag: 'วันที่ไม่สมเหตุสมผล', title: 'ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง สำนักงานจังหวัดลำปาง', src: 'สแกน PDF · นำเข้า 08:47', docType: 'SCANNED PDF · 4 หน้า', docRef: 'ประกาศสำนักงานจังหวัดลำปาง', docNote: 'กำหนดยื่นซองก่อนวันประกาศ — ติด sanity check',
@@ -599,55 +681,227 @@ class Component extends DCLogic {
           { label: 'ชื่อโครงการ', conf: '0.89', value: 'ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง', ok: true },
           { label: 'หน่วยงาน', conf: '0.92', value: 'สำนักงานจังหวัดลำปาง', ok: true },
           { label: 'งบประมาณ (฿)', conf: '0.86', value: '1,350,000', ok: true },
-          { label: 'กำหนดยื่นซอง — ไม่สมเหตุสมผล', conf: '0.19', value: '2 ส.ค. 2569 (ก่อนวันประกาศ)', ok: false },
+          { label: 'กำหนดยื่นซอง — ไม่สมเหตุสมผล', conf: '0.19', value: '2 ส.ค. 2569 (ก่อนวันประกาศ)', ok: false, src: '๒ ส.ค. ๒๕๖๙ (ประกาศ ๑๒ ส.ค. ๒๕๖๙)' },
           { label: 'หมวดหมู่', conf: '0.81', value: 'ไอที/ซอฟต์แวร์ · ครุภัณฑ์', ok: true },
         ] },
       { conf: '0.35', flag: 'งบ ฿0 (implausible)', title: 'จ้างเหมาดูแลสวนสาธารณะ เทศบาลเมืองอุดรธานี ปีงบ 2570', src: 'ภาพถ่ายเอกสาร · นำเข้า 08:15', docType: 'SCANNED IMAGE · PNG', docRef: 'ประกาศเทศบาลเมืองอุดรธานี', docNote: 'ตัวเลขงบประมาณอ่านได้ ฿0 — ติด sanity check',
         fields: [
           { label: 'ชื่อโครงการ', conf: '0.87', value: 'จ้างเหมาดูแลสวนสาธารณะ ปีงบ 2570', ok: true },
           { label: 'หน่วยงาน', conf: '0.9', value: 'เทศบาลเมืองอุดรธานี', ok: true },
-          { label: 'งบประมาณ (฿) — ไม่น่าเป็นไปได้', conf: '0.15', value: '0', ok: false },
+          { label: 'งบประมาณ (฿) — ไม่น่าเป็นไปได้', conf: '0.15', value: '0', ok: false, src: '๐.๐๐ บาท (ตัวเลขเลือน)' },
           { label: 'กำหนดยื่นซอง', conf: '0.72', value: '3 ก.ย. 2569', ok: true },
           { label: 'หมวดหมู่', conf: '0.79', value: 'จ้างเหมาบริการ', ok: true },
         ] },
       { conf: '0.38', flag: 'ไม่พบหน่วยงานในบัญชีกลาง', title: 'จ้างก่อสร้างถนน อบต.บางพลี — รอยืนยันหน่วยงาน', src: 'URL · นำเข้า 07:58', docType: 'HTML SOURCE', docRef: 'ประกาศจาก URL ภายนอก', docNote: 'ชื่อหน่วยงานไม่ตรงบัญชีกลาง — รอยืนยัน',
         fields: [
           { label: 'ชื่อโครงการ', conf: '0.84', value: 'จ้างก่อสร้างถนน คสล. หมู่ 4', ok: true },
-          { label: 'หน่วยงาน — ไม่พบในบัญชีกลาง', conf: '0.22', value: 'อบต.บางพลี', ok: false },
+          { label: 'หน่วยงาน — ไม่พบในบัญชีกลาง', conf: '0.22', value: 'อบต.บางพลี', ok: false, src: 'อบต.บางพลี อ.บางพลี จ.สมุทรปราการ' },
           { label: 'งบประมาณ (฿)', conf: '0.9', value: '2,780,000', ok: true },
           { label: 'กำหนดยื่นซอง', conf: '0.85', value: '27 ส.ค. 2569', ok: true },
           { label: 'หมวดหมู่', conf: '0.88', value: 'ก่อสร้าง', ok: true },
         ] },
     ];
     const cur = qs[s.qIdx] || qs[0];
+    const editedCount = Object.keys(s.qEdits).filter(k => k.split(':')[0] === String(s.qIdx)).length;
+    const flagged = cur.fields.filter(f => !f.ok).length;
+    const log = s.adminLog && s.adminLog.length ? s.adminLog : [
+      { t: '09:12:04', who: 'extractor v2.4', txt: 'สกัด 5 ฟิลด์ · confidence เฉลี่ย ' + cur.conf },
+      { t: '09:12:04', who: 'sanity check', txt: cur.docNote },
+      { t: '09:12:05', who: 'ระบบ', txt: 'เข้าคิวตรวจสอบ — confidence < T_LOW (0.60)' },
+    ];
     return {
       queueCount: String(qs.length),
-      queue: qs.map((q, i) => ({
-        conf: q.conf, flag: q.flag, title: q.title, src: q.src,
-        mark: i === s.qIdx ? '#1d63d8' : 'transparent',
-        bg: i === s.qIdx ? 'rgba(29,99,216,.06)' : 'transparent',
-        op: i === s.qIdx ? '1' : '.72',
-        pick: () => this.setState({ qIdx: i, adminToast: 'การแก้ไขถูกเก็บเป็น few-shot example ให้ extractor (FR-G2)' }),
-      })),
+      queue: qs.map((q, i) => {
+        const on = i === s.qIdx;
+        return {
+          conf: q.conf, flag: q.flag, title: q.title, src: q.src, num: String(i + 1).padStart(2, '0'),
+          bg: on ? '#fff' : 'transparent',
+          mark: on ? '#12233c' : 'transparent',
+          numC: on ? '#12233c' : 'rgba(18,35,60,.4)',
+          titleC: on ? '#12233c' : 'rgba(18,35,60,.78)',
+          barW: Math.round(parseFloat(q.conf) * 100) + '%',
+          pick: () => this.setState({ qIdx: i, adminLog: [] }),
+        };
+      }),
       qDocType: cur.docType, qDocRef: cur.docRef, qDocNote: cur.docNote,
+      qTitle: cur.title, qConf: cur.conf, qFlag: cur.flag,
+      qFlagCount: flagged + ' ฟิลด์ต้องยืนยัน',
+      qEditedNote: editedCount ? 'แก้ไข ' + editedCount + ' ฟิลด์ (ยังไม่บันทึก)' : 'ยังไม่มีการแก้ไข',
+      qPageRows: cur.fields.map(f => ({
+        k: f.label.split(' — ')[0],
+        v: f.ok ? f.value : '⌐ อ่านไม่ชัด',
+        vc: f.ok ? '#2a3b52' : '#8a5a10',
+        vbg: f.ok ? 'transparent' : 'rgba(214,158,46,.24)',
+        vfw: f.ok ? '400' : '600',
+      })),
+      qAudit: log,
       qFields: cur.fields.map((f, i) => {
         const key = s.qIdx + ':' + i;
-        const val = s.qEdits[key] !== undefined ? s.qEdits[key] : f.value;
+        const dirty = s.qEdits[key] !== undefined;
+        const val = dirty ? s.qEdits[key] : f.value;
         return {
-          label: f.label, conf: f.conf, value: val,
-          labelColor: f.ok ? 'rgba(18,35,60,.65)' : '#b45309', labelWeight: f.ok ? '400' : '600',
-          confColor: f.ok ? '#0e7a5f' : '#b45309',
-          border: f.ok ? 'rgba(18,35,60,.25)' : '#b45309',
-          bg: f.ok ? '#fff' : 'rgba(180,83,9,.06)',
-          color: f.ok ? '#12233c' : 'rgba(18,35,60,.75)',
+          label: f.label.split(' — ')[0], conf: f.conf,
+          note: f.ok ? '' : (f.label.split(' — ')[1] || 'ต้องยืนยันด้วยตา'),
+          noteShow: f.ok ? 'none' : 'block',
+          value: val,
+          labelColor: f.ok ? 'rgba(18,35,60,.72)' : '#12233c',
+          confColor: f.ok ? 'rgba(18,35,60,.5)' : '#b45309',
+          barW: Math.round(parseFloat(f.conf) * 100) + '%',
+          barC: f.ok ? 'rgba(14,122,95,.55)' : '#d69e2e',
+          rail: f.ok ? 'rgba(18,35,60,.14)' : '#d69e2e',
+          border: f.ok ? 'rgba(18,35,60,.2)' : 'rgba(180,83,9,.5)',
+          bg: dirty ? 'rgba(29,99,216,.05)' : '#fff',
+          color: '#12233c',
+          dirtyShow: dirty ? 'inline-block' : 'none',
           onEdit: (e) => { const v = e.target.value; this.setState(st => ({ qEdits: { ...st.qEdits, [key]: v } })); },
         };
       }),
       adminToast: s.adminToast,
-      approve: () => this.setState({ adminToast: '✓ อนุมัติแล้ว — ล้างแท็ก unverified และเผยแพร่สู่หน้าค้นหา · บันทึกเป็น few-shot example' }),
-      reextract: () => this.setState({ adminToast: '↻ ส่งกลับเข้าคิวสกัดใหม่ด้วย prompt เฉพาะฟิลด์ที่ขาด' }),
-      reject: () => this.setState({ adminToast: '✕ ปฏิเสธ — เอกสารถูกทำเครื่องหมายว่าไม่ใช่ TOR ที่เกี่ยวข้อง' }),
+      approve: () => this.adminLogAction(log, 'อนุมัติ — ล้างแท็ก unverified, เผยแพร่สู่หน้าค้นหา, เก็บการแก้ไขเป็น few-shot example'),
+      reextract: () => this.adminLogAction(log, 'ส่งกลับเข้าคิวสกัดใหม่ เฉพาะฟิลด์ที่ขาด'),
+      reject: () => this.adminLogAction(log, 'ปฏิเสธ — ทำเครื่องหมายว่าไม่ใช่ TOR ที่เกี่ยวข้อง'),
+      ...this.adminValsB(qs, cur),
     };
+  }
+  adminValsB(qs, cur) {
+    const s = this.state;
+    const conf = s.qConfirm || {};
+    const af = s.afIdx == null ? 0 : s.afIdx;
+    const total = cur.fields.length;
+    const done = cur.fields.filter((f, i) => conf[s.qIdx + ':' + i]).length;
+    const rowY = (i) => 41 + i * 8.2;
+    return {
+      bVer: s.adminVer === 'b',
+      aVer: s.adminVer !== 'b',
+      verABg: s.adminVer !== 'b' ? '#12233c' : 'transparent',
+      verAC: s.adminVer !== 'b' ? '#fff' : 'rgba(18,35,60,.6)',
+      verBBg: s.adminVer === 'b' ? '#12233c' : 'transparent',
+      verBC: s.adminVer === 'b' ? '#fff' : 'rgba(18,35,60,.6)',
+      setVerA: () => this.setState({ adminVer: 'a' }),
+      setVerB: () => this.setState({ adminVer: 'b' }),
+      bRail: qs.map((q, i) => {
+        const on = i === s.qIdx;
+        return {
+          num: String(i + 1), title: q.title, conf: q.conf,
+          bg: on ? '#fff' : 'transparent',
+          bd: on ? 'rgba(18,35,60,.2)' : 'transparent',
+          c: on ? '#12233c' : 'rgba(18,35,60,.45)',
+          dot: parseFloat(q.conf) < 0.4 ? '#d69e2e' : 'rgba(18,35,60,.3)',
+          pick: () => this.setState({ qIdx: i, afIdx: 0, adminLog: [] }),
+        };
+      }),
+      qOpen: !s.qShut, qShut: !!s.qShut,
+      qSearch: s.qSearch || '',
+      onQSearch: (e) => this.setState({ qSearch: e.target.value }),
+      qChips: [
+        { key: 'all', label: 'ทั้งหมด' },
+        { key: 'งบ', label: 'อ่านงบประมาณไม่ได้' },
+        { key: 'วันที่', label: 'วันที่ไม่สมเหตุสมผล' },
+        { key: 'หน่วยงาน', label: 'ไม่พบหน่วยงาน' },
+      ].map(c => {
+        const on = (s.qFilter || 'all') === c.key;
+        return {
+          label: c.label,
+          bg: on ? 'rgba(29,99,216,.08)' : '#fff',
+          bd: on ? '#1d63d8' : 'rgba(18,35,60,.22)',
+          c: on ? '#1d63d8' : '#4e5e75',
+          fw: on ? '600' : '400',
+          pick: () => this.setState({ qFilter: c.key }),
+        };
+      }),
+      qList: qs.map((q, i) => ({ q, i })).filter(({ q }) => {
+        const f = s.qFilter || 'all';
+        const hay = (q.title + ' ' + q.flag + ' ' + q.src).toLowerCase();
+        const okF = f === 'all' || q.flag.indexOf(f) > -1 || (f === 'งบ' && q.flag.indexOf('งบ') > -1);
+        const okS = !s.qSearch || hay.indexOf(s.qSearch.toLowerCase()) > -1;
+        return okF && okS;
+      }).map(({ q, i }) => {
+        const on = i === s.qIdx;
+        return {
+          num: String(i + 1).padStart(2, '0'), title: q.title, conf: q.conf, flag: q.flag, src: q.src,
+          barW: Math.round(parseFloat(q.conf) * 100) + '%',
+          bg: on ? '#fff' : 'transparent',
+          mark: on ? '#1d63d8' : 'transparent',
+          numC: on ? '#12233c' : '#5f6f86',
+          titleC: on ? '#12233c' : '#33465e',
+          pick: () => this.setState({ qIdx: i, afIdx: 0, adminLog: [] }),
+        };
+      }),
+      qEmptyShow: 'none',
+      qHandleIcon: s.qShut ? '›' : '‹',
+      qHandleTitle: s.qShut ? 'เปิดคิวตรวจสอบ' : 'ย่อคิวตรวจสอบ',
+      bCols: s.qShut ? '40px minmax(300px,1fr) minmax(310px,380px)' : 'minmax(248px,262px) minmax(280px,1fr) minmax(310px,380px)',
+      qBtnIcon: s.qShut ? '›' : '‹',
+      qBtnLabel: s.qShut ? 'แสดงรายการคิว (' + qs.length + ')' : 'ซ่อนรายการคิว',
+      qBtnBg: s.qShut ? '#fff' : 'rgba(29,99,216,.07)',
+      qBtnBd: s.qShut ? 'rgba(18,35,60,.24)' : '#1d63d8',
+      qBtnC: s.qShut ? '#4e5e75' : '#1d63d8',
+      toggleQueue: () => this.setState(st => ({ qShut: !st.qShut })),
+      bPos: (s.qIdx + 1) + ' / ' + qs.length,
+      bPrev: () => this.setState({ qIdx: Math.max(0, s.qIdx - 1), afIdx: 0, adminLog: [] }),
+      bNext: () => this.setState({ qIdx: Math.min(qs.length - 1, s.qIdx + 1), afIdx: 0, adminLog: [] }),
+      bDocType: cur.docType, bDocRef: cur.docRef, bFlagNote: cur.docNote, bTitle: cur.title,
+      bProgress: done + ' / ' + total,
+      bProgW: Math.round((done / total) * 100) + '%',
+      bRemain: done === total ? 'ยืนยันครบทุกฟิลด์' : 'เหลือ ' + (total - done) + ' ฟิลด์ที่ยังไม่ยืนยัน',
+      bReadyBg: done === total ? '#0e7a5f' : '#12233c',
+      bRows: cur.fields.map((f, i) => {
+        const key = s.qIdx + ':' + i;
+        const dirty = s.qEdits[key] !== undefined;
+        const okd = !!conf[key];
+        const on = i === af;
+        return {
+          label: f.label.split(' — ')[0],
+          note: f.ok ? (f.conf >= '0.85' ? 'สกัดได้ชัดเจน' : 'ตรวจทานเพื่อความแน่ใจ') : (f.label.split(' — ')[1] || 'ค่าน่าสงสัย ต้องยืนยันด้วยตา'),
+          noteC: f.ok ? 'rgba(18,35,60,.45)' : '#8a5a10',
+          value: dirty ? s.qEdits[key] : f.value,
+          conf: f.conf,
+          tick: okd ? '✓' : '✓',
+          tickBg: okd ? '#0e7a5f' : 'rgba(18,35,60,.16)',
+          tickC: okd ? '#fff' : 'rgba(18,35,60,.5)',
+          tickTitle: okd ? 'ยืนยันโดยผู้ตรวจ' : 'ยังเป็นค่าจาก AI',
+          bg: on ? '#fff' : 'transparent',
+          shadow: on ? 'inset 2px 0 0 #1d63d8' : 'inset 2px 0 0 transparent',
+          border: on ? '#1d63d8' : (f.ok ? 'rgba(18,35,60,.18)' : 'rgba(214,158,46,.7)'),
+          inputBg: dirty ? 'rgba(29,99,216,.05)' : '#fff',
+          badgeShow: f.ok ? 'none' : 'inline-block',
+          dirtyShow: dirty ? 'inline-block' : 'none',
+          focus: () => this.setState({ afIdx: i }),
+          onEdit: (e) => { const v = e.target.value; this.setState(st => ({ qEdits: { ...st.qEdits, [key]: v }, afIdx: i })); },
+          toggle: (e) => { e.stopPropagation(); this.setState(st => ({ qConfirm: { ...(st.qConfirm || {}), [key]: !(st.qConfirm || {})[key] } })); },
+        };
+      }),
+      bDocLines: [
+        { top: '20%', left: '9%', w: '82%', txt: 'ด้วยหน่วยงานมีความประสงค์จะดำเนินการจัดจ้างตามรายละเอียดขอบเขตของงาน ผู้ยื่นข้อเสนอต้องมีคุณสมบัติครบถ้วนตามที่กำหนด' },
+        { top: '30%', left: '9%', w: '82%', txt: 'และยื่นข้อเสนอผ่านระบบจัดซื้อจัดจ้างภาครัฐด้วยวิธีประกวดราคาอิเล็กทรอนิกส์ภายในกำหนดเวลา' },
+      ],
+      bDocRows: cur.fields.map((f, i) => {
+        const on = i === af;
+        const key = s.qIdx + ':' + i;
+        return {
+          k: f.label.split(' — ')[0],
+          v: f.src || f.value,
+          vc: on ? '#12233c' : (f.ok ? '#33465e' : '#66748a'),
+          bd: on ? '#1d63d8' : (f.ok ? 'transparent' : 'rgba(214,158,46,.8)'),
+          bg: on ? 'rgba(29,99,216,.11)' : (f.ok ? 'transparent' : 'rgba(214,158,46,.14)'),
+          labelShow: on ? 'block' : 'none',
+          boxLabel: 'อ่านค่าจากที่นี่ · ' + f.conf,
+          hover: () => this.setState({ afIdx: i }),
+        };
+      }),
+      bAllLabel: done === total ? 'ยกเลิกการยืนยันทั้งหมด' : 'ยืนยันทั้งหมด',
+      bConfirmAll: () => {
+        const on = done !== total;
+        const m = {};
+        cur.fields.forEach((f, i) => { m[s.qIdx + ':' + i] = on; });
+        this.setState(st => ({ qConfirm: { ...(st.qConfirm || {}), ...m } }));
+      },
+    };
+  }
+  adminLogAction(base, txt) {
+    const d = new Date();
+    const t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+    this.setState(st => ({ adminToast: txt, adminLog: [...(st.adminLog && st.adminLog.length ? st.adminLog : base), { t, who: 'คุณ (ผู้ตรวจ)', txt }] }));
   }
   fmtM(n) { return n >= 1000000 ? '฿' + (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + 'M' : '฿' + Math.round(n / 1000) + 'K'; }
   renderVals() {
