@@ -236,7 +236,7 @@ per request and never stored — a persisted one becomes a broken link on an unp
 | `GET /api/v1/export/tors.csv` | The current filter as CSV, with the same PII minimisation as the API |
 
 **Open:** whether these compute live or read a precomputed rollup — see
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) Q1/Q2. The route shape is the same either way; only its
+[PLAN.md](PLAN.md) Q1/Q2. The route shape is the same either way; only its
 freshness guarantee changes, and `coverage.lastUpdated` is where that becomes visible.
 
 Anomaly responses always carry the method and its parameters (`PEER_GROUP_KEY`, `PEER_WINDOW`,

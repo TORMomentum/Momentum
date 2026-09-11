@@ -1,7 +1,7 @@
 # Rendering and data fetching
 
 **Date:** 2026-09-10
-**Decides:** [OPEN-QUESTIONS.md](../../OPEN-QUESTIONS.md) Q1 — and unblocks Q2
+**Decides:** [PLAN.md](../../PLAN.md) Q1 — and unblocks Q2
 **Applies to:** every screen in `apps/web`, and the contract between the web app and the API
 **Cross-checked:** yes — §16 records what the review changed
 

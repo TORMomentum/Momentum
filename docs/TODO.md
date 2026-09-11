@@ -5,10 +5,10 @@ a box is expanded into sub-boxes **when it is entered**, nesting goes as deep as
 to be, and a parent is never ticked while a child is open. Step-level detail for slice 1 lives in
 [the plan](superpowers/plans/2026-09-01-slice1-foundation-intake.md).
 
-Decisions that are NOT yet made live in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) — this file is work,
+Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-09-09_
+_last updated: 2026-09-11_
 
 ---
 
@@ -210,6 +210,26 @@ _Design: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpow
 - [ ] **TOR-88 (parent) — in review** — PR open; Sudha (epic TOR-3 owner) to read the Slice-2
       spec §4 / §6 / §10 before approving. Design has NOT had the external cross-check Slice 1 got.
 
+## 2d. Admin validation screen and the staff gate — DONE (2026-09-10 → 11)
+
+_Design: [`plans/2026-09-11-admin-validation-port.md`](superpowers/plans/2026-09-11-admin-validation-port.md)._
+
+- [x] **Staff session** — `requireStaff()` before every admin action, signed httpOnly cookie,
+      constant-time compare, Thai sign-in screen. Closed a real hole: the four review actions spent
+      the admin key with no caller check, and the only "gate" was a client component reading
+      prototype browser storage. `39c3704`
+  - [x] sign-out ends BOTH sessions, awaited so navigation cannot cancel it. `ab303fd`
+  - [x] a way back into the staff area from the public side, one style for both directions.
+        `ab303fd`, `21a9020`
+- [x] **Two API operations** the screen needed. `db9fcaa`
+  - [x] `GET /admin/tors/:id/document` — signed URL, key read from the record, never the caller
+  - [x] `PATCH /admin/tors/:id/fields/:field/verification` — confirming is NOT correcting; the test
+        asserts the `corrections` count is unchanged, because those rows are replayed to the
+        extractor as few-shot examples
+- [x] **The screen, ported to the redesigned mockup** — three columns, locked shell, real stored PDF
+      in the middle, confirm ticks and progress. `48e82fc`
+- [x] **Confirmation dialogs**, and the reject reason is no longer a hardcoded constant. `27e7e49`
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
@@ -217,6 +237,17 @@ _Design: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpow
 - [ ] O2 — `MIN_BID_WINDOW_DAYS`; checklist C2 reports "not evaluated" until then
 - [ ] O3 — `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`
 - [ ] O4 — IQR or ZSCORE as the active anomaly method
+
+## 3b. Carried debt — small, keeps costing time
+
+- [ ] **Split the dev and test databases.** `MONGO_URL` points at `tor_radar_test`, so `npm test`
+      wipes the seeded review queue. It happened four times on 2026-09-10/11; each recovery is one
+      command, which is exactly why it never gets fixed
+- [ ] Record the Q1 rendering decisions in `PLAN.md` §3 and correct the
+      `NEXT_PUBLIC_API_URL` line in `API.md` — the decision is made and the spec is written, the
+      register has not caught up
+- [ ] `CLAUDE.md`'s stack table names Document AI for OCR; the code has never called it. Either the
+      table or the pipeline is wrong, and §2e decides which
 
 ## 4. Environment
 
