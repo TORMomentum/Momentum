@@ -82,19 +82,37 @@
 
 .sideActions { display: flex; gap: 10px; margin-bottom: 26px; }
 
+.documentAction { flex: 1; min-width: 0; }
+
 .openDocBtn {
+  display: block;
   white-space: nowrap;
-  flex: 1;
+  width: 100%;
   text-align: center;
   font: 600 12.5px var(--body);
   background: var(--blue);
   color: var(--paper);
   padding: 11px 0;
-  border-radius: 4px;
+  border: 0;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
-.openDocBtn:hover { background: var(--blue-dark); }
+.openDocBtn:hover { background: var(--blue-dark); color: var(--paper); }
+
+.openDocBtnUnavailable,
+.openDocBtnUnavailable:hover {
+  background: var(--ink-12);
+  color: var(--ink-55);
+  cursor: not-allowed;
+}
+
+.documentUnavailableNote {
+  display: block;
+  margin-top: 6px;
+  font: 10px/1.5 var(--body);
+  color: var(--ink-62);
+}
 
 .saveBtn {
   white-space: nowrap;

@@ -13,7 +13,7 @@ import { formatBudgetFull, getTorBySlug } from "../data/tor-samples";
  * no logged-out state, so the mockup's "register to see your match" branch is
  * not modelled — the logged-in qualification/match view always renders.
  */
-export function TorDetailView() {
+export function TorDetailView({ documentUrl }: { documentUrl: string | null }) {
   const params = useParams<{ id: string }>();
   const slug = params?.id ?? "";
   const [saved, setSaved] = useState(true);
@@ -105,7 +105,31 @@ export function TorDetailView() {
 
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
-          <span className={styles.openDocBtn}>เปิดเอกสารต้นฉบับ ↗</span>
+          <div className={styles.documentAction}>
+            {documentUrl ? (
+              <a
+                className={styles.openDocBtn}
+                href={documentUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                เปิดเอกสารต้นฉบับ ↗
+              </a>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={`${styles.openDocBtn} ${styles.openDocBtnUnavailable}`}
+                  disabled
+                >
+                  เปิดเอกสารต้นฉบับ ↗
+                </button>
+                <span className={styles.documentUnavailableNote}>
+                  รายการตัวอย่างนี้ไม่มีเอกสารต้นฉบับที่จัดเก็บไว้
+                </span>
+              </>
+            )}
+          </div>
           <button
             type="button"
             className={`${styles.saveBtn} ${saved ? styles.saveBtnOn : ""}`}

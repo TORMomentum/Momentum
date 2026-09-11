@@ -12,6 +12,9 @@ import { HistoryRepository } from "./modules/history/history.repository.js";
 import { AdminRepository } from "./modules/admin/admin.repository.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { buildAdminRouter } from "./modules/admin/admin.routes.js";
+import { TorsRepository } from "./modules/tors/tors.repository.js";
+import { TorsService } from "./modules/tors/tors.service.js";
+import { buildTorsRouter } from "./modules/tors/tors.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -82,6 +85,17 @@ export function buildApp(config: Config, db: Db): Express {
       }),
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
+    }),
+  );
+
+  app.use(
+    `${API_PREFIX}/tors`,
+    buildTorsRouter({
+      service: new TorsService({
+        repo: new TorsRepository(db),
+        storage,
+        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
+      }),
     }),
   );
 
