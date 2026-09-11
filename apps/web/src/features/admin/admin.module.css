@@ -786,3 +786,61 @@
 .adminConfirmCancel:focus-visible,
 .adminConfirmSubmit:focus-visible,
 .adminConfirmTextarea:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Data-route fallbacks for the overview, activity log, and locked review
+   workbench. Each preserves the loaded screen's dimensions and scroll model. */
+.skeletonBlock,
+.skeletonDocumentPane {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--ink-12);
+  animation: adminSkeleton 1.4s ease-in-out infinite alternate;
+}
+
+.skeletonOverviewTitle { width: 250px; height: 32px; margin-bottom: 10px; }
+.skeletonOverviewLede { width: min(720px, 75%); height: 22px; margin-bottom: 26px; }
+.skeletonCardKey { width: 65%; height: 12px; margin-bottom: 10px; }
+.skeletonCardValue { width: 42%; height: 40px; }
+.skeletonCardNote { width: 82%; height: 24px; margin-top: 8px; }
+.skeletonOverviewLinkTitle { width: 52%; height: 18px; margin-bottom: 10px; }
+.skeletonOverviewLinkBody { width: 88%; height: 28px; }
+.skeletonLogTable { width: 100%; }
+.skeletonLogHead,
+.skeletonLogRow {
+  display: grid;
+  grid-template-columns: 150px 1.4fr 1fr 1fr 1.2fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: var(--rule);
+}
+.skeletonLogHead .skeletonBlock { height: 11px; }
+.skeletonLogRow .skeletonBlock { height: 28px; }
+.skeletonReviewTitle { width: 260px; height: 24px; }
+.skeletonReviewMeta { width: min(560px, 45%); height: 12px; }
+.skeletonQueueTools { display: grid; gap: 12px; padding: 0 22px 16px; border-bottom: var(--rule); }
+.skeletonQueueHeading { width: 120px; height: 15px; }
+.skeletonQueueSearch { width: 100%; height: 36px; }
+.skeletonQueueItem { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 15px 22px; }
+.skeletonQueueIndex { width: 18px; height: 12px; }
+.skeletonQueueTitle { width: 88%; height: 32px; }
+.skeletonQueueTrack { width: 100%; height: 3px; margin-top: 10px; }
+.skeletonToolbarLine { width: 132px; height: 11px; }
+.skeletonToolbarLineShort { width: 78px; height: 11px; }
+.skeletonDocumentPane { width: 100%; height: 100%; border: var(--rule); }
+.skeletonFieldsHeading { width: 150px; height: 18px; }
+.skeletonFieldLabel { width: 42%; height: 12px; margin-bottom: 9px; }
+.skeletonFieldInput { width: 100%; height: 38px; }
+.skeletonFieldNote { width: 68%; height: 10px; margin-top: 7px; }
+
+@keyframes adminSkeleton {
+  from { opacity: 0.45; }
+  to { opacity: 0.9; }
+}
+
+@media (max-width: 900px) {
+  .skeletonLogHead, .skeletonLogRow { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBlock, .skeletonDocumentPane { animation: none; }
+}

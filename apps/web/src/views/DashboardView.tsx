@@ -80,7 +80,14 @@ const AXIS_CATEGORIES = [
   { left: "80%", name: "จ้างเหมาบริการ" },
 ];
 
-export function DashboardView() {
+export type DashboardDataState = "ready" | "empty" | "offline";
+
+export function DashboardView({
+  dataState = "ready",
+}: {
+  /** Supplied by the server data route once sample figures are replaced. */
+  dataState?: DashboardDataState;
+} = {}) {
   const [agency, setAgency] = useState(ALL);
   const [category, setCategory] = useState(ALL);
   const [period, setPeriod] = useState(PERIODS[0].value);
@@ -130,6 +137,31 @@ export function DashboardView() {
 
   function toggleDrop(key: string) {
     setOpenDrop((open) => (open === key ? null : key));
+  }
+
+  if (dataState !== "ready") {
+    const offline = dataState === "offline";
+
+    return (
+      <main className={styles.page}>
+        <div className={styles.pageHead}>
+          <h1 className={styles.pageTitle}>ภาพรวมการจัดซื้อจัดจ้างภาครัฐ</h1>
+          <div className={styles.coverage}>ครอบคลุมเฉพาะเอกสารที่ระบบรวบรวมได้</div>
+        </div>
+        <section className={styles.dataState} aria-live="polite">
+          <div className={styles.dataStateContent}>
+            <h2 className={styles.dataStateTitle}>
+              {offline ? "ยังเปิดข้อมูลภาพรวมไม่ได้" : "ยังไม่มีข้อมูลสำหรับภาพรวม"}
+            </h2>
+            <p className={styles.dataStateBody}>
+              {offline
+                ? "ขณะนี้ยังเชื่อมต่อกับบริการข้อมูลไม่ได้ จึงยังไม่ทราบว่ามี TOR ในชุดข้อมูลที่รวบรวมไว้เท่าใด ลองใหม่อีกครั้งในภายหลัง"
+                : "ระบบยังไม่ได้รวบรวม TOR เข้ามา เมื่อมีเอกสารชุดแรก ตัวเลขและแผนภูมิจะปรากฏที่นี่ โดยครอบคลุมเฉพาะเอกสารที่ระบบรวบรวมได้"}
+            </p>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (

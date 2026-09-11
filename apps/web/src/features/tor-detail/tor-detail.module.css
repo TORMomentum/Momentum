@@ -16,8 +16,6 @@
 
 .backLink { display: inline-block; font: 11px var(--data); color: var(--blue); cursor: pointer; margin-bottom: 18px; }
 
-.notFound { font-size: 13px; color: var(--ink-65); margin-top: 18px; }
-
 .detailKicker { font: 500 10px var(--data); color: var(--ink-62); letter-spacing: var(--label-tracking); margin-bottom: 12px; }
 
 .statusOpen { color: var(--verified); }
@@ -82,8 +80,6 @@
 
 .sideActions { display: flex; gap: 10px; margin-bottom: 26px; }
 
-.documentAction { flex: 1; min-width: 0; }
-
 .openDocBtn {
   display: block;
   white-space: nowrap;
@@ -109,7 +105,7 @@
 
 .documentUnavailableNote {
   display: block;
-  margin-top: 6px;
+  margin: -18px 0 26px;
   font: 10px/1.5 var(--body);
   color: var(--ink-62);
 }
@@ -158,8 +154,59 @@
 
 .docHash { margin-top: 10px; font: 10px var(--data); color: rgba(18, 35, 60, 0.6); }
 
+/* Detail fallback follows the loaded page's two-column reading order. */
+.skeletonBlock,
+.skeletonDocument {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--ink-12);
+  animation: detailSkeleton 1.4s ease-in-out infinite alternate;
+}
+
+.skeletonBack { width: 132px; height: 12px; margin-bottom: 22px; }
+.skeletonKicker { width: 46%; height: 11px; margin-bottom: 14px; }
+.skeletonTitle { width: 84%; height: 68px; margin-bottom: 8px; }
+.skeletonAgency { width: 38%; height: 14px; margin-bottom: 24px; }
+.skeletonFactLabel { width: 42%; height: 11px; margin-bottom: 8px; }
+.skeletonFactValue { width: 66%; height: 26px; }
+.skeletonFactNote { width: 78%; height: 11px; margin-top: 7px; }
+.skeletonSection { margin-top: 24px; padding-top: var(--gutter-tight); border-top: var(--rule); }
+.skeletonSectionLabel { width: 180px; height: 12px; margin-bottom: 14px; }
+.skeletonText { width: 100%; height: 14px; margin-bottom: 8px; }
+.skeletonTextShort { width: 72%; height: 14px; }
+.skeletonAction { width: 100%; height: 42px; margin-bottom: 28px; }
+.skeletonSideLabel { width: 210px; height: 12px; margin-bottom: 14px; }
+.skeletonScore { width: 110px; height: 52px; margin-bottom: 24px; }
+.skeletonCheck { width: 88%; height: 14px; margin-bottom: 12px; }
+.skeletonDocument { height: 150px; margin-top: 32px; border: var(--rule); }
+
+.notFoundPage { grid-template-columns: 1fr; place-items: center; }
+.notFoundContent { max-width: 520px; padding: 48px 24px; text-align: center; }
+.notFoundCode { margin-bottom: 18px; color: var(--blue); font: 600 56px/1 var(--data); }
+.notFoundTitle { margin: 0 0 12px; font: 700 24px var(--display); }
+.notFoundBody { margin: 0 0 26px; color: var(--ink-70); font-size: 13.5px; line-height: 1.9; }
+.notFoundLink {
+  display: inline-block;
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  padding: 11px 22px;
+  background: var(--blue);
+  color: var(--paper);
+  font: 600 13px var(--body);
+}
+.notFoundLink:hover { background: var(--blue-dark); color: var(--paper); }
+
+@keyframes detailSkeleton {
+  from { opacity: 0.45; }
+  to { opacity: 0.9; }
+}
+
 @media (max-width: 900px) {
   .detailPage { grid-template-columns: 1fr; }
   .detailMain { border-right: 0; border-bottom: var(--rule); padding: 24px 20px; }
   .detailSide { padding: 24px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBlock, .skeletonDocument { animation: none; }
 }

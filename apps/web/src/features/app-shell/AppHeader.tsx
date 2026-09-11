@@ -30,7 +30,7 @@ const ADMIN_TABS = [
  * `data-screen-label="Dashboard"` main). The ADMIN/EMAIL chips are prototype
  * navigation for jumping between demo states and are deliberately absent.
  */
-export function AppHeader({ staff = false }: { staff?: boolean }) {
+export function AppHeader({ staffSlot }: { staffSlot?: React.ReactNode }) {
   const pathname = usePathname();
   const { signedIn, ready } = useViewer();
   const inAdmin = pathname.startsWith("/admin");
@@ -75,16 +75,11 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
           </Link>
         )}
 
-        {/*
-          Worded to mirror the exit above it — ออกจาก / กลับสู่ acting on the
-          same มุมมองผู้ดูแล. A noun like "ส่วนผู้ดูแลระบบ" reads as a label
-          for where you are, not as the way back to where you were.
-        */}
-        {!inAdmin && staff && (
-          <Link href="/admin" className={styles.modeSwitch}>
-            กลับสู่มุมมองผู้ดูแล
-          </Link>
-        )}
+        {/* Server-rendered and passed in, because the cookie is httpOnly and a
+            client component cannot read it. Renders nothing unless a staff
+            session is live, so this slot is usually empty. Its wording mirrors
+            the exit above — see StaffModeSwitch. */}
+        {!inAdmin && staffSlot}
 
         {ready && !signedIn && !inAdmin && (
           <>

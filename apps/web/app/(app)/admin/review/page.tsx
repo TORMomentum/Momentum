@@ -76,7 +76,7 @@ export default async function AdminReviewPage({
     console.error("[admin/review] queue load failed", error);
     offline =
       error instanceof AdminApiUnavailable
-        ? "ยังไม่ได้เชื่อมต่อกับ API — คิวจะปรากฏเมื่อบริการทำงาน"
+        ? "ยังไม่ได้เชื่อมต่อกับบริการข้อมูล — คิวจะปรากฏเมื่อบริการทำงาน"
         : "โหลดคิวตรวจสอบไม่สำเร็จ — ลองใหม่อีกครั้ง";
   }
 

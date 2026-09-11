@@ -268,6 +268,50 @@
   line-height: 1.7;
 }
 
+/* Route fallback: the same heading, figures, bars, and plot geometry as the
+   loaded dashboard. Tokens keep it useful even before the data arrives. */
+.skeletonBlock,
+.skeletonChip,
+.skeletonBar,
+.skeletonPlot {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--ink-12);
+  animation: dashboardSkeleton 1.4s ease-in-out infinite alternate;
+}
+
+.skeletonHead { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 26px; }
+.skeletonTitle { width: min(420px, 58%); height: 42px; }
+.skeletonCoverage { width: 240px; height: 36px; }
+.skeletonFilters { display: flex; gap: 9px; margin-bottom: 24px; }
+.skeletonChip { width: 126px; height: 34px; border-radius: 99px; }
+.skeletonStatKey { width: 58%; height: 11px; }
+.skeletonStatValue { width: 42%; height: 50px; margin-top: 8px; }
+.skeletonStatNote { width: 72%; height: 11px; margin-top: 5px; }
+.skeletonPanelTitle { width: 180px; height: 20px; margin-bottom: 18px; }
+.skeletonBars { display: flex; flex-direction: column; gap: 28px; padding-top: 8px; }
+.skeletonBar { height: 24px; }
+.skeletonBar:nth-child(2n) { width: 74%; }
+.skeletonBar:nth-child(3n) { width: 88%; }
+.skeletonPlot { height: 260px; margin: 20px 8px 4px 46px; border-left: var(--rule); border-bottom: var(--rule); }
+
+.dataState {
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  border-top: var(--rule);
+  text-align: center;
+}
+
+.dataStateContent { max-width: 48ch; padding: var(--gutter-tight); }
+.dataStateTitle { margin: 0 0 10px; font: 600 18px var(--display); }
+.dataStateBody { margin: 0; color: var(--ink-62); font-size: 13px; line-height: 1.85; }
+
+@keyframes dashboardSkeleton {
+  from { opacity: 0.45; }
+  to { opacity: 0.9; }
+}
+
 @media (max-width: 900px) {
   .page { padding: 24px 20px 48px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
@@ -275,4 +319,10 @@
   .split { grid-template-columns: 1fr; }
   .splitLeft { border-right: 0; padding-right: 0; padding-bottom: 28px; }
   .splitRight { padding-left: 0; padding-top: 28px; border-top: var(--rule); }
+  .skeletonHead { align-items: stretch; flex-direction: column; }
+  .skeletonTitle, .skeletonCoverage { width: 70%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBlock, .skeletonChip, .skeletonBar, .skeletonPlot { animation: none; }
 }

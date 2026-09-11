@@ -15,6 +15,7 @@ Usage:
   python tools/jira.py done TOR-88            -> Done
   python tools/jira.py done TOR-88 --subtasks -> Done, subtasks first
   python tools/jira.py move TOR-88 "In Review"
+  python tools/jira.py create "Summary" --type Story --parent TOR-8 --body "why"
 
 Every command takes --dry-run, which prints the transition it would make and
 changes nothing. Transition names differ per board, so `show` prints the ones
@@ -236,6 +237,43 @@ def cmd_done(args) -> None:
     transition_to(args.key, "done", args.dry_run)
 
 
+def cmd_create(args) -> None:
+    """Create one issue.
+
+    Kept deliberately small: a summary, a type, an optional parent and an
+    optional description. Seeding a whole board is `jira_seed.py`'s job — this
+    is for the card that turns up mid-flight, which is the moment the work
+    otherwise goes unrecorded.
+    """
+    fields: dict = {
+        "project": {"key": PROJECT},
+        "summary": args.summary,
+        "issuetype": {"name": args.type},
+    }
+    if args.parent:
+        fields["parent"] = {"key": args.parent}
+    if args.body:
+        fields["description"] = {
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {"type": "paragraph", "content": [{"type": "text", "text": line}]}
+                for line in args.body.splitlines()
+                if line.strip()
+            ],
+        }
+
+    if args.dry_run:
+        print(f"would create {args.type} in {PROJECT}: {args.summary}")
+        if args.parent:
+            print(f"  parent: {args.parent}")
+        return
+
+    created = call("POST", "/rest/api/3/issue", {"fields": fields})
+    print(f"{created['key']}  {args.summary}")
+    print(f"{SITE}/browse/{created['key']}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -261,6 +299,14 @@ def main() -> None:
     p.add_argument("--subtasks", action="store_true", help="close open subtasks first")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(func=cmd_done)
+
+    p = sub.add_parser("create", help="create one issue")
+    p.add_argument("summary")
+    p.add_argument("--type", default="Story", help="Story | Subtask | Task | Bug (default Story)")
+    p.add_argument("--parent", help="epic key for a Story, or story key for a Subtask")
+    p.add_argument("--body", help="description; blank-line separated paragraphs")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_create)
 
     p = sub.add_parser("move", help="move to a named status")
     p.add_argument("key")

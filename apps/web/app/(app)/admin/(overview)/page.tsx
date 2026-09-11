@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import styles from "../../../src/features/admin/admin.module.css";
-import { fetchOverview, AdminApiUnavailable } from "../../../src/shared/lib/admin-api";
-import { isStaff } from "../../../src/shared/lib/staff-session";
+import styles from "../../../../src/features/admin/admin.module.css";
+import { fetchOverview, AdminApiUnavailable } from "../../../../src/shared/lib/admin-api";
+import { isStaff } from "../../../../src/shared/lib/staff-session";
 
 /**
  * The staff landing page: what needs doing, and where the rest of the area is.
@@ -26,10 +26,11 @@ export default async function AdminOverviewPage() {
   } catch (error) {
     // The API not running is the normal case on a laptop, so it is reported
     // plainly instead of throwing a stack trace at a reviewer.
+    console.error("[admin/overview] load failed", error);
     offline =
       error instanceof AdminApiUnavailable
-        ? "ยังไม่ได้เชื่อมต่อกับ API — ตัวเลขจะปรากฏเมื่อบริการทำงาน"
-        : String(error);
+        ? "ยังไม่ได้เชื่อมต่อกับบริการข้อมูล — ตัวเลขจะปรากฏเมื่อบริการทำงาน"
+        : "โหลดภาพรวมไม่สำเร็จ — ลองใหม่อีกครั้ง";
   }
 
   return (

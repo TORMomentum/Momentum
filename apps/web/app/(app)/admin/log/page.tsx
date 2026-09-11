@@ -46,10 +46,11 @@ export default async function AdminLogPage() {
   try {
     events = await fetchEvents(100);
   } catch (error) {
+    console.error("[admin/log] load failed", error);
     offline =
       error instanceof AdminApiUnavailable
-        ? "ยังไม่ได้เชื่อมต่อกับ API — บันทึกกิจกรรมจะปรากฏเมื่อบริการทำงาน"
-        : String(error);
+        ? "ยังไม่ได้เชื่อมต่อกับบริการข้อมูล — บันทึกกิจกรรมจะปรากฏเมื่อบริการทำงาน"
+        : "โหลดบันทึกกิจกรรมไม่สำเร็จ — ลองใหม่อีกครั้ง";
   }
 
   return (

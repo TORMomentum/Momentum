@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
-import { formatBudgetFull, getTorBySlug } from "../data/tor-samples";
+import { formatBudgetFull, type TorSample } from "../data/tor-samples";
 
 /**
  * TOR detail (FR-A/FR-B/FR-G). Ported from the "TOR Detail" screen of
@@ -13,25 +12,14 @@ import { formatBudgetFull, getTorBySlug } from "../data/tor-samples";
  * no logged-out state, so the mockup's "register to see your match" branch is
  * not modelled — the logged-in qualification/match view always renders.
  */
-export function TorDetailView({ documentUrl }: { documentUrl: string | null }) {
-  const params = useParams<{ id: string }>();
-  const slug = params?.id ?? "";
+export function TorDetailView({
+  tor,
+  documentUrl,
+}: {
+  tor: TorSample;
+  documentUrl: string | null;
+}) {
   const [saved, setSaved] = useState(true);
-
-  const tor = getTorBySlug(slug);
-
-  if (!tor) {
-    return (
-      <main className={styles.detailPage}>
-        <div className={styles.detailMain}>
-          <Link href="/search" className={styles.backLink}>
-            ← กลับไปผลการค้นหา
-          </Link>
-          <p className={styles.notFound}>ไม่พบ TOR รายการนี้ — อาจถูกลบหรือลิงก์ไม่ถูกต้อง</p>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className={styles.detailPage}>
@@ -105,31 +93,26 @@ export function TorDetailView({ documentUrl }: { documentUrl: string | null }) {
 
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
-          <div className={styles.documentAction}>
-            {documentUrl ? (
-              <a
-                className={styles.openDocBtn}
-                href={documentUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                เปิดเอกสารต้นฉบับ ↗
-              </a>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className={`${styles.openDocBtn} ${styles.openDocBtnUnavailable}`}
-                  disabled
-                >
-                  เปิดเอกสารต้นฉบับ ↗
-                </button>
-                <span className={styles.documentUnavailableNote}>
-                  รายการตัวอย่างนี้ไม่มีเอกสารต้นฉบับที่จัดเก็บไว้
-                </span>
-              </>
-            )}
-          </div>
+          {/* A direct flex child, as it has always been. Wrapping it made the
+              wrapper the flex item and stretched the button to fill it. */}
+          {documentUrl ? (
+            <a
+              className={styles.openDocBtn}
+              href={documentUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              เปิดเอกสารต้นฉบับ ↗
+            </a>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.openDocBtn} ${styles.openDocBtnUnavailable}`}
+              disabled
+            >
+              เปิดเอกสารต้นฉบับ ↗
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.saveBtn} ${saved ? styles.saveBtnOn : ""}`}
@@ -138,6 +121,12 @@ export function TorDetailView({ documentUrl }: { documentUrl: string | null }) {
             {saved ? "★ บันทึกแล้ว" : "☆ บันทึก"}
           </button>
         </div>
+
+        {!documentUrl && (
+          <span className={styles.documentUnavailableNote}>
+            รายการตัวอย่างนี้ไม่มีเอกสารต้นฉบับที่จัดเก็บไว้
+          </span>
+        )}
 
         <div className={`${labels.blockLabel} ${labels.blockLabelWide}`}>ตรวจคุณภาพข้อกำหนดด้วย AI</div>
         <div className={styles.qualityRow}>
