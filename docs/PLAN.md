@@ -6,7 +6,7 @@ the team to read.
 **This is not the task list.** [TODO.md](TODO.md) tracks the build box by box and is where live
 status lives. This document explains the direction.
 
-_last updated: 2026-09-11_
+_last updated: 2026-09-14_
 
 ---
 
@@ -90,18 +90,18 @@ flowchart TB
     class S2,S3,S4,T15 s
 ```
 
-**Q1 is answered** (2026-09-11) and recorded at the end of this section. Q2 is next: it was the question waiting on it.
+**Q1 and Q2 are answered** and recorded in the settled table at the end of this section. Slice 3 is unblocked.
 
 ### The questions
 
-#### Q2 · Do dashboard figures come from a live aggregation or a scheduled rollup?
+#### Q7 · Does the project keep MinIO?
 
 | | |
 | :--- | :--- |
-| **Blocks** | Slice 3's dashboard and the anomaly rule |
-| **Why it is open** | Live aggregation over the whole corpus is instant at 500 records and unusable at 100,000. The alternative is MongoDB's computed-values pattern: a job writes one rollup document per agency × category × month, including IQR bounds, and the page states its freshness (FR-E-6 requires a last-updated time anyway) |
-| **Unblocked by** | Q1, now answered — this is the next question to take |
-| **Recommendation on the table** | Precomputed rollups |
+| **Blocks** | Nothing today. It will block any deployment beyond a laptop |
+| **Why it is open** | On 2026-09-13 MinIO's image disappeared from Docker Hub and CI failed before a single test ran. MinIO now distributes its community edition as **source code only**; the last published image (`RELEASE.2025-09-07T16-13-09Z`, on quay.io) is frozen and will receive no security updates. Compose is pinned to it, which is fine for development and CI and is not a production answer |
+| **Options** | Keep the frozen image for the project's lifetime and accept it as dev-only · build MinIO from source in CI · move to an actively maintained S3-compatible store (SeaweedFS, Garage) — the `Storage` port means only the adapter changes |
+| **Who decides** | The team. `CLAUDE.md` lists MinIO as a decided part of the stack, so changing it is a stack decision, not an implementation detail |
 
 #### Q4 · What replaces confidence tiering, given the benchmark?
 
@@ -159,11 +159,24 @@ Listed here only so the register is complete; each has a home in [TODO.md](TODO.
 
 ### Settled — kept for the trail
 
-| Question | Answer | Recorded in |
-| :--- | :--- | :--- |
-| How does the app render, and who talks to the API? | The Next server is the only caller; screens render on the server with client leaves; a `server-only` data access layer; figures computed in the database; Cache Components, narrowly, invalidated by tag | [rendering and data fetching](superpowers/specs/2026-09-10-rendering-data-fetching-design.md) |
-| Can the review screen box where the AI read a value, as the mockup draws? | Not from what is stored: `evidence` is a text quote and the pipeline never calls Document AI, so no coordinates exist. Decided to build it properly — capture and store them per field, with page images | [TODO §2e](TODO.md) |
-| Is confirming a field the same operation as correcting it? | No. Corrections are replayed to the extractor as few-shot examples, so confirming an already-correct value through that path would teach it from a non-event. Separate route, `verified` only | [TODO §2d](TODO.md) |
+Every decision that shapes the build, with who made it and when, so a decision is never
+re-litigated and nobody has to guess whether something was chosen or merely happened.
+
+| Question | Answer | Decided | Recorded in |
+| :--- | :--- | :--- | :--- |
+| Where do dashboard figures come from (Q2)? | **Scheduled summaries.** A background job writes one summary per agency × category × month, including the IQR bounds the anomaly rule needs; the page reads those and shows its last-updated time, which FR-E-6 requires anyway. Live aggregation over the whole corpus is instant at 500 records and unusable at 100,000 | Zen, 2026-09-14 | Slice 3 design — next |
+| The admin actions spent the admin key with no caller check. Fix now or in slice 4? | **Fix now, as its own change**, not folded into a larger refactor. Server-side staff session, checked first inside every action. A shared-secret stopgap until slice 4's real accounts | Zen, 2026-09-10 | Jira TOR-129 |
+| What does the review screen's document panel show? | **The real stored file**, through a signed URL. The mockup's highlight boxes and zoom controls are not ported: there are no coordinates to draw, and the browser's own viewer already zooms and pages | Zen, 2026-09-11 | [validation port plan](superpowers/plans/2026-09-11-admin-validation-port.md) |
+| How much of the new mockup does the review screen take? | **Only the queue page body.** The app-shell navigation stays as built | Zen, 2026-09-11 | Jira TOR-130 |
+| Where does the queue collapse control live? | **On the seam between the columns**, one control in both states, and the collapsed rail carries **no count** — the page header already states it | Zen, 2026-09-10 | commits `859d0ec`, `9c2a7a4` |
+| Which actions ask for confirmation? | **Reject** (reason required), **publish** (when fields are unconfirmed), **re-extract**. Confirm-all, the field tick, sign-out and mark-all-read do not | Zen, 2026-09-11 | commit `27e7e49` |
+| Which error screens does the whole app need? | **All four surfaces on every route that needs them** — loading, error, not-found, and a root-failure page — not only the admin area | Zen, 2026-09-11 | commit `8643672` |
+| When are loading, empty, error and confirm states designed? | **In the mockup, alongside each screen's normal state** — not built afterwards without a design | Zen, 2026-09-14 | build skill, Gate 8 |
+| How is planning written down? | **`PLAN.md` for the team to read**, with open questions as one section inside it; **`TODO.md` tracks agent work** | Zen, 2026-09-11 | this file |
+| Does work stay local or go to the shared branch? | **Pushed to `origin/main`** once gates are green, so the team has it | Zen, 2026-09-14 | — |
+| How does the app render, and who talks to the API? | The Next server is the only caller; screens render on the server with client leaves; a `server-only` data access layer; figures computed in the database; Cache Components, narrowly, invalidated by tag | Zen, 2026-09-10 | [rendering and data fetching](superpowers/specs/2026-09-10-rendering-data-fetching-design.md) |
+| Can the review screen box where the AI read a value, as the mockup draws? | Not from what is stored: `evidence` is a text quote and the pipeline never calls Document AI, so no coordinates exist. Decided to build it properly — capture and store them per field, with page images | Zen, 2026-09-11 | Jira TOR-128 |
+| Is confirming a field the same operation as correcting it? | No. Corrections are replayed to the extractor as few-shot examples, so confirming an already-correct value through that path would teach it from a non-event. Separate route, `verified` only | Zen, 2026-09-11 | Jira TOR-130 |
 | How does Thai full-text search work, given Thai has no word spaces? | Atlas Search with the `lucene.thai` analyzer; `mongodb-atlas-local` gives the same analyzer in Compose and CI | [data-model review §2.1](superpowers/specs/2026-09-09-data-model-review.md) |
 | How is an ever-growing status history stored? | Capped copy of the last 10 on the record for display; every transition appended to `tor_events` | [data-model review §2.4](superpowers/specs/2026-09-09-data-model-review.md) |
 | How are records identified and deduplicated? | `contentHash` (SHA-256 of the raw bytes) as both dedupe key and storage key, unique-indexed | [slice 1 design §4.2](superpowers/specs/2026-09-01-tor-radar-foundation-intake-design.md) |
