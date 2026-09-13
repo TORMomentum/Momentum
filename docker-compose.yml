@@ -57,7 +57,16 @@ services:
       - mongo_data:/data/db
 
   minio:
-    image: minio/minio:latest
+    # Pinned, and pulled from quay.io rather than Docker Hub. MinIO removed its
+    # images from Docker Hub and now distributes the community edition as SOURCE
+    # ONLY: this tag is the last community release, a frozen build that will not
+    # receive security updates. Fine for local development and CI; not a
+    # production answer. Whether the project keeps MinIO long-term is a stack
+    # decision recorded as open in docs/PLAN.md.
+    #
+    # `:latest` is what broke CI silently — it resolved on machines that had
+    # pulled it before and failed everywhere else.
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     ports:
       # Host ports are overridable: another project on this machine may already
