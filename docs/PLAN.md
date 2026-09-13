@@ -94,15 +94,6 @@ flowchart TB
 
 ### The questions
 
-#### Q7 · Does the project keep MinIO?
-
-| | |
-| :--- | :--- |
-| **Blocks** | Nothing today. It will block any deployment beyond a laptop |
-| **Why it is open** | On 2026-09-13 MinIO's image disappeared from Docker Hub and CI failed before a single test ran. MinIO now distributes its community edition as **source code only**; the last published image (`RELEASE.2025-09-07T16-13-09Z`, on quay.io) is frozen and will receive no security updates. Compose is pinned to it, which is fine for development and CI and is not a production answer |
-| **Options** | Keep the frozen image for the project's lifetime and accept it as dev-only · build MinIO from source in CI · move to an actively maintained S3-compatible store (SeaweedFS, Garage) — the `Storage` port means only the adapter changes |
-| **Who decides** | The team. `CLAUDE.md` lists MinIO as a decided part of the stack, so changing it is a stack decision, not an implementation detail |
-
 #### Q4 · What replaces confidence tiering, given the benchmark?
 
 | | |
@@ -164,6 +155,7 @@ re-litigated and nobody has to guess whether something was chosen or merely happ
 
 | Question | Answer | Decided | Recorded in |
 | :--- | :--- | :--- | :--- |
+| Where are original documents stored (Q7)? | **Google Cloud Storage**, replacing MinIO — whose community edition went source-only and whose image vanished from Docker Hub. Same Google Cloud project as Vertex AI; a conditional write makes "never overwritten" a property of the store. **`fake-gcs-server` for daily development and CI, plus one real-bucket test that runs only with credentials** | Zen, 2026-09-14 | [object storage spec](superpowers/specs/2026-09-14-object-storage-gcs-design.md) |
 | Where do dashboard figures come from (Q2)? | **Scheduled summaries.** A background job writes one summary per agency × category × month, including the IQR bounds the anomaly rule needs; the page reads those and shows its last-updated time, which FR-E-6 requires anyway. Live aggregation over the whole corpus is instant at 500 records and unusable at 100,000 | Zen, 2026-09-14 | Slice 3 design — next |
 | The admin actions spent the admin key with no caller check. Fix now or in slice 4? | **Fix now, as its own change**, not folded into a larger refactor. Server-side staff session, checked first inside every action. A shared-secret stopgap until slice 4's real accounts | Zen, 2026-09-10 | Jira TOR-129 |
 | What does the review screen's document panel show? | **The real stored file**, through a signed URL. The mockup's highlight boxes and zoom controls are not ported: there are no coordinates to draw, and the browser's own viewer already zooms and pages | Zen, 2026-09-11 | [validation port plan](superpowers/plans/2026-09-11-admin-validation-port.md) |
