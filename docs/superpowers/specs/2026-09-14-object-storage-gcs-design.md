@@ -1,154 +1,210 @@
-# Object storage — moving originals from MinIO to Google Cloud Storage
+# Object storage — originals on Google Cloud Storage, delivered through the API
 
-**Date:** 2026-09-14
+**Date:** 2026-09-14 · **Revision 2**, after cross-model review
 **Decides:** [PLAN.md](../../PLAN.md) Q7
-**Decided by:** Zen, 2026-09-14 — switch to Google Cloud Storage; an emulator for daily development and
-CI, plus one integration test against a real bucket that runs only when credentials are present
-**Applies to:** the `Storage` port's adapter, its configuration, Compose, CI and the documents that name
-MinIO
+**Applies to:** the `Storage` port and its adapter, document delivery, configuration, Compose, CI, and the
+documents that name MinIO
 
 ---
 
-## 1. Why the change
+## 0. Decisions (Zen, 2026-09-14)
 
-On 2026-09-13 MinIO's image disappeared from Docker Hub, and CI failed on every push before a test ran.
-MinIO now distributes its community edition as **source code only**; the last published image is frozen
-and receives no security updates. Compose is pinned to it as a stopgap.
-
-Google Cloud Storage fits this project for reasons beyond replacing a broken image:
-
-| | |
+| Decision | Answer |
 | :--- | :--- |
-| No new vendor | The project already runs on Google Cloud for Vertex AI, with a service-account key file |
-| Immutability enforced by the store | A conditional write refuses to create an object whose name already exists (§4) |
-| Maintained | Patched continuously; nothing frozen |
-| One address | Signed URLs are publicly reachable, so the internal-versus-public endpoint split MinIO needed disappears in deployment |
+| Where originals live | **Google Cloud Storage**, replacing MinIO |
+| How development and CI run storage | **`fake-gcs-server`**, plus an integration test against a real bucket that runs where credentials exist |
+| How hard the bucket enforces "never deleted" | **Least-privilege permissions plus an unlocked retention policy** — reversible, with the limit stated plainly (§3) |
+| How documents reach the browser | **Streamed through the API**, which checks takedown status on every request (§5) |
 
-## 2. What does not change
+## 1. What revision 1 got wrong
 
-The `Storage` port is the contract, and it stays exactly as it is:
+Revision 1 claimed a conditional write makes "an original is never overwritten" a property of the storage
+service. **That was false**, and it rested on a truncated quotation. Google's documentation says a
+generation-match precondition of `0` proceeds when no object exists *"or if there are only noncurrent
+versions of the object in the bucket."*
+
+A precondition stops **one write** from replacing a live object. It does not stop anyone holding delete
+permission, a lifecycle rule, or object versioning from removing or replacing an original. Immutability
+comes from how the bucket and its permissions are configured (§3); the precondition is defence in depth.
+
+Revision 1 also kept signed URLs, which cannot carry `X-Content-Type-Options: nosniff` and cannot be
+revoked once issued. §5 replaces them.
+
+## 2. Why Google Cloud Storage
+
+MinIO's community edition is now source code only; its last published image is frozen and unpatched, and
+its removal from Docker Hub broke CI on 2026-09-13. The project already runs on Google Cloud for Vertex AI,
+so this adds no new vendor.
+
+## 3. Immutability — layers, and their limit
+
+"An original is never overwritten or deleted" (`FR-A-2`, `NFR-S3`) is held by these together:
+
+| Layer | Setting | What it stops |
+| :--- | :--- | :--- |
+| A dedicated bucket | holds originals and nothing else | other workloads' permissions and rules touching originals |
+| Least-privilege identity | a **dedicated service account**, bound on this bucket only, with a custom role of exactly `storage.objects.create` and `storage.objects.get` | the application deleting or replacing anything, even through a bug or a compromised process |
+| Object Versioning | **off** | a replacement quietly becoming the live object while the old one hides as a noncurrent version |
+| Lifecycle rules | **no `Delete` action**, ever | originals aged out automatically |
+| Uniform bucket-level access, public access prevention | **on** | per-object ACLs and accidental public exposure |
+| Retention policy | **set, and left unlocked** | accidental deletion by anyone with broader access |
+| Conditional write | `ifGenerationMatch: 0` on every upload | a concurrent duplicate submission replacing a live object |
+
+**The limit, stated so nobody mistakes it for more.** An unlocked retention policy can be removed by a
+project Owner. So a person with Owner rights can still, deliberately, delete an original. That is a
+chosen trade-off: a **locked** policy would stop even an Owner, but it cannot be undone — Google's
+documentation says a locked policy cannot be removed or shortened, and a bucket under one cannot be deleted
+until every object has aged out, which keeps the bucket, and its bill, alive for the whole retention period.
+That is disproportionate for a project at this stage and is revisited only before a real agency deployment.
+
+**Audit inherited roles.** A narrow bucket binding means nothing if the same service account already holds
+Editor, Owner or a Storage Admin role on the project or folder. The account is created for this purpose
+alone and checked for inherited roles before it is used.
+
+**It is not the Vertex AI account.** Reusing that key would give a compromise of either workload both
+powers. Storage gets its own identity, as Google's service-account guidance recommends.
+
+## 4. The port and the adapter
+
+The port loses `signedUrl`, which nothing uses once delivery is streamed (§5):
 
 ```ts
 interface Storage {
   putIfAbsent(key, bytes, contentType, metadata?): Promise<StoredObject>;
   exists(key): Promise<boolean>;
-  getStream(key): Promise<NodeJS.ReadableStream>;
-  signedUrl(key, ttlSeconds): Promise<string>;
+  getStream(key, range?): Promise<NodeJS.ReadableStream>;
 }
 ```
 
-No module, route, worker or screen changes. That is what the port was for. Storage keys keep their
-content-addressed shape, `tors/<year>/<month>/<sha256>.<ext>`.
+`apps/api/src/adapters/gcs.storage.ts` implements it:
 
-## 3. The adapter
+| Method | Behaviour |
+| :--- | :--- |
+| `putIfAbsent` | `file.save(bytes, { contentType, metadata, preconditionOpts: { ifGenerationMatch: 0 } })`. On `412`: read the existing object's metadata; if that read returns `404` (removed between the two calls), surface an error rather than invent a `StoredObject`; if it exists, **confirm its size matches** before returning it as already stored |
+| `exists` | `true` or `false` only on a definite answer. `404` is `false`; `403`, timeouts, DNS and `5xx` **propagate** — never read as "absent" |
+| `getStream` | `file.createReadStream({ start, end })`. A missing object is a not-found error. Errors that arrive mid-stream are mapped too, not only the ones before it starts |
 
-A new `apps/api/src/adapters/gcs.storage.ts` implements the port. It is wired in the two places MinIO is
-wired today: `app.ts` and `workers/extract.worker.ts`.
+**Content type** is the magic-byte-derived type from intake, stored explicitly. The declared type from a
+submitter is never trusted.
 
-| Port method | MinIO today | Google Cloud Storage |
+**Integrity.** The upload validates a checksum, so bytes that arrive differently from the bytes that were
+hashed are rejected rather than stored under a content-addressed key they do not match.
+
+**Thai filenames.** Custom metadata stays ASCII: Google's metadata documentation advises against non-ASCII
+because the XML API carries metadata in HTTP headers. The existing percent-encoding helper is reused, and
+the encoded form is documented as encoded.
+
+**Retries and deadlines.** The conditional upload is safe to retry and uses the client's retry policy; an
+unconditional write would not be. Operation deadlines come from configuration, sized separately for the
+API and the worker.
+
+**Uploads stay buffered — a known deviation.** `CLAUDE.md` asks for streamed uploads, and the port takes a
+whole `Buffer`. That predates this change and is bounded by `MAX_UPLOAD_BYTES`. It is recorded here as a
+deviation, not fixed as part of a storage migration.
+
+## 5. Delivery — streamed through the API
+
+```
+browser ──▶ Next route handler ──▶ API ──▶ Google Cloud Storage
+                                    │ restricted?  checked on EVERY request
+                                    │ Content-Type from the stored object
+                                    │ X-Content-Type-Options: nosniff
+                                    │ Content-Disposition: inline | attachment
+browser ◀── bytes streamed back ◀───┘
+```
+
+| Route | Who | Behaviour |
 | :--- | :--- | :--- |
-| `putIfAbsent` | `statObject`, then `putObject` if absent | `file.save(bytes, { preconditionOpts: { ifGenerationMatch: 0 } })`; a `412` means it already exists, so return the existing object |
-| `exists` | `statObject` succeeds | `file.exists()` |
-| `getStream` | `getObject` | `file.createReadStream()` |
-| `signedUrl` | `presignedGetObject` on a separate public client | `file.getSignedUrl({ version: "v4", action: "read", expires })` |
+| `GET /api/v1/tors/:id/document` | public | streams the original. **A restricted record answers `404`**, not `403` — a `403` would confirm a taken-down record exists |
+| `GET /api/v1/admin/tors/:id/document` | staff | streams the original, including restricted records, which a reviewer needs to see |
 
-The client reuses the credentials Vertex AI already uses — the service-account key file named by
-`GOOGLE_APPLICATION_CREDENTIALS`. A key file can sign V4 URLs directly, so no additional IAM role is
-required for signing.
+Both **replace** today's routes of the same path, which return a signed URL as JSON. The web app reaches
+them through Next route handlers, so the browser still never calls the API directly (rendering spec,
+decision 1).
 
-## 4. The improvement: a write that cannot overwrite
+**What this resolves at once.** `nosniff` is set by the API, which Google's object metadata cannot do. A
+takedown takes effect on the next request rather than when outstanding links expire. The browser fetches
+from its own origin, so no CORS configuration exists. And the emulator needs no public address, because
+only the API talks to storage.
 
-`putIfAbsent` on MinIO is check-then-write. Two concurrent submissions of the same document can both
-observe "absent" and both write. The repository's own task list records this as a known weakness,
-benign only because keys are content hashes and the two writes carry identical bytes.
+**Disposition.** The in-app viewer requests `inline`, so the review screen can display the PDF; the "open
+original" control requests `attachment`, with an RFC 6266 `filename*` built from the stored, encoded name —
+never a raw submitted filename. The security baseline in `CLAUDE.md` is reworded to state exactly this.
 
-Google Cloud Storage closes it at the store. From the request-preconditions documentation: a
-generation-match precondition of `0` means *"the request only proceeds if no object with the specified
-name exists in the bucket"*, and otherwise *"the request fails with a status code of 412 Precondition
-Failed."*
+**Range requests.** PDF viewers request byte ranges. The route honours `Range` and answers `206`, passing the
+range to `getStream`, so a large document is not re-sent whole on every scroll.
 
-So `FR-A-2` — an original is never overwritten — becomes a property of the storage service rather than
-of the order our code happens to run in. The adapter treats `412` as "already stored" and returns the
-existing object's metadata; any other error propagates.
-
-## 5. Signed URLs, and a conflict this surfaced
-
-V4 signed URLs, with the lifetime taken from `SIGNED_URL_TTL_SECONDS`, generated per request and never
-persisted — as today.
-
-**An existing conflict, not introduced here, and not resolved here.** The security baseline in
-`CLAUDE.md` says originals are *"served as attachments with `nosniff`"*. The MinIO adapter sets no
-`Content-Disposition`, so documents are served **inline** — which is precisely what lets the review
-screen show the PDF in a frame. The code and the baseline already disagree.
-
-This change preserves today's behaviour (inline) so the review screen keeps working, and records the
-conflict for a decision:
-
-- serve inline for the in-app viewer, and amend the baseline to say so and why; or
-- serve as an attachment, and give the review screen a different way to display the document.
-
-Signing a URL for a different disposition is one option on `getSignedUrl`, so either answer is cheap to
-implement once chosen.
+**The cost.** Every byte passes through the API and the Next server rather than going straight from storage.
+At this corpus's document sizes that is acceptable. It reverses §2.1 of the rendering spec, which is updated
+in the same change so the two documents do not contradict each other.
 
 ## 6. Configuration
 
-Every value comes from configuration with an overridable default (`NFR-S7`).
+| Variable | Required | Purpose |
+| :--- | :--- | :--- |
+| `GCS_BUCKET` | yes, when the API starts | the originals bucket |
+| `GCS_CREDENTIALS` | yes, outside the emulator | key file for the **dedicated** storage service account — not Vertex AI's |
+| `GOOGLE_CLOUD_PROJECT` | yes, outside the emulator | already present |
+| `GCS_API_ENDPOINT` | emulator only | unset in deployment |
+| `STORAGE_TIMEOUT_MS` | no — default documented | operation deadline |
 
-| Variable | Purpose |
-| :--- | :--- |
-| `GCS_BUCKET` | The bucket holding originals |
-| `GCS_API_ENDPOINT` | Unset in deployment. Set to the emulator's address for local development and CI |
-| `GOOGLE_CLOUD_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS` | Already present for Vertex AI; reused |
+The API refuses to start with storage misconfigured, as it already does for Mongo. `MINIO_*` variables and
+`SIGNED_URL_TTL_SECONDS` are removed.
 
-The `MINIO_*` variables are removed, from `.env.example`, Compose and `core/config.ts`, in the same
-change that removes the adapter — so no half-migrated state is ever committed.
+## 7. Development and CI
 
-## 7. Local development and CI
+**`fake-gcs-server`** in Compose, pinned to an exact release (v1.56.1), reached only by the API on its
+internal address. It needs no account and no network.
 
-**Daily work and CI use `fake-gcs-server`** in Compose, pinned to an exact release rather than `latest`
-(the MinIO failure was a `latest` tag resolving on machines that had pulled it before). It is actively
-maintained — release v1.56.1 on 2026-08-24 — and needs no account and no network.
+**One integration test against a real bucket** runs where credentials exist: on a developer machine that
+has them, and in a separately named, protected CI job triggered deliberately. It is **not** a pull-request
+gate, and it is labelled so — a test silently skipped on every pull request proves nothing, and should not
+be presented as if it did. It checks what the emulator cannot: the `412` on a duplicate write, the service
+account's inability to delete, and a stream of the stored bytes.
 
-**Its limitation, stated plainly.** Its documentation: *"No validation is made on the query params
-(signature, expiration ...)"*. Locally and in CI, nothing proves that an expired or tampered signed URL
-is refused. Signed URLs also have to be pointed at the emulator's public host rather than
-`storage.googleapis.com`; the exact mechanism on the Node client is confirmed during implementation, not
-assumed here.
+## 8. The seeder
 
-**So one integration test runs against a real bucket**, and only when credentials are present — the
-arrangement the repository already uses for the Vertex AI corpus test, which is skipped without them.
-It proves the three things the emulator cannot: a conditional write refused with `412`, a signed URL
-that fetches the bytes, and the same URL refused after expiry.
+`tools/seed_review_queue.mjs` uses the Google Cloud Storage client directly, with the same conditional
+write. It creates the emulator bucket deterministically. `--clear` removes seeded **records** only; it
+never deletes stored objects, because the application's identity cannot, by design.
 
-## 8. Existing objects
+## 9. Rollback
 
-There is no production data. Development holds only seeded records, whose documents the seeder uploads
-from the corpus. After the switch the seeder uploads through the new adapter; existing development data
-is re-seeded rather than migrated.
+There is no production data. Until the first original is stored only in Google Cloud Storage, rolling back
+means restoring the MinIO adapter and re-seeding. After that point rollback is forward-only — reverting the
+adapter would orphan those originals. The MinIO volume is kept until rollback is formally closed.
 
-## 9. What else changes
+## 10. What else changes
 
-- `CLAUDE.md` stack table and security baseline wording (§5 outcome)
-- `docs/ARCHITECTURE.md` — containers, deployment and the storage seam
-- `docs/superpowers/specs/2026-09-01-…-design.md` §5.8 — the two-endpoint storage rule becomes one
-  endpoint in deployment
-- `docker-compose.yml` — `minio` service replaced by the emulator; volume renamed
-- `.github/workflows/ci.yml` — starts the emulator instead of MinIO
-- `tools/seed_review_queue.mjs` — uploads through the GCS client
+- `CLAUDE.md` — stack table; security baseline reworded for §5; the storage rule loses its two endpoints
+- `docs/superpowers/specs/2026-09-10-rendering-data-fetching-design.md` §2.1 — delivery is streamed
+- `docs/API.md` — both document routes now stream
+- `docs/ARCHITECTURE.md` — containers, deployment, the storage seam
+- `docker-compose.yml`, `.github/workflows/ci.yml`, `.env.example`
+- the admin review screen and the TOR detail page point their viewer and button at the new routes
 
-## 10. Open, and what would change the plan
+## 11. Actions outside the repository
+
+These need Google Cloud console or `gcloud` access, and are done by a person, not the build:
+
+1. **Confirm the cost and pick the region** — Singapore (`asia-southeast1`) is nearest; the always-free
+   tier does not cover it
+2. Create the dedicated bucket with the settings in §3
+3. Create the dedicated service account and its custom role, bind it on the bucket only, and check its
+   inherited roles
+4. Issue its key and place it where `GCS_CREDENTIALS` points, untracked
+
+## 12. Still open
 
 | Item | Status |
 | :--- | :--- |
-| **Cost** | Not confirmed — the pricing page could not be read when this was written. Google's always-free storage tier applies to specific US regions; a Thai project would likely store in Singapore, which is likely billed. The corpus is small, but the figure is confirmed before a bucket is created |
-| **Region** | Singapore (`asia-southeast1`) is the nearest; to be chosen with the cost check |
-| **Retention policy on the bucket** | Google Cloud Storage can hold objects against deletion at the bucket level, which would make immutability stronger still. Worth adopting; its exact semantics are checked against the documentation before it is switched on, because a locked retention policy cannot be undone |
-| **Inline or attachment** | §5 — a decision for Zen and the team |
-| **Emulator signed-URL host** | §7 — confirmed during implementation |
+| Cost | Not confirmed; the pricing page could not be read when this was written. Confirmed before a bucket is created |
+| The worker as a second place storage is wired | Pre-existing: `CLAUDE.md` says wiring happens once in `app.ts`. Recorded, not changed here |
 
-## 11. Sources
+## 13. Sources
 
-- Google Cloud Storage — request preconditions (`ifGenerationMatch: 0`, `412 Precondition Failed`)
-- `googleapis/nodejs-storage` samples — conditional upload with `preconditionOpts`; `generateV4ReadSignedUrl`
-- `fsouza/fake-gcs-server` README — signed-URL limitation; GitHub releases for maintenance status
-- MinIO `README` — community edition distributed as source only; legacy binaries not updated
+- Google Cloud Storage — request preconditions; Bucket Lock; object metadata; retry strategy
+- Google Cloud IAM — service-account best practices
+- `googleapis/nodejs-storage` — conditional upload, `createReadStream` ranges
+- `fsouza/fake-gcs-server` — README and releases
+- MinIO `README` — community edition distributed as source only
