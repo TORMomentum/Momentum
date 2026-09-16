@@ -76,10 +76,11 @@ export function buildApp(config: Config, db: Db): Express {
     `${API_PREFIX}/admin`,
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db),
+        repo: new AdminRepository(db, config.budgetMaxThb),
         history: new HistoryRepository(db),
         queue,
         tLow: config.tLow,
+        budgetMaxThb: config.budgetMaxThb,
       }),
       storage,
       adminKeys: config.adminApiKeys,

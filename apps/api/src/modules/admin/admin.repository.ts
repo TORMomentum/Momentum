@@ -2,6 +2,7 @@ import { ObjectId, type Db } from "mongodb";
 import type { ExtractedField, TorFields } from "@tor-radar/shared";
 import { corrections, torEvents, tors } from "../../core/db.js";
 import { NotFoundError } from "../../core/errors.js";
+import { parseBudget } from "../../lib/parse-budget.js";
 
 /** One row in the queue list — enough to choose what to open, nothing more. */
 export interface QueueEntry {
@@ -49,7 +50,7 @@ export interface AdminEvent {
 
 export interface FieldEdit {
   field: keyof TorFields;
-  /** What the reviewer typed. Stored as the field's `raw` AND `value`. */
+  /** What the reviewer typed. `budget` is normalised before it is stored as `value`. */
   value: string;
 }
 
@@ -67,7 +68,10 @@ export type ReviewFieldName = {
  * keep in step.
  */
 export class AdminRepository {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly budgetMaxThb: number,
+  ) {}
 
   /**
    * Oldest first, so a record cannot starve behind a steady arrival of newer
@@ -154,10 +158,16 @@ export class AdminRepository {
 
     for (const edit of edits) {
       const before = doc.fields?.[edit.field] as ExtractedField<unknown> | undefined;
+      const value = edit.field === "budget"
+        ? parseBudget(edit.value, this.budgetMaxThb)
+        : edit.value;
+      // The service validates before reaching this repository. Keeping this
+      // guard here protects direct callers from reintroducing mixed BSON types.
+      if (value === null) throw new Error("budget edit was not validated");
       const after = {
         ...(before ?? { evidence: undefined }),
         raw: edit.value,
-        value: edit.value,
+        value,
         confidence: 1,
         verified: true,
       };

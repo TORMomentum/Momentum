@@ -44,7 +44,7 @@ beforeAll(async () => {
   // reading the same collection at the same time under file parallelism.
   db = await connect(isolatedDbUrl(config.mongoUrl, "admin"));
   await ensureIndexes(db);
-  repository = new AdminRepository(db);
+  repository = new AdminRepository(db, config.budgetMaxThb);
 });
 
 beforeEach(async () => {
@@ -102,7 +102,7 @@ describe("AdminRepository", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ field: "budget", actor: "reviewer-1" });
     expect((stored[0].before as { value: unknown }).value).toBeNull();
-    expect((stored[0].after as { value: unknown }).value).toBe("1250000");
+    expect((stored[0].after as { value: unknown }).value).toBe(1_250_000);
   });
 
   it("marks a corrected field verified — a human read the document", async () => {

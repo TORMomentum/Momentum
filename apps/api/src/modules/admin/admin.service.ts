@@ -1,5 +1,7 @@
 import type { Queue } from "../../ports/queue.port.js";
+import { BadRequestError } from "../../core/errors.js";
 import { extensionFor } from "../../lib/content-disposition.js";
+import { parseBudget } from "../../lib/parse-budget.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import type { HistoryRepository } from "../history/history.repository.js";
 import type {
@@ -16,6 +18,7 @@ export interface AdminDeps {
   queue: Queue;
   /** Below this, a field is what put the record in the queue (SRS §4.2.1). */
   tLow: number;
+  budgetMaxThb: number;
 }
 
 export interface QueueView {
@@ -99,6 +102,14 @@ export class AdminService {
     return this.deps.repo.overview();
   }
 
+  private validateEdits(edits: FieldEdit[]): void {
+    for (const edit of edits) {
+      if (edit.field === "budget" && parseBudget(edit.value, this.deps.budgetMaxThb) === null) {
+        throw new BadRequestError("งบประมาณต้องเป็นจำนวนเงินที่มากกว่าศูนย์และไม่เกินขอบเขตที่กำหนด");
+      }
+    }
+  }
+
   async events(limit: number) {
     return this.deps.repo.recentEvents(limit);
   }
@@ -106,6 +117,7 @@ export class AdminService {
   /** Corrections without approval: a reviewer may fix one field and come back. */
   async correct(torId: string, edits: FieldEdit[], actor: string): Promise<ReviewRecord> {
     if (edits.length > 0) {
+      this.validateEdits(edits);
       await this.deps.repo.applyEdits(torId, edits, actor);
     }
     return this.deps.repo.load(torId);
@@ -135,6 +147,7 @@ export class AdminService {
    */
   async approve(torId: string, edits: FieldEdit[], actor: string): Promise<void> {
     if (edits.length > 0) {
+      this.validateEdits(edits);
       await this.deps.repo.applyEdits(torId, edits, actor);
     }
     await this.deps.repo.approve(torId);

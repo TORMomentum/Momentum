@@ -78,10 +78,11 @@ function buildTestApp() {
     "/api/v1/admin",
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db),
+        repo: new AdminRepository(db, config.budgetMaxThb),
         history: new HistoryRepository(db),
         queue,
         tLow: config.tLow,
+        budgetMaxThb: config.budgetMaxThb,
       }),
       storage,
       adminKeys: config.adminApiKeys,
@@ -219,5 +220,37 @@ describe("admin field verification route", () => {
     expect(response.status).toBe(401);
     const record = await tors(db).findOne({ _id: new ObjectId(id) });
     expect(record?.fields.budget?.verified).toBe(false);
+  });
+});
+
+describe("admin budget correction route", () => {
+  it("rejects an unparseable budget without writing a correction", async () => {
+    const id = await seedQueued();
+    const before = await tors(db).findOne({ _id: new ObjectId(id) });
+
+    const response = await request(buildTestApp())
+      .patch(`/api/v1/admin/tors/${id}/fields`)
+      .set("authorization", `Bearer ${adminKey}`)
+      .send({ edits: [{ field: "budget", value: "ไม่ระบุ" }] });
+
+    expect(response.status).toBe(400);
+    expect(await corrections(db).countDocuments({ torId: id })).toBe(0);
+    expect(await tors(db).findOne({ _id: new ObjectId(id) })).toMatchObject({
+      fields: { budget: before?.fields.budget },
+    });
+  });
+
+  it("stores a corrected budget as a number", async () => {
+    const id = await seedQueued();
+
+    const response = await request(buildTestApp())
+      .patch(`/api/v1/admin/tors/${id}/fields`)
+      .set("authorization", `Bearer ${adminKey}`)
+      .send({ edits: [{ field: "budget", value: "1,200,000" }] });
+
+    expect(response.status).toBe(200);
+    const stored = await tors(db).findOne({ _id: new ObjectId(id) });
+    expect(stored?.fields.budget?.value).toBe(1_200_000);
+    expect(typeof stored?.fields.budget?.value).toBe("number");
   });
 });
