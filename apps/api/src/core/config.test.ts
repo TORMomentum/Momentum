@@ -11,6 +11,8 @@ const base = {
   MINIO_PUBLIC_URL: "http://localhost:9000",
   INTAKE_API_KEYS: "test-key",
   ADMIN_API_KEYS: "admin-key",
+  GCS_BUCKET: "tor-raw",
+  GCS_API_ENDPOINT: "http://localhost:4443",
 };
 
 describe("loadConfig", () => {
@@ -56,5 +58,35 @@ describe("loadConfig", () => {
 
   it("rejects a T_LOW above T_HIGH", () => {
     expect(() => loadConfig({ ...base, T_LOW: "0.99", T_HIGH: "0.9" })).toThrow(/T_LOW/);
+  });
+
+  it("reads the storage bucket, endpoint and both timeouts", () => {
+    const config = loadConfig({ ...base, GCS_BUCKET: "tor-originals", GCS_API_ENDPOINT: "http://gcs:4443" });
+    expect(config.gcs.bucket).toBe("tor-originals");
+    expect(config.gcs.apiEndpoint).toBe("http://gcs:4443");
+    expect(config.gcs.timeoutApiMs).toBe(10_000);
+    expect(config.gcs.timeoutWorkerMs).toBe(60_000);
+  });
+
+  it("requires dedicated storage credentials and a project when not using the emulator", () => {
+    const { GCS_API_ENDPOINT: _emulator, ...real } = base;
+    expect(() => loadConfig({ ...real, GCS_BUCKET: "tor-originals" })).toThrow(/GCS_CREDENTIALS/);
+    expect(() =>
+      loadConfig({ ...real, GCS_BUCKET: "tor-originals", GCS_CREDENTIALS: "/secrets/storage.json" }),
+    ).toThrow(/GOOGLE_CLOUD_PROJECT/);
+  });
+
+  it("refuses the emulator endpoint in production", () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: "production" })).toThrow(/GCS_API_ENDPOINT/);
+  });
+
+  it("never falls back to the Vertex AI credential for storage", () => {
+    const config = loadConfig({
+      ...base,
+      GCS_BUCKET: "tor-originals",
+      GCS_CREDENTIALS: "/secrets/storage.json",
+      GOOGLE_APPLICATION_CREDENTIALS: "/secrets/vertex.json",
+    });
+    expect(config.gcs.credentialsPath).toBe("/secrets/storage.json");
   });
 });
