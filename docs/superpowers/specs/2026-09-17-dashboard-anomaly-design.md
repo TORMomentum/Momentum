@@ -285,7 +285,7 @@ describes the rule).
 
 | Event | Cohorts marked dirty |
 | :--- | :--- |
-| A record is published with a budget | its cohort, plus the eleven following months whose windows contain it |
+| A record is published with a budget | its cohort, plus the eleven following months whose windows contain it. **Marked after the transition to `published`, never after `writeExtraction`** — see below |
 | An admin corrects a budget | same |
 | An admin ticks or unticks `verified` on budget **or category** | same |
 | An admin corrects the **category** | the old cohort **and** the new one, each with their eleven following months |
@@ -294,6 +294,15 @@ describes the rule).
 | A record is restricted or unrestricted | its cohort window |
 
 A cohort window is at most twelve `(category, month)` keys.
+
+**The mark follows the state change, not the data write.** Extraction writes a record's fields while
+it is still `extracting`, and eligibility requires `published`. Marking at the write opens a race: the
+worker can claim the cohort in that gap, correctly exclude a record that is not yet published, clear
+`dirty`, and then the record publishes with nothing left to trigger a recompute — absent from the
+statistics until some unrelated change happens to touch its cohort. The generation guard does not
+help, because the mark genuinely preceded the computation. So the rule is: **mark a cohort dirty
+after the transition that changes whether a record is eligible**, which for extraction is the publish
+step.
 
 ### 5.2 Marking is a bulk upsert, not an updateMany
 
@@ -322,8 +331,9 @@ A lease that expires without a write is reclaimed, so a crashed worker's cohort 
 composed through the same factory pattern. It loops: claim a dirty cohort, recompute, recompute the
 rollup cells for the months it touched (`flaggedCount` depends on bounds just written), update
 `tor_meta.statsComputedAt`. When no cohort is dirty it sleeps for the configured interval, and on that
-interval it also runs a full sweep so a mark that was never written cannot freeze the dashboard
-permanently — belt and braces, not the primary mechanism.
+interval it also sweeps **every** cohort, not only the dirty ones. That is what makes a lost or
+mis-ordered mark self-healing: the worst case becomes one interval of staleness rather than a record
+permanently missing from the figures. Belt and braces, not the primary mechanism.
 
 Failures are logged with the cohort key and retried on the next claim; a cohort that fails repeatedly
 is reported rather than retried forever.
