@@ -140,7 +140,7 @@ group is then stable, and the bounds document is keyed by exactly the cohort key
 | Collection | Key | Fields | Purpose |
 | :--- | :--- | :--- | :--- |
 | `tors` (existing) | `_id` | **adds** `cohort: { category: string; month: string }`, `cohortDateSource: "announced" \| "intake"` | The join key from a record to its peer group |
-| `tor_peer_stats` (new) | unique `{ category, month }` | `n`, `q1`, `q3`, `iqr`, `lowBound`, `highBound`, `method`, `minN`, `windowMonths`, `computedAt`, `dirty`, `dirtyAt`, `generation`, `leaseOwner`, `leaseUntil` | The bounds, and the job's work queue |
+| `tor_peer_stats` (new) | unique `{ category, month }` | `n`, `q1`, `q3`, `iqr`, `lowBound`, `highBound`, **`mean`, `stdDev`**, `method`, `minN`, `windowMonths`, `computedAt`, `dirty`, `dirtyAt`, `generation`, `leaseOwner`, `leaseUntil` | The bounds, and the job's work queue |
 | `tor_rollups` (new) | unique `{ agency, category, month }` | `torCount`, `budgetSum`, `unverifiedBudgetCount`, `flaggedCount`, `computedAt` | Totals, trend, stat strip |
 | `tor_meta` (new) | `_id: "dashboard"` | `lastIntakeAt`, `statsComputedAt`, `corpusSize` | FR-E-6's last-updated time, and statistics freshness |
 
@@ -242,6 +242,7 @@ export type NotEvaluatedReason =
   | "not-published"
   | "restricted"          // a takedown, which is not the same as unpublished
   | "insufficient-peers"
+  | "stats-unavailable"  // the cohort lacks what the active method needs
   | "no-spread";
 
 export type AnomalyVerdict =
