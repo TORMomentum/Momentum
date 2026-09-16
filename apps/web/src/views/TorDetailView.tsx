@@ -14,10 +14,10 @@ import { formatBudgetFull, type TorSample } from "../data/tor-samples";
  */
 export function TorDetailView({
   tor,
-  documentUrl,
+  documentHref,
 }: {
   tor: TorSample;
-  documentUrl: string | null;
+  documentHref: string | null;
 }) {
   const [saved, setSaved] = useState(true);
 
@@ -95,10 +95,10 @@ export function TorDetailView({
         <div className={styles.sideActions}>
           {/* A direct flex child, as it has always been. Wrapping it made the
               wrapper the flex item and stretched the button to fill it. */}
-          {documentUrl ? (
+          {documentHref ? (
             <a
               className={styles.openDocBtn}
-              href={documentUrl}
+              href={documentHref}
               target="_blank"
               rel="noreferrer"
             >
@@ -122,7 +122,7 @@ export function TorDetailView({
           </button>
         </div>
 
-        {!documentUrl && (
+        {!documentHref && (
           <span className={styles.documentUnavailableNote}>
             รายการตัวอย่างนี้ไม่มีเอกสารต้นฉบับที่จัดเก็บไว้
           </span>

@@ -3,11 +3,9 @@ import { redirect } from "next/navigation";
 import {
   AdminApiUnavailable,
   AdminRecordNotFound,
-  fetchDocument,
   fetchQueue,
   fetchRecord,
   type ReviewRecord,
-  type ReviewDocument,
 } from "../../../../src/shared/lib/admin-api";
 import {
   isStaff,
@@ -33,8 +31,7 @@ export default async function AdminReviewPage({
 
   let queue: Awaited<ReturnType<typeof fetchQueue>> = { items: [], unverifiedNotQueued: 0 };
   let record: ReviewRecord | null = null;
-  let document: ReviewDocument | null = null;
-  let documentError: string | null = null;
+  let documentHref: string | null = null;
   let offline: string | null = null;
 
   let missingRecord = false;
@@ -60,15 +57,12 @@ export default async function AdminReviewPage({
       }
     }
 
+    // No fetch: the document is streamed by the proxy route on demand, and the
+    // record already carries what the panel needs to display (storage.bytes,
+    // contentType) — a signed-URL round trip is no longer part of loading this
+    // page (spec §5).
     if (record && opened) {
-      try {
-        document = await fetchDocument(opened);
-      } catch (error) {
-        // The fields are still reviewable without the original beside them, so
-        // this degrades the panel rather than the page.
-        console.error("[admin/review] document url failed", error);
-        documentError = "เปิดต้นฉบับไม่ได้ในขณะนี้";
-      }
+      documentHref = `/admin/tors/${opened}/document`;
     }
   } catch (error) {
     // The detail goes to the server log; the reader gets a sentence. An API
@@ -85,8 +79,7 @@ export default async function AdminReviewPage({
       queue={queue.items}
       unverifiedNotQueued={queue.unverifiedNotQueued}
       record={record}
-      document={document}
-      documentError={documentError}
+      documentHref={documentHref}
       offline={offline}
       missingRecord={missingRecord}
       activeReason={reason}
