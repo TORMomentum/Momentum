@@ -67,7 +67,4 @@ services:
 
 volumes:
   mongo_data:
-  # Retained for rollback until the GCS cutover is closed (spec §9); removed
-  # once the first real original is stored in Google Cloud Storage (Task 15).
-  minio_data:
   gcs_data:
