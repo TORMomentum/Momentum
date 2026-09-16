@@ -145,9 +145,11 @@ for (const [index, record] of RECORDS.entries()) {
   const storageKey = `tors/${at.getUTCFullYear()}/${String(at.getUTCMonth() + 1).padStart(2, "0")}/${contentHash}.pdf`;
 
   // The same conditional, checksummed write the adapter uses (spec §4.1): a
-  // 412 means this exact content is already stored, not an error.
+  // 412 means this exact content is already stored, not an error. This only
+  // gates the OBJECT write — the record upsert below always runs, because
+  // `--clear` removes Mongo records but never touches storage, and the two
+  // must not be allowed to drift out of step with each other.
   const md5Hash = createHash("md5").update(bytes).digest("base64");
-  let alreadyExisted = false;
   try {
     await gcs.bucket(BUCKET).file(storageKey).save(bytes, {
       resumable: false,
@@ -157,16 +159,11 @@ for (const [index, record] of RECORDS.entries()) {
     });
   } catch (error) {
     if (error?.code !== 412) throw error;
-    alreadyExisted = true;
-  }
-
-  if (alreadyExisted) {
     alreadyStored += 1;
-    console.log(`${storageKey} already stored — skipping`);
-    continue;
+    console.log(`${storageKey} already stored`);
   }
 
-  await db.collection("tors").updateOne(
+  const result = await db.collection("tors").updateOne(
     { contentHash },
     {
       $set: {
@@ -203,13 +200,17 @@ for (const [index, record] of RECORDS.entries()) {
     { upsert: true },
   );
 
-  await db.collection("tor_events").insertMany([
-    { torId: id.toString(), from: null, to: "queued", at, actor: "seed", source: "upload" },
-    { torId: id.toString(), from: "queued", to: "extracting", at: new Date(at.getTime() + 1000), actor: "seed", source: "worker" },
-    { torId: id.toString(), from: "extracting", to: "published", at: new Date(at.getTime() + 9000), actor: "seed", source: "worker" },
-  ]);
-
-  created += 1;
+  // Only a genuinely new Mongo record gets an event trail — an upsert that
+  // matched an existing one changed nothing, and re-inserting the same three
+  // events every plain rerun would grow tor_events without bound.
+  if (result.upsertedCount > 0) {
+    await db.collection("tor_events").insertMany([
+      { torId: id.toString(), from: null, to: "queued", at, actor: "seed", source: "upload" },
+      { torId: id.toString(), from: "queued", to: "extracting", at: new Date(at.getTime() + 1000), actor: "seed", source: "worker" },
+      { torId: id.toString(), from: "extracting", to: "published", at: new Date(at.getTime() + 9000), actor: "seed", source: "worker" },
+    ]);
+    created += 1;
+  }
 }
 
 console.log(`seeded ${created} records into the review queue${alreadyStored ? ` (${alreadyStored} already stored)` : ""}`);
