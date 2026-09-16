@@ -79,6 +79,20 @@ services:
     volumes:
       - minio_data:/data
 
+  gcs:
+    # Google Cloud Storage emulator for development and CI. Pinned: `latest`
+    # resolves wherever it was pulled before and fails everywhere else, which is
+    # exactly how the MinIO image broke CI. It does NOT validate signed-URL
+    # signatures or checksums the way the real service does (spec §7) — the
+    # real-bucket suite proves those.
+    image: fsouza/fake-gcs-server:1.56.1
+    command: ["-scheme", "http", "-port", "4443", "-backend", "filesystem", "-filesystem-root", "/data"]
+    ports:
+      - "${GCS_EMULATOR_PORT:-4443}:4443"
+    volumes:
+      - gcs_data:/data
+
 volumes:
   mongo_data:
   minio_data:
+  gcs_data:
