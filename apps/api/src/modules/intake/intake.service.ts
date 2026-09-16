@@ -68,6 +68,7 @@ export class IntakeService {
       url: source.url,
       submittedBy: source.submittedBy,
       submittedAt: new Date(),
+      ...(source.filename ? { originalFilename: source.filename } : {}),
     };
 
     const existing = await this.repository.findByHash(contentHash);

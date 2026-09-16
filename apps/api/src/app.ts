@@ -3,7 +3,7 @@ import type { Db } from "mongodb";
 import { sourcesRouter } from "./routes/sources";
 import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
-import { MinioStorage } from "./adapters/minio.storage.js";
+import { createStorage } from "./adapters/storage.factory.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
 import { IntakeService } from "./modules/intake/intake.service.js";
@@ -26,7 +26,7 @@ export const API_PREFIX = "/api/v1";
  */
 export function buildApp(config: Config, db: Db): Express {
   const app = express();
-  const storage = new MinioStorage(config.minio);
+  const storage = createStorage(config, "api");
 
   app.use(express.json());
 
@@ -79,10 +79,9 @@ export function buildApp(config: Config, db: Db): Express {
         repo: new AdminRepository(db),
         history: new HistoryRepository(db),
         queue,
-        storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
         tLow: config.tLow,
       }),
+      storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
     }),
@@ -91,11 +90,8 @@ export function buildApp(config: Config, db: Db): Express {
   app.use(
     `${API_PREFIX}/tors`,
     buildTorsRouter({
-      service: new TorsService({
-        repo: new TorsRepository(db),
-        storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
-      }),
+      service: new TorsService({ repo: new TorsRepository(db) }),
+      storage,
     }),
   );
 

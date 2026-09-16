@@ -78,38 +78,41 @@ flowchart TB
         api["<b>api</b> 🔨<br/>Express 5 REST<br/>:4000 · /health live,<br/>intake router awaiting wiring"]
         worker["<b>worker</b> ⬜ slice 1 task 11<br/>same image as api,<br/>different command"]
         mongo[("<b>mongo</b> ✅<br/>MongoDB 7<br/>metadata + job queue")]
-        minio[("<b>minio</b> ✅<br/>S3-compatible<br/>original documents")]
+        gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
 
     vertex["☁️ Vertex AI ⬜ slice 2"]
     smtp["✉️ SMTP ⬜ slice 4"]
+    realgcs[("☁️ Google Cloud Storage<br/>deployment only")]
 
-    browser -->|HTTPS| web
-    web -->|"REST<br/>NEXT_PUBLIC_API_URL"| api
-    browser -.->|"signed URL,<br/>MINIO_PUBLIC_URL"| minio
+    browser -->|"HTTPS, incl. streamed<br/>document bytes"| web
+    web -->|"REST<br/>API_BASE_URL"| api
 
     api -->|"records, dedupe,<br/>enqueue"| mongo
-    api -->|"putIfAbsent,<br/>MINIO_ENDPOINT"| minio
+    api -->|"putIfAbsent, getStream,<br/>GCS_API_ENDPOINT"| gcs
     worker -->|"claim job,<br/>write result"| mongo
-    worker -->|"fetch bytes by key"| minio
+    worker -->|"fetch bytes by key"| gcs
     worker -->|"OCR + extract"| vertex
     worker -->|"match emails"| smtp
+    gcs -.->|"same client,<br/>real credentials"| realgcs
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
     classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
     classDef store fill:#f1f4f9,stroke:#12233c,color:#12233c
     class web,api built
     class worker,vertex,smtp planned
-    class mongo,minio store
+    class mongo,gcs,realgcs store
 ```
 
 **Why the worker is its own service rather than a thread in the API:** restarting the API must not
 kill a job in flight, and a failing extraction should be visible in its own logs. It shares the API
 image and differs only by command, so this costs one Compose entry, not a second codebase.
 
-**Why two MinIO addresses:** `MINIO_ENDPOINT` is how the API reaches MinIO *inside* the Compose
-network; `MINIO_PUBLIC_URL` is what a browser can resolve. A URL signed with the internal address
-reaches nothing from outside, and nothing catches it until a human clicks the link.
+**The storage seam:** the browser never reaches storage directly — no signed link, no second
+endpoint. It streams through the API and a Next route handler on the app's own origin instead
+(object storage spec §5), which is what lets a takedown apply on the very next request and every
+response carry `nosniff` and `no-store`. `gcs` in Compose is `fake-gcs-server`, pinned; deployment
+points the same `@google-cloud/storage` client at the real service with `GCS_API_ENDPOINT` unset.
 
 ---
 
@@ -136,7 +139,7 @@ flowchart LR
     service["modules/*/**.service.ts<br/><i>the actual rules</i>"]
     repo["modules/*/**.repository.ts<br/><i>the ONLY DB caller</i>"]
     ports["ports/*.port.ts<br/><i>interfaces</i>"]
-    adapters["adapters/*.ts<br/><i>MinIO, Mongo queue</i>"]
+    adapters["adapters/*.ts<br/><i>GCS, Mongo queue</i>"]
     app["app.ts<br/><i>wiring, once</i>"]
 
     routes --> service
@@ -158,7 +161,7 @@ flowchart LR
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
 | `ports/` | `Storage`, `Queue` interfaces | `Storage` exposes `putIfAbsent`, never `put` |
-| `adapters/` | MinIO storage, Mongo-backed queue | Imported by `app.ts` only |
+| `adapters/` | GCS storage, Mongo-backed queue | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` ⬜ | Extraction worker and the orphan reconciler | Same wiring rules as the API |
 
@@ -205,7 +208,7 @@ sequenceDiagram
     participant C as Client<br/>(upload · url · api)
     participant R as intake.routes<br/>/api/v1/intake
     participant S as IntakeService
-    participant St as Storage port<br/>→ MinIO
+    participant St as Storage port<br/>→ GCS
     participant Db as intake.repository<br/>→ mongo
     participant Q as Queue port<br/>→ mongo
 
@@ -237,7 +240,7 @@ sequenceDiagram
     autonumber
     participant W as extract.worker
     participant Q as ingest_jobs
-    participant St as MinIO
+    participant St as GCS
     participant V as Vertex AI ⬜
     participant T as tors
 
@@ -441,7 +444,7 @@ Decided; not substituted without a design change.
 | Validation | Zod | 4 | One schema shared by both apps via `packages/shared` |
 | Database | MongoDB (Atlas in deployment) | 7 | Extracted fields are irregular and evolve per slice; also serves as the job queue |
 | Search | Atlas Search, `lucene.thai` analyzer | ⬜ slice 3 | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
-| Object storage | MinIO, S3-compatible | 8 (client) | Immutable originals behind a `Storage` port, swappable for S3 |
+| Object storage | Google Cloud Storage | 8 (client) | Immutable originals behind a `Storage` port; `fake-gcs-server` in Compose and CI |
 | AI | Vertex AI — Document AI OCR, Gemini | ⬜ slice 2 | Thai OCR quality; confidence values per field |
 | Notifications | SMTP email | ⬜ slice 4 | The only channel in scope |
 | Runtime | Node | ≥ 22 | Native `fetch`, `process.loadEnvFile` |
@@ -465,9 +468,9 @@ flowchart TB
         a["tor-radar-api<br/>:4000 · /health"]
         k["tor-radar-worker ⬜"]
         m["tor-radar-mongo<br/>healthcheck"]
-        s["tor-radar-minio<br/>${MINIO_PORT} api · console"]
+        s["tor-radar-gcs<br/>fake-gcs-server · ${GCS_EMULATOR_PORT}"]
         mv[("tor-radar-mongo-data")]
-        sv[("tor-radar-minio-data")]
+        sv[("tor-radar-gcs-data")]
     end
 
     w --> a
@@ -492,8 +495,8 @@ flowchart TB
   where the API opens a connection before Mongo accepts one.
 - **Explicit project and container names,** because Compose otherwise derives them from whatever
   directory it ran in, and the logs differ per machine.
-- **MinIO host ports are parameterised** — `${MINIO_PORT:-9000}` — because 9000 is commonly taken
-  by another project on the same machine. This repository's `.env` maps them to 9010/9011.
+- **The GCS emulator's host port is parameterised** — `${GCS_EMULATOR_PORT:-4443}` — because a
+  fixed port collides with another project on the same machine more often than not.
 - ⬜ The Compose file still has the pre-workspace shape: no `worker` service, no health conditions,
   generic names. That is slice 1 task 15.
 

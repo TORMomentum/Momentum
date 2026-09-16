@@ -1,5 +1,6 @@
 import "../../test/env.js";
 
+import { Readable } from "node:stream";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
@@ -24,19 +25,20 @@ import { AdminService } from "./admin.service.js";
 
 const config = loadConfig(process.env);
 const adminKey = config.adminApiKeys[0]!;
-const signedUrl = "https://objects.example.test/signed-document";
+const BYTES = Buffer.from("%PDF-1.7 private document body");
 const recordStorage = {
   bucket: "tor-raw",
   key: "tors/2026/09/private-original.pdf",
   contentType: "application/pdf",
-  bytes: 184_320,
+  bytes: BYTES.byteLength,
 };
 
 let db: Db;
-const signDocument = vi.fn(async (_key: string, _ttlSeconds: number) => signedUrl);
+const getStream = vi.fn(async () => Readable.from([BYTES]));
 
 const storage = {
-  signedUrl: signDocument,
+  exists: vi.fn(async () => true),
+  getStream,
 } as unknown as Storage;
 
 const queue = {
@@ -79,10 +81,9 @@ function buildTestApp() {
         repo: new AdminRepository(db),
         history: new HistoryRepository(db),
         queue,
-        storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
         tLow: config.tLow,
       }),
+      storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
     }),
@@ -102,7 +103,7 @@ beforeEach(async () => {
     corrections(db).deleteMany({}),
     torEvents(db).deleteMany({}),
   ]);
-  signDocument.mockClear();
+  getStream.mockClear();
 });
 
 afterAll(async () => {
@@ -110,7 +111,7 @@ afterAll(async () => {
 });
 
 describe("admin document route", () => {
-  it("signs the storage key loaded from the record", async () => {
+  it("streams a published record's document for staff, with nosniff and no-store", async () => {
     const id = await seedQueued();
 
     const response = await request(buildTestApp())
@@ -118,16 +119,9 @@ describe("admin document route", () => {
       .set("authorization", `Bearer ${adminKey}`);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      url: signedUrl,
-      expiresInSeconds: config.signedUrlTtlSeconds,
-      contentType: recordStorage.contentType,
-      bytes: recordStorage.bytes,
-    });
-    expect(signDocument).toHaveBeenCalledExactlyOnceWith(
-      recordStorage.key,
-      config.signedUrlTtlSeconds,
-    );
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(getStream).toHaveBeenCalledWith(recordStorage.key, undefined);
   });
 
   it("returns 404 for an unknown record", async () => {
@@ -136,7 +130,18 @@ describe("admin document route", () => {
       .set("authorization", `Bearer ${adminKey}`);
 
     expect(response.status).toBe(404);
-    expect(signDocument).not.toHaveBeenCalled();
+    expect(getStream).not.toHaveBeenCalled();
+  });
+
+  it("answers HEAD without opening the object", async () => {
+    const id = await seedQueued();
+
+    const response = await request(buildTestApp())
+      .head(`/api/v1/admin/tors/${id}/document`)
+      .set("authorization", `Bearer ${adminKey}`);
+
+    expect(response.status).toBe(200);
+    expect(getStream).not.toHaveBeenCalled();
   });
 
   it("requires the admin key", async () => {
@@ -145,7 +150,7 @@ describe("admin document route", () => {
     const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/document`);
 
     expect(response.status).toBe(401);
-    expect(signDocument).not.toHaveBeenCalled();
+    expect(getStream).not.toHaveBeenCalled();
   });
 });
 

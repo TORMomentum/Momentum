@@ -1,5 +1,6 @@
 import type { Queue } from "../../ports/queue.port.js";
-import type { Storage } from "../../ports/storage.port.js";
+import { extensionFor } from "../../lib/content-disposition.js";
+import type { StreamableDocument } from "../../lib/stream-document.js";
 import type { HistoryRepository } from "../history/history.repository.js";
 import type {
   AdminRepository,
@@ -13,8 +14,6 @@ export interface AdminDeps {
   repo: AdminRepository;
   history: HistoryRepository;
   queue: Queue;
-  storage: Storage;
-  signedUrlTtlSeconds: number;
   /** Below this, a field is what put the record in the queue (SRS §4.2.1). */
   tLow: number;
 }
@@ -82,19 +81,17 @@ export class AdminService {
     return { ...record, flaggedFields: this.flagged(record) };
   }
 
-  async document(torId: string) {
+  /**
+   * What to stream for a staff request. Unlike the public route, a restricted
+   * record is still served — a reviewer must be able to see what they rejected.
+   */
+  async documentToStream(torId: string): Promise<StreamableDocument> {
     const record = await this.deps.repo.load(torId);
-    // The key must come from the loaded record. Accepting a caller-supplied key
-    // would let an admin-route caller sign any object in the storage bucket.
-    const url = await this.deps.storage.signedUrl(
-      record.storage.key,
-      this.deps.signedUrlTtlSeconds,
-    );
     return {
-      url,
-      expiresInSeconds: this.deps.signedUrlTtlSeconds,
+      key: record.storage.key,
       contentType: record.storage.contentType,
       bytes: record.storage.bytes,
+      filename: record.filename ?? `tor-${torId}${extensionFor(record.storage.contentType)}`,
     };
   }
 

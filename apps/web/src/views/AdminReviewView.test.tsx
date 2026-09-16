@@ -102,8 +102,7 @@ describe("AdminReviewView confirmations", () => {
           queue={[record]}
           unverifiedNotQueued={0}
           record={record}
-          document={null}
-          documentError={null}
+          documentHref={null}
           offline={null}
         />,
       );

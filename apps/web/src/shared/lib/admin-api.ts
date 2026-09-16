@@ -137,17 +137,6 @@ export function fetchRecord(id: string): Promise<ReviewRecord> {
   return call<ReviewRecord>(`/admin/tors/${encodeURIComponent(id)}`);
 }
 
-export interface ReviewDocument {
-  url: string;
-  expiresInSeconds: number;
-  contentType: string;
-  bytes: number;
-}
-
-export function fetchDocument(id: string): Promise<ReviewDocument> {
-  return call<ReviewDocument>(`/admin/tors/${encodeURIComponent(id)}/document`);
-}
-
 export interface FieldEdit {
   field: string;
   value: string;

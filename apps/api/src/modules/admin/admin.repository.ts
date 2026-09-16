@@ -24,6 +24,7 @@ export interface ReviewRecord extends QueueEntry {
   hasTextLayer: boolean;
   sourceUrl: string | null;
   contentHash: string;
+  filename?: string;
 }
 
 export interface AdminOverview {
@@ -129,6 +130,7 @@ export class AdminRepository {
       hasTextLayer: doc.hasTextLayer ?? false,
       sourceUrl: doc.sourceUrl,
       contentHash: doc.contentHash,
+      filename: doc.sourceRefs?.find((s) => s.originalFilename)?.originalFilename,
     };
   }
 

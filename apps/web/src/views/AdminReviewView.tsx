@@ -11,7 +11,7 @@ import {
   rejectRecordAction,
   setFieldVerificationAction,
 } from "../features/admin/admin.actions";
-import type { QueueEntry, ReviewDocument, ReviewRecord } from "../shared/lib/admin-api";
+import type { QueueEntry, ReviewRecord } from "../shared/lib/admin-api";
 
 const QUEUE_LIST_ID = "admin-review-queue";
 
@@ -68,8 +68,7 @@ export function AdminReviewView({
   queue,
   unverifiedNotQueued,
   record,
-  document,
-  documentError,
+  documentHref,
   offline,
   missingRecord = false,
   activeReason,
@@ -77,8 +76,8 @@ export function AdminReviewView({
   queue: QueueEntry[];
   unverifiedNotQueued: number;
   record: ReviewRecord | null;
-  document: ReviewDocument | null;
-  documentError: string | null;
+  /** The staff document-stream proxy route for the open record, or null when none is open. */
+  documentHref: string | null;
   offline: string | null;
   /** A deep link pointed at a record that no longer exists. */
   missingRecord?: boolean;
@@ -89,7 +88,7 @@ export function AdminReviewView({
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<"approve" | "reextract" | "reject" | null>(null);
-  /** The signed URL that failed to load, if any — see the viewer below. */
+  /** The document href that failed to load, if any — see the viewer below. */
   const [brokenDocUrl, setBrokenDocUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -252,45 +251,45 @@ export function AdminReviewView({
             <>
               <section className={styles.adminDoc} aria-label="เอกสารต้นฉบับ">
                 <div className={styles.adminDocToolbar}>
-                  <span>{document?.contentType ?? record.contentType}</span>
-                  <span>{(document?.bytes ?? record.storage.bytes).toLocaleString("th-TH")} ไบต์</span>
+                  <span>{record.contentType}</span>
+                  <span>{record.storage.bytes.toLocaleString("th-TH")} ไบต์</span>
                 </div>
                 <div className={styles.adminDocViewer}>
                   {/*
-                    Three outcomes, not two. The URL can fail to be issued, and
-                    it can be issued correctly and point at nothing — a signed
-                    link to a missing object loads as a broken image, which
-                    tells a reviewer nothing. The failure is tracked by URL
+                    The stream can point at nothing — a taken-down or not-yet-
+                    stored original loads as a broken image, which tells a
+                    reviewer nothing on its own. The failure is tracked by href
                     rather than by a flag, so moving to the next record clears
-                    it without a reset.
+                    it without a reset. An <iframe> does not report a failed
+                    load the way <img> does, so only the image path detects it;
+                    the "open in a new tab" link is the fallback for the rest.
                   */}
-                  {document && brokenDocUrl !== document.url ? (
-                    document.contentType.startsWith("image/") ? (
+                  {documentHref && brokenDocUrl !== documentHref ? (
+                    record.contentType.startsWith("image/") ? (
                       <img
-                        src={document.url}
+                        src={`${documentHref}?disposition=inline`}
                         alt="ต้นฉบับ TOR"
                         className={styles.adminDocImage}
-                        onError={() => setBrokenDocUrl(document.url)}
+                        onError={() => setBrokenDocUrl(documentHref)}
                       />
                     ) : (
                       <iframe
-                        src={document.url}
+                        src={`${documentHref}?disposition=inline`}
                         title="ต้นฉบับ TOR"
                         className={styles.adminDocFrame}
                         referrerPolicy="no-referrer"
-                        onError={() => setBrokenDocUrl(document.url)}
                       />
                     )
                   ) : (
                     <p className={styles.adminDocError}>
-                      {document
+                      {documentHref
                         ? "เปิดต้นฉบับไม่ได้ — ไฟล์อาจยังไม่ถูกจัดเก็บ ข้อมูลที่สกัดได้ยังตรวจสอบได้ตามปกติ"
-                        : (documentError ?? "ไม่พบลิงก์ต้นฉบับ")}
+                        : "ไม่พบลิงก์ต้นฉบับ"}
                     </p>
                   )}
                 </div>
-                {document && (
-                  <a href={document.url} target="_blank" rel="noreferrer" className={styles.adminDocFallback}>
+                {documentHref && (
+                  <a href={documentHref} target="_blank" rel="noreferrer" className={styles.adminDocFallback}>
                     เปิดต้นฉบับในแท็บใหม่ ↗
                   </a>
                 )}

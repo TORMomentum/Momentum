@@ -4,6 +4,7 @@ import { tors } from "../../core/db.js";
 export interface PublicTorDocumentRecord {
   storage: { key: string; contentType: string; bytes: number };
   restricted: boolean;
+  filename?: string;
 }
 
 /** The only public-TOR code that touches MongoDB. */
@@ -15,7 +16,7 @@ export class TorsRepository {
 
     const record = await tors(this.db).findOne(
       { _id: new ObjectId(id) },
-      { projection: { storage: 1, "access.restricted": 1 } },
+      { projection: { storage: 1, "access.restricted": 1, "sourceRefs.originalFilename": 1 } },
     );
     if (!record) return null;
 
@@ -26,6 +27,7 @@ export class TorsRepository {
         bytes: record.storage.bytes,
       },
       restricted: record.access.restricted,
+      filename: record.sourceRefs?.find((s) => s.originalFilename)?.originalFilename,
     };
   }
 }

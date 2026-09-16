@@ -4,7 +4,7 @@ import { loadEnvFile } from "../core/env-file.js";
 import { loadConfig, type Config } from "../core/config.js";
 import { connect, ensureIndexes } from "../core/db.js";
 import { MongoQueue } from "../adapters/mongo.queue.js";
-import { MinioStorage } from "../adapters/minio.storage.js";
+import { createStorage } from "../adapters/storage.factory.js";
 import { VertexAi } from "../adapters/vertex.ai.js";
 import type { Queue } from "../ports/queue.port.js";
 import { HistoryRepository } from "../modules/history/history.repository.js";
@@ -35,7 +35,7 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
     return passThroughHandler;
   }
   const service = new ExtractionService({
-    storage: new MinioStorage(config.minio),
+    storage: createStorage(config, "worker"),
     ai: new VertexAi(config.vertex),
     repo: new ExtractionRepository(db),
     config: {

@@ -118,7 +118,7 @@ sequenceDiagram
     autonumber
     participant C as Client
     participant A as API
-    participant S as MinIO
+    participant S as GCS
     participant D as Mongo
 
     C->>A: POST /api/v1/intake/upload (multipart)
@@ -219,11 +219,36 @@ One record with all nine fields. Every extracted field is an object, never a bar
 compute on. The response also carries `provenance` (model, version, extraction time) and
 `sourceUrl`, because `NFR-F6` requires AI output to be attributable.
 
-### `GET /api/v1/tors/:id/document`
+### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
-Redirects to a **freshly signed** MinIO URL, or streams the bytes with
-`Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`. Signed URLs are generated
-per request and never stored — a persisted one becomes a broken link on an unpredictable date.
+Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
+and never opens the object. A restricted record answers **`404`**, the same as an unknown id: a
+`403` would confirm both that the record exists and that it was taken down (`FR-B-6`).
+
+**Query:** `?disposition=inline` or `?disposition=attachment` (default). Any other value is `400`.
+
+**Headers, every response:**
+
+| Header | Value |
+| :--- | :--- |
+| `Content-Type` | the verified type from the record |
+| `X-Content-Type-Options` | `nosniff` |
+| `Content-Disposition` | `inline`, or `attachment; filename*=UTF-8''<encoded name>` |
+| `Cache-Control` | `private, no-store` — a takedown must never be served from a cache |
+| `Accept-Ranges` | `bytes` |
+| `Content-Length` | full size, or the range length |
+
+**Ranges** (`Range` request header):
+
+| Request | Response |
+| :--- | :--- |
+| none | `200`, whole object |
+| `bytes=a-b`, `bytes=a-`, `bytes=-n` | `206`, `Content-Range: bytes a-b/size` |
+| more than one range, or malformed | ignored — `200`, whole object (RFC 9110 permits this) |
+| start beyond the end | `416`, `Content-Range: bytes */size` |
+
+The web app never calls this route directly — it goes through a Next route handler on the app's own
+origin, so the browser needs no CORS configuration (rendering spec §2.1).
 
 ---
 
@@ -264,6 +289,7 @@ appears in a public response, which is why the signed-out site shows no MATCH %.
 | Route | Purpose |
 | :--- | :--- |
 | `GET /api/v1/admin/queue` | Low-confidence records awaiting review (`FR-G-1`) |
+| `GET`, `HEAD` `/api/v1/admin/tors/:id/document` | Streams the original for staff — same contract as the public route (§4), but **without** the restricted check: a reviewer must be able to see what they rejected |
 | `PATCH /api/v1/admin/tors/:id` | Correct extracted fields — the correction is stored, the original document is not touched |
 | `POST /api/v1/admin/tors/:id/approve` | Clears the unverified mark, admits the record to statistics and matching |
 | `POST /api/v1/admin/tors/:id/restrict` | Takedown: restricts access and writes an audit entry (`FR-B-6`) — never deletes |

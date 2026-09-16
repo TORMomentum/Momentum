@@ -35,6 +35,13 @@ export class PayloadTooLargeError extends AppError {
   }
 }
 
+/** A dependency — object storage — did not answer. The caller may retry. */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = "Service temporarily unavailable") {
+    super(503, "service_unavailable", message);
+  }
+}
+
 /**
  * Extraction failures. These never reach the HTTP error middleware - the worker
  * catches them. `retryable` decides whether the worker backs off and tries

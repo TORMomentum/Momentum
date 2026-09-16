@@ -44,20 +44,19 @@ flowchart LR
     next["Next.js server<br/><i>server components · server actions</i>"]
     api["Express API<br/><i>/api/v1</i>"]
     mongo[("MongoDB")]
-    minio[("MinIO")]
+    gcs[("Google Cloud Storage")]
     partner["🔌 Partner script<br/><i>intake key</i>"]
 
-    browser -->|"same origin, HTML + RSC"| next
+    browser -->|"same origin, HTML + RSC, and streamed document bytes"| next
     next -->|"API_BASE_URL, private network"| api
-    browser -.->|"signed URL issued by the API"| minio
     partner -->|"POST /intake"| api
     api --> mongo
-    api --> minio
+    api --> gcs
 
     classDef trusted fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
     classDef store fill:#fff8ec,stroke:#b45309,color:#12233c
     class next,api trusted
-    class mongo,minio store
+    class mongo,gcs store
 ```
 
 Next.js documents three data-fetching approaches and recommends picking one rather than mixing them.
@@ -79,13 +78,13 @@ What follows from the decision:
 
 ### 2.1 Original document bytes
 
-Streaming a scanned document through the Next server wastes a hop on bytes it does not transform.
-The browser fetches the object from MinIO directly, using a short-lived signed URL.
-
-**The API issues that URL**, through the existing `GET /tors/:id/document`. The web app requests it
-and renders it; it does not generate it. MinIO credentials and the storage policy stay behind the
-storage adapter, in one place, where the takedown rule (`FR-B-6`) is already enforced. Signed URLs
-are generated on demand and never persisted (`SIGNED_URL_TTL_SECONDS`, default 300).
+**Reversed by the storage decision** ([object storage spec](2026-09-14-object-storage-gcs-design.md)
+§5, 2026-09-14): the browser no longer fetches storage directly. `nosniff` cannot be attached to a
+signed link, and a signed link keeps working after a takedown until it expires — both are §5.6
+security-baseline requirements this design cannot meet. Two Next route handlers proxy the API's
+document stream instead, so a taken-down record answers `404` on the very next request and every
+byte carries `nosniff` and `no-store`. The extra hop through Next is the accepted cost, at this
+corpus's sizes, of routes the browser can trust.
 
 ---
 

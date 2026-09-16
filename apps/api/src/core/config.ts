@@ -5,15 +5,23 @@ import { z } from "zod";
  * as a literal anywhere else in the codebase.
  */
 const schema = z.object({
-  // Storage — two endpoints: one reachable inside the compose network, one from a browser.
   MONGO_URL: z.string().min(1),
-  MINIO_ENDPOINT: z.string().min(1),
-  MINIO_PORT: z.coerce.number().int().positive().default(9000),
-  MINIO_ACCESS_KEY: z.string().min(1),
-  MINIO_SECRET_KEY: z.string().min(1),
-  MINIO_BUCKET: z.string().min(1),
-  MINIO_PUBLIC_URL: z.url(),
-  SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+
+  // Storage — Google Cloud Storage (spec §6)
+  GCS_BUCKET: z.string().min(1),
+  /** Set only for fake-gcs-server. Unset in deployment. */
+  GCS_API_ENDPOINT: z.url().optional(),
+  /**
+   * The DEDICATED storage service account's key file. Deliberately not
+   * GOOGLE_APPLICATION_CREDENTIALS: that is Vertex AI's identity, and the Google
+   * client would silently adopt it if this were left to application-default
+   * credentials — giving one compromised key both powers.
+   */
+  GCS_CREDENTIALS: z.string().min(1).optional(),
+  STORAGE_TIMEOUT_API_MS: z.coerce.number().int().positive().default(10_000),
+  STORAGE_TIMEOUT_WORKER_MS: z.coerce.number().int().positive().default(60_000),
 
   // Intake limits
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(26_214_400),
@@ -60,19 +68,27 @@ const schema = z.object({
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
   path: ["T_LOW"],
+}).refine((v) => !(v.NODE_ENV === "production" && v.GCS_API_ENDPOINT), {
+  message: "GCS_API_ENDPOINT is for the emulator only and must be unset in production",
+  path: ["GCS_API_ENDPOINT"],
+}).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GCS_CREDENTIALS), {
+  message: "GCS_CREDENTIALS is required unless GCS_API_ENDPOINT points at the emulator",
+  path: ["GCS_CREDENTIALS"],
+}).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GOOGLE_CLOUD_PROJECT), {
+  message: "GOOGLE_CLOUD_PROJECT is required unless GCS_API_ENDPOINT points at the emulator",
+  path: ["GOOGLE_CLOUD_PROJECT"],
 });
 
 export interface Config {
   mongoUrl: string;
-  minio: {
-    endPoint: string;
-    port: number;
-    accessKey: string;
-    secretKey: string;
+  gcs: {
     bucket: string;
-    publicUrl: string;
+    apiEndpoint?: string;
+    credentialsPath?: string;
+    projectId?: string;
+    timeoutApiMs: number;
+    timeoutWorkerMs: number;
   };
-  signedUrlTtlSeconds: number;
   maxUploadBytes: number;
   allowedMimeTypes: string[];
   multipartMaxFiles: number;
@@ -123,15 +139,14 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
   const parsed = schema.parse(env);
   return {
     mongoUrl: parsed.MONGO_URL,
-    minio: {
-      endPoint: parsed.MINIO_ENDPOINT,
-      port: parsed.MINIO_PORT,
-      accessKey: parsed.MINIO_ACCESS_KEY,
-      secretKey: parsed.MINIO_SECRET_KEY,
-      bucket: parsed.MINIO_BUCKET,
-      publicUrl: parsed.MINIO_PUBLIC_URL,
+    gcs: {
+      bucket: parsed.GCS_BUCKET,
+      apiEndpoint: parsed.GCS_API_ENDPOINT,
+      credentialsPath: parsed.GCS_CREDENTIALS,
+      projectId: parsed.GOOGLE_CLOUD_PROJECT,
+      timeoutApiMs: parsed.STORAGE_TIMEOUT_API_MS,
+      timeoutWorkerMs: parsed.STORAGE_TIMEOUT_WORKER_MS,
     },
-    signedUrlTtlSeconds: parsed.SIGNED_URL_TTL_SECONDS,
     maxUploadBytes: parsed.MAX_UPLOAD_BYTES,
     allowedMimeTypes: parsed.ALLOWED_MIME_TYPES.split(",").map((value) => value.trim()),
     multipartMaxFiles: parsed.MULTIPART_MAX_FILES,

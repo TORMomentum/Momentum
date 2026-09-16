@@ -23,7 +23,7 @@ old `FR-A1` / `NFR-2` style is stale — see PROJECT.md §6 for the mapping.
 | Frontend | Next.js (App Router) |
 | API | Node.js + Express (REST) |
 | Database | MongoDB Atlas — metadata and extracted fields only; document bytes never go in a Mongo document |
-| Object storage | MinIO (S3-compatible, in Docker Compose) behind a `Storage` port |
+| Object storage | Google Cloud Storage behind a `Storage` port; `fake-gcs-server` in Docker Compose |
 | AI | Vertex AI — Document AI for Thai OCR, Gemini for extraction and normalisation |
 | Notifications | Email only (SMTP). No in-app inbox, no chat webhook, no SMS |
 | Infrastructure | Docker Compose; CI on every pull request; secrets in `.env`, `.env.example` committed |
@@ -85,8 +85,8 @@ registration, export and deletion on request, personal data minimised in what is
 
 **No hard-coded values.** Every host, port, bucket, credential, model name, and threshold comes from
 configuration with an overridable default (`NFR-S7`). `localhost` appears in no source file. Storage
-has two endpoints: `MINIO_ENDPOINT` (internal, server-side) and `MINIO_PUBLIC_URL` (browser-
-reachable). Signed URLs are generated on demand and never persisted.
+is reached only by the API. Documents are streamed through the API with `nosniff` and `no-store`;
+there are no signed URLs.
 
 **Never share a filesystem path between services.** Services exchange storage keys; whoever needs
 bytes fetches them from object storage. A path written by one container does not exist in another.
@@ -104,8 +104,9 @@ and API routes · intake API rate-limited and key-authenticated with a constant-
 dependency audit in CI. Plus: SSRF defence on the URL intake route (scheme allowlist, resolved-
 address range checks, re-check after every redirect, size and timeout caps, through one helper);
 magic-byte verification because the declared content type is attacker-controlled; originals served
-as attachments with `nosniff`; Zod primitives-only filter parsing so no operator object reaches a
-Mongo query; streamed uploads with multipart caps.
+with `nosniff` and `no-store` — as attachments by default, inline only for the in-app viewer; Zod
+primitives-only filter parsing so no operator object reaches a Mongo query; streamed uploads with
+multipart caps.
 
 ## Working style
 
@@ -141,7 +142,7 @@ data. All are declared in `core/config.ts` with their open status recorded.
 ## Commands
 
 ```
-docker compose up                 # full stack: web :3000 · api :4000 · mongo · minio :9000/:9001
+docker compose up                 # full stack: web :3000 · api :4000 · mongo · gcs (emulator) :4443
 npm run dev                       # web + api dev servers (no containers)
 npm test                          # vitest
 npm run lint                      # eslint

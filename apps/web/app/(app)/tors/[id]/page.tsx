@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { getTorBySlug } from "../../../../src/data/tor-samples";
-import { fetchTorDocumentUrl } from "../../../../src/shared/api/tors.api";
 import { TorDetailView } from "../../../../src/views/TorDetailView";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
@@ -14,7 +13,7 @@ const OBJECT_ID = /^[0-9a-f]{24}$/i;
  * file present an unknown record answered 200, without it 404.
  *
  * This is a public page that crawlers index, and a wrong status is worse than
- * a missing skeleton. The page's own work is one signed-URL call.
+ * a missing skeleton. The page's own work is building the tor and checking it exists.
  */
 
 export default async function TorDetailPage({
@@ -30,15 +29,9 @@ export default async function TorDetailPage({
   // UI with an HTTP 200 response, which is wrong for crawlers.
   if (!tor) notFound();
 
-  let documentUrl: string | null = null;
+  // Sample records (mock ids) have no stored original to stream; only a real
+  // Mongo id gets a document link (spec §5.1 — the proxy route is the only path).
+  const documentHref = OBJECT_ID.test(id) ? `/tors/${id}/document` : null;
 
-  if (OBJECT_ID.test(id)) {
-    try {
-      documentUrl = await fetchTorDocumentUrl(id);
-    } catch (error) {
-      console.error("tor_document_url_fetch_failed", { id, error });
-    }
-  }
-
-  return <TorDetailView tor={tor} documentUrl={documentUrl} />;
+  return <TorDetailView tor={tor} documentHref={documentHref} />;
 }
