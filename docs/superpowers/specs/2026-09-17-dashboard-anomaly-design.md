@@ -240,6 +240,7 @@ export type NotEvaluatedReason =
   | "unverified-budget"
   | "unverified-category"
   | "not-published"
+  | "restricted"          // a takedown, which is not the same as unpublished
   | "insufficient-peers"
   | "no-spread";
 
@@ -256,15 +257,18 @@ Order of checks — also the order of reasons a screen can show:
 
 1. No budget value → `no-budget`.
 2. Not published → `not-published`.
-3. Budget not verified → `unverified-budget` (TOR-63).
-4. Category missing or unverified → `unverified-category`.
-5. No bounds document, or `n < minN` → `insufficient-peers`.
-6. **Zero spread** (IQR `0`, or standard deviation `0` under ZSCORE): every eligible peer holds the
+3. Restricted → `restricted`. Distinct from unpublished on purpose: a staff reader
+   looking at a taken-down record must be told it was taken down, not that it never
+   published. The two states have different causes and different remedies.
+4. Budget not verified → `unverified-budget` (TOR-63).
+5. Category missing or unverified → `unverified-category`.
+6. No bounds document, or `n < minN` → `insufficient-peers`.
+7. **Zero spread** (IQR `0`, or standard deviation `0` under ZSCORE): every eligible peer holds the
    same value. A value equal to it is `normal`; a different value is an `anomaly` with
    `distance: null`, because "how many IQRs out" has no finite answer when the IQR is zero. The
    screen prints the side without a multiple. This case is reachable with real data — eight identical
    tendered budgets is a plausible procurement pattern — so it is specified, not left to a crash.
-7. IQR: outside `q1 − k·IQR` or `q3 + k·IQR` → `anomaly`, `distance` = how far outside, in IQRs.
+8. IQR: outside `q1 − k·IQR` or `q3 + k·IQR` → `anomaly`, `distance` = how far outside, in IQRs.
    ZSCORE (documented alternative, off by default): `|z| > limit`, `distance` = `|z|`.
 
 ### 4.2 Quartiles are defined, because the definition moves flags

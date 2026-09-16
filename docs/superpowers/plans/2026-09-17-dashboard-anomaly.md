@@ -72,7 +72,7 @@ Integration tests need `docker compose up -d mongo gcs`.
 
 - [ ] **Step 1:** Failing test — `loadConfig` exposes `stats.peerWindowMonths` 12, `stats.peerMinN` 8, `stats.method` `"IQR"`, `stats.iqrMultiplier` 1.5, `stats.zScoreLimit` 3, `stats.sweepIntervalMs` 300000, `stats.leaseMs` 60000, `stats.staleAfterMs` 3600000, `stats.timezone` `"Asia/Bangkok"`; and that `ANOMALY_METHOD=NONSENSE` throws.
 - [ ] **Step 2:** Run it, confirm it fails.
-- [ ] **Step 3:** Add the keys with `z.coerce.number().int().positive()`, `ANOMALY_METHOD: z.enum(["IQR", "ZSCORE"]).default("IQR")`, and a comment marking `ANOMALY_METHOD` as open value O4. Add the block to `.env.example`.
+- [ ] **Step 3:** Add the keys. Counts and durations are `z.coerce.number().int().positive()`; the method is `z.enum(["IQR", "ZSCORE"]).default("IQR")` with a comment marking it open value O4. **The two anomaly limits are `z.coerce.number().positive()` without `.int()`** — the fence is 1.5, and zod does not validate a default, so an int schema passes its own tests and then rejects the very value `.env.example` ships. Add the block to `.env.example`.
 - [ ] **Step 4:** Gates: config tests, lint, api tsc.
 - [ ] **Step 5:** `git commit -m "feat(config): the statistics block, with the anomaly method recorded as open"`
 
@@ -138,7 +138,7 @@ describe("cohortFor", () => {
 
 **Files:** create `apps/api/src/modules/stats/eligibility.ts` + test
 
-- [ ] **Step 1: Failing test** covering each rejection reason separately, and one acceptance. Assert the exported Mongo filter object literally, because it must match the partial index in Task 5:
+- [ ] **Step 1: Failing test** covering each rejection reason separately — including `restricted`, which is its own reason and must NOT be reported as `not-published` — and one acceptance. Assert the exported Mongo filter object literally, because it must match the partial index in Task 5:
 
 ```ts
 expect(eligibleFilter()).toEqual({
