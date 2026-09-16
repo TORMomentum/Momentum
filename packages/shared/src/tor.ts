@@ -7,6 +7,8 @@ export interface SourceRef {
   url?: string;
   submittedBy: string;
   submittedAt: string;
+  /** As submitted, percent-free and unencoded. Used for the download filename (spec §5.3). */
+  originalFilename?: string;
 }
 
 export type ConfidenceLevel = "high" | "medium" | "low";

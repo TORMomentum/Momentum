@@ -4,7 +4,13 @@ import type { ConfidenceLevel, Provenance, TorFields } from "@tor-radar/shared";
 export interface TorDocument {
   contentHash: string;
   storage: { bucket: string; key: string; contentType: string; bytes: number };
-  sourceRefs: Array<{ route: string; url?: string; submittedBy: string; submittedAt: Date }>;
+  sourceRefs: Array<{
+    route: string;
+    url?: string;
+    submittedBy: string;
+    submittedAt: Date;
+    originalFilename?: string;
+  }>;
   pipeline: { state: string; attempts: number; failedReason?: string };
   /** The nine FR-B-2 fields, populated in slice 2. Empty until extraction runs. */
   fields: Partial<TorFields>;

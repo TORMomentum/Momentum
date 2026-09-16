@@ -50,6 +50,7 @@ function fakes() {
 
   const records = new Map<string, { id: string; hash: string }>();
   const sourceRefs: string[] = [];
+  const insertedSources: unknown[] = [];
   const inserted: { id: string; knownFields?: Record<string, unknown> }[] = [];
   const repository = {
     async findByHash(hash: string) {
@@ -61,11 +62,12 @@ function fakes() {
     async insert(
       hash: string,
       _stored: StoredObject,
-      _source: unknown,
+      source: unknown,
       knownFields?: Record<string, unknown>,
     ) {
       const id = `id-${records.size + 1}`;
       records.set(id, { id, hash });
+      insertedSources.push(source);
       inserted.push({ id, knownFields });
       return id;
     },
@@ -74,7 +76,7 @@ function fakes() {
     },
   };
 
-  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted };
+  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted, insertedSources };
 }
 
 function serviceWith(overrides: Partial<typeof limits> = {}) {
@@ -202,5 +204,13 @@ describe("IntakeService.submit", () => {
 
     expect(result.duplicate).toBe(false);
     expect(inserted[0].knownFields).toBeUndefined();
+  });
+
+  it("records the submitted filename on the source reference", async () => {
+    const { service, insertedSources } = serviceWith();
+
+    await service.submit(pdf, { ...source, filename: "ประกาศจ้างเหมา.pdf" });
+
+    expect(insertedSources[0]).toMatchObject({ originalFilename: "ประกาศจ้างเหมา.pdf" });
   });
 });

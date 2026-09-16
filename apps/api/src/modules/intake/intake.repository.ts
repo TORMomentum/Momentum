@@ -8,6 +8,8 @@ export interface SourceRefInput {
   url?: string;
   submittedBy: string;
   submittedAt: Date;
+  /** As submitted, percent-free and unencoded. Used for the download filename (spec §5.3). */
+  originalFilename?: string;
 }
 
 export interface FoundTor {
