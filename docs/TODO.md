@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-09-11_
+_last updated: 2026-09-16_
 
 ---
 
@@ -229,6 +229,42 @@ _Design: [`plans/2026-09-11-admin-validation-port.md`](superpowers/plans/2026-09
 - [x] **The screen, ported to the redesigned mockup** — three columns, locked shell, real stored PDF
       in the middle, confirm ticks and progress. `48e82fc`
 - [x] **Confirmation dialogs**, and the reject reason is no longer a hardcoded constant. `27e7e49`
+- [x] `GET /admin/tors/:id/document` — superseded 2026-09-16: the route streams the document instead
+      of returning a signed URL (§2e)
+
+## 2e. Object storage on Google Cloud Storage — MERGED, AWAITING THE REAL BUCKET
+
+_Design: [`specs/2026-09-14-object-storage-gcs-design.md`](superpowers/specs/2026-09-14-object-storage-gcs-design.md) rev 3 ·
+Plan: [`plans/2026-09-14-gcs-storage.md`](superpowers/plans/2026-09-14-gcs-storage.md) — 16 tasks, squash-merged as `22a7344` (#6)._
+
+- [x] **Design spec, three revisions, cross-checked** — the first revision rested on a truncated
+      quote about noncurrent versions and had to be corrected. `ab94958`, `b4efa79`, `ab5f205`
+- [x] **Implementation plan, cross-checked by Codex before any code** — 15 of 16 findings applied.
+      `4ae4ef2`
+- [x] **Built and merged** — byte-range parser, disposition allowlist, `streamDocument`, the
+      `GcsStorage` adapter, one `createStorage` factory for the API and the worker, both document
+      routes streaming `GET`/`HEAD`, the two Next proxy handlers, MinIO and `signedUrl` deleted,
+      emulator in Compose and CI, seeder, docs. `22a7344`
+- [x] **Live verification against the running stack** (2026-09-16, `localhost`)
+  - [x] admin document streams `200 application/pdf`, `nosniff`, `private, no-store`,
+        `Accept-Ranges`, RFC 6266 filename
+  - [x] range request → `206`, `Content-Range: bytes 0-4/277234`, body begins `%PDF-`
+  - [x] admin document without the key → `401`; through the web proxy signed out → `404`
+  - [x] public document through the Next proxy → `200`; `?disposition=inline` → `inline`, range `206`
+  - [x] re-running the seeder takes the precondition path — "already stored" — and leaves 3 records,
+        which is the duplicate-write protection proving itself outside a test
+  - [x] gates: lint clean, both type-checks clean, 241 passed / 10 skipped, emulator suite 6/6
+- [ ] **Zen, in the Google Cloud console** (plan Task 16 — not an agent task)
+  - [ ] confirm the Bangkok (`asia-southeast3`) storage price
+  - [ ] create the originals bucket — uniform access, public access prevention, retention period,
+        **unlocked**; no lifecycle rule
+  - [ ] create the disposable test bucket, same region, one-day lifecycle delete
+  - [ ] create the `tor-storage` service account and the `torStorageWriter` custom role
+        (`storage.objects.create` + `storage.objects.get`), bound at the bucket, no project roles
+  - [ ] issue its key, store it outside the repository, point `GCS_CREDENTIALS` at it
+- [ ] **After the first real original is stored** — run the real-bucket workflow
+      (`gcs-real.yml`, manual), then drop the retained `minio_data` volume from `docker-compose.yml`;
+      rollback is forward-only from that point (spec §9)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
@@ -240,9 +276,13 @@ _Design: [`plans/2026-09-11-admin-validation-port.md`](superpowers/plans/2026-09
 
 ## 3b. Carried debt — small, keeps costing time
 
-- [ ] **Split the dev and test databases.** `MONGO_URL` points at `tor_radar_test`, so `npm test`
-      wipes the seeded review queue. It happened four times on 2026-09-10/11; each recovery is one
-      command, which is exactly why it never gets fixed
+- [x] **Split the dev and test databases.** Fixed in `vitest.setup.ts`, before any test file loads:
+      the database name is forced to end in `_test`, so a suite added later cannot reintroduce it.
+      Development runs against `tor_radar_dev`. `37a7daf`
+- [ ] **`npm run dev` cannot start the web app on this machine.** Windows Application Control blocks
+      `@next/swc-win32-x64-msvc`, Next falls back to WASM, and Turbopack requires the native binary.
+      `next dev --webpack` works. Decide whether `--webpack` belongs in the script or the policy
+      should be changed — until then the two dev servers are started separately (2026-09-16)
 - [ ] Record the Q1 rendering decisions in `PLAN.md` §3 and correct the
       `NEXT_PUBLIC_API_URL` line in `API.md` — the decision is made and the spec is written, the
       register has not caught up
