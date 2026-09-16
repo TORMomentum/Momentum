@@ -1,5 +1,7 @@
 import { MongoClient, type Collection, type Db } from "mongodb";
 import type { ConfidenceLevel, Provenance, TorFields } from "@tor-radar/shared";
+import type { CohortKey } from "../modules/stats/cohort.js";
+import { eligibleFilter } from "../modules/stats/eligibility.js";
 
 export interface TorDocument {
   contentHash: string;
@@ -32,6 +34,9 @@ export interface TorDocument {
    */
   statusHistory: Array<{ from: string | null; to: string; at: Date; actor: string; source: string }>;
   access: { restricted: boolean; reason?: string; auditRef?: string };
+  /** The stable peer-group key used by the dashboard anomaly rule. */
+  cohort?: CohortKey;
+  cohortDateSource?: "announced" | "intake";
   duplicateOf: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -81,6 +86,49 @@ export interface JobDocument {
   updatedAt: Date;
 }
 
+/** One cached peer group and the durable work item that keeps it current. */
+export interface TorPeerStatsDocument {
+  category: string;
+  month: string;
+  n?: number;
+  q1?: number;
+  q3?: number;
+  iqr?: number;
+  lowBound?: number;
+  highBound?: number;
+  mean?: number;
+  stdDev?: number;
+  method?: "IQR" | "ZSCORE";
+  minN?: number;
+  windowMonths?: number;
+  computedAt?: Date;
+  dirty: boolean;
+  dirtyAt?: Date;
+  generation: number;
+  leaseOwner?: string;
+  leaseUntil?: Date;
+}
+
+/** A precomputed dashboard total for one agency/category/month cell. */
+export interface TorRollupDocument {
+  agency: string;
+  category: string;
+  month: string;
+  torCount: number;
+  budgetSum: number;
+  unverifiedBudgetCount: number;
+  flaggedCount: number;
+  computedAt: Date;
+}
+
+/** Singleton dashboard freshness metadata. */
+export interface TorMetaDocument {
+  _id: "dashboard";
+  lastIntakeAt?: Date;
+  statsComputedAt?: Date;
+  corpusSize?: number;
+}
+
 let client: MongoClient | null = null;
 
 export async function connect(mongoUrl: string): Promise<Db> {
@@ -110,6 +158,18 @@ export function corrections(db: Db): Collection<CorrectionDocument> {
   return db.collection<CorrectionDocument>("corrections");
 }
 
+export function torPeerStats(db: Db): Collection<TorPeerStatsDocument> {
+  return db.collection<TorPeerStatsDocument>("tor_peer_stats");
+}
+
+export function torRollups(db: Db): Collection<TorRollupDocument> {
+  return db.collection<TorRollupDocument>("tor_rollups");
+}
+
+export function torMeta(db: Db): Collection<TorMetaDocument> {
+  return db.collection<TorMetaDocument>("tor_meta");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
@@ -126,6 +186,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
     "fields.torStatus.value": 1,
   });
   await tors(db).createIndex({ "access.restricted": 1 });
+  // Keep this identical to eligibleFilter(): the partial index is the database
+  // enforcement of eligibility, so a drift would make the rule scan a different corpus.
+  await tors(db).createIndex(
+    { "cohort.category": 1, "cohort.month": 1, "fields.budget.value": 1 },
+    { partialFilterExpression: eligibleFilter() },
+  );
+  await tors(db).createIndex({ "fields.agency.value": 1, "cohort.month": 1 });
+  await tors(db).createIndex({ "cohort.category": 1, "cohort.month": 1 });
   // Every audit read is "this TOR, newest first". A collection growing to
   // millions of small documents is ordinary; a document growing is not.
   await torEvents(db).createIndex({ torId: 1, at: -1 });
@@ -138,4 +206,10 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await corrections(db).createIndex({ field: 1, at: -1 });
   await jobs(db).createIndex({ state: 1, nextRunAt: 1 });
   await jobs(db).createIndex({ torId: 1, state: 1 });
+  await torPeerStats(db).createIndex({ category: 1, month: 1 }, { unique: true });
+  await torPeerStats(db).createIndex({ dirty: 1, dirtyAt: 1 }, { partialFilterExpression: { dirty: true } });
+  await torRollups(db).createIndex({ agency: 1, month: 1 });
+  await torRollups(db).createIndex({ category: 1, month: 1 });
+  await torRollups(db).createIndex({ month: 1 });
+  await torRollups(db).createIndex({ agency: 1, category: 1, month: 1 }, { unique: true });
 }
