@@ -1,0 +1,92 @@
+import { Router } from "express";
+import type { Config } from "../../core/config.js";
+import type { Db, Filter } from "mongodb";
+import type { TorRollupDocument } from "../../core/db.js";
+import { redactTor } from "../../lib/redact.js";
+import { StatsRepository } from "./stats.repository.js";
+import { eligibilityOf } from "./eligibility.js";
+import { verdictFor } from "./anomaly.rule.js";
+import type { PeerBounds } from "./anomaly.rule.js";
+import { parseDashboardFilters, publicTorFilter, type DashboardFilters } from "./stats.filters.js";
+
+export interface StatsRouterDeps { db: Db; config: Config; }
+
+function rollupFilter(filters: DashboardFilters): Filter<TorRollupDocument> {
+  const filter: Record<string, unknown> = {};
+  if (filters.agency) filter.agency = filters.agency;
+  if (filters.category) filter.category = filters.category;
+  if (filters.from || filters.to) filter.month = { ...(filters.from ? { $gte: filters.from } : {}), ...(filters.to ? { $lte: filters.to } : {}) };
+  return filter as Filter<TorRollupDocument>;
+}
+
+const iso = (date: Date | undefined) => date?.toISOString() ?? null;
+
+/** Public dashboard reads; all derived figures remain server-side. */
+export function buildStatsRouter(deps: StatsRouterDeps): Router {
+  const router = Router();
+  const repository = new StatsRepository(deps.db);
+
+  router.get("/dashboard", async (req, res) => {
+    const filters = parseDashboardFilters(req.query);
+    const [records, meta] = await Promise.all([
+      repository.dashboardRecords(publicTorFilter(filters)),
+      repository.dashboardMeta(),
+    ]);
+    const keys = records.flatMap((record) => record.cohort ? [record.cohort] : []);
+    // One bounds read for all plotted rows avoids a per-row lookup whose cost
+    // grows with the page rather than with the number of distinct peer groups.
+    const bounds = await repository.boundsFor(keys);
+    const boundsByKey = new Map(bounds.map((bound) => [`${bound.category}\u0000${bound.month}`, bound]));
+    const points = records.flatMap((record) => {
+      const budget = record.fields.budget?.value;
+      if (!record.cohort || typeof budget !== "number") return [];
+      const publicRecord = redactTor({ fields: record.fields }, "public");
+      const reason = eligibilityOf(record as never, deps.config);
+      const stored = boundsByKey.get(`${record.cohort.category}\u0000${record.cohort.month}`);
+      const bound: PeerBounds | null = stored?.n === undefined ? null : stored as PeerBounds;
+      const verdict = verdictFor(reason ? { budget, eligible: false, reason } : { budget, eligible: true }, bound, {
+        method: deps.config.stats.method, minN: deps.config.stats.peerMinN,
+        iqrMultiplier: deps.config.stats.iqrMultiplier, zScoreLimit: deps.config.stats.zScoreLimit,
+      });
+      return [{
+        id: record._id.toString(), category: record.cohort.category, month: record.cohort.month, budget, verdict,
+        confidence: publicRecord.fields.budget?.confidence ?? null,
+        verified: publicRecord.fields.budget?.verified ?? false,
+        modelVersion: record.provenance?.modelVersion ?? null,
+      }];
+    });
+    const needsRecordTotals = filters.minBudget !== undefined || filters.maxBudget !== undefined || filters.status !== undefined;
+    const cells = needsRecordTotals ? null : await repository.dashboardRollups(rollupFilter(filters));
+    const source = cells ?? records.map((record) => ({
+      agency: typeof record.fields.agency?.value === "string" ? record.fields.agency.value.trim() : "",
+      month: record.cohort?.month ?? "", torCount: 1, budgetSum: record.fields.budget?.value as number,
+      unverifiedBudgetCount: record.fields.budget?.verified ? 0 : 1, flaggedCount: 0,
+    }));
+    const totals = source.reduce((sum, value) => ({
+      torCount: sum.torCount + value.torCount, budgetSum: sum.budgetSum + value.budgetSum,
+      unverifiedBudgetCount: sum.unverifiedBudgetCount + value.unverifiedBudgetCount,
+    }), { torCount: 0, budgetSum: 0, unverifiedBudgetCount: 0 });
+    const byAgency = new Map<string, { agency: string; torCount: number; budgetSum: number }>();
+    const trend = new Map<string, { month: string; torCount: number; budgetSum: number }>();
+    for (const value of source) {
+      const agency = byAgency.get(value.agency) ?? { agency: value.agency, torCount: 0, budgetSum: 0 };
+      agency.torCount += value.torCount; agency.budgetSum += value.budgetSum; byAgency.set(value.agency, agency);
+      const month = trend.get(value.month) ?? { month: value.month, torCount: 0, budgetSum: 0 };
+      month.torCount += value.torCount; month.budgetSum += value.budgetSum; trend.set(value.month, month);
+    }
+    const evaluated = points.filter((point) => point.verdict.kind !== "not-evaluated");
+    const flagged = evaluated.length === 0 ? null : points.filter((point) => point.verdict.kind === "anomaly").length;
+    const corpusSize = meta?.corpusSize ?? await repository.corpusSize();
+    res.json({
+      totals: { ...totals, agencyCount: byAgency.size }, flagged: { count: flagged },
+      trend: [...trend.values()].sort((left, right) => left.month.localeCompare(right.month)),
+      byAgency: [...byAgency.values()].sort((left, right) => left.agency.localeCompare(right.agency)), points,
+      meta: { lastIntakeAt: iso(meta?.lastIntakeAt), statsComputedAt: iso(meta?.statsComputedAt), // Never computed counts as stale, not as fresh: figures nothing has ever
+      // recalculated are exactly what the banner exists to disclose, and
+      // reporting them as current would be the failure it guards against.
+      stale: !meta?.statsComputedAt || Date.now() - meta.statsComputedAt.getTime() > deps.config.stats.staleAfterMs, corpusSize },
+      checklist: null,
+    });
+  });
+  return router;
+}

@@ -16,6 +16,7 @@ import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
 import { StatsRepository } from "./modules/stats/stats.repository.js";
+import { buildStatsRouter } from "./modules/stats/stats.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -99,10 +100,12 @@ export function buildApp(config: Config, db: Db): Express {
   app.use(
     `${API_PREFIX}/tors`,
     buildTorsRouter({
-      service: new TorsService({ repo: new TorsRepository(db) }),
+      service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
     }),
   );
+
+  app.use(`${API_PREFIX}/stats`, buildStatsRouter({ db, config }));
 
   // Last: it only sees what the routes above throw.
   app.use(errorMiddleware);

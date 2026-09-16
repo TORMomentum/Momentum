@@ -1,5 +1,5 @@
-import { ObjectId, type Db } from "mongodb";
-import { torPeerStats, torRollups, tors, type TorPeerStatsDocument } from "../../core/db.js";
+import { ObjectId, type Db, type Filter, type WithId } from "mongodb";
+import { torMeta, torPeerStats, torRollups, tors, type TorDocument, type TorPeerStatsDocument, type TorRollupDocument } from "../../core/db.js";
 import type { Config } from "../../core/config.js";
 import type { CohortKey } from "./cohort.js";
 import { eligibleFilter, eligibilityOf } from "./eligibility.js";
@@ -173,4 +173,25 @@ export class StatsRepository {
     return keys.filter((key): key is CohortKey =>
       Boolean(key) && typeof (key as CohortKey).category === "string" && typeof (key as CohortKey).month === "string");
   }
+
+  async dashboardRecords(filter: Filter<TorDocument>): Promise<WithId<TorDocument>[]> {
+    return tors(this.db).find(filter, { sort: { "cohort.month": 1, _id: 1 } }).toArray();
+  }
+
+  async dashboardRollups(filter: Filter<TorRollupDocument>): Promise<TorRollupDocument[]> {
+    return torRollups(this.db).find(filter).toArray();
+  }
+
+  async boundsFor(keys: CohortKey[]): Promise<TorPeerStatsDocument[]> {
+    const unique = [...new Map(keys.map((key) => [`${key.category}\u0000${key.month}`, key])).values()];
+    if (unique.length === 0) return [];
+    return torPeerStats(this.db).find({
+      category: { $in: [...new Set(unique.map((key) => key.category))] },
+      month: { $in: [...new Set(unique.map((key) => key.month))] },
+    }).toArray();
+  }
+
+  async dashboardMeta() { return torMeta(this.db).findOne({ _id: "dashboard" }); }
+
+  async corpusSize(): Promise<number> { return tors(this.db).countDocuments(); }
 }
