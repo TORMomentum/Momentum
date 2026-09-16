@@ -329,7 +329,7 @@ describe("verdictFor under ZSCORE", () => {
 
 **Files:** create `apps/web/src/shared/lib/dashboard-filters.ts` + test, `stats.api.ts`; modify `dashboard/page.tsx`
 
-- [ ] **Step 1: Failing test** — parse: unknown keys ignored, malformed budget ignored rather than throwing, month range validated, multiple categories as repeated keys; serialise: round-trips, and omits defaults so a clean URL stays clean.
+- [ ] **Step 1: Failing test** — parse: unknown keys ignored, malformed budget ignored rather than throwing, month range validated, and a **repeated** `category` key taking the first value rather than throwing (the dashboard filters one category at a time, matching its single-select controls; multi-select belongs to the search screen, TOR-42); serialise: round-trips, and omits defaults so a clean URL stays clean.
 - [ ] **Step 2:** Implement, then make the page a server component reading `searchParams` and passing data down. `stats.api.ts` is `server-only`.
 - [ ] **Step 3:** Gates + load the page with filters in the URL and confirm the server rendered them.
 - [ ] **Step 4:** commit; `jira.py move TOR-65 "In Review"`.
