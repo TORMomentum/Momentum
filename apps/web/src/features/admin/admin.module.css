@@ -847,14 +847,29 @@
 }
 
 /* ---------- manual upload ---------- */
+/* A single-task page, not a data page — centred like the sign-in gate
+   (.adminGate) rather than left-anchored like the overview/log pages, since
+   a form this small only reads as unfinished pinned to a corner. */
+.uploadPage {
+  min-height: calc(100vh - var(--app-header-h));
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+}
+
+.uploadPageInner { width: 100%; max-width: 480px; text-align: center; }
+.uploadPageInner .overviewTitle,
+.uploadPageInner .overviewLede { text-align: center; }
+.uploadPageInner .overviewLede { margin-bottom: 28px; }
+
 .uploadCard {
-  max-width: 560px;
   display: grid;
   gap: 18px;
   padding: 28px;
   border: 1px solid var(--line, var(--ink-18));
   border-radius: var(--radius-card);
   background: var(--paper);
+  text-align: left;
 }
 
 /* The whole card is the drop target, but the input covers only the zone —

@@ -14,13 +14,15 @@ export default async function AdminUploadPage() {
   if (!(await isStaff())) redirect("/admin/login");
 
   return (
-    <main className={styles.logPage}>
-      <h1 className={styles.overviewTitle}>อัปโหลดเอกสาร TOR</h1>
-      <p className={styles.overviewLede}>
-        นำเข้าเอกสารโดยตรง — ไฟล์จะถูกเก็บอย่างถาวรและเข้าสู่คิวประมวลผลอัตโนมัติ
-      </p>
+    <main className={styles.uploadPage}>
+      <div className={styles.uploadPageInner}>
+        <h1 className={styles.overviewTitle}>อัปโหลดเอกสาร TOR</h1>
+        <p className={styles.overviewLede}>
+          นำเข้าเอกสารโดยตรง — ไฟล์จะถูกเก็บอย่างถาวรและเข้าสู่คิวประมวลผลอัตโนมัติ
+        </p>
 
-      <UploadForm />
+        <UploadForm />
+      </div>
     </main>
   );
 }
