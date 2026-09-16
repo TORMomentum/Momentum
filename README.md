@@ -30,11 +30,11 @@ npm run build                 # all workspaces
 `gcp-sa.json` (Vertex AI) and, if you're testing against real Google Cloud Storage rather than the
 local emulator, `gcs-storage-sa.json`. Ask the team for these files; never commit them.
 
-The containerised path brings up the datastores:
-
 ```bash
-docker compose up             # web · api · worker · mongo · gcs (fake-gcs-server emulator)
+docker compose up mongo gcs   # just the datastores, for `npm run dev` against them
 ```
+
+⚠️ `docker compose build web api` does not currently work — the Dockerfiles `COPY` each app's own `package.json` in isolation, so `npm install` inside the image never links the `@tor-radar/shared` workspace package or picks up root-hoisted devDependencies (workspace-aware Dockerfiles are Slice-1 Task 15). `npm run dev` against the two datastores above is the reliable local setup.
 
 Node 22 or newer. CI runs lint, test, and build on every pull request
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
