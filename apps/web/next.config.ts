@@ -13,10 +13,28 @@ if (existsSync(rootEnv)) {
   process.loadEnvFile(rootEnv);
 }
 
+// Same defaults as apps/api/src/core/config.ts's MAX_UPLOAD_BYTES /
+// ALLOWED_MIME_TYPES — one value, not two copies that can drift apart.
+const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES) || 26_214_400;
+const allowedMimeTypes = process.env.ALLOWED_MIME_TYPES ?? "application/pdf,image/jpeg,image/png";
+
 const nextConfig: NextConfig = {
   // The repo's agent rules live at the root; do not generate a second set here.
   agentRules: false,
   output: "standalone",
+  // Exposes the same limits to the client bundle as NEXT_PUBLIC_* — see
+  // UploadForm.tsx, which reads these instead of restating the numbers.
+  env: {
+    NEXT_PUBLIC_MAX_UPLOAD_BYTES: String(maxUploadBytes),
+    NEXT_PUBLIC_ALLOWED_MIME_TYPES: allowedMimeTypes,
+  },
+  experimental: {
+    serverActions: {
+      // Next's own default is 1MB, well under MAX_UPLOAD_BYTES — every real
+      // scanned TOR over ~1MB would 500 before reaching the API's own check.
+      bodySizeLimit: maxUploadBytes,
+    },
+  },
 };
 
 export default nextConfig;
