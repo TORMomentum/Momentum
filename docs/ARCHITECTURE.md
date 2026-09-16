@@ -76,8 +76,9 @@ flowchart TB
     subgraph compose["Docker Compose network · project tor-radar"]
         web["<b>web</b> ✅<br/>Next.js 16 App Router<br/>:3000"]
         api["<b>api</b> 🔨<br/>Express 5 REST<br/>:4000 · /health live,<br/>intake router awaiting wiring"]
-        worker["<b>worker</b> ⬜ slice 1 task 11<br/>same image as api,<br/>different command"]
-        mongo[("<b>mongo</b> ✅<br/>MongoDB 7<br/>metadata + job queue")]
+        worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
+        stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells"]
+        mongo[("<b>mongo</b> ✅<br/>MongoDB 7<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
 
@@ -94,15 +95,23 @@ flowchart TB
     worker -->|"fetch bytes by key"| gcs
     worker -->|"OCR + extract"| vertex
     worker -->|"match emails"| smtp
+    stats -->|"claim dirty cohort,<br/>write bounds + rollups"| mongo
+    api -->|"read bounds,<br/>judge at read"| mongo
     gcs -.->|"same client,<br/>real credentials"| realgcs
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
     classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
     classDef store fill:#f1f4f9,stroke:#12233c,color:#12233c
-    class web,api built
-    class worker,vertex,smtp planned
+    class web,api,worker,stats built
+    class vertex,smtp planned
     class mongo,gcs,realgcs store
 ```
+
+**Why the statistics worker is separate from the extraction worker:** a stalled OCR call must not
+stop the dashboard's figures going stale-free, and recomputing a peer group is cheap work on a
+different cadence from extraction. Dirty cohorts are drained at the queue poll interval; a full
+sweep of every cohort runs on its own longer interval, so a mark that never arrived costs one
+interval of staleness rather than a record permanently missing from the figures.
 
 **Why the worker is its own service rather than a thread in the API:** restarting the API must not
 kill a job in flight, and a failing extraction should be visible in its own logs. It shares the API
@@ -307,6 +316,8 @@ erDiagram
     SOURCES ||--o{ TORS : "collected from (slice 2+)"
     VENDORS ||--o{ MATCHES : "scored against"
     TORS ||--o{ MATCHES : "scored for"
+    TORS ||--o| TOR_PEER_STATS : "judged against, by cohort key"
+    TORS ||--o{ TOR_ROLLUPS : "counted into"
 
     TORS {
         objectId _id PK "Mongo's own key"
@@ -321,7 +332,40 @@ erDiagram
         object provenance "model, version, extractedAt, thresholdsVersion"
         array statusHistory "last 10 transitions, for display only"
         object access "restricted, reason, auditRef · FR-B-6 takedown"
+        object cohort "category + month · the peer group's key"
+        string cohortDateSource "announced | intake · which date the month came from"
         date createdAt "when WE ingested it"
+    }
+    TOR_PEER_STATS {
+        string category PK "with month, the peer group"
+        string month PK "YYYY-MM, Asia/Bangkok"
+        int n "eligible budgets in the twelve-month window"
+        number q1 "both methods' statistics are stored, so switching"
+        number q3 "ANOMALY_METHOD cannot compare against undefined"
+        number lowBound "q1 minus the multiplier times the IQR"
+        number highBound "q3 plus the multiplier times the IQR"
+        number mean "for the z-score alternative"
+        number stdDev "for the z-score alternative"
+        bool dirty "the worker's queue: set by whatever changed the group"
+        int generation "guards a mark that arrives mid-computation"
+        date leaseUntil "so two workers cannot recompute one cohort"
+        date computedAt
+    }
+    TOR_ROLLUPS {
+        string agency PK
+        string category PK
+        string month PK
+        int torCount "every published budget, verified or not"
+        number budgetSum "what the agency spent, as collected"
+        int unverifiedBudgetCount "stated beside the total, never hidden"
+        int flaggedCount
+        date computedAt
+    }
+    TOR_META {
+        string id PK "dashboard"
+        date lastIntakeAt "FR-E-6's last-updated line"
+        date statsComputedAt "freshness of the figures, a different question"
+        int corpusSize
     }
     TOR_EVENTS {
         objectId _id PK
@@ -406,6 +450,10 @@ Three shapes are load-bearing:
 | `tors.access.restricted` | Keeps restricted records out of public queries |
 | `tor_events.torId + at` | The audit read: one TOR's history, newest first |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
+| `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
+| `tor_peer_stats.category + month`, unique | One bounds document per peer group, which is what makes a recompute idempotent |
+| `tor_peer_stats.dirty + dirtyAt`, partial | The statistics worker's claim query |
+| `tor_rollups.agency + month` · `category + month` | The dashboard's two filter shapes. A single `agency + category + month` compound cannot serve "one agency across months with no category", because category sits between the two fields used |
 
 ---
 

@@ -186,25 +186,28 @@ web app.
 
 ---
 
-## 4. Public reads ⬜ (slice 3)
+## 4. Public reads ✅ (slice 3)
 
 ### `GET /api/v1/tors`
 
-Query: `q`, `agency`, `category`, `status`, `minBudget`, `maxBudget`, `from`, `to`, `page`,
-`pageSize`. Filters compose; dates mean **`announcedAt`**, the agency's own publication date, never
-ingestion time.
+Query: `agency`, `category`, `status`, `minBudget`, `maxBudget`, `from`, `to`, `page`, `pageSize`.
+Filters compose; dates mean the record's **cohort month**, derived from `announcedAt` when the
+agency published one and from ingestion time otherwise, with `cohortDateSource` recording which
+(free-text `q` arrives with Thai search, `TOR-43`).
 
-Filter values are parsed as primitives only, so no operator object can reach a Mongo query.
+Filter values are parsed as primitives only, so no operator object can reach a Mongo query. Unknown
+and malformed values are ignored rather than rejected. Restricted records never appear.
 
 ```json
-{ "items": [ { "id": "…", "reference": "TOR-2569-0812-041", "title": {…}, "agency": {…},
-               "budget": {…}, "deadline": {…}, "confidenceLevel": "high", "unverified": false } ],
-  "page": 1, "pageSize": 20, "total": 487,
-  "coverage": { "lastUpdated": "2026-08-12T09:42:00+07:00", "note": "ครอบคลุมเฉพาะเอกสารที่นำเข้าระบบ" } }
+{ "items": [ { "id": "…", "fields": {…}, "announcedAt": "2026-08-12T00:00:00.000Z",
+               "sourceUrl": null, "createdAt": "…",
+               "verdict": { "kind": "anomaly", "side": "high", "distance": 3.1 } } ],
+  "page": 1, "pageSize": 20, "total": 487 }
 ```
 
-`coverage` is not decoration: `FR-E-6` requires every surface showing figures to state what they
-cover and when they were last updated.
+Each row carries its own `verdict`, derived at read from its peer group's bounds rather than stored
+on the record. A page is fetched first and its distinct cohorts are read in one further query, so the
+cost grows with the number of peer groups on the page, not with the number of rows.
 
 ### `GET /api/v1/tors/:id`
 
@@ -252,21 +255,59 @@ origin, so the browser needs no CORS configuration (rendering spec §2.1).
 
 ---
 
-## 5. Statistics and export ⬜ (slice 3)
+## 5. Statistics and export
 
-| Route | Returns |
+### `GET /api/v1/stats/dashboard` ✅ (slice 3)
+
+Same filters as `GET /api/v1/tors`, minus paging.
+
+```json
+{ "totals": { "torCount": 18, "budgetSum": 172150000, "agencyCount": 3, "unverifiedBudgetCount": 1 },
+  "flagged": { "count": 1 },
+  "trend":   [ { "month": "2026-09", "torCount": 4, "budgetSum": 52000000 } ],
+  "byAgency":[ { "agency": "สำนักงานเขตทวีวัฒนา", "torCount": 7, "budgetSum": 61000000 } ],
+  "points":  [ { "id": "…", "category": "งานก่อสร้าง-ทาง", "month": "2026-09", "budget": 48000000,
+                 "verdict": { "kind": "anomaly", "side": "high", "distance": 47.01 },
+                 "confidence": 0.95, "verified": true, "modelVersion": "gemini-3.5-flash-001" } ],
+  "bounds":  [ { "category": "งานก่อสร้าง-ทาง", "month": "2026-09", "n": 11,
+                 "q1": 1675000, "q3": 2700000, "lowBound": -862500, "highBound": 4237500,
+                 "eligible": true } ],
+  "rule":    { "method": "IQR", "iqrMultiplier": 1.5, "zScoreLimit": 3,
+               "peerMinN": 8, "windowMonths": 12, "cohortTimezone": "Asia/Bangkok" },
+  "meta":    { "lastIntakeAt": "2026-09-16T21:07:24.665Z", "statsComputedAt": "2026-09-17T03:10:11.000Z",
+               "stale": false, "corpusSize": 22 },
+  "checklist": null }
+```
+
+Where each figure comes from, which is the difference between a fast answer and a true one:
+
+| Field | Source |
 | :--- | :--- |
-| `GET /api/v1/stats/dashboard` | Totals, per-agency and per-category aggregates, the trend series, and the coverage block |
-| `GET /api/v1/stats/anomalies` | Flagged records with their peer group, the IQR bounds, and the multiple |
-| `GET /api/v1/export/tors.csv` | The current filter as CSV, with the same PII minimisation as the API |
+| `totals`, `trend`, `byAgency` | Rollup cells (agency × category × month) when only agency, category or month filters are active |
+| the same, with `minBudget`, `maxBudget` or `status` active | Computed from the records instead: a cell holds a sum, not the budgets inside it, so it cannot answer a budget range |
+| `points`, `flagged` | The records, each judged by its cohort's `bounds` |
+| `bounds` | The stored per-cohort statistics the worker keeps fresh |
 
-**Open:** whether these compute live or read a precomputed rollup — see
-[PLAN.md](PLAN.md) Q1/Q2. The route shape is the same either way; only its
-freshness guarantee changes, and `coverage.lastUpdated` is where that becomes visible.
+`totals` count every published, unrestricted record with a numeric budget, **verified or not**, with
+`unverifiedBudgetCount` alongside: excluding unverified extractions would understate what agencies
+spend. `points` and `flagged` use the stricter eligibility rule, so the anomaly rule speaks only for
+what passed the deterministic checks.
 
-Anomaly responses always carry the method and its parameters (`PEER_GROUP_KEY`, `PEER_WINDOW`,
-`PEER_MIN_N`, `ANOMALY_METHOD`), because `NFR-F5` allows the phrase "statistical anomaly" only
-alongside the rule that produced it.
+`flagged.count` is `null`, not `0`, when no cohort on screen reaches `peerMinN` — "not enough
+comparable TORs" and "no anomalies found" are different statements.
+
+`rule` travels with every response because `NFR-F5` allows the phrase "statistical anomaly" only
+alongside the rule that produced it, and `FR-F-3` requires the methodology page to describe the
+active rule rather than a copy of it.
+
+`meta.lastIntakeAt` is the most recent successful intake, which is what `FR-E-6` asks for;
+`meta.statsComputedAt` is the last statistics run, and `meta.stale` is true when that run is older
+than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` is reserved for `FR-F-4` in
+sprint 4.
+
+### `GET /api/v1/export/tors.csv` ⬜ (slice 5)
+
+The current filter as CSV, with the same PII minimisation as the API.
 
 ---
 
