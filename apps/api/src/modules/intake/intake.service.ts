@@ -6,6 +6,7 @@ import { BadRequestError, PayloadTooLargeError } from "../../core/errors.js";
 import type { Storage } from "../../ports/storage.port.js";
 import type { Queue } from "../../ports/queue.port.js";
 import type { IntakeRepository, SourceRefInput } from "./intake.repository.js";
+import { cohortFor } from "../stats/cohort.js";
 
 export interface SubmitSource {
   route: "upload" | "url" | "api";
@@ -39,6 +40,7 @@ export class IntakeService {
     private readonly queue: Queue,
     private readonly repository: IntakeRepository,
     private readonly limits: IntakeLimits,
+    private readonly stats?: { timezone: string },
   ) {}
 
   /**
@@ -74,6 +76,7 @@ export class IntakeService {
     const existing = await this.repository.findByHash(contentHash);
     if (existing) {
       await this.repository.appendSourceRef(existing.id, sourceRef);
+      await this.repository.recordIntake(sourceRef.submittedAt);
       return { torId: existing.id, duplicate: true, state: "queued" };
     }
 
@@ -87,11 +90,16 @@ export class IntakeService {
 
     let torId: string;
     try {
+      const category = source.knownFields?.category?.value;
+      const cohort = this.stats && typeof category === "string"
+        ? cohortFor({ category, announcedAt: null, createdAt: sourceRef.submittedAt }, this.stats.timezone)
+        : null;
       torId = await this.repository.insert(
         contentHash,
         storedObject,
         sourceRef,
         source.knownFields,
+        cohort,
       );
     } catch (error) {
       // The unique index is the real dedupe guarantee (FR-A-3): two callers can
@@ -106,6 +114,7 @@ export class IntakeService {
       throw error;
     }
 
+    await this.repository.recordIntake(sourceRef.submittedAt);
     await this.queue.enqueue(torId);
     return { torId, duplicate: false, state: "queued" };
   }

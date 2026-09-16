@@ -1,5 +1,5 @@
 import "../../test/env.js";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -21,7 +21,11 @@ import type { ExtractionRepository, ExtractionResult } from "./extraction.reposi
  * local / nightly gate, not part of the CI unit run.
  */
 const config = loadConfig(process.env);
-const hasCreds = Boolean(config.vertex.project && config.vertex.credentialsPath);
+// The key file must EXIST, not merely be named in .env: otherwise a developer
+// without the secret gets a failing suite instead of a skipped one.
+const hasCreds = Boolean(
+  config.vertex.project && config.vertex.credentialsPath && existsSync(config.vertex.credentialsPath),
+);
 const CORPUS = fileURLToPath(new URL("../../../../../docs/corpus/", import.meta.url));
 
 const svcConfig: ExtractionConfig = {
@@ -31,6 +35,7 @@ const svcConfig: ExtractionConfig = {
   thresholdsVersion: config.thresholdsVersion,
   budgetMinThb: config.budgetMinThb,
   budgetMaxThb: config.budgetMaxThb,
+  timezone: config.stats.timezone,
 };
 
 interface Label {

@@ -1,7 +1,8 @@
 import { ObjectId, type Db } from "mongodb";
-import { torEvents, tors, type TorDocument } from "../../core/db.js";
+import { torEvents, torMeta, tors, type TorDocument } from "../../core/db.js";
 import type { ExtractedField } from "@tor-radar/shared";
 import type { StoredObject } from "../../ports/storage.port.js";
+import type { CohortKey } from "../stats/cohort.js";
 
 export interface SourceRefInput {
   route: "upload" | "url" | "api";
@@ -50,6 +51,7 @@ export class IntakeRepository {
     storedObject: StoredObject,
     source: SourceRefInput,
     knownFields?: Record<string, ExtractedField>,
+    cohort?: { cohort: CohortKey; cohortDateSource: "announced" | "intake" } | null,
   ): Promise<string> {
     const now = new Date();
     const result = await tors(this.db).insertOne({
@@ -69,6 +71,7 @@ export class IntakeRepository {
         { from: null, to: "queued", at: now, actor: source.submittedBy, source: source.route },
       ],
       access: { restricted: false },
+      ...(cohort ?? {}),
       duplicateOf: null,
       createdAt: now,
       updatedAt: now,
@@ -90,6 +93,10 @@ export class IntakeRepository {
     });
 
     return torId;
+  }
+
+  async recordIntake(at: Date): Promise<void> {
+    await torMeta(this.db).updateOne({ _id: "dashboard" }, { $set: { lastIntakeAt: at } }, { upsert: true });
   }
 
 

@@ -4,6 +4,7 @@ import type { Storage } from "../../ports/storage.port.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
 import type { ExtractionRepository } from "./extraction.repository.js";
+import { cohortFor } from "../stats/cohort.js";
 
 export interface ExtractionConfig {
   model: string;
@@ -12,6 +13,7 @@ export interface ExtractionConfig {
   thresholdsVersion: string;
   budgetMinThb: number;
   budgetMaxThb: number;
+  timezone: string;
 }
 
 export interface ExtractionServiceDeps {
@@ -46,7 +48,7 @@ export class ExtractionService {
   constructor(private readonly deps: ExtractionServiceDeps) {}
 
   run = async (torId: string): Promise<void> => {
-    const { storageKey, contentType } = await this.deps.repo.load(torId);
+    const { storageKey, contentType, createdAt } = await this.deps.repo.load(torId);
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
@@ -70,6 +72,12 @@ export class ExtractionService {
       thresholdsVersion: this.deps.config.thresholdsVersion,
     };
 
+    const cohort = cohortFor({
+      category: typeof fields.category.value === "string" ? fields.category.value : "",
+      announcedAt,
+      createdAt,
+    }, this.deps.config.timezone);
+
     await this.deps.repo.writeExtraction(torId, {
       fields,
       announcedAt,
@@ -78,6 +86,7 @@ export class ExtractionService {
       reviewReasons,
       hasTextLayer: textLayer,
       provenance,
+      ...(cohort ? { cohort: cohort.cohort, cohortDateSource: cohort.cohortDateSource } : {}),
     });
   };
 }

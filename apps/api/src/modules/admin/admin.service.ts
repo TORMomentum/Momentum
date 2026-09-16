@@ -4,6 +4,8 @@ import { extensionFor } from "../../lib/content-disposition.js";
 import { parseBudget } from "../../lib/parse-budget.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import type { HistoryRepository } from "../history/history.repository.js";
+import { cohortFor, type CohortKey } from "../stats/cohort.js";
+import { windowKeysFor } from "../stats/stats.repository.js";
 import type {
   AdminRepository,
   FieldEdit,
@@ -19,6 +21,7 @@ export interface AdminDeps {
   /** Below this, a field is what put the record in the queue (SRS §4.2.1). */
   tLow: number;
   budgetMaxThb: number;
+  stats?: { markCohortsDirty(keys: CohortKey[]): Promise<void>; windowMonths: number; timezone: string };
 }
 
 export interface QueueView {
@@ -118,7 +121,9 @@ export class AdminService {
   async correct(torId: string, edits: FieldEdit[], actor: string): Promise<ReviewRecord> {
     if (edits.length > 0) {
       this.validateEdits(edits);
-      await this.deps.repo.applyEdits(torId, edits, actor);
+      const before = await this.deps.repo.applyEdits(torId, edits, actor);
+      await this.updateCohort(torId);
+      await this.markCohorts(before, await this.deps.repo.statsRecord(torId));
     }
     return this.deps.repo.load(torId);
   }
@@ -130,7 +135,7 @@ export class AdminService {
     confirmed: boolean,
     actor: string,
   ): Promise<ReviewRecord> {
-    await this.deps.repo.setFieldVerification(torId, field, confirmed);
+    const before = await this.deps.repo.setFieldVerification(torId, field, confirmed);
     await this.deps.history.record(torId, {
       from: "published",
       to: "published",
@@ -138,6 +143,7 @@ export class AdminService {
       source: "admin",
       reason: confirmed ? `field ${field} confirmed` : `field ${field} confirmation cleared`,
     });
+    if (field === "budget" || field === "category") await this.markCohorts(before, await this.deps.repo.statsRecord(torId));
     return this.load(torId);
   }
 
@@ -148,7 +154,9 @@ export class AdminService {
   async approve(torId: string, edits: FieldEdit[], actor: string): Promise<void> {
     if (edits.length > 0) {
       this.validateEdits(edits);
-      await this.deps.repo.applyEdits(torId, edits, actor);
+      const before = await this.deps.repo.applyEdits(torId, edits, actor);
+      await this.updateCohort(torId);
+      await this.markCohorts(before, await this.deps.repo.statsRecord(torId));
     }
     await this.deps.repo.approve(torId);
     await this.deps.history.record(torId, {
@@ -173,12 +181,13 @@ export class AdminService {
       source: "admin",
       reason: "re-extract requested",
     });
+    await this.markCohorts(await this.deps.repo.statsRecord(torId));
     await this.deps.queue.enqueue(torId);
   }
 
   /** Rejection restricts access and records the reason; the document survives. */
   async reject(torId: string, reason: string, actor: string): Promise<void> {
-    await this.deps.repo.reject(torId, reason, actor);
+    const before = await this.deps.repo.reject(torId, reason, actor);
     await this.deps.history.record(torId, {
       from: "published",
       to: "restricted",
@@ -186,5 +195,25 @@ export class AdminService {
       source: "admin",
       reason,
     });
+    await this.markCohorts(before);
+  }
+
+  private async markCohorts(...records: Array<{ cohort?: CohortKey }>): Promise<void> {
+    if (!this.deps.stats) return;
+    await this.deps.stats.markCohortsDirty(records.flatMap((record) => (
+      record.cohort ? windowKeysFor(record.cohort, this.deps.stats!.windowMonths) : []
+    )));
+  }
+
+  private async updateCohort(torId: string): Promise<void> {
+    if (!this.deps.stats) return;
+    const record = await this.deps.repo.statsRecord(torId);
+    const category = record.fields.category?.value;
+    const derived = cohortFor({
+      category: typeof category === "string" ? category : "",
+      announcedAt: record.announcedAt,
+      createdAt: record.createdAt,
+    }, this.deps.stats.timezone);
+    await this.deps.repo.setCohort(torId, derived?.cohort, derived?.cohortDateSource);
   }
 }
