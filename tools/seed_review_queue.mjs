@@ -10,7 +10,8 @@
  * those and nothing else.
  */
 import { MongoClient, ObjectId } from "mongodb";
-import { Client as MinioClient } from "minio";
+import { Storage as GcsClient } from "@google-cloud/storage";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -21,6 +22,13 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 const MONGO_URL = process.env.MONGO_URL;
 if (!MONGO_URL) {
   console.error("MONGO_URL is not set — is the repository .env filled in?");
+  process.exit(1);
+}
+
+// The seeder writes development data. Refusing without the emulator endpoint
+// means a misconfigured .env can never point this script at a real bucket.
+if (!process.env.GCS_API_ENDPOINT) {
+  console.error("GCS_API_ENDPOINT is not set — the seeder only writes to the emulator, never a real bucket.");
   process.exit(1);
 }
 
@@ -41,7 +49,6 @@ const RECORDS = [
   {
     reviewReasons: ["budget-unreadable"],
     hasTextLayer: false,
-    contentType: "image/jpeg",
     fields: {
       title: field("จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", "จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง", 0.91, false, "เรื่อง จ้างเหมาปรับปรุงอาคารเรียน โรงเรียนบ้านหนองแวง — หน้า 1 บรรทัดหัวเรื่อง"),
       agency: field("สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", "สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3", 0.88, false, "ประกาศ สพฐ. เขตพื้นที่การศึกษาประถมศึกษา 3 — หน้า 1 หัวกระดาษ"),
@@ -61,7 +68,6 @@ const RECORDS = [
   {
     reviewReasons: ["deadline-before-announcement"],
     hasTextLayer: false,
-    contentType: "application/pdf",
     fields: {
       title: field("ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง สำนักงานจังหวัดลำปาง", "ซื้อครุภัณฑ์คอมพิวเตอร์ 45 เครื่อง", 0.87),
       agency: field("สำนักงานจังหวัดลำปาง", "สำนักงานจังหวัดลำปาง", 0.9),
@@ -81,7 +87,6 @@ const RECORDS = [
   {
     reviewReasons: ["agency-unreadable", "copy-through"],
     hasTextLayer: true,
-    contentType: "application/pdf",
     fields: {
       title: field("ประกวดราคาอิเล็กทรอนิกส์", "ประกวดราคาอิเล็กทรอนิกส์", 0.44, false, "หัวกระดาษซ้ำทุกหน้า"),
       agency: field("ประกวดราคาอิเล็กทรอนิกส์", null, 0.31, false, "อ่านชื่อหน่วยงานไม่ได้"),
@@ -112,75 +117,91 @@ if (process.argv.includes("--clear")) {
   process.exit(0);
 }
 
-const BUCKET = process.env.MINIO_BUCKET ?? "tor-raw";
+const BUCKET = process.env.GCS_BUCKET ?? "tor-raw";
+const gcs = new GcsClient({ apiEndpoint: process.env.GCS_API_ENDPOINT, projectId: "emulator" });
 
-// The seeder talks to storage the same way the API does: the INTERNAL endpoint,
-// never MINIO_PUBLIC_URL, which is the browser-reachable one.
-const minio = new MinioClient({
-  endPoint: process.env.MINIO_ENDPOINT ?? "localhost",
-  port: Number(process.env.MINIO_PORT ?? 9000),
-  useSSL: false,
-  accessKey: process.env.MINIO_ACCESS_KEY ?? "",
-  secretKey: process.env.MINIO_SECRET_KEY ?? "",
-});
-
-if (!(await minio.bucketExists(BUCKET))) {
-  console.error(`bucket ${BUCKET} does not exist — is docker compose up?`);
-  process.exit(1);
-}
+const [bucketExists] = await gcs.bucket(BUCKET).exists();
+if (!bucketExists) await gcs.createBucket(BUCKET);
 
 const now = new Date();
 let created = 0;
+let alreadyStored = 0;
 
 for (const [index, record] of RECORDS.entries()) {
-  const id = new ObjectId();
   const at = new Date(now.getTime() - (RECORDS.length - index) * 3_600_000);
-  const contentHash = `seed${id.toString().padStart(60, "0")}`.slice(0, 64);
 
   // A record whose document is not in object storage gives the review screen a
-  // signed URL to nothing, which renders as a broken viewer. Seeds carry a real
+  // stream to nothing, which renders as a broken viewer. Seeds carry a real
   // document: one of the corpus PDFs, so the panel shows an actual Thai TOR and
   // the browser's own viewer supplies zoom and paging.
+  //
+  // contentHash comes from the fixture's own bytes (sha256), not a random id,
+  // so a rerun computes the SAME hash, the SAME id, and the SAME storage key —
+  // which is what makes this script idempotent rather than additive.
   const sourcePdf = `docs/corpus/tor-${String(index + 1).padStart(2, "0")}.pdf`;
   const bytes = await readFile(sourcePdf);
+  const contentHash = createHash("sha256").update(bytes).digest("hex");
+  const id = new ObjectId(contentHash.slice(0, 24));
   const storageKey = `tors/${at.getUTCFullYear()}/${String(at.getUTCMonth() + 1).padStart(2, "0")}/${contentHash}.pdf`;
-  await minio.putObject(BUCKET, storageKey, bytes, bytes.length, {
-    "Content-Type": "application/pdf",
-  });
 
-  await db.collection("tors").insertOne({
-    _id: id,
-    seed: true,
-    schemaVersion: 1,
-    contentHash,
-    storage: {
-      bucket: BUCKET,
-      key: storageKey,
-      contentType: "application/pdf",
-      bytes: bytes.length,
+  // The same conditional, checksummed write the adapter uses (spec §4.1): a
+  // 412 means this exact content is already stored, not an error.
+  const md5Hash = createHash("md5").update(bytes).digest("base64");
+  let alreadyExisted = false;
+  try {
+    await gcs.bucket(BUCKET).file(storageKey).save(bytes, {
+      resumable: false,
+      validation: false,
+      preconditionOpts: { ifGenerationMatch: 0 },
+      metadata: { contentType: "application/pdf", md5Hash, metadata: { sha256: contentHash, route: "upload" } },
+    });
+  } catch (error) {
+    if (error?.code !== 412) throw error;
+    alreadyExisted = true;
+  }
+
+  if (alreadyExisted) {
+    alreadyStored += 1;
+    console.log(`${storageKey} already stored — skipping`);
+    continue;
+  }
+
+  await db.collection("tors").updateOne(
+    { contentHash },
+    {
+      $set: {
+        _id: id,
+        seed: true,
+        schemaVersion: 1,
+        contentHash,
+        // Content type matches what was actually uploaded — every fixture is a
+        // PDF, so no seed record may claim to be an image.
+        storage: { bucket: BUCKET, key: storageKey, contentType: "application/pdf", bytes: bytes.length },
+        sourceRefs: [{ route: "upload", submittedBy: "admin", submittedAt: at }],
+        pipeline: { state: "published", attempts: 1 },
+        fields: record.fields,
+        announcedAt: null,
+        sourceUrl: null,
+        confidenceLevel: "low",
+        unverified: true,
+        reviewReasons: record.reviewReasons,
+        hasTextLayer: record.hasTextLayer,
+        provenance: {
+          ocrModel: "seed",
+          extractModel: "seed",
+          modelVersion: "seed",
+          extractedAt: at.toISOString(),
+          thresholdsVersion: "seed",
+        },
+        statusHistory: [{ from: null, to: "queued", at, actor: "seed", source: "upload" }],
+        access: { restricted: false },
+        duplicateOf: null,
+        updatedAt: at,
+      },
+      $setOnInsert: { createdAt: at },
     },
-    sourceRefs: [{ route: "upload", submittedBy: "admin", submittedAt: at }],
-    pipeline: { state: "published", attempts: 1 },
-    fields: record.fields,
-    announcedAt: null,
-    sourceUrl: null,
-    confidenceLevel: "low",
-    unverified: true,
-    reviewReasons: record.reviewReasons,
-    hasTextLayer: record.hasTextLayer,
-    provenance: {
-      ocrModel: "seed",
-      extractModel: "seed",
-      modelVersion: "seed",
-      extractedAt: at.toISOString(),
-      thresholdsVersion: "seed",
-    },
-    statusHistory: [{ from: null, to: "queued", at, actor: "seed", source: "upload" }],
-    access: { restricted: false },
-    duplicateOf: null,
-    createdAt: at,
-    updatedAt: at,
-  });
+    { upsert: true },
+  );
 
   await db.collection("tor_events").insertMany([
     { torId: id.toString(), from: null, to: "queued", at, actor: "seed", source: "upload" },
@@ -191,5 +212,5 @@ for (const [index, record] of RECORDS.entries()) {
   created += 1;
 }
 
-console.log(`seeded ${created} records into the review queue`);
+console.log(`seeded ${created} records into the review queue${alreadyStored ? ` (${alreadyStored} already stored)` : ""}`);
 await client.close();
