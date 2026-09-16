@@ -422,6 +422,17 @@ to the methodology page (FR-F-3). Wording is fixed by NFR-F5: only "ความ
     verdict: AnomalyVerdict; confidence: number | null; verified: boolean;
     modelVersion: string | null;
   }>;
+  // The band drawn behind the points, one per peer group on screen. Sent with
+  // the points, never fetched separately: the reader must see the same bounds
+  // the verdict beside them was decided by.
+  bounds: Array<{
+    category: string; month: string; n: number;
+    q1: number | null; q3: number | null; lowBound: number | null; highBound: number | null;
+    eligible: boolean;                         // n >= minN
+  }>;
+  // The active rule, so the methodology page states what ran rather than a copy
+  // of it that can drift (FR-F-3).
+  rule: { method: "IQR" | "ZSCORE"; iqrMultiplier: number; zScoreLimit: number; peerMinN: number; windowMonths: number; cohortTimezone: string };
   meta: { lastIntakeAt: string | null; statsComputedAt: string | null; stale: boolean; corpusSize: number };
   checklist: null;                             // reserved for FR-F-4, Sprint 4
 }

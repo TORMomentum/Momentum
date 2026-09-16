@@ -81,6 +81,25 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       totals: { ...totals, agencyCount: byAgency.size }, flagged: { count: flagged },
       trend: [...trend.values()].sort((left, right) => left.month.localeCompare(right.month)),
       byAgency: [...byAgency.values()].sort((left, right) => left.agency.localeCompare(right.agency)), points,
+      // The band the plot draws behind its points, one per peer group on the
+      // screen. Sent with the points rather than fetched separately: a reader
+      // must see the same bounds the verdict beside them was decided by.
+      bounds: bounds.map((bound) => ({
+        category: bound.category, month: bound.month, n: bound.n ?? 0,
+        q1: bound.q1 ?? null, q3: bound.q3 ?? null,
+        lowBound: bound.lowBound ?? null, highBound: bound.highBound ?? null,
+        eligible: (bound.n ?? 0) >= deps.config.stats.peerMinN,
+      })),
+      // The active rule, so the methodology page states what actually ran
+      // rather than a copy of it that can drift (FR-F-3).
+      rule: {
+        method: deps.config.stats.method,
+        iqrMultiplier: deps.config.stats.iqrMultiplier,
+        zScoreLimit: deps.config.stats.zScoreLimit,
+        peerMinN: deps.config.stats.peerMinN,
+        windowMonths: deps.config.stats.peerWindowMonths,
+        cohortTimezone: deps.config.stats.timezone,
+      },
       meta: { lastIntakeAt: iso(meta?.lastIntakeAt), statsComputedAt: iso(meta?.statsComputedAt), // Never computed counts as stale, not as fresh: figures nothing has ever
       // recalculated are exactly what the banner exists to disclose, and
       // reporting them as current would be the failure it guards against.
