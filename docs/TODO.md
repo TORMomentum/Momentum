@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-09-16_
+_last updated: 2026-09-17_
 
 ---
 
@@ -265,6 +265,43 @@ Plan: [`plans/2026-09-14-gcs-storage.md`](superpowers/plans/2026-09-14-gcs-stora
 - [ ] **After the first real original is stored** — run the real-bucket workflow
       (`gcs-real.yml`, manual), then drop the retained `minio_data` volume from `docker-compose.yml`;
       rollback is forward-only from that point (spec §9)
+
+## 2f. Sprint 3 — dashboard figures and the anomaly rule — BUILT AND VERIFIED (2026-09-17)
+
+_Design: [`specs/2026-09-17-dashboard-anomaly-design.md`](superpowers/specs/2026-09-17-dashboard-anomaly-design.md) rev 2 ·
+Plan: [`plans/2026-09-17-dashboard-anomaly.md`](superpowers/plans/2026-09-17-dashboard-anomaly.md) · branch `feat/sprint3-dashboard-stats`._
+
+- [x] **Design spec, cross-checked before any code** — a review against the code found twenty faults
+      in revision 1, all carried into revision 2 and listed in its §12
+- [x] **TOR-61 — the anomaly rule as one documented function** — type-7 quartiles, the 1.5×IQR fence,
+      the z-score alternative, zero-spread and missing-statistics cases
+- [x] **TOR-63 — ineligible budgets excluded** — one predicate shared by the in-memory rule and the
+      Mongo query, and used as the partial index's filter so the two cannot drift
+- [x] **TOR-122 — the edge-case tests** — `n` below, at and above the minimum; both tails; a value
+      exactly on the fence; identical peers; unverified, unpublished and taken-down records
+- [x] **TOR-65 — filters in the URL** — Zod primitives, unknown and malformed values ignored,
+      shareable and reload-proof
+- [x] **TOR-66 — totals and the trend** — from rollup cells, or from records when a budget or status
+      filter is active, because a cell holds a sum rather than the budgets inside it
+- [x] **TOR-62 — the plot** — points with the band they are judged against, flagged points with their
+      distance, each carrying the confidence and model version behind it
+- [x] **Live verification against the running stack** (2026-09-17)
+  - [x] fence matches hand arithmetic: q1 1,675,000 · q3 2,700,000 · fence 4,237,500
+  - [x] the seeded outlier is the only flagged record, at 47.01×IQR
+  - [x] unticking a verified budget dropped it from the peer statistics within seconds (11 → 10)
+  - [x] the unverified and taken-down records, both with absurd budgets, moved no bound
+  - [x] a category below the peer minimum reports "not enough comparable TORs", and its flagged count
+        is omitted rather than shown as zero
+  - [x] a budget-range filter bypasses the rollup cells: 8 records / ฿163.1M against 18 / ฿172.15M
+  - [x] ageing the statistics raised the recalculating banner; a fresh run cleared it
+  - [x] gates: lint, both type-checks, 299 passed / 10 skipped
+- [ ] **Open, carried** (see PLAN.md §3)
+  - [ ] real corpus collection is blocked on Vertex AI credentials (`secrets/gcp-sa.json`)
+  - [ ] `ANOMALY_METHOD` stays open value O4 until IQR and z-score are compared on real budgets
+  - [ ] the agency key is the extracted string; whether it should be a canonical identifier needs
+        real data showing how many spellings one agency has
+  - [ ] TOR-57 and TOR-41 are Sran's cards but were built here, because TOR-62/65/66 could not be
+        demonstrated without them — needs a word with the team
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
