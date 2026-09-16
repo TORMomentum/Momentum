@@ -268,6 +268,60 @@
   line-height: 1.7;
 }
 
+.stale {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--anomaly);
+  background: var(--anomaly-wash);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.retry {
+  margin-top: 16px;
+  border: 1px solid var(--blue);
+  background: var(--paper);
+  color: var(--blue);
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: 600 12px var(--body);
+}
+
+.trend { display: grid; gap: 8px; }
+
+.trendRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink-12);
+  font: 11px var(--data);
+}
+
+.trendRow strong { color: var(--ink); font-weight: 600; }
+
+.panelState {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  margin: 20px 0 0;
+  border-top: var(--rule);
+  border-bottom: var(--rule);
+  color: var(--ink-62);
+  font-size: 13px;
+  text-align: center;
+}
+
+.plotBand {
+  position: absolute;
+  width: 18px;
+  transform: translateX(-50%);
+  background: var(--blue-wash);
+  border: 1px solid var(--blue);
+  pointer-events: none;
+}
+
 /* Route fallback: the same heading, figures, bars, and plot geometry as the
    loaded dashboard. Tokens keep it useful even before the data arrives. */
 .skeletonBlock,
