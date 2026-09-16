@@ -968,10 +968,36 @@
   line-height: 1.6;
 }
 
-.uploadSuccess { background: rgba(14, 122, 95, 0.08); color: var(--verified); }
-.uploadError { background: rgba(190, 32, 38, 0.06); color: var(--danger); }
+.uploadSuccess { background: var(--verified-wash); color: var(--verified); }
+.uploadError { background: var(--danger-wash); color: var(--danger); }
 
 @media (max-width: 640px) {
   .uploadCard { padding: 20px; }
   .uploadDropzone { padding: 30px 16px; }
 }
+
+/* ---------- recent uploads (Task 13) ---------- */
+.uploadRecent { margin-top: 28px; text-align: left; }
+
+.uploadRecentTitle {
+  margin: 0 0 10px;
+  font: 600 11px var(--body);
+  color: var(--ink-55);
+  letter-spacing: var(--label-tracking);
+}
+
+.uploadRecentList { display: grid; gap: 1px; border: var(--rule); border-radius: var(--radius); overflow: hidden; }
+
+.uploadRecentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--paper);
+  font-size: 12px;
+}
+
+.uploadRecentName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+
+.uploadRecentState { flex: none; font: 600 10.5px var(--data); color: var(--ink-62); }

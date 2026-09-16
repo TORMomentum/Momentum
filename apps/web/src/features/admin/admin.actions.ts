@@ -1,16 +1,17 @@
 "use server";
 
+import type { IntakeResponse } from "@tor-radar/shared";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../../shared/lib/staff-session";
 import {
   approve as approveRecord,
+  fetchEvents,
   reextract as reextractRecord,
   reject as rejectRecord,
   saveEdits,
   setFieldVerification,
   uploadDocument,
   type FieldEdit,
-  type UploadResult,
 } from "../../shared/lib/admin-api";
 
 /**
@@ -80,7 +81,7 @@ export async function rejectRecordAction(id: string, reason: string): Promise<vo
 }
 
 export interface UploadState {
-  result: UploadResult | null;
+  result: IntakeResponse | null;
   error: string | null;
 }
 
@@ -104,4 +105,44 @@ export async function uploadDocumentAction(
     console.error("[admin/upload] failed", error);
     return { result: null, error: "อัปโหลดไม่สำเร็จ — ลองใหม่อีกครั้ง" };
   }
+}
+
+export interface RecentUpload {
+  torId: string;
+  title: string;
+  state: string;
+  at: string;
+}
+
+/**
+ * What the upload screen's "recent documents" panel shows: not a raw list of
+ * uploaded records (no such endpoint exists), but each upload-originated
+ * record's most recent event, which doubles as its current pipeline state —
+ * reusing the same activity trail the log page reads, not a new API surface.
+ *
+ * Correct as long as a record's founding "queued" event is still within the
+ * fetched window; fine at this data volume, would need a dedicated endpoint
+ * to hold at scale.
+ */
+export async function fetchRecentUploadsAction(): Promise<RecentUpload[]> {
+  await requireStaff();
+
+  const events = await fetchEvents(50); // newest first
+
+  const byTor = new Map<string, typeof events>();
+  for (const event of events) {
+    const list = byTor.get(event.torId);
+    if (list) list.push(event);
+    else byTor.set(event.torId, [event]);
+  }
+
+  const uploads: RecentUpload[] = [];
+  for (const [torId, torEvents] of byTor) {
+    const origin = torEvents[torEvents.length - 1];
+    if (origin?.source !== "upload") continue;
+    const latest = torEvents[0];
+    uploads.push({ torId, title: latest.title, state: latest.to, at: latest.at });
+  }
+
+  return uploads.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5);
 }

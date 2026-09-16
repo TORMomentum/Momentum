@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   reject: vi.fn(),
   setFieldVerification: vi.fn(),
   uploadDocument: vi.fn(),
+  fetchEvents: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -23,10 +24,12 @@ vi.mock("../../shared/lib/admin-api", () => ({
   reject: mocks.reject,
   setFieldVerification: mocks.setFieldVerification,
   uploadDocument: mocks.uploadDocument,
+  fetchEvents: mocks.fetchEvents,
 }));
 
 import {
   approveRecordAction,
+  fetchRecentUploadsAction,
   reextractRecordAction,
   rejectRecordAction,
   saveCorrections,
@@ -78,6 +81,42 @@ describe("admin Server Action authorization", () => {
       uploadDocumentAction({ result: null, error: null }, new FormData()),
     ).rejects.toThrow("staff authentication required");
     expect(mocks.uploadDocument).not.toHaveBeenCalled();
+  });
+
+  it("refuses fetchRecentUploadsAction before calling the admin API", async () => {
+    await expect(fetchRecentUploadsAction()).rejects.toThrow("staff authentication required");
+    expect(mocks.fetchEvents).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchRecentUploadsAction", () => {
+  beforeEach(() => {
+    mocks.requireStaff.mockResolvedValue(undefined);
+  });
+
+  it("keeps only records that originated from the upload screen", async () => {
+    mocks.fetchEvents.mockResolvedValue([
+      // Newest first, matching fetchEvents' own ordering.
+      { torId: "tor-url", title: "จาก URL", from: "queued", to: "extracting", actor: "worker", source: "worker", at: "2026-09-17T02:00:00Z" },
+      { torId: "tor-url", title: "จาก URL", from: null, to: "queued", actor: "admin", source: "url", at: "2026-09-17T01:00:00Z" },
+      { torId: "tor-upload", title: "จาก Upload", from: null, to: "queued", actor: "admin", source: "upload", at: "2026-09-17T00:30:00Z" },
+    ]);
+
+    const uploads = await fetchRecentUploadsAction();
+
+    expect(uploads).toEqual([{ torId: "tor-upload", title: "จาก Upload", state: "queued", at: "2026-09-17T00:30:00Z" }]);
+  });
+
+  it("reports each record's most recent transition, not its founding one", async () => {
+    mocks.fetchEvents.mockResolvedValue([
+      { torId: "tor-1", title: "TOR 1", from: "extracting", to: "published", actor: "worker", source: "worker", at: "2026-09-17T03:00:00Z" },
+      { torId: "tor-1", title: "TOR 1", from: "queued", to: "extracting", actor: "worker", source: "worker", at: "2026-09-17T02:00:00Z" },
+      { torId: "tor-1", title: "TOR 1", from: null, to: "queued", actor: "admin", source: "upload", at: "2026-09-17T01:00:00Z" },
+    ]);
+
+    const uploads = await fetchRecentUploadsAction();
+
+    expect(uploads).toEqual([{ torId: "tor-1", title: "TOR 1", state: "published", at: "2026-09-17T03:00:00Z" }]);
   });
 });
 

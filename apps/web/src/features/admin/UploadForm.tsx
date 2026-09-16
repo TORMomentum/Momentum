@@ -12,7 +12,21 @@ import { uploadDocumentAction, type UploadState } from "./admin.actions";
 import styles from "./admin.module.css";
 
 const INITIAL_STATE: UploadState = { result: null, error: null };
-const ACCEPT = "application/pdf,image/jpeg,image/png";
+
+// Same values as apps/api's MAX_UPLOAD_BYTES / ALLOWED_MIME_TYPES, passed
+// through by next.config.ts — a hard-coded copy here would silently lie the
+// moment either is overridden.
+const MAX_UPLOAD_BYTES = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_BYTES) || 26_214_400;
+const ACCEPT = process.env.NEXT_PUBLIC_ALLOWED_MIME_TYPES ?? "application/pdf,image/jpeg,image/png";
+const MIME_LABELS: Record<string, string> = {
+  "application/pdf": "PDF",
+  "image/jpeg": "JPG",
+  "image/png": "PNG",
+};
+const ACCEPT_HINT = ACCEPT.split(",")
+  .map((type) => MIME_LABELS[type.trim()] ?? type.trim())
+  .join(", ");
+const MAX_UPLOAD_HINT = `สูงสุด ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))}MB`;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -20,9 +34,9 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function UploadCloudIcon() {
+function UploadCloudIcon({ className }: { className?: string }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M7 18a4.5 4.5 0 0 1-.4-8.98A5.5 5.5 0 0 1 17.5 9.5h.25a3.75 3.75 0 0 1 .5 7.47" />
       <path d="M12 21v-8" />
       <path d="M9 15.5 12 12.5 15 15.5" />
@@ -30,9 +44,9 @@ function UploadCloudIcon() {
   );
 }
 
-function FileIcon() {
+function FileIcon({ className }: { className?: string }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7 3.5Z" />
       <path d="M14 3.5V8h4.5" />
     </svg>
@@ -65,7 +79,7 @@ function AlertIcon() {
   );
 }
 
-export function UploadForm() {
+export function UploadForm({ onUploaded }: { onUploaded?: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [state, formAction, pending] = useActionState(uploadDocumentAction, INITIAL_STATE);
@@ -74,8 +88,10 @@ export function UploadForm() {
   // A cleared selection reads as "ready for the next one", not as data loss —
   // the upload already succeeded and landed in the queue by this point.
   useEffect(() => {
-    if (state.result) setFile(null);
-  }, [state.result]);
+    if (!state.result) return;
+    setFile(null);
+    onUploaded?.();
+  }, [state.result, onUploaded]);
 
   const pickFile = useCallback((picked: File | null | undefined) => {
     if (picked) setFile(picked);
@@ -117,14 +133,16 @@ export function UploadForm() {
           aria-label="เลือกไฟล์ TOR เพื่ออัปโหลด"
           onChange={(event) => pickFile(event.target.files?.[0])}
         />
-        <UploadCloudIcon />
+        <UploadCloudIcon className={styles.uploadIcon} />
         <div className={styles.uploadDropzoneTitle}>ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์</div>
-        <div className={styles.uploadDropzoneHint}>PDF, JPG, PNG — สูงสุด 25MB</div>
+        <div className={styles.uploadDropzoneHint}>
+          {ACCEPT_HINT} — {MAX_UPLOAD_HINT}
+        </div>
       </div>
 
       {file && (
         <div className={styles.uploadFile}>
-          <FileIcon />
+          <FileIcon className={styles.uploadFileIcon} />
           <div className={styles.uploadFileInfo}>
             <div className={styles.uploadFileName}>{file.name}</div>
             <div className={styles.uploadFileSize}>{formatBytes(file.size)}</div>
