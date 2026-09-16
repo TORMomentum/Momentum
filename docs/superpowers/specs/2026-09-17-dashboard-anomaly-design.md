@@ -71,7 +71,7 @@ A record is **eligible for peer statistics** when all of:
 | Condition | Why |
 | :--- | :--- |
 | `pipeline.state === "published"` | `reextract()` moves a record to `queued` while its old fields remain in place ([admin.service.ts:155](../../../apps/api/src/modules/admin/admin.service.ts#L155)). Without this, a record being re-extracted keeps voting with data already judged suspect |
-| `access.restricted !== true` | A takedown removes a record from public figures, not only from view (FR-B-6) |
+| `access.restricted === false`, explicitly | A takedown removes a record from public figures, not only from view (FR-B-6). Equality, not `$ne`: `partialFilterExpression` rejects `$ne` (verified against the server), and a `$ne` query could not use an equality-built index anyway. It therefore fails closed — a record whose restriction state is unknown does not count |
 | `fields.budget.value` is a finite number, `> 0`, within the configured plausibility bounds | See §2.5: an admin edit can currently write any string |
 | `fields.budget.verified === true` | The deterministic gate (§4.5.1 of the SRS) |
 | `fields.category.value` is a non-empty string **and** `fields.category.verified === true` | The category IS the peer group. An unverified category puts a verified budget in the wrong group, which moves flags for every other record in it |
@@ -155,7 +155,7 @@ shown separately (§6.4).
 
 | Collection | Index | Serves |
 | :--- | :--- | :--- |
-| `tors` | `{ "cohort.category": 1, "cohort.month": 1, "fields.budget.value": 1 }`, partial on `{ "pipeline.state": "published", "fields.budget.verified": true, "fields.category.verified": true }` | The peer-statistics scan. The partial filter is how §2.2 is enforced by the database, not by remembering to write it |
+| `tors` | `{ "cohort.category": 1, "cohort.month": 1, "fields.budget.value": 1 }`, partial on the whole of `eligibleFilter()` — `{ "pipeline.state": "published", "access.restricted": false, "fields.budget.verified": true, "fields.category.verified": true, "fields.budget.value": { $type: "number", $gt: 0 } }` | The peer-statistics scan. The partial filter is how §2.2 is enforced by the database, not by remembering to write it. Every clause is index-legal; a test asserts the filter and the predicate are the same object |
 | `tors` | `{ "fields.agency.value": 1, "cohort.month": 1 }` | Agency totals when no category filter is active |
 | `tors` | `{ "cohort.category": 1, "cohort.month": 1 }` | Plot membership |
 | `tor_peer_stats` | `{ category: 1, month: 1 }` unique | One bounds document per group; makes recompute idempotent |

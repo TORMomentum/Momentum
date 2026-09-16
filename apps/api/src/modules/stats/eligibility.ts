@@ -32,7 +32,11 @@ export function eligibilityOf(record: EligibilityRecord, bounds: BudgetBounds): 
     return "no-budget";
   }
   if (record.pipeline.state !== "published") return "not-published";
-  if (record.access.restricted === true) return "restricted";
+  // Fails closed: anything but an explicit false counts as restricted. A record
+  // whose restriction state is unknown must not contribute to public figures,
+  // and the database filter below can only be indexed as an equality — so the
+  // two agree exactly, including on a record missing the field.
+  if (record.access.restricted !== false) return "restricted";
   if (!record.fields.budget.verified) return "unverified-budget";
   if (typeof record.fields.category.value !== "string" || !record.fields.category.value || !record.fields.category.verified) {
     return "unverified-category";
@@ -40,10 +44,20 @@ export function eligibilityOf(record: EligibilityRecord, bounds: BudgetBounds): 
   return null;
 }
 
+/**
+ * The same predicate as a Mongo filter, and the partial index's filter too.
+ *
+ * Every clause is index-legal on purpose: `partialFilterExpression` rejects
+ * `$ne` outright (verified against the running server), and a query written
+ * with `$ne: true` could not use an index built on `restricted: false` anyway,
+ * because a document missing the field matches the query but is absent from the
+ * index. Equality on both sides keeps one predicate, indexable, with no
+ * silently-unindexed second copy.
+ */
 export function eligibleFilter() {
   return {
     "pipeline.state": "published",
-    "access.restricted": { $ne: true },
+    "access.restricted": false,
     "fields.budget.verified": true,
     "fields.category.verified": true,
     "fields.budget.value": { $type: "number", $gt: 0 },

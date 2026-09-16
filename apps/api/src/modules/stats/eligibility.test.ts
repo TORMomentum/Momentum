@@ -28,6 +28,10 @@ describe("eligibilityOf", () => {
     expect(eligibilityOf({ ...eligible, fields: { ...eligible.fields, category: { value: "", verified: true } } }, bounds)).toBe("unverified-category");
   });
 
+  it("rejects a record whose restriction state is unknown, failing closed", () => {
+    expect(eligibilityOf({ ...eligible, access: {} }, bounds)).toBe("restricted");
+  });
+
   it("rejects a restricted record", () => {
     expect(eligibilityOf({ ...eligible, access: { restricted: true } }, bounds)).toBe("restricted");
   });
@@ -41,7 +45,7 @@ describe("eligibleFilter", () => {
   it("matches the peer-statistics partial index", () => {
     expect(eligibleFilter()).toEqual({
       "pipeline.state": "published",
-      "access.restricted": { $ne: true },
+      "access.restricted": false,
       "fields.budget.verified": true,
       "fields.category.verified": true,
       "fields.budget.value": { $type: "number", $gt: 0 },
