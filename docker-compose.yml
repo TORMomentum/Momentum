@@ -57,7 +57,10 @@ services:
       - mongo_data:/data/db
 
   minio:
-    image: minio/minio:latest
+    # MinIO pulled minio/minio and minio/mc off Docker Hub on 2026-09-11; the
+    # same images and tags are still on quay.io (identical digests). Drops once
+    # TOR-131 replaces this service with GCS.
+    image: quay.io/minio/minio:latest
     command: server /data --console-address ":9001"
     ports:
       # Host ports are overridable: another project on this machine may already
