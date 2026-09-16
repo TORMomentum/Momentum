@@ -8,7 +8,9 @@ import {
   reject as rejectRecord,
   saveEdits,
   setFieldVerification,
+  uploadDocument,
   type FieldEdit,
+  type UploadResult,
 } from "../../shared/lib/admin-api";
 
 /**
@@ -75,4 +77,31 @@ export async function rejectRecordAction(id: string, reason: string): Promise<vo
   if (!trimmedReason) throw new Error("reject reason is required");
   await rejectRecord(id, trimmedReason);
   revalidatePath(REVIEW_PATH);
+}
+
+export interface UploadState {
+  result: UploadResult | null;
+  error: string | null;
+}
+
+export async function uploadDocumentAction(
+  _previousState: UploadState,
+  formData: FormData,
+): Promise<UploadState> {
+  await requireStaff();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { result: null, error: "กรุณาเลือกไฟล์ก่อนอัปโหลด" };
+  }
+
+  try {
+    const result = await uploadDocument(file);
+    // A successful upload can land straight in the review queue.
+    revalidatePath(REVIEW_PATH);
+    return { result, error: null };
+  } catch (error) {
+    console.error("[admin/upload] failed", error);
+    return { result: null, error: "อัปโหลดไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
 }

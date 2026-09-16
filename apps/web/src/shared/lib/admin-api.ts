@@ -180,3 +180,34 @@ export function reject(id: string, reason: string): Promise<{ id: string }> {
     body: JSON.stringify({ reason }),
   });
 }
+
+export interface UploadResult {
+  torId: string;
+  duplicate: boolean;
+  state: string;
+}
+
+/**
+ * `call<T>` always sends `Content-Type: application/json`, which is wrong for
+ * a file — fetch has to set the multipart boundary itself, so this bypasses
+ * that helper rather than fighting it.
+ */
+export async function uploadDocument(file: File): Promise<UploadResult> {
+  const body = new FormData();
+  body.append("file", file, file.name);
+
+  const response = await fetch(`${BASE_URL}${API_PREFIX}/intake/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${adminKey()}` },
+    body,
+    cache: "no-store",
+  }).catch((error: unknown) => {
+    throw new AdminApiUnavailable(String(error));
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new AdminApiFailed(`POST /intake/upload → ${response.status}: ${detail.slice(0, 300)}`);
+  }
+  return (await response.json()) as UploadResult;
+}

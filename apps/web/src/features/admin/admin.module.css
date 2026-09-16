@@ -844,3 +844,25 @@
 @media (prefers-reduced-motion: reduce) {
   .skeletonBlock, .skeletonDocumentPane { animation: none; }
 }
+
+/* ---------- manual upload ---------- */
+.uploadForm { display: grid; gap: 10px; max-width: 420px; }
+
+.uploadInput {
+  border: 1px solid var(--ink-28);
+  border-radius: 4px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-family: var(--body);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.uploadSuccess {
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: rgba(14, 122, 95, 0.08);
+  color: var(--verified);
+}
