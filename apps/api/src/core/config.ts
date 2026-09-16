@@ -5,15 +5,7 @@ import { z } from "zod";
  * as a literal anywhere else in the codebase.
  */
 const schema = z.object({
-  // Storage — two endpoints: one reachable inside the compose network, one from a browser.
   MONGO_URL: z.string().min(1),
-  MINIO_ENDPOINT: z.string().min(1),
-  MINIO_PORT: z.coerce.number().int().positive().default(9000),
-  MINIO_ACCESS_KEY: z.string().min(1),
-  MINIO_SECRET_KEY: z.string().min(1),
-  MINIO_BUCKET: z.string().min(1),
-  MINIO_PUBLIC_URL: z.url(),
-  SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -89,15 +81,6 @@ const schema = z.object({
 
 export interface Config {
   mongoUrl: string;
-  minio: {
-    endPoint: string;
-    port: number;
-    accessKey: string;
-    secretKey: string;
-    bucket: string;
-    publicUrl: string;
-  };
-  signedUrlTtlSeconds: number;
   gcs: {
     bucket: string;
     apiEndpoint?: string;
@@ -156,15 +139,6 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
   const parsed = schema.parse(env);
   return {
     mongoUrl: parsed.MONGO_URL,
-    minio: {
-      endPoint: parsed.MINIO_ENDPOINT,
-      port: parsed.MINIO_PORT,
-      accessKey: parsed.MINIO_ACCESS_KEY,
-      secretKey: parsed.MINIO_SECRET_KEY,
-      bucket: parsed.MINIO_BUCKET,
-      publicUrl: parsed.MINIO_PUBLIC_URL,
-    },
-    signedUrlTtlSeconds: parsed.SIGNED_URL_TTL_SECONDS,
     gcs: {
       bucket: parsed.GCS_BUCKET,
       apiEndpoint: parsed.GCS_API_ENDPOINT,

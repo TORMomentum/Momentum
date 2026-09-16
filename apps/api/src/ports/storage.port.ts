@@ -6,11 +6,6 @@ export interface StoredObject {
 }
 
 /**
- * Object storage for original documents. There is deliberately no `put`: FR-A-2
- * forbids overwriting a stored object, so the prohibition is enforced by the
- * interface rather than by convention.
- */
-/**
  * Free-text notes stored alongside the object. Operator convenience only —
  * nothing reads them back, so nothing depends on them, and personal data does
  * not belong here (FR-B-5).
@@ -22,6 +17,11 @@ export interface StorageMetadata {
   route?: string;
 }
 
+/**
+ * Object storage for original documents. There is deliberately no `put`. The
+ * interface stops callers asking for an overwrite; immutability itself is
+ * enforced by the bucket's permissions and policy (spec §3).
+ */
 export interface Storage {
   putIfAbsent(
     key: string,
@@ -30,7 +30,6 @@ export interface Storage {
     metadata?: StorageMetadata,
   ): Promise<StoredObject>;
   exists(key: string): Promise<boolean>;
-  getStream(key: string): Promise<NodeJS.ReadableStream>;
-  /** Generated on demand, never persisted — signed URLs expire. */
-  signedUrl(key: string, ttlSeconds: number): Promise<string>;
+  /** An inclusive byte range when given (spec §5.4). */
+  getStream(key: string, range?: { start: number; end: number }): Promise<NodeJS.ReadableStream>;
 }

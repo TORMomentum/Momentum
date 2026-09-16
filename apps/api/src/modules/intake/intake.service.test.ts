@@ -28,9 +28,6 @@ function fakes() {
     async getStream() {
       throw new Error("not used in this suite");
     },
-    async signedUrl(key) {
-      return `http://localhost:9010/${key}`;
-    },
   };
 
   const enqueued: string[] = [];

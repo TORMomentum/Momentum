@@ -31,3 +31,14 @@ export function contentDisposition(kind: Disposition, filename: string): string 
 
   return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${rfc5987(safe)}`;
 }
+
+const EXTENSIONS: Record<string, string> = {
+  "application/pdf": ".pdf",
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+};
+
+/** A fallback download name's extension, from the verified content type. */
+export function extensionFor(contentType: string): string {
+  return EXTENSIONS[contentType] ?? "";
+}

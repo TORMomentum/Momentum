@@ -1,36 +1,25 @@
 import { NotFoundError } from "../../core/errors.js";
-import type { Storage } from "../../ports/storage.port.js";
+import { extensionFor } from "../../lib/content-disposition.js";
+import type { StreamableDocument } from "../../lib/stream-document.js";
 import type { TorsRepository } from "./tors.repository.js";
 
 export interface TorsServiceDeps {
   repo: TorsRepository;
-  storage: Storage;
-  signedUrlTtlSeconds: number;
 }
 
 /** Public reads for published TOR records. */
 export class TorsService {
   constructor(private readonly deps: TorsServiceDeps) {}
 
-  async document(id: string) {
+  /** What to stream for a public request. A restricted record deliberately looks absent (FR-B-6). */
+  async documentToStream(id: string): Promise<StreamableDocument> {
     const record = await this.deps.repo.loadDocument(id);
-
-    // A restricted record deliberately looks absent. Returning 403 would
-    // confirm both that the record exists and that it was taken down (FR-B-6).
     if (!record || record.restricted) throw new NotFoundError();
-
-    // The storage key is trusted only because it came from the loaded record;
-    // callers cannot choose another object in the bucket to sign.
-    const url = await this.deps.storage.signedUrl(
-      record.storage.key,
-      this.deps.signedUrlTtlSeconds,
-    );
-
     return {
-      url,
-      expiresInSeconds: this.deps.signedUrlTtlSeconds,
+      key: record.storage.key,
       contentType: record.storage.contentType,
       bytes: record.storage.bytes,
+      filename: record.filename ?? `tor-${id}${extensionFor(record.storage.contentType)}`,
     };
   }
 }

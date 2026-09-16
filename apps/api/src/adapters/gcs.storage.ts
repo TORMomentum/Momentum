@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { Storage as GcsClient, type File } from "@google-cloud/storage";
 import { NotFoundError, ServiceUnavailableError } from "../core/errors.js";
 import { encodeMetadataValue } from "../lib/metadata-header.js";
-import type { StorageMetadata, StoredObject } from "../ports/storage.port.js";
+import type { Storage, StorageMetadata, StoredObject } from "../ports/storage.port.js";
 
 export interface GcsSettings {
   bucket: string;
@@ -30,7 +30,7 @@ function statusOf(error: unknown): number | undefined {
  * a mismatch is refused with 400 before any object exists. The client's own
  * post-upload validation stays off, because on a mismatch it deletes.
  */
-export class GcsStorage {
+export class GcsStorage implements Storage {
   private readonly client: GcsClient;
 
   constructor(private readonly settings: GcsSettings) {
