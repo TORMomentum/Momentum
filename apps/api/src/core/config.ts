@@ -62,6 +62,20 @@ const schema = z.object({
   BUDGET_MIN_THB: z.coerce.number().positive().default(10_000),
   BUDGET_MAX_THB: z.coerce.number().positive().default(100_000_000_000),
 
+  // Statistics (Dashboard anomaly rule). ANOMALY_METHOD remains open value O4.
+  PEER_GROUP_WINDOW_MONTHS: z.coerce.number().int().positive().default(12),
+  PEER_MIN_N: z.coerce.number().int().positive().default(8),
+  ANOMALY_METHOD: z.enum(["IQR", "ZSCORE"]).default("IQR"),
+  // Fractional on purpose: the SRS fence is 1.5 x IQR. An int() schema here
+  // still passes its own default (zod does not validate defaults) and then
+  // rejects the identical value when it comes from the environment.
+  ANOMALY_IQR_MULTIPLIER: z.coerce.number().positive().default(1.5),
+  ANOMALY_ZSCORE_LIMIT: z.coerce.number().positive().default(3),
+  STATS_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
+  STATS_LEASE_MS: z.coerce.number().int().positive().default(60_000),
+  STATS_STALE_AFTER_MS: z.coerce.number().int().positive().default(3_600_000),
+  COHORT_TIMEZONE: z.string().min(1).default("Asia/Bangkok"),
+
   /** How many review-queue rows one request returns (FR-G-1). */
   ADMIN_QUEUE_PAGE_SIZE: z.coerce.number().int().positive().max(200).default(25),
   API_PORT: z.coerce.number().int().positive().default(4000),
@@ -117,6 +131,17 @@ export interface Config {
   thresholdsVersion: string;
   budgetMinThb: number;
   budgetMaxThb: number;
+  stats: {
+    peerWindowMonths: number;
+    peerMinN: number;
+    method: "IQR" | "ZSCORE";
+    iqrMultiplier: number;
+    zScoreLimit: number;
+    sweepIntervalMs: number;
+    leaseMs: number;
+    staleAfterMs: number;
+    timezone: string;
+  };
   adminQueuePageSize: number;
   apiPort: number;
 }
@@ -175,6 +200,17 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     thresholdsVersion: parsed.THRESHOLDS_VERSION,
     budgetMinThb: parsed.BUDGET_MIN_THB,
     budgetMaxThb: parsed.BUDGET_MAX_THB,
+    stats: {
+      peerWindowMonths: parsed.PEER_GROUP_WINDOW_MONTHS,
+      peerMinN: parsed.PEER_MIN_N,
+      method: parsed.ANOMALY_METHOD,
+      iqrMultiplier: parsed.ANOMALY_IQR_MULTIPLIER,
+      zScoreLimit: parsed.ANOMALY_ZSCORE_LIMIT,
+      sweepIntervalMs: parsed.STATS_SWEEP_INTERVAL_MS,
+      leaseMs: parsed.STATS_LEASE_MS,
+      staleAfterMs: parsed.STATS_STALE_AFTER_MS,
+      timezone: parsed.COHORT_TIMEZONE,
+    },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
     apiPort: parsed.API_PORT,
   };

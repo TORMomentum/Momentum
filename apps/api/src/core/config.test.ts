@@ -49,6 +49,25 @@ describe("loadConfig", () => {
     expect(config.budgetMaxThb).toBe(100_000_000_000);
   });
 
+  it("carries the statistics settings and rejects an unknown anomaly method", () => {
+    const config = loadConfig(base);
+    expect(config.stats.peerWindowMonths).toBe(12);
+    expect(config.stats.peerMinN).toBe(8);
+    expect(config.stats.method).toBe("IQR");
+    expect(config.stats.iqrMultiplier).toBe(1.5);
+    expect(config.stats.zScoreLimit).toBe(3);
+    expect(config.stats.sweepIntervalMs).toBe(300_000);
+    expect(config.stats.leaseMs).toBe(60_000);
+    expect(config.stats.staleAfterMs).toBe(3_600_000);
+    expect(config.stats.timezone).toBe("Asia/Bangkok");
+    expect(() => loadConfig({ ...base, ANOMALY_METHOD: "NONSENSE" })).toThrow();
+    // The fence multiplier is fractional. Zod does not validate a default, so an
+    // int() schema passes this suite and then rejects the very value
+    // .env.example ships — the app would fail to boot from its own template.
+    expect(loadConfig({ ...base, ANOMALY_IQR_MULTIPLIER: "1.5" }).stats.iqrMultiplier).toBe(1.5);
+    expect(loadConfig({ ...base, ANOMALY_ZSCORE_LIMIT: "2.5" }).stats.zScoreLimit).toBe(2.5);
+  });
+
   it("rejects a T_LOW above T_HIGH", () => {
     expect(() => loadConfig({ ...base, T_LOW: "0.99", T_HIGH: "0.9" })).toThrow(/T_LOW/);
   });
