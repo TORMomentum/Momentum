@@ -11,6 +11,12 @@ export interface GradingContext {
   tHigh: number;
   budgetMinThb: number;
   budgetMaxThb: number;
+  /**
+   * Fields the source system already stated (`origin: "source"`, e.g. from the
+   * BMA e-GP API). They are trusted as given: they pass their checks, count as
+   * verified, and are written back unchanged — whatever the model read.
+   */
+  knownFields?: Partial<TorFields>;
 }
 
 export interface GradingResult {
@@ -107,13 +113,31 @@ function buildField<T>(rf: RawField<T>, verified: boolean, extra: Partial<Extrac
  * (Pass 2), then record-level sanity checks (Pass 3). BENCHMARK.md: the model's
  * confidence does not by itself separate right answers from wrong ones.
  */
-export function grade(raw: RawExtraction, ctx: GradingContext): GradingResult {
+export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResult {
+  const known = ctx.knownFields ?? {};
+  const isKnown = (name: keyof TorFields) => known[name] !== undefined;
+
+  // A stated value stands in for the model's reading everywhere below, so the
+  // sanity checks judge what will actually be published.
+  const raw: RawExtraction = { ...modelRaw };
+  for (const name of Object.keys(known) as (keyof TorFields)[]) {
+    const field = known[name];
+    if (!field) continue;
+    (raw as unknown as Record<string, RawField<unknown>>)[RAW_TO_TOR[name]] = {
+      raw: field.raw,
+      value: field.value,
+      confidence: 1,
+      evidence: "",
+    };
+  }
+
   const structOk = {} as Record<keyof TorFields, boolean>;
   for (const name of Object.keys(RAW_TO_TOR) as (keyof TorFields)[]) {
-    structOk[name] = structurallyOk(name, raw, ctx);
+    structOk[name] = isKnown(name) || structurallyOk(name, raw, ctx);
   }
 
   const verifiedOf = (name: keyof TorFields): boolean => {
+    if (isKnown(name)) return true;
     const conf = rawFor(raw, name).confidence;
     return structOk[name] && conf >= ctx.tHigh;
   };
@@ -133,6 +157,11 @@ export function grade(raw: RawExtraction, ctx: GradingContext): GradingResult {
     procurementMethod: buildField(raw.procurementMethod, false),
     referenceNo: buildField(raw.referenceNo, false),
   };
+
+  // Written back exactly as the source stated them, origin and all.
+  for (const name of Object.keys(known) as (keyof TorFields)[]) {
+    if (known[name]) (fields as unknown as Record<string, unknown>)[name] = known[name];
+  }
 
   // --- Pass 3: sanity (FR-B-3 "a critical field missing or implausible"; TOR-91) ---
   const sanity: string[] = [];
@@ -163,6 +192,8 @@ export function grade(raw: RawExtraction, ctx: GradingContext): GradingResult {
   }
   const rawCounts = new Map<string, number>();
   for (const name of Object.keys(RAW_TO_TOR) as (keyof TorFields)[]) {
+    // Copy-through is a model failure; a value the source stated is not one.
+    if (isKnown(name)) continue;
     const r = rawFor(raw, name).raw.trim();
     if (r) rawCounts.set(r, (rawCounts.get(r) ?? 0) + 1);
   }

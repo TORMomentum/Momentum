@@ -7,6 +7,7 @@ import {
   REQUEST_TIMEOUT_MS,
   RETRY_DELAY_MS,
   SITE_BASE,
+  INVITATION_ANNOUNCE_TYPE_NAME,
   TOR_ANNOUNCE_TYPE_ID,
   TOR_ANNOUNCE_TYPE_NAME,
 } from "./config";
@@ -148,6 +149,16 @@ export function selectTorAnnouncements(announcements: BmaEgpAnnouncement[]): Bma
   return announcements.filter(
     (a) => a.masterAnnounceTypeName === TOR_ANNOUNCE_TYPE_NAME && Boolean(a.projectAnnouncementPath),
   );
+}
+
+/**
+ * A project's invitation to bid, newest first — a re-announced tender publishes
+ * a second one, and the latest states the deadline that applies.
+ */
+export function selectInvitationAnnouncements(announcements: BmaEgpAnnouncement[]): BmaEgpAnnouncement[] {
+  return announcements
+    .filter((a) => a.masterAnnounceTypeName === INVITATION_ANNOUNCE_TYPE_NAME && Boolean(a.projectAnnouncementPath))
+    .sort((a, b) => (b.projectAnnouncementPublishDate ?? "").localeCompare(a.projectAnnouncementPublishDate ?? ""));
 }
 
 /**

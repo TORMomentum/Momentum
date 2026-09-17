@@ -85,7 +85,7 @@ These four terms carry specific meaning from §2 onward.
 
 | Term | What it means here |
 | :---- | :---- |
-| **TOR** | Terms of Reference (ร่างขอบเขตของงาน) — the document a Thai government agency publishes to describe a procurement project it intends to run. TOR Radar's entire input is public TOR documents |
+| **TOR** | Terms of Reference (ร่างขอบเขตของงาน) — the document a Thai government agency publishes to describe a procurement project it intends to run. TOR Radar's records are public TOR documents. Where a source links a TOR to the same project's invitation to bid (ประกาศเชิญชวน), that invitation is collected as a supporting document only, to supply the fields a TOR does not state (FR-B-2) |
 | **Extraction confidence** | A number the AI reports for each field it reads, saying how sure it is. TOR Radar does not hide a low-confidence record; it marks it. §4.2.1 defines exactly what happens at each confidence level |
 | **Statistical anomaly** | The only label TOR Radar puts on an unusual budget. It means the number falls outside the normal range for comparable projects by the rule in §4.5.1. It does not mean anything is wrong |
 | **Peer group** | The set of TORs a budget is compared against — same category, same time window. A budget is only ever called unusual relative to its peer group |
@@ -314,7 +314,7 @@ Covers feature **F2**, **F3**, and **F10**. Realises **UC-8**.
 | ID | Requirement | Verify |
 | :---- | :---- | :---- |
 | **FR-B-1** | The system shall perform Thai and English OCR on scanned and photographed documents using a Thai-capable model. | T, A |
-| **FR-B-2** | The system shall extract nine fields from each TOR: title, issuing agency, budget, category, scope summary, required qualifications, submission deadline, contact, and status. | T |
+| **FR-B-2** | The system shall extract nine fields from each TOR: title, issuing agency, budget, category, scope summary, required qualifications, submission deadline, contact, and status. A TOR document does not usually state its submission deadline; where the source links the TOR to its project's invitation to bid, the deadline shall be read from that invitation and marked with the document it came from. Values the source system itself states are recorded as source values, not as extractions. | T |
 | **FR-B-3** | The system shall record a confidence value for every extracted field and apply §4.2.1 to it. | T, D |
 | **FR-B-4** | The system shall map extracted qualifications onto the shared skill taxonomy of FR-G-3. | T |
 | **FR-B-5** | The system shall minimise personal data in what it displays, while keeping the original document reachable through its source link. | I, T |

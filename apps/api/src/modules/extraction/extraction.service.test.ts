@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import type { TorFields } from "@tor-radar/shared";
 import { DocumentUnreadableError } from "../../core/errors.js";
 import type { Ai, RawExtraction, RawField } from "../../ports/ai.port.js";
 import type { Storage } from "../../ports/storage.port.js";
-import type { ExtractionRepository, ExtractionResult } from "./extraction.repository.js";
+import type { ExtractionRepository, ExtractionResult, LinkedDeadline } from "./extraction.repository.js";
 import { ExtractionService, type ExtractionConfig } from "./extraction.service.js";
 
 const DIGITAL_PDF = readFileSync(fileURLToPath(new URL("../../../../../docs/corpus/tor-01.pdf", import.meta.url)));
@@ -42,15 +43,33 @@ const config: ExtractionConfig = {
   budgetMaxThb: 100_000_000_000,
 };
 
-function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } = {}) {
+interface FakeTarget {
+  knownFields?: Partial<TorFields>;
+  sourceAnnouncedAt?: Date | null;
+  documentType?: "tor" | "invitation";
+  sourceProject?: { system: "bma-egp"; projectId: string } | null;
+  invitationDeadline?: LinkedDeadline | null;
+}
+
+function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } & FakeTarget = {}) {
   const storage = {
     getStream: vi.fn(async () => Readable.from([over.bytes ?? DIGITAL_PDF])),
   } as unknown as Storage;
   const ai = { extract: vi.fn(async () => cleanExtraction()), ...over.ai } as Ai;
-  const load = vi.fn(async () => ({ storageKey: "k", contentType: "application/pdf" }));
+  const load = vi.fn(async () => ({
+    storageKey: "k",
+    contentType: "application/pdf",
+    knownFields: over.knownFields ?? {},
+    sourceAnnouncedAt: over.sourceAnnouncedAt ?? null,
+    documentType: over.documentType ?? "tor",
+    sourceProject: over.sourceProject ?? null,
+  }));
   const writeExtraction = vi.fn<(torId: string, result: ExtractionResult) => Promise<void>>(async () => {});
-  const repo = { load, writeExtraction } as unknown as ExtractionRepository;
-  return { storage, ai, repo: { load, writeExtraction }, service: new ExtractionService({ storage, ai, repo, config }) };
+  const findInvitationDeadline = vi.fn(async () => over.invitationDeadline ?? null);
+  const linkDeadline = vi.fn<(projectId: string, deadline: LinkedDeadline) => Promise<void>>(async () => {});
+  const fakeRepo = { load, writeExtraction, findInvitationDeadline, linkDeadline };
+  const repo = fakeRepo as unknown as ExtractionRepository;
+  return { storage, ai, repo: fakeRepo, service: new ExtractionService({ storage, ai, repo, config }) };
 }
 
 describe("ExtractionService.run", () => {
@@ -91,5 +110,106 @@ describe("ExtractionService.run", () => {
     expect(result.hasTextLayer).toBe(false);
     expect(result.fields.budget.verified).toBe(false);
     expect(result.confidenceLevel).toBe("low");
+  });
+
+  it("keeps the agency and budget the source stated at intake, whatever the model reads", async () => {
+    const agency = { raw: "สำนักการโยธา", value: "สำนักการโยธา", confidence: 1, verified: true, origin: "source" as const };
+    const budget = { raw: "5961000", value: 5_961_000, currency: "THB", confidence: 1, verified: true, origin: "source" as const };
+    const { service, repo } = fakes({ knownFields: { agency, budget } });
+
+    await service.run("tor-1");
+
+    const [, result] = repo.writeExtraction.mock.calls[0];
+    expect(result.fields.agency).toEqual(agency);
+    expect(result.fields.budget).toEqual(budget);
+    // The rest is still the model's reading.
+    expect(result.fields.title.value).toBe("ประกวดราคาจ้างก่อสร้างขุดลอกคลองบางน้อย");
+  });
+
+  describe("e-GP project linking", () => {
+    const project = { system: "bma-egp" as const, projectId: "9104a1e4-1371-4aa7-b73d-665fe5300654" };
+    const invitationDeadline = {
+      raw: "วันที่ ๑๗ กันยายน ๒๕๖๙ ระหว่างเวลา ๐๙.๐๐ น. ถึง ๑๒.๐๐ น.",
+      value: "2026-09-17",
+      confidence: 0.95,
+      verified: true,
+    };
+
+    it("keeps the announcement date the source stated over the one the model read", async () => {
+      const { service, repo } = fakes({ sourceAnnouncedAt: new Date("2026-08-26T00:00:00Z") });
+
+      await service.run("tor-1");
+
+      const [, result] = repo.writeExtraction.mock.calls[0];
+      expect(result.announcedAt).toEqual(new Date("2026-08-26T00:00:00Z"));
+    });
+
+    it("gives a TOR the deadline its project's invitation already yielded, naming the invitation", async () => {
+      const { service, repo } = fakes({
+        sourceProject: project,
+        invitationDeadline: { invitationId: "inv-1", field: invitationDeadline },
+      });
+
+      await service.run("tor-1");
+
+      expect(repo.findInvitationDeadline).toHaveBeenCalledWith(project.projectId);
+      const [, result] = repo.writeExtraction.mock.calls[0];
+      expect(result.fields.deadline).toEqual({ ...invitationDeadline, fromDocument: "inv-1" });
+      expect(repo.linkDeadline).not.toHaveBeenCalled();
+    });
+
+    it("pushes an invitation's deadline onto its project's TORs when the invitation comes second", async () => {
+      const extraction = cleanExtraction();
+      extraction.deadline = { raw: invitationDeadline.raw, value: "2026-09-17", confidence: 0.95, evidence: "ข้อ ๒" };
+      const { service, repo } = fakes({
+        documentType: "invitation",
+        sourceProject: project,
+        ai: { extract: vi.fn(async () => extraction) },
+      });
+
+      await service.run("inv-1");
+
+      expect(repo.findInvitationDeadline).not.toHaveBeenCalled();
+      expect(repo.linkDeadline).toHaveBeenCalledOnce();
+      const [projectId, linked] = repo.linkDeadline.mock.calls[0];
+      expect(projectId).toBe(project.projectId);
+      expect(linked.invitationId).toBe("inv-1");
+      expect(linked.field.value).toBe("2026-09-17");
+    });
+
+    it("does not link a deadline that falls before the invitation's own announcement", async () => {
+      // The real case: a scan where ๙ was read as ๕, turning 2569 into 2565.
+      const extraction = cleanExtraction();
+      extraction.deadline = { raw: "๒๔ กันยายน ๒๕๖๕", value: "2022-09-24", confidence: 1, evidence: "ข้อ ๒" };
+      const { service, repo } = fakes({
+        documentType: "invitation",
+        sourceProject: project,
+        sourceAnnouncedAt: new Date("2026-09-16T00:00:00Z"),
+        ai: { extract: vi.fn(async () => extraction) },
+      });
+
+      await service.run("inv-1");
+
+      const [, result] = repo.writeExtraction.mock.calls[0];
+      expect(result.reviewReasons).toContain("deadline-before-announcement");
+      expect(repo.linkDeadline).not.toHaveBeenCalled();
+    });
+
+    it("links nothing when the invitation states no deadline", async () => {
+      const { service, repo } = fakes({ documentType: "invitation", sourceProject: project });
+
+      await service.run("inv-1");
+
+      expect(repo.linkDeadline).not.toHaveBeenCalled();
+    });
+
+    it("links nothing for a record that belongs to no source project", async () => {
+      const { service, repo } = fakes();
+
+      await service.run("tor-1");
+
+      expect(repo.findInvitationDeadline).not.toHaveBeenCalled();
+      expect(repo.linkDeadline).not.toHaveBeenCalled();
+    });
   });
 });

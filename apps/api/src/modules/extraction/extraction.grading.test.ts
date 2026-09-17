@@ -135,3 +135,49 @@ describe("grade — Pass 3 sanity checks", () => {
     expect(result.confidenceLevel).toBe("low");
   });
 });
+
+describe("grade — fields the source already stated", () => {
+  const sourceBudget = {
+    raw: "5961000",
+    value: 5_961_000,
+    currency: "THB",
+    confidence: 1,
+    verified: true,
+    origin: "source" as const,
+  };
+
+  it("a scan whose budget the source stated is not held back by the model's reading of it", () => {
+    // Without the source value this record is low with "budget-unreadable" (Pass 1 test above).
+    const result = grade(goodDigital(), ctx({ hasTextLayer: false, knownFields: { budget: sourceBudget } }));
+
+    expect(result.fields.budget).toEqual(sourceBudget);
+    expect(result.reviewReasons).not.toContain("budget-unreadable");
+    expect(result.confidenceLevel).not.toBe("low");
+  });
+
+  it("a budget absent from the document is not missing when the source stated it", () => {
+    const result = grade(goodDigital({ budget: rf<number>(null, 1) }), ctx({ knownFields: { budget: sourceBudget } }));
+
+    expect(result.reviewReasons).not.toContain("budget-missing");
+    expect(result.confidenceLevel).toBe("high");
+  });
+
+  it("keeps the stated value, not a different one the model read", () => {
+    const result = grade(goodDigital({ budget: rf<number>(7_000_000) }), ctx({ knownFields: { budget: sourceBudget } }));
+
+    expect(result.fields.budget.value).toBe(5_961_000);
+    expect(result.fields.budget.origin).toBe("source");
+  });
+
+  it("still applies the sanity checks to a stated value", () => {
+    const implausible = { ...sourceBudget, raw: "1", value: 1 };
+    const result = grade(goodDigital(), ctx({ knownFields: { budget: implausible } }));
+
+    expect(result.reviewReasons).toContain("budget-implausible");
+  });
+
+  it("model-read fields stay unmarked", () => {
+    const result = grade(goodDigital(), ctx({ knownFields: { budget: sourceBudget } }));
+    expect(result.fields.title.origin).toBeUndefined();
+  });
+});
