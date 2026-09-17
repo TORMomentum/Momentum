@@ -1,20 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import styles from "../../../../src/features/admin/admin.module.css";
+import { stateLabel } from "../../../../src/features/admin/labels";
 import { fetchEvents, AdminApiUnavailable } from "../../../../src/shared/lib/admin-api";
 import {
   isStaff,
 } from "../../../../src/shared/lib/staff-session";
 
 export const dynamic = "force-dynamic";
-
-const STATE_LABELS: Record<string, string> = {
-  queued: "เข้าคิว",
-  extracting: "กำลังสกัด",
-  published: "เผยแพร่",
-  failed: "ไม่สำเร็จ",
-  restricted: "จำกัดการเข้าถึง",
-};
 
 const SOURCE_LABELS: Record<string, string> = {
   upload: "อัปโหลด",
@@ -87,7 +80,7 @@ export default async function AdminLogPage() {
                   <Link href={`/admin/review?id=${event.torId}`}>{event.title || event.torId}</Link>
                 </td>
                 <td className={styles.logMove}>
-                  {label(event.from, STATE_LABELS)} → {label(event.to, STATE_LABELS)}
+                  {stateLabel(event.from)} → {stateLabel(event.to)}
                 </td>
                 <td className={styles.logActor}>
                   {event.actor} · {label(event.source, SOURCE_LABELS)}

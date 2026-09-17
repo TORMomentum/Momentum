@@ -17,6 +17,7 @@ original.
 ## Quick start
 
 ```bash
+mkdir secrets                 # then drop in the service-account key files the team gives you
 cp .env.example .env          # fill in the secrets; nothing is committed
 npm install
 npm run dev                   # web :3000 · api :4000
@@ -25,15 +26,15 @@ npm run lint                  # eslint
 npm run build                 # all workspaces
 ```
 
-The containerised path brings up the datastores:
+`secrets/` is gitignored and holds the Google service-account keys `.env` points at —
+`gcp-sa.json` (Vertex AI) and, if you're testing against real Google Cloud Storage rather than the
+local emulator, `gcs-storage-sa.json`. Ask the team for these files; never commit them.
 
 ```bash
-docker compose up             # web · api · mongo · minio (host ports from .env)
+docker compose up mongo gcs   # just the datastores, for `npm run dev` against them
 ```
 
-⚠️ Compose is mid-rework: workspace-aware Dockerfiles, the worker service, and health gates arrive
-with slice 1 tasks 14–15 ([docs/TODO.md](docs/TODO.md)). Until then `npm run dev` against
-`docker compose up mongo minio` is the reliable local setup.
+⚠️ `docker compose build web api` does not currently work — the Dockerfiles `COPY` each app's own `package.json` in isolation, so `npm install` inside the image never links the `@tor-radar/shared` workspace package or picks up root-hoisted devDependencies (workspace-aware Dockerfiles are Slice-1 Task 15). `npm run dev` against the two datastores above is the reliable local setup.
 
 Node 22 or newer. CI runs lint, test, and build on every pull request
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
@@ -78,17 +79,15 @@ Working in this repo with an AI agent: [CLAUDE.md](CLAUDE.md) (Claude Code) or
 
 ## Status
 
-Frontend screens are built and navigable against sample data; the pipeline that fills them is being
-built now. Sample figures are labelled as such on every screen — the interface never implies the
-numbers are complete.
-
-Slice 1 (intake, immutable storage, dedupe, job queue, worker) is in progress; slices 2–4 bring
-extraction, the public dashboard, and vendor accounts. The four slices are described in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10, and task-level progress lives in
+Slices 1 and 2 are both underway — intake, immutable storage (now on Google Cloud Storage), the
+extraction pipeline, confidence tiering, and the admin review/upload screens all work end to end.
+Sample figures are labelled as such wherever the pipeline hasn't filled them in yet. Slices 3–4
+(public dashboard, vendor accounts) are still ahead. The four slices are described in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10, and exact task-level progress lives in
 [docs/TODO.md](docs/TODO.md) — the one place it is tracked.
 
 ## Stack
 
-Next.js 16 · React 19 · Express 5 · MongoDB 7 · MinIO · Zod 4 · Vitest · Vertex AI (Document AI +
-Gemini) · Docker Compose. The reasoning behind each choice is in
+Next.js 16 · React 19 · Express 5 · MongoDB Atlas · Google Cloud Storage · Zod 4 · Vitest ·
+Vertex AI (Document AI + Gemini) · Docker Compose. The reasoning behind each choice is in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §8.

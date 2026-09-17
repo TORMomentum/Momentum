@@ -89,6 +89,13 @@ export default async function AdminOverviewPage() {
           </div>
         </Link>
 
+        <Link href="/admin/upload" className={styles.overviewLink}>
+          <div className={styles.overviewLinkTitle}>อัปโหลดเอกสาร →</div>
+          <div className={styles.overviewLinkBody}>
+            นำเข้าเอกสาร TOR โดยตรงจากเครื่อง เข้าสู่คิวประมวลผลเช่นเดียวกับช่องทางอื่น
+          </div>
+        </Link>
+
         <Link href="/admin/log" className={styles.overviewLink}>
           <div className={styles.overviewLinkTitle}>บันทึกกิจกรรม →</div>
           <div className={styles.overviewLinkBody}>
