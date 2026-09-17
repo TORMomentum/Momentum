@@ -23,7 +23,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { DocumentType } from "@tor-radar/shared";
-import { MinioStorage } from "../apps/api/src/adapters/minio.storage.js";
+import { createStorage } from "../apps/api/src/adapters/storage.factory.js";
 import { MongoQueue } from "../apps/api/src/adapters/mongo.queue.js";
 import { loadConfig } from "../apps/api/src/core/config.js";
 import { connect, disconnect, ensureIndexes, tors } from "../apps/api/src/core/db.js";
@@ -64,10 +64,12 @@ const db = await connect(config.mongoUrl);
 await ensureIndexes(db);
 
 const service = new IntakeService(
-  new MinioStorage(config.minio),
+  createStorage(config, "worker"),
   new MongoQueue(db, { maxAttempts: config.jobMaxAttempts, backoffMs: config.jobBackoffMs, lockMs: config.jobLockMs }),
   new IntakeRepository(db),
   { allowedMimeTypes: config.allowedMimeTypes, maxUploadBytes: config.maxUploadBytes },
+  // As the intake routes do, so each record joins its dashboard cohort at intake.
+  { timezone: config.stats.timezone },
 );
 
 async function download(url: string): Promise<Buffer> {

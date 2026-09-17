@@ -1,11 +1,13 @@
 import { ObjectId, type Db, type Filter } from "mongodb";
 import type { ConfidenceLevel, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
-import { tors, type TorDocument } from "../../core/db.js";
+import { torPeerStats, tors, type TorDocument } from "../../core/db.js";
+import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
 
 export interface PublicTorDocumentRecord {
   storage: { key: string; contentType: string; bytes: number };
   restricted: boolean;
+  filename?: string;
 }
 
 /** A filter the repository can run: the service has already decided what "today" is. */
@@ -30,8 +32,19 @@ export interface TorListItem {
   torStatus: { value: string | null; verified: boolean };
 }
 
+/**
+ * A row as the repository reads it: the list fields, plus what the anomaly
+ * verdict needs and the screen does not — the service derives the verdict and
+ * drops these.
+ */
+export interface SearchRow extends TorListItem {
+  cohort: CohortKey | null;
+  restricted: boolean;
+  state: string;
+}
+
 export interface SearchPage {
-  items: TorListItem[];
+  items: SearchRow[];
   /** The position after the last item, or null when this page ends the list. */
   next: SearchCursor | null;
   total: number;
@@ -89,6 +102,10 @@ const LIST_PROJECTION = {
   "fields.budget": 1,
   "fields.deadline": 1,
   "fields.torStatus": 1,
+  // For the row's anomaly verdict (dashboard spec §6.2), never shown as such.
+  cohort: 1,
+  "access.restricted": 1,
+  "pipeline.state": 1,
 } as const;
 
 function escapeRegExp(value: string): string {
@@ -225,6 +242,9 @@ export class TorsRepository {
           value: doc.fields?.torStatus?.value ?? null,
           verified: doc.fields?.torStatus?.verified ?? false,
         },
+        cohort: doc.cohort ?? null,
+        restricted: doc.access?.restricted ?? true,
+        state: doc.pipeline?.state ?? "",
       })),
       next: docs.length > pageSize && last ? { announcedAt: last.announcedAt ?? null, id: last._id } : null,
       total,
@@ -324,7 +344,7 @@ export class TorsRepository {
 
     const record = await tors(this.db).findOne(
       { _id: new ObjectId(id) },
-      { projection: { storage: 1, "access.restricted": 1 } },
+      { projection: { storage: 1, "access.restricted": 1, "sourceRefs.originalFilename": 1 } },
     );
     if (!record) return null;
 
@@ -335,6 +355,17 @@ export class TorsRepository {
         bytes: record.storage.bytes,
       },
       restricted: record.access.restricted,
+      filename: record.sourceRefs?.find((s) => s.originalFilename)?.originalFilename,
     };
+  }
+
+  /** The peer-group statistics for the cohorts on one page of results. */
+  async boundsFor(keys: CohortKey[]) {
+    const unique = [...new Map(keys.map((key) => [`${key.category}\u0000${key.month}`, key])).values()];
+    if (unique.length === 0) return [];
+    return torPeerStats(this.db).find({
+      category: { $in: [...new Set(unique.map((key) => key.category))] },
+      month: { $in: [...new Set(unique.map((key) => key.month))] },
+    }).toArray();
   }
 }

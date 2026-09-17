@@ -1,4 +1,5 @@
 import "server-only";
+import type { IntakeResponse } from "@tor-radar/shared";
 
 /**
  * The admin area's data access — server side only.
@@ -81,10 +82,13 @@ export class AdminRecordNotFound extends Error {}
 export class AdminApiFailed extends Error {}
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // FormData bodies (file uploads) need fetch to set their own multipart
+  // boundary — a forced "application/json" header would break the request.
+  const isFormData = init.body instanceof FormData;
   const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       Authorization: `Bearer ${adminKey()}`,
       ...init.headers,
     },
@@ -141,17 +145,6 @@ export function fetchRecord(id: string): Promise<ReviewRecord> {
   return call<ReviewRecord>(`/admin/tors/${encodeURIComponent(id)}`);
 }
 
-export interface ReviewDocument {
-  url: string;
-  expiresInSeconds: number;
-  contentType: string;
-  bytes: number;
-}
-
-export function fetchDocument(id: string): Promise<ReviewDocument> {
-  return call<ReviewDocument>(`/admin/tors/${encodeURIComponent(id)}/document`);
-}
-
 export interface FieldEdit {
   field: string;
   value: string;
@@ -194,4 +187,10 @@ export function reject(id: string, reason: string): Promise<{ id: string }> {
     method: "POST",
     body: JSON.stringify({ reason }),
   });
+}
+
+export function uploadDocument(file: File): Promise<IntakeResponse> {
+  const body = new FormData();
+  body.append("file", file, file.name);
+  return call<IntakeResponse>("/intake/upload", { method: "POST", body });
 }

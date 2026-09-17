@@ -85,14 +85,8 @@ function buildTestApp() {
   app.use(
     "/api/v1/tors",
     buildTorsRouter({
-      service: new TorsService({
-        repo: new TorsRepository(db),
-        storage: {} as Storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
-        facetLimit: config.search.facetLimit,
-        timeZone: "Asia/Bangkok",
-        now: () => NOW,
-      }),
+      service: new TorsService({ repo: new TorsRepository(db), config, now: () => NOW }),
+      storage: {} as Storage,
       search: config.search,
     }),
   );

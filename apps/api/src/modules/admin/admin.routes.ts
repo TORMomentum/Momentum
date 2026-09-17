@@ -1,12 +1,17 @@
-import { Router, type Request } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import type { TorFields } from "@tor-radar/shared";
+import { BadRequestError } from "../../core/errors.js";
+import { parseDisposition } from "../../lib/content-disposition.js";
+import { streamDocument } from "../../lib/stream-document.js";
+import type { Storage } from "../../ports/storage.port.js";
 import { requireKey } from "../intake/intake.auth.js";
 import type { ReviewFieldName } from "./admin.repository.js";
 import type { AdminService } from "./admin.service.js";
 
 export interface AdminRouterDeps {
   service: AdminService;
+  storage: Storage;
   adminKeys: string[];
   /** How many queue rows one request may return. */
   queuePageSize: number;
@@ -83,9 +88,17 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
     res.json(await deps.service.load(req.params.id));
   });
 
-  router.get("/tors/:id/document", async (req, res) => {
-    res.json(await deps.service.document(req.params.id));
-  });
+  const document = async (req: Request<{ id: string }>, res: Response) => {
+    const disposition = parseDisposition(req.query.disposition);
+    if (!disposition) throw new BadRequestError("disposition must be inline or attachment");
+    const doc = await deps.service.documentToStream(req.params.id);
+    await streamDocument(req, res, deps.storage, doc, disposition);
+  };
+
+  // HEAD before GET: in Express 5 a GET route answers HEAD when no earlier HEAD
+  // route matches, and the HEAD path must not open the object.
+  router.head("/tors/:id/document", document);
+  router.get("/tors/:id/document", document);
 
   router.patch("/tors/:id/fields", async (req, res) => {
     const { edits } = editsBodySchema.parse(req.body);

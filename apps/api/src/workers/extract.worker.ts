@@ -4,13 +4,14 @@ import { loadEnvFile } from "../core/env-file.js";
 import { loadConfig, type Config } from "../core/config.js";
 import { connect, ensureIndexes } from "../core/db.js";
 import { MongoQueue } from "../adapters/mongo.queue.js";
-import { MinioStorage } from "../adapters/minio.storage.js";
+import { createStorage } from "../adapters/storage.factory.js";
 import { VertexAi } from "../adapters/vertex.ai.js";
 import type { Queue } from "../ports/queue.port.js";
 import { HistoryRepository } from "../modules/history/history.repository.js";
 import { ExtractionRepository } from "../modules/extraction/extraction.repository.js";
 import { ExtractionService } from "../modules/extraction/extraction.service.js";
 import { reconcileOrphanedRecords } from "./reconcile.js";
+import { StatsRepository } from "../modules/stats/stats.repository.js";
 
 /**
  * Given a TOR id, read the stored document, OCR + extract the nine fields,
@@ -35,7 +36,7 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
     return passThroughHandler;
   }
   const service = new ExtractionService({
-    storage: new MinioStorage(config.minio),
+    storage: createStorage(config, "worker"),
     ai: new VertexAi(config.vertex),
     repo: new ExtractionRepository(db),
     config: {
@@ -45,6 +46,7 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
       thresholdsVersion: config.thresholdsVersion,
       budgetMinThb: config.budgetMinThb,
       budgetMaxThb: config.budgetMaxThb,
+      timezone: config.stats.timezone,
     },
   });
   return service.run;
@@ -101,7 +103,7 @@ export async function runOnce(deps: RunOnceDeps): Promise<RunOnceResult> {
  * here would leave extraction invisible to the trail - the exact place a
  * reader most wants to see what happened.
  */
-export function torTransitions(db: Db): Omit<RunOnceDeps, "queue" | "handle"> {
+export function torTransitions(db: Db, stats?: { windowMonths: number }): Omit<RunOnceDeps, "queue" | "handle"> {
   const history = new HistoryRepository(db);
 
   return {
@@ -110,6 +112,9 @@ export function torTransitions(db: Db): Omit<RunOnceDeps, "queue" | "handle"> {
     },
     onPublished: async (torId) => {
       await history.record(torId, { from: "extracting", to: "published", actor: "worker", source: "worker" });
+      // Publication is the eligibility transition; marking after it prevents a
+      // worker from clearing a cohort while this record is still extracting.
+      if (stats) await new StatsRepository(db).markTorCohortDirty(torId, stats.windowMonths);
     },
     onFailed: async (torId, reason) => {
       await history.record(
@@ -136,7 +141,7 @@ export async function startWorker(
     backoffMs: config.jobBackoffMs,
     lockMs: config.jobLockMs,
   });
-  const deps: RunOnceDeps = { queue, handle: handle ?? buildHandler(config, db), ...torTransitions(db) };
+  const deps: RunOnceDeps = { queue, handle: handle ?? buildHandler(config, db), ...torTransitions(db, { windowMonths: config.stats.peerWindowMonths }) };
 
   let lastReconcile = 0;
   console.log(JSON.stringify({ event: "worker_started", pollMs: config.jobPollMs }));

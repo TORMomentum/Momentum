@@ -15,13 +15,6 @@ import { getJson } from "./api-client";
  * contract with the API (docs/API.md §4), not the stored record.
  */
 
-interface TorDocumentResponse {
-  url: string;
-  expiresInSeconds: number;
-  contentType: string;
-  bytes: number;
-}
-
 export interface ListField<T> {
   raw: string;
   value: T | null;
@@ -131,9 +124,4 @@ export async function fetchTorFacets(): Promise<TorFacets> {
 /** One published record, or null when it does not exist or has been taken down. */
 export async function fetchTor(id: string): Promise<TorDetail | null> {
   return withArabicDigits(await getJson<TorDetail | null>(`/tors/${encodeURIComponent(id)}`, () => null));
-}
-
-export async function fetchTorDocumentUrl(id: string): Promise<string> {
-  const document = await getJson<TorDocumentResponse>(`/tors/${encodeURIComponent(id)}/document`);
-  return document.url;
 }

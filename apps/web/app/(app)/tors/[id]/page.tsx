@@ -1,18 +1,14 @@
 import { notFound } from "next/navigation";
 import { getTorBySlug } from "../../../../src/data/tor-samples";
-import { fetchTor, fetchTorDocumentUrl, type TorDetail } from "../../../../src/shared/api/tors.api";
+import { fetchTor, type TorDetail } from "../../../../src/shared/api/tors.api";
 import { TorDetailView } from "../../../../src/views/TorDetailView";
 import { TorRecordView } from "../../../../src/views/TorRecordView";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
-async function documentUrlOrNull(id: string): Promise<string | null> {
-  try {
-    return await fetchTorDocumentUrl(id);
-  } catch (error) {
-    console.error("tor_document_url_fetch_failed", { id, error: String(error) });
-    return null;
-  }
+/** The proxy route that streams a stored original (spec §5.1 — the only path to it). */
+function documentHref(id: string): string {
+  return `/tors/${encodeURIComponent(id)}/document`;
 }
 
 /**
@@ -27,7 +23,7 @@ async function documentUrlOrNull(id: string): Promise<string | null> {
  * a missing skeleton.
  *
  * A record id renders the published record from the API; any other id is one
- * of the ported sample TORs the dashboard still links to.
+ * of the ported sample TORs.
  */
 
 export default async function TorDetailPage({
@@ -43,19 +39,23 @@ export default async function TorDetailPage({
     const tor: TorDetail | null = await fetchTor(id);
     if (!tor) notFound();
 
-    // The deadline may come from the project's invitation to bid; the reader
-    // gets that original too, not only this TOR's (NFR-F6).
+    // Originals are streamed through this app's proxy route, which checks the
+    // takedown state on every request (object storage spec §5). The deadline may
+    // come from the project's invitation to bid; the reader gets that original
+    // too, not only this TOR's (NFR-F6).
     const deadlineSource = tor.fields.deadline?.fromDocument;
-    const [documentUrl, deadlineDocumentUrl] = await Promise.all([
-      documentUrlOrNull(id),
-      deadlineSource ? documentUrlOrNull(deadlineSource) : Promise.resolve(null),
-    ]);
-
-    return <TorRecordView tor={tor} documentUrl={documentUrl} deadlineDocumentUrl={deadlineDocumentUrl} />;
+    return (
+      <TorRecordView
+        tor={tor}
+        documentUrl={documentHref(id)}
+        deadlineDocumentUrl={deadlineSource ? documentHref(deadlineSource) : null}
+      />
+    );
   }
 
   const sample = getTorBySlug(id);
   if (!sample) notFound();
 
-  return <TorDetailView tor={sample} documentUrl={null} />;
+  // Sample records have no stored original to stream.
+  return <TorDetailView tor={sample} documentHref={null} />;
 }

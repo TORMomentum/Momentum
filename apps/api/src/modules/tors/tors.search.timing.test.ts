@@ -8,7 +8,6 @@ import { connect, disconnect, ensureIndexes, tors, type TorDocument } from "../.
 import { parseSearchQuery } from "./tors.query.js";
 import { TorsRepository } from "./tors.repository.js";
 import { TorsService } from "./tors.service.js";
-import type { Storage } from "../../ports/storage.port.js";
 import { isolatedDbUrl } from "../../test/mongo.js";
 
 /**
@@ -114,10 +113,7 @@ beforeAll(async () => {
 
   service = new TorsService({
     repo: new TorsRepository(db),
-    storage: {} as Storage,
-    signedUrlTtlSeconds: config.signedUrlTtlSeconds,
-    facetLimit: config.search.facetLimit,
-    timeZone: config.search.timeZone,
+    config,
     now: () => new Date("2025-06-15T03:00:00Z"),
   });
 }, 60_000);

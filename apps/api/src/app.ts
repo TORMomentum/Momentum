@@ -3,7 +3,7 @@ import type { Db } from "mongodb";
 import { sourcesRouter } from "./routes/sources";
 import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
-import { MinioStorage } from "./adapters/minio.storage.js";
+import { createStorage } from "./adapters/storage.factory.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
 import { IntakeService } from "./modules/intake/intake.service.js";
@@ -15,6 +15,8 @@ import { buildAdminRouter } from "./modules/admin/admin.routes.js";
 import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
+import { StatsRepository } from "./modules/stats/stats.repository.js";
+import { buildStatsRouter } from "./modules/stats/stats.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -26,7 +28,8 @@ export const API_PREFIX = "/api/v1";
  */
 export function buildApp(config: Config, db: Db): Express {
   const app = express();
-  const storage = new MinioStorage(config.minio);
+  const storage = createStorage(config, "api");
+  const statsRepository = new StatsRepository(db);
 
   app.use(express.json());
 
@@ -46,6 +49,7 @@ export function buildApp(config: Config, db: Db): Express {
     }),
     new IntakeRepository(db),
     { allowedMimeTypes: config.allowedMimeTypes, maxUploadBytes: config.maxUploadBytes },
+    { timezone: config.stats.timezone },
   );
 
   app.use(
@@ -76,13 +80,18 @@ export function buildApp(config: Config, db: Db): Express {
     `${API_PREFIX}/admin`,
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db),
+        repo: new AdminRepository(db, config.budgetMaxThb),
         history: new HistoryRepository(db),
         queue,
-        storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
         tLow: config.tLow,
+        budgetMaxThb: config.budgetMaxThb,
+        stats: {
+          markCohortsDirty: statsRepository.markCohortsDirty.bind(statsRepository),
+          windowMonths: config.stats.peerWindowMonths,
+          timezone: config.stats.timezone,
+        },
       }),
+      storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
     }),
@@ -91,16 +100,13 @@ export function buildApp(config: Config, db: Db): Express {
   app.use(
     `${API_PREFIX}/tors`,
     buildTorsRouter({
-      service: new TorsService({
-        repo: new TorsRepository(db),
-        storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
-        facetLimit: config.search.facetLimit,
-        timeZone: config.search.timeZone,
-      }),
+      service: new TorsService({ repo: new TorsRepository(db), config }),
+      storage,
       search: config.search,
     }),
   );
+
+  app.use(`${API_PREFIX}/stats`, buildStatsRouter({ db, config }));
 
   // Last: it only sees what the routes above throw.
   app.use(errorMiddleware);

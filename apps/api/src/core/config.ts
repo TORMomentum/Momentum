@@ -5,15 +5,23 @@ import { z } from "zod";
  * as a literal anywhere else in the codebase.
  */
 const schema = z.object({
-  // Storage — two endpoints: one reachable inside the compose network, one from a browser.
   MONGO_URL: z.string().min(1),
-  MINIO_ENDPOINT: z.string().min(1),
-  MINIO_PORT: z.coerce.number().int().positive().default(9000),
-  MINIO_ACCESS_KEY: z.string().min(1),
-  MINIO_SECRET_KEY: z.string().min(1),
-  MINIO_BUCKET: z.string().min(1),
-  MINIO_PUBLIC_URL: z.url(),
-  SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+
+  // Storage — Google Cloud Storage (spec §6)
+  GCS_BUCKET: z.string().min(1),
+  /** Set only for fake-gcs-server. Unset in deployment. */
+  GCS_API_ENDPOINT: z.url().optional(),
+  /**
+   * The DEDICATED storage service account's key file. Deliberately not
+   * GOOGLE_APPLICATION_CREDENTIALS: that is Vertex AI's identity, and the Google
+   * client would silently adopt it if this were left to application-default
+   * credentials — giving one compromised key both powers.
+   */
+  GCS_CREDENTIALS: z.string().min(1).optional(),
+  STORAGE_TIMEOUT_API_MS: z.coerce.number().int().positive().default(10_000),
+  STORAGE_TIMEOUT_WORKER_MS: z.coerce.number().int().positive().default(60_000),
 
   // Intake limits
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(26_214_400),
@@ -54,6 +62,20 @@ const schema = z.object({
   BUDGET_MIN_THB: z.coerce.number().positive().default(10_000),
   BUDGET_MAX_THB: z.coerce.number().positive().default(100_000_000_000),
 
+  // Statistics (Dashboard anomaly rule). ANOMALY_METHOD remains open value O4.
+  PEER_GROUP_WINDOW_MONTHS: z.coerce.number().int().positive().default(12),
+  PEER_MIN_N: z.coerce.number().int().positive().default(8),
+  ANOMALY_METHOD: z.enum(["IQR", "ZSCORE"]).default("IQR"),
+  // Fractional on purpose: the SRS fence is 1.5 x IQR. An int() schema here
+  // still passes its own default (zod does not validate defaults) and then
+  // rejects the identical value when it comes from the environment.
+  ANOMALY_IQR_MULTIPLIER: z.coerce.number().positive().default(1.5),
+  ANOMALY_ZSCORE_LIMIT: z.coerce.number().positive().default(3),
+  STATS_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
+  STATS_LEASE_MS: z.coerce.number().int().positive().default(60_000),
+  STATS_STALE_AFTER_MS: z.coerce.number().int().positive().default(3_600_000),
+  COHORT_TIMEZONE: z.string().min(1).default("Asia/Bangkok"),
+
   /** How many review-queue rows one request returns (FR-G-1). */
   ADMIN_QUEUE_PAGE_SIZE: z.coerce.number().int().positive().max(200).default(25),
 
@@ -70,6 +92,15 @@ const schema = z.object({
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
   path: ["T_LOW"],
+}).refine((v) => !(v.NODE_ENV === "production" && v.GCS_API_ENDPOINT), {
+  message: "GCS_API_ENDPOINT is for the emulator only and must be unset in production",
+  path: ["GCS_API_ENDPOINT"],
+}).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GCS_CREDENTIALS), {
+  message: "GCS_CREDENTIALS is required unless GCS_API_ENDPOINT points at the emulator",
+  path: ["GCS_CREDENTIALS"],
+}).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GOOGLE_CLOUD_PROJECT), {
+  message: "GOOGLE_CLOUD_PROJECT is required unless GCS_API_ENDPOINT points at the emulator",
+  path: ["GOOGLE_CLOUD_PROJECT"],
 }).refine((v) => v.SEARCH_PAGE_SIZE <= v.SEARCH_MAX_PAGE_SIZE, {
   message: "SEARCH_PAGE_SIZE must not exceed SEARCH_MAX_PAGE_SIZE",
   path: ["SEARCH_PAGE_SIZE"],
@@ -77,15 +108,14 @@ const schema = z.object({
 
 export interface Config {
   mongoUrl: string;
-  minio: {
-    endPoint: string;
-    port: number;
-    accessKey: string;
-    secretKey: string;
+  gcs: {
     bucket: string;
-    publicUrl: string;
+    apiEndpoint?: string;
+    credentialsPath?: string;
+    projectId?: string;
+    timeoutApiMs: number;
+    timeoutWorkerMs: number;
   };
-  signedUrlTtlSeconds: number;
   maxUploadBytes: number;
   allowedMimeTypes: string[];
   multipartMaxFiles: number;
@@ -114,6 +144,17 @@ export interface Config {
   thresholdsVersion: string;
   budgetMinThb: number;
   budgetMaxThb: number;
+  stats: {
+    peerWindowMonths: number;
+    peerMinN: number;
+    method: "IQR" | "ZSCORE";
+    iqrMultiplier: number;
+    zScoreLimit: number;
+    sweepIntervalMs: number;
+    leaseMs: number;
+    staleAfterMs: number;
+    timezone: string;
+  };
   adminQueuePageSize: number;
   search: SearchConfig;
   apiPort: number;
@@ -146,15 +187,14 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
   const parsed = schema.parse(env);
   return {
     mongoUrl: parsed.MONGO_URL,
-    minio: {
-      endPoint: parsed.MINIO_ENDPOINT,
-      port: parsed.MINIO_PORT,
-      accessKey: parsed.MINIO_ACCESS_KEY,
-      secretKey: parsed.MINIO_SECRET_KEY,
-      bucket: parsed.MINIO_BUCKET,
-      publicUrl: parsed.MINIO_PUBLIC_URL,
+    gcs: {
+      bucket: parsed.GCS_BUCKET,
+      apiEndpoint: parsed.GCS_API_ENDPOINT,
+      credentialsPath: parsed.GCS_CREDENTIALS,
+      projectId: parsed.GOOGLE_CLOUD_PROJECT,
+      timeoutApiMs: parsed.STORAGE_TIMEOUT_API_MS,
+      timeoutWorkerMs: parsed.STORAGE_TIMEOUT_WORKER_MS,
     },
-    signedUrlTtlSeconds: parsed.SIGNED_URL_TTL_SECONDS,
     maxUploadBytes: parsed.MAX_UPLOAD_BYTES,
     allowedMimeTypes: parsed.ALLOWED_MIME_TYPES.split(",").map((value) => value.trim()),
     multipartMaxFiles: parsed.MULTIPART_MAX_FILES,
@@ -183,6 +223,17 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     thresholdsVersion: parsed.THRESHOLDS_VERSION,
     budgetMinThb: parsed.BUDGET_MIN_THB,
     budgetMaxThb: parsed.BUDGET_MAX_THB,
+    stats: {
+      peerWindowMonths: parsed.PEER_GROUP_WINDOW_MONTHS,
+      peerMinN: parsed.PEER_MIN_N,
+      method: parsed.ANOMALY_METHOD,
+      iqrMultiplier: parsed.ANOMALY_IQR_MULTIPLIER,
+      zScoreLimit: parsed.ANOMALY_ZSCORE_LIMIT,
+      sweepIntervalMs: parsed.STATS_SWEEP_INTERVAL_MS,
+      leaseMs: parsed.STATS_LEASE_MS,
+      staleAfterMs: parsed.STATS_STALE_AFTER_MS,
+      timezone: parsed.COHORT_TIMEZONE,
+    },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
     search: {
       pageSize: parsed.SEARCH_PAGE_SIZE,

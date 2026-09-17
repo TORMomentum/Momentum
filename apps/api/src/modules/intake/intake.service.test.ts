@@ -28,9 +28,6 @@ function fakes() {
     async getStream() {
       throw new Error("not used in this suite");
     },
-    async signedUrl(key) {
-      return `http://localhost:9010/${key}`;
-    },
   };
 
   const enqueued: string[] = [];
@@ -50,6 +47,7 @@ function fakes() {
 
   const records = new Map<string, { id: string; hash: string }>();
   const sourceRefs: string[] = [];
+  const insertedSources: unknown[] = [];
   const inserted: { id: string; knownFields?: Record<string, unknown>; context?: unknown }[] = [];
   const attached: { id: string; context: unknown }[] = [];
   const repository = {
@@ -62,12 +60,13 @@ function fakes() {
     async insert(
       hash: string,
       _stored: StoredObject,
-      _source: unknown,
+      source: unknown,
       knownFields?: Record<string, unknown>,
       context?: unknown,
     ) {
       const id = `id-${records.size + 1}`;
       records.set(id, { id, hash });
+      insertedSources.push(source);
       inserted.push({ id, knownFields, context });
       return id;
     },
@@ -77,9 +76,10 @@ function fakes() {
     async attachSourceContext(id: string, context: unknown) {
       attached.push({ id, context });
     },
+    async recordIntake() {},
   };
 
-  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted, attached };
+  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted, attached, insertedSources };
 }
 
 function serviceWith(overrides: Partial<typeof limits> = {}) {
@@ -232,6 +232,14 @@ describe("IntakeService.submit", () => {
     expect(again).toMatchObject({ torId: first.torId, duplicate: true });
     expect(inserted).toHaveLength(1);
     expect(attached).toEqual([{ id: first.torId, context }]);
+  });
+
+  it("records the submitted filename on the source reference", async () => {
+    const { service, insertedSources } = serviceWith();
+
+    await service.submit(pdf, { ...source, filename: "ประกาศจ้างเหมา.pdf" });
+
+    expect(insertedSources[0]).toMatchObject({ originalFilename: "ประกาศจ้างเหมา.pdf" });
   });
 });
 

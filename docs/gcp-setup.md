@@ -29,6 +29,44 @@ IAM & Admin → Service Accounts → **Create service account**
 Save the file as `secrets/gcp-sa.json` in the repo root. `secrets/` is gitignored —
 **never commit the key.** Share it with teammates out of band (password manager / DM).
 
+## 3b. A second service account, for object storage
+
+Storage gets its own identity. Vertex AI's key must never be able to write to the
+originals bucket, and the storage key must never be able to spend Vertex AI quota:
+one compromised key must not carry both powers.
+
+IAM & Admin → Service Accounts → **Create service account**
+
+- Name: `tor-storage`
+- Roles: a **custom role** holding exactly `storage.objects.create` and
+  `storage.objects.get`, granted **on the originals bucket**, not on the project.
+  Deliberately no delete: originals are immutable (`FR-A-2`, `NFR-S3`)
+- Keys → Add key → **JSON** → download
+
+Save it as `secrets/gcs-storage-sa.json`. Both key files live in `secrets/`, which
+`.gitignore` covers twice — the directory itself and the `*-sa.json` pattern.
+
+### What goes where
+
+`.env` holds **values**; `secrets/` holds **files**. A downloaded JSON key cannot
+live inside `.env`, so `.env` carries only the path to it. Nothing else moves out
+of `.env`.
+
+| | Lives in | Committed |
+| :--- | :--- | :--- |
+| Bucket name, project id, timeouts, URLs | `.env` | no — `.env.example` is |
+| The two JSON key files | `secrets/` | never |
+| The pointers to them | `.env`, as paths | no |
+| Deployment | Google Secret Manager (TOR-141) | n/a |
+
+**If a key is ever pasted into a chat, an issue, or a commit, it is public.** Delete
+that key and issue a new one:
+
+```bash
+gcloud iam service-accounts keys list --iam-account=<account>
+gcloud iam service-accounts keys delete <key-id> --iam-account=<account>
+```
+
 ## 4. Document OCR processor
 
 Document AI → **Create Processor** → **Document OCR** → region **US** (multi-region;
@@ -45,6 +83,7 @@ Fill the Vertex block:
 ```
 GOOGLE_CLOUD_PROJECT=<project-id>
 GOOGLE_APPLICATION_CREDENTIALS=./secrets/gcp-sa.json
+GCS_CREDENTIALS=./secrets/gcs-storage-sa.json
 VERTEX_LOCATION=us-central1
 GEMINI_MODEL=gemini-2.5-flash
 DOCAI_LOCATION=us

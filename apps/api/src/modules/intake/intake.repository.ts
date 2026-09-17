@@ -1,7 +1,8 @@
 import { ObjectId, type Db } from "mongodb";
-import { torEvents, tors, type TorDocument } from "../../core/db.js";
+import { torEvents, torMeta, tors, type TorDocument } from "../../core/db.js";
 import type { TorFields } from "@tor-radar/shared";
 import type { StoredObject } from "../../ports/storage.port.js";
+import type { CohortKey } from "../stats/cohort.js";
 import type { SourceContext } from "./intake.service.js";
 
 export interface SourceRefInput {
@@ -9,6 +10,8 @@ export interface SourceRefInput {
   url?: string;
   submittedBy: string;
   submittedAt: Date;
+  /** As submitted, percent-free and unencoded. Used for the download filename (spec §5.3). */
+  originalFilename?: string;
 }
 
 export interface FoundTor {
@@ -63,6 +66,7 @@ export class IntakeRepository {
     source: SourceRefInput,
     knownFields?: Partial<TorFields>,
     context?: SourceContext,
+    cohort?: { cohort: CohortKey; cohortDateSource: "announced" | "intake" } | null,
   ): Promise<string> {
     const now = new Date();
     const result = await tors(this.db).insertOne({
@@ -83,6 +87,7 @@ export class IntakeRepository {
         { from: null, to: "queued", at: now, actor: source.submittedBy, source: source.route },
       ],
       access: { restricted: false },
+      ...(cohort ?? {}),
       duplicateOf: null,
       createdAt: now,
       updatedAt: now,
@@ -106,6 +111,9 @@ export class IntakeRepository {
     return torId;
   }
 
+  async recordIntake(at: Date): Promise<void> {
+    await torMeta(this.db).updateOne({ _id: "dashboard" }, { $set: { lastIntakeAt: at } }, { upsert: true });
+  }
 
   /** Records what a source states about a document that was already stored. */
   async attachSourceContext(id: string, context: SourceContext): Promise<void> {

@@ -10,12 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MONGO_URL: mongodb://localhost:27017/tor_radar
-      MINIO_ENDPOINT: localhost
-      MINIO_PORT: "9000"
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: change-me-in-local-env
-      MINIO_BUCKET: tor-raw
-      MINIO_PUBLIC_URL: http://localhost:9000
+      GCS_BUCKET: tor-raw
+      GCS_API_ENDPOINT: http://localhost:4443
       INTAKE_API_KEYS: ci-intake-key
       ADMIN_API_KEYS: ci-admin-key
     steps:
@@ -26,19 +22,19 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      # The integration tests (mongo.queue, minio.storage, intake.repository) hit a
+      # The integration tests (mongo.queue, gcs.storage, intake.repository) hit a
       # real stack, so CI brings up the same containers the compose file defines.
-      - run: docker compose up -d mongo minio
-      - name: Wait for mongo and minio
+      - run: docker compose up -d mongo gcs
+      - name: Wait for mongo and gcs
         run: |
           for i in $(seq 1 30); do
             (echo > /dev/tcp/localhost/27017) 2>/dev/null \
-              && curl -sf http://localhost:9000/minio/health/live \
+              && curl -sf http://localhost:4443/storage/v1/b \
               && exit 0
             sleep 1
           done
-          echo "mongo/minio did not become ready" >&2
-          docker compose logs mongo minio
+          echo "mongo/gcs did not become ready" >&2
+          docker compose logs mongo gcs
           exit 1
       - run: npm test
       - run: npm run build

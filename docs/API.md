@@ -118,7 +118,7 @@ sequenceDiagram
     autonumber
     participant C as Client
     participant A as API
-    participant S as MinIO
+    participant S as GCS
     participant D as Mongo
 
     C->>A: POST /api/v1/intake/upload (multipart)
@@ -186,7 +186,7 @@ web app.
 
 ---
 
-## 4. Public reads (slice 3)
+## 4. Public reads ✅ (slice 3)
 
 Design: [search and filter spec](superpowers/specs/2026-09-16-search-and-filter-design.md).
 
@@ -214,10 +214,17 @@ Pagination is a cursor over `(announcedAt desc, _id desc)`: pass `nextCursor` ba
                "category": { "raw": "…", "value": "…", "verified": true },
                "budget": { "raw": "…", "value": 5524000, "verified": true },
                "deadline": { "raw": "", "value": null, "verified": false },
-               "torStatus": { "value": "announced", "verified": true } } ],
+               "torStatus": { "value": "announced", "verified": true },
+               "verdict": { "kind": "anomaly", "side": "high", "distance": 3.1 } } ],
   "total": 10, "nextCursor": null,
   "coverage": { "lastUpdatedAt": "2026-09-16T09:52:00.000Z" } }
 ```
+
+Each row carries its own `verdict` — `normal`, `anomaly` (with `side` and `distance`), or
+`not-evaluated` with its reason — derived at read from its peer group's bounds rather than stored on
+the record (dashboard spec §2.1). A page is fetched first and its distinct cohorts are read in one
+further query, so the cost grows with the number of peer groups on the page, not with the number of
+rows.
 
 `coverage` is not decoration: `FR-E-6` requires every surface showing figures to state when they were
 last updated. Keyword matching (`q`) is an interim substring match until Atlas Search is available
@@ -250,29 +257,92 @@ themselves are supporting documents: never listed, counted, or served as a recor
 redaction serializer (`FR-B-5`); evidence quotes are not returned. A restricted or unpublished record
 is a 404.
 
-### `GET /api/v1/tors/:id/document`
+### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
-Redirects to a **freshly signed** MinIO URL, or streams the bytes with
-`Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`. Signed URLs are generated
-per request and never stored — a persisted one becomes a broken link on an unpredictable date.
+Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
+and never opens the object. A restricted record answers **`404`**, the same as an unknown id: a
+`403` would confirm both that the record exists and that it was taken down (`FR-B-6`).
+
+**Query:** `?disposition=inline` or `?disposition=attachment` (default). Any other value is `400`.
+
+**Headers, every response:**
+
+| Header | Value |
+| :--- | :--- |
+| `Content-Type` | the verified type from the record |
+| `X-Content-Type-Options` | `nosniff` |
+| `Content-Disposition` | `inline`, or `attachment; filename*=UTF-8''<encoded name>` |
+| `Cache-Control` | `private, no-store` — a takedown must never be served from a cache |
+| `Accept-Ranges` | `bytes` |
+| `Content-Length` | full size, or the range length |
+
+**Ranges** (`Range` request header):
+
+| Request | Response |
+| :--- | :--- |
+| none | `200`, whole object |
+| `bytes=a-b`, `bytes=a-`, `bytes=-n` | `206`, `Content-Range: bytes a-b/size` |
+| more than one range, or malformed | ignored — `200`, whole object (RFC 9110 permits this) |
+| start beyond the end | `416`, `Content-Range: bytes */size` |
+
+The web app never calls this route directly — it goes through a Next route handler on the app's own
+origin, so the browser needs no CORS configuration (rendering spec §2.1).
 
 ---
 
-## 5. Statistics and export ⬜ (slice 3)
+## 5. Statistics and export
 
-| Route | Returns |
+### `GET /api/v1/stats/dashboard` ✅ (slice 3)
+
+Same filters as `GET /api/v1/tors`, minus paging.
+
+```json
+{ "totals": { "torCount": 18, "budgetSum": 172150000, "agencyCount": 3, "unverifiedBudgetCount": 1 },
+  "flagged": { "count": 1 },
+  "trend":   [ { "month": "2026-09", "torCount": 4, "budgetSum": 52000000 } ],
+  "byAgency":[ { "agency": "สำนักงานเขตทวีวัฒนา", "torCount": 7, "budgetSum": 61000000 } ],
+  "points":  [ { "id": "…", "category": "งานก่อสร้าง-ทาง", "month": "2026-09", "budget": 48000000,
+                 "verdict": { "kind": "anomaly", "side": "high", "distance": 47.01 },
+                 "confidence": 0.95, "verified": true, "modelVersion": "gemini-3.5-flash-001" } ],
+  "bounds":  [ { "category": "งานก่อสร้าง-ทาง", "month": "2026-09", "n": 11,
+                 "q1": 1675000, "q3": 2700000, "lowBound": -862500, "highBound": 4237500,
+                 "eligible": true } ],
+  "rule":    { "method": "IQR", "iqrMultiplier": 1.5, "zScoreLimit": 3,
+               "peerMinN": 8, "windowMonths": 12, "cohortTimezone": "Asia/Bangkok" },
+  "meta":    { "lastIntakeAt": "2026-09-16T21:07:24.665Z", "statsComputedAt": "2026-09-17T03:10:11.000Z",
+               "stale": false, "corpusSize": 22 },
+  "checklist": null }
+```
+
+Where each figure comes from, which is the difference between a fast answer and a true one:
+
+| Field | Source |
 | :--- | :--- |
-| `GET /api/v1/stats/dashboard` | Totals, per-agency and per-category aggregates, the trend series, and the coverage block |
-| `GET /api/v1/stats/anomalies` | Flagged records with their peer group, the IQR bounds, and the multiple |
-| `GET /api/v1/export/tors.csv` | The current filter as CSV, with the same PII minimisation as the API |
+| `totals`, `trend`, `byAgency` | Rollup cells (agency × category × month) when only agency, category or month filters are active |
+| the same, with `minBudget`, `maxBudget` or `status` active | Computed from the records instead: a cell holds a sum, not the budgets inside it, so it cannot answer a budget range |
+| `points`, `flagged` | The records, each judged by its cohort's `bounds` |
+| `bounds` | The stored per-cohort statistics the worker keeps fresh |
 
-**Open:** whether these compute live or read a precomputed rollup — see
-[PLAN.md](PLAN.md) Q1/Q2. The route shape is the same either way; only its
-freshness guarantee changes, and `coverage.lastUpdated` is where that becomes visible.
+`totals` count every published, unrestricted record with a numeric budget, **verified or not**, with
+`unverifiedBudgetCount` alongside: excluding unverified extractions would understate what agencies
+spend. `points` and `flagged` use the stricter eligibility rule, so the anomaly rule speaks only for
+what passed the deterministic checks.
 
-Anomaly responses always carry the method and its parameters (`PEER_GROUP_KEY`, `PEER_WINDOW`,
-`PEER_MIN_N`, `ANOMALY_METHOD`), because `NFR-F5` allows the phrase "statistical anomaly" only
-alongside the rule that produced it.
+`flagged.count` is `null`, not `0`, when no cohort on screen reaches `peerMinN` — "not enough
+comparable TORs" and "no anomalies found" are different statements.
+
+`rule` travels with every response because `NFR-F5` allows the phrase "statistical anomaly" only
+alongside the rule that produced it, and `FR-F-3` requires the methodology page to describe the
+active rule rather than a copy of it.
+
+`meta.lastIntakeAt` is the most recent successful intake, which is what `FR-E-6` asks for;
+`meta.statsComputedAt` is the last statistics run, and `meta.stale` is true when that run is older
+than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` is reserved for `FR-F-4` in
+sprint 4.
+
+### `GET /api/v1/export/tors.csv` ⬜ (slice 5)
+
+The current filter as CSV, with the same PII minimisation as the API.
 
 ---
 
@@ -295,6 +365,7 @@ appears in a public response, which is why the signed-out site shows no MATCH %.
 | Route | Purpose |
 | :--- | :--- |
 | `GET /api/v1/admin/queue` | Low-confidence records awaiting review (`FR-G-1`) |
+| `GET`, `HEAD` `/api/v1/admin/tors/:id/document` | Streams the original for staff — same contract as the public route (§4), but **without** the restricted check: a reviewer must be able to see what they rejected |
 | `PATCH /api/v1/admin/tors/:id` | Correct extracted fields — the correction is stored, the original document is not touched |
 | `POST /api/v1/admin/tors/:id/approve` | Clears the unverified mark, admits the record to statistics and matching |
 | `POST /api/v1/admin/tors/:id/restrict` | Takedown: restricts access and writes an audit entry (`FR-B-6`) — never deletes |

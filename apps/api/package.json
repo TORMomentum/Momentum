@@ -8,15 +8,16 @@
     "start": "tsx src/server.ts",
     "worker": "tsx src/workers/extract.worker.ts",
     "worker:dev": "tsx watch src/workers/extract.worker.ts",
+    "stats-worker": "tsx src/workers/stats.worker.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
+    "@google-cloud/storage": "8.1.0",
     "busboy": "^1.6.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "google-auth-library": "^11.0.2",
-    "minio": "^8.0.7",
     "mongodb": "^7.6.0",
     "zod": "^4.5.4"
   },

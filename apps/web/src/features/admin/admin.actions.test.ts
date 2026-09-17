@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   reextract: vi.fn(),
   reject: vi.fn(),
   setFieldVerification: vi.fn(),
+  uploadDocument: vi.fn(),
+  fetchEvents: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -21,14 +23,18 @@ vi.mock("../../shared/lib/admin-api", () => ({
   reextract: mocks.reextract,
   reject: mocks.reject,
   setFieldVerification: mocks.setFieldVerification,
+  uploadDocument: mocks.uploadDocument,
+  fetchEvents: mocks.fetchEvents,
 }));
 
 import {
   approveRecordAction,
+  fetchRecentUploadsAction,
   reextractRecordAction,
   rejectRecordAction,
   saveCorrections,
   setFieldVerificationAction,
+  uploadDocumentAction,
 } from "./admin.actions";
 
 beforeEach(() => {
@@ -68,6 +74,89 @@ describe("admin Server Action authorization", () => {
       "staff authentication required",
     );
     expect(mocks.setFieldVerification).not.toHaveBeenCalled();
+  });
+
+  it("refuses uploadDocumentAction before calling the admin API", async () => {
+    await expect(
+      uploadDocumentAction({ result: null, error: null }, new FormData()),
+    ).rejects.toThrow("staff authentication required");
+    expect(mocks.uploadDocument).not.toHaveBeenCalled();
+  });
+
+  it("refuses fetchRecentUploadsAction before calling the admin API", async () => {
+    await expect(fetchRecentUploadsAction()).rejects.toThrow("staff authentication required");
+    expect(mocks.fetchEvents).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchRecentUploadsAction", () => {
+  beforeEach(() => {
+    mocks.requireStaff.mockResolvedValue(undefined);
+  });
+
+  it("keeps only records that originated from the upload screen", async () => {
+    mocks.fetchEvents.mockResolvedValue([
+      // Newest first, matching fetchEvents' own ordering.
+      { torId: "tor-url", title: "จาก URL", from: "queued", to: "extracting", actor: "worker", source: "worker", at: "2026-09-17T02:00:00Z" },
+      { torId: "tor-url", title: "จาก URL", from: null, to: "queued", actor: "admin", source: "url", at: "2026-09-17T01:00:00Z" },
+      { torId: "tor-upload", title: "จาก Upload", from: null, to: "queued", actor: "admin", source: "upload", at: "2026-09-17T00:30:00Z" },
+    ]);
+
+    const uploads = await fetchRecentUploadsAction();
+
+    expect(uploads).toEqual([{ torId: "tor-upload", title: "จาก Upload", state: "queued", at: "2026-09-17T00:30:00Z" }]);
+  });
+
+  it("reports each record's most recent transition, not its founding one", async () => {
+    mocks.fetchEvents.mockResolvedValue([
+      { torId: "tor-1", title: "TOR 1", from: "extracting", to: "published", actor: "worker", source: "worker", at: "2026-09-17T03:00:00Z" },
+      { torId: "tor-1", title: "TOR 1", from: "queued", to: "extracting", actor: "worker", source: "worker", at: "2026-09-17T02:00:00Z" },
+      { torId: "tor-1", title: "TOR 1", from: null, to: "queued", actor: "admin", source: "upload", at: "2026-09-17T01:00:00Z" },
+    ]);
+
+    const uploads = await fetchRecentUploadsAction();
+
+    expect(uploads).toEqual([{ torId: "tor-1", title: "TOR 1", state: "published", at: "2026-09-17T03:00:00Z" }]);
+  });
+});
+
+describe("uploadDocumentAction", () => {
+  beforeEach(() => {
+    mocks.requireStaff.mockResolvedValue(undefined);
+  });
+
+  it("rejects a submission with no file, without calling the API", async () => {
+    const state = await uploadDocumentAction({ result: null, error: null }, new FormData());
+
+    expect(state.error).toBe("กรุณาเลือกไฟล์ก่อนอัปโหลด");
+    expect(mocks.uploadDocument).not.toHaveBeenCalled();
+  });
+
+  it("uploads the submitted file and returns the result", async () => {
+    const file = new File([Buffer.from("%PDF-1.4")], "tor.pdf", { type: "application/pdf" });
+    const formData = new FormData();
+    formData.set("file", file);
+    mocks.uploadDocument.mockResolvedValue({ torId: "tor-1", duplicate: false, state: "queued" });
+
+    const state = await uploadDocumentAction({ result: null, error: null }, formData);
+
+    expect(mocks.uploadDocument).toHaveBeenCalledWith(file);
+    expect(state).toEqual({
+      result: { torId: "tor-1", duplicate: false, state: "queued" },
+      error: null,
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/review");
+  });
+
+  it("reports a generic failure without leaking the underlying error to the screen", async () => {
+    const file = new File([Buffer.from("%PDF-1.4")], "tor.pdf", { type: "application/pdf" });
+    const formData = new FormData();
+    formData.set("file", file);
+    mocks.uploadDocument.mockRejectedValue(new Error("network is down"));
+
+    const state = await uploadDocumentAction({ result: null, error: null }, formData);
+
+    expect(state).toEqual({ result: null, error: "อัปโหลดไม่สำเร็จ — ลองใหม่อีกครั้ง" });
   });
 });
 

@@ -22,7 +22,7 @@ import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Provenance } from "@tor-radar/shared";
-import { MinioStorage } from "../apps/api/src/adapters/minio.storage.js";
+import { createStorage } from "../apps/api/src/adapters/storage.factory.js";
 import { parseExtraction } from "../apps/api/src/adapters/vertex.ai.js";
 import { loadConfig } from "../apps/api/src/core/config.js";
 import { connect, disconnect, ensureIndexes, tors, type TorDocument } from "../apps/api/src/core/db.js";
@@ -75,7 +75,7 @@ if (process.argv.includes("--clear")) {
 }
 
 await ensureIndexes(db);
-const storage = new MinioStorage(config.minio);
+const storage = createStorage(config, "worker");
 const manifest = JSON.parse(await readFile(`${CORPUS}manifest.json`, "utf8")) as { documents: ManifestDocument[] };
 
 let created = 0;

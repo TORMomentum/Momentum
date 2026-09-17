@@ -4,6 +4,7 @@ import type { Storage } from "../../ports/storage.port.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
 import { IMPLAUSIBLE_DEADLINE, type ExtractionRepository } from "./extraction.repository.js";
+import { cohortFor } from "../stats/cohort.js";
 
 export interface ExtractionConfig {
   model: string;
@@ -12,6 +13,7 @@ export interface ExtractionConfig {
   thresholdsVersion: string;
   budgetMinThb: number;
   budgetMaxThb: number;
+  timezone: string;
 }
 
 export interface ExtractionServiceDeps {
@@ -47,7 +49,7 @@ export class ExtractionService {
 
   run = async (torId: string): Promise<void> => {
     const target = await this.deps.repo.load(torId);
-    const { storageKey, contentType, knownFields } = target;
+    const { storageKey, contentType, knownFields, createdAt } = target;
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
@@ -85,6 +87,12 @@ export class ExtractionService {
       }
     }
 
+    const cohort = cohortFor({
+      category: typeof fields.category.value === "string" ? fields.category.value : "",
+      announcedAt,
+      createdAt,
+    }, this.deps.config.timezone);
+
     await this.deps.repo.writeExtraction(torId, {
       fields: publishedFields,
       announcedAt,
@@ -93,6 +101,7 @@ export class ExtractionService {
       reviewReasons,
       hasTextLayer: textLayer,
       provenance,
+      ...(cohort ? { cohort: cohort.cohort, cohortDateSource: cohort.cohortDateSource } : {}),
     });
 
     // A deadline before the invitation's own announcement is a misreading — on a

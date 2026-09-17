@@ -1,6 +1,7 @@
 import { ObjectId, type Db } from "mongodb";
 import type { ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
-import { tors } from "../../core/db.js";
+import { tors, type TorDocument } from "../../core/db.js";
+import type { CohortKey } from "../stats/cohort.js";
 import { NotFoundError } from "../../core/errors.js";
 
 export interface ExtractionTarget {
@@ -12,6 +13,7 @@ export interface ExtractionTarget {
   sourceAnnouncedAt: Date | null;
   documentType: DocumentType;
   sourceProject: SourceProject | null;
+  createdAt: Date;
 }
 
 /** The grading reason for a deadline that falls before its document's announcement. */
@@ -32,6 +34,8 @@ export interface ExtractionResult {
   reviewReasons: string[];
   hasTextLayer: boolean;
   provenance: Provenance;
+  cohort?: CohortKey;
+  cohortDateSource?: "announced" | "intake";
 }
 
 /** The only extraction code that touches MongoDB. */
@@ -49,6 +53,7 @@ export class ExtractionRepository {
           announcedAtOrigin: 1,
           documentType: 1,
           sourceProject: 1,
+          createdAt: 1,
         },
       },
     );
@@ -70,6 +75,7 @@ export class ExtractionRepository {
       sourceAnnouncedAt: doc.announcedAtOrigin === "source" ? doc.announcedAt : null,
       documentType: doc.documentType ?? "tor",
       sourceProject: doc.sourceProject ?? null,
+      createdAt: doc.createdAt,
     };
   }
 
@@ -112,8 +118,8 @@ export class ExtractionRepository {
    * and provenance land together, or not at all. The worker moves
    * `pipeline.state` to `published` afterwards; this method does not touch it.
    */
-  async writeExtraction(torId: string, result: ExtractionResult): Promise<void> {
-    await tors(this.db).updateOne(
+  async writeExtraction(torId: string, result: ExtractionResult): Promise<TorDocument | null> {
+    return tors(this.db).findOneAndUpdate(
       { _id: new ObjectId(torId) },
       {
         $set: {
@@ -124,9 +130,12 @@ export class ExtractionRepository {
           reviewReasons: result.reviewReasons,
           hasTextLayer: result.hasTextLayer,
           provenance: result.provenance,
+          ...(result.cohort ? { cohort: result.cohort, cohortDateSource: result.cohortDateSource } : {}),
           updatedAt: new Date(),
         },
+        ...(result.cohort ? {} : { $unset: { cohort: "", cohortDateSource: "" } }),
       },
+      { returnDocument: "before" },
     );
   }
 }

@@ -41,6 +41,7 @@ const config: ExtractionConfig = {
   thresholdsVersion: "2026-09-03",
   budgetMinThb: 10_000,
   budgetMaxThb: 100_000_000_000,
+  timezone: "Asia/Bangkok",
 };
 
 interface FakeTarget {
@@ -63,6 +64,7 @@ function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } & FakeTarget = {}) {
     sourceAnnouncedAt: over.sourceAnnouncedAt ?? null,
     documentType: over.documentType ?? "tor",
     sourceProject: over.sourceProject ?? null,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
   }));
   const writeExtraction = vi.fn<(torId: string, result: ExtractionResult) => Promise<void>>(async () => {});
   const findInvitationDeadline = vi.fn(async () => over.invitationDeadline ?? null);

@@ -1,5 +1,6 @@
 import "../../test/env.js";
 
+import { Readable } from "node:stream";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
@@ -14,18 +15,21 @@ import { buildTorsRouter } from "./tors.routes.js";
 import { TorsService } from "./tors.service.js";
 
 const config = loadConfig(process.env);
-const signedUrl = "https://objects.example.test/public-document";
+const BYTES = Buffer.from("%PDF-1.7 public document body");
 const recordStorage = {
   bucket: "tor-raw",
   key: "tors/2026/09/public-original.pdf",
   contentType: "application/pdf",
-  bytes: 184_320,
+  bytes: BYTES.byteLength,
 };
 
 let db: Db;
 let receivedAuthorization: string | undefined;
-const signDocument = vi.fn(async (_key: string, _ttlSeconds: number) => signedUrl);
-const storage = { signedUrl: signDocument } as unknown as Storage;
+const getStream = vi.fn(async () => Readable.from([BYTES]));
+const storage = {
+  exists: vi.fn(async () => true),
+  getStream,
+} as unknown as Storage;
 
 async function seedRecord(restricted = false): Promise<string> {
   const now = new Date();
@@ -56,13 +60,8 @@ function buildTestApp() {
   app.use(
     "/api/v1/tors",
     buildTorsRouter({
-      service: new TorsService({
-        repo: new TorsRepository(db),
-        storage,
-        signedUrlTtlSeconds: config.signedUrlTtlSeconds,
-        facetLimit: config.search.facetLimit,
-        timeZone: config.search.timeZone,
-      }),
+      service: new TorsService({ repo: new TorsRepository(db), config }),
+      storage,
       search: config.search,
     }),
   );
@@ -78,7 +77,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await tors(db).deleteMany({});
   receivedAuthorization = undefined;
-  signDocument.mockClear();
+  getStream.mockClear();
 });
 
 afterAll(async () => {
@@ -86,32 +85,24 @@ afterAll(async () => {
 });
 
 describe("public TOR document route", () => {
-  it("returns a signed URL for a normal record", async () => {
+  it("streams a published record's document with nosniff and no-store", async () => {
     const id = await seedRecord();
 
     const response = await request(buildTestApp()).get(`/api/v1/tors/${id}/document`);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      url: signedUrl,
-      expiresInSeconds: config.signedUrlTtlSeconds,
-      contentType: recordStorage.contentType,
-      bytes: recordStorage.bytes,
-    });
-    expect(signDocument).toHaveBeenCalledExactlyOnceWith(
-      recordStorage.key,
-      config.signedUrlTtlSeconds,
-    );
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(getStream).toHaveBeenCalledWith(recordStorage.key, undefined);
   });
 
-  it("returns 404 without a URL for a restricted record", async () => {
+  it("returns 404 for a restricted record and never opens the object", async () => {
     const id = await seedRecord(true);
 
     const response = await request(buildTestApp()).get(`/api/v1/tors/${id}/document`);
 
     expect(response.status).toBe(404);
-    expect(response.body).not.toHaveProperty("url");
-    expect(signDocument).not.toHaveBeenCalled();
+    expect(getStream).not.toHaveBeenCalled();
   });
 
   it("returns 404 for an unknown id", async () => {
@@ -120,14 +111,31 @@ describe("public TOR document route", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(signDocument).not.toHaveBeenCalled();
+    expect(getStream).not.toHaveBeenCalled();
   });
 
   it("returns 404 for a malformed id", async () => {
     const response = await request(buildTestApp()).get("/api/v1/tors/not-an-object-id/document");
 
     expect(response.status).toBe(404);
-    expect(signDocument).not.toHaveBeenCalled();
+    expect(getStream).not.toHaveBeenCalled();
+  });
+
+  it("answers HEAD without opening the object", async () => {
+    const id = await seedRecord();
+
+    const response = await request(buildTestApp()).head(`/api/v1/tors/${id}/document`);
+
+    expect(response.status).toBe(200);
+    expect(getStream).not.toHaveBeenCalled();
+  });
+
+  it("rejects a disposition outside the allowlist", async () => {
+    const id = await seedRecord();
+
+    const response = await request(buildTestApp()).get(`/api/v1/tors/${id}/document?disposition=evil`);
+
+    expect(response.status).toBe(400);
   });
 
   it("works without an Authorization header", async () => {
@@ -137,5 +145,35 @@ describe("public TOR document route", () => {
 
     expect(receivedAuthorization).toBeUndefined();
     expect(response.status).toBe(200);
+  });
+});
+
+describe("public TOR list route", () => {
+  it("filters public records and gives each row its anomaly verdict from one cohort-bounds read", async () => {
+    const now = new Date("2026-01-15T00:00:00Z");
+    await tors(db).insertMany([
+      {
+        contentHash: "public-list-visible", storage: recordStorage, sourceRefs: [], pipeline: { state: "published", attempts: 1 },
+        fields: {
+          budget: { raw: "100", value: 100, confidence: 0.7, verified: true },
+          category: { raw: "roads", value: "roads", confidence: 1, verified: true },
+          agency: { raw: "A", value: "A", confidence: 1, verified: true },
+        }, announcedAt: now, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null,
+        createdAt: now, updatedAt: now, cohort: { category: "roads", month: "2026-01" }, cohortDateSource: "announced",
+      },
+      {
+        contentHash: "public-list-hidden", storage: recordStorage, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: {}, announcedAt: now,
+        sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: true }, duplicateOf: null, createdAt: now, updatedAt: now,
+      },
+    ] as never);
+
+    // The search route (TOR-40/41) is the list: cursor-paged, with each row's verdict.
+    const response = await request(buildTestApp()).get("/api/v1/tors?category=roads&pageSize=1");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ total: 1, nextCursor: null });
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0]).toMatchObject({ budget: { value: 100 }, verdict: { kind: "not-evaluated" } });
+    expect(response.body.items[0]).not.toHaveProperty("cohort");
   });
 });

@@ -6,6 +6,7 @@ import { BadRequestError, PayloadTooLargeError } from "../../core/errors.js";
 import type { Storage } from "../../ports/storage.port.js";
 import type { Queue } from "../../ports/queue.port.js";
 import type { IntakeRepository, SourceRefInput } from "./intake.repository.js";
+import { cohortFor } from "../stats/cohort.js";
 
 export interface SubmitSource {
   route: "upload" | "url" | "api";
@@ -53,6 +54,7 @@ export class IntakeService {
     private readonly queue: Queue,
     private readonly repository: IntakeRepository,
     private readonly limits: IntakeLimits,
+    private readonly stats?: { timezone: string },
   ) {}
 
   /**
@@ -82,6 +84,7 @@ export class IntakeService {
       url: source.url,
       submittedBy: source.submittedBy,
       submittedAt: new Date(),
+      ...(source.filename ? { originalFilename: source.filename } : {}),
     };
 
     const existing = await this.repository.findByHash(contentHash);
@@ -90,6 +93,7 @@ export class IntakeService {
       // A source can say more on a later visit than on the first — this is how a
       // record ingested before project linking gains its project.
       if (source.context) await this.repository.attachSourceContext(existing.id, source.context);
+      await this.repository.recordIntake(sourceRef.submittedAt);
       return { torId: existing.id, duplicate: true, state: "queued" };
     }
 
@@ -103,12 +107,21 @@ export class IntakeService {
 
     let torId: string;
     try {
+      const category = source.knownFields?.category?.value;
+      const cohort = this.stats && typeof category === "string"
+        ? cohortFor(
+            // The source's publication date, when it states one, places the record in its real month.
+            { category, announcedAt: source.context?.announcedAt ?? null, createdAt: sourceRef.submittedAt },
+            this.stats.timezone,
+          )
+        : null;
       torId = await this.repository.insert(
         contentHash,
         storedObject,
         sourceRef,
         source.knownFields,
         source.context,
+        cohort,
       );
     } catch (error) {
       // The unique index is the real dedupe guarantee (FR-A-3): two callers can
@@ -123,6 +136,7 @@ export class IntakeService {
       throw error;
     }
 
+    await this.repository.recordIntake(sourceRef.submittedAt);
     await this.queue.enqueue(torId);
     return { torId, duplicate: false, state: "queued" };
   }

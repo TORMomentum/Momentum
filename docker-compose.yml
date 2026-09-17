@@ -1,15 +1,11 @@
 # The api and the worker share one image and one configuration; they differ
 # only by command. Full compose hardening - health checks, container names, the
-# two-stage image, MINIO_PUBLIC_URL for browser-facing links - is Slice-1 Task 15.
+# two-stage image - is Slice-1 Task 15.
 x-api-env: &api-env
   API_PORT: 4000
   MONGO_URL: mongodb://mongo:27017/tor_radar
-  MINIO_ENDPOINT: minio
-  MINIO_PORT: 9000
-  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-change-me-in-local-env}
-  MINIO_BUCKET: ${MINIO_BUCKET:-tor-raw}
-  MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+  GCS_BUCKET: ${GCS_BUCKET:-tor-raw}
+  GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me-admin-key}
 
@@ -36,7 +32,7 @@ services:
     environment: *api-env
     depends_on:
       - mongo
-      - minio
+      - gcs
 
   # The extraction worker: same image, run the poll loop instead of the HTTP
   # server. A separate service so restarting the api never interrupts a job in
@@ -49,7 +45,7 @@ services:
     environment: *api-env
     depends_on:
       - mongo
-      - minio
+      - gcs
 
   mongo:
     image: mongo:7
@@ -58,29 +54,19 @@ services:
     volumes:
       - mongo_data:/data/db
 
-  minio:
-    # Pinned, and pulled from quay.io rather than Docker Hub. MinIO removed its
-    # images from Docker Hub and now distributes the community edition as SOURCE
-    # ONLY: this tag is the last community release, a frozen build that will not
-    # receive security updates. Fine for local development and CI; not a
-    # production answer. Whether the project keeps MinIO long-term is a stack
-    # decision recorded as open in docs/PLAN.md.
-    #
-    # `:latest` is what broke CI silently — it resolved on machines that had
-    # pulled it before and failed everywhere else.
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address ":9001"
+  gcs:
+    # Google Cloud Storage emulator for development and CI. Pinned: `latest`
+    # resolves wherever it was pulled before and fails everywhere else, which is
+    # exactly how the MinIO image broke CI. It does NOT validate signed-URL
+    # signatures or checksums the way the real service does (spec §7) — the
+    # real-bucket suite proves those.
+    image: fsouza/fake-gcs-server:1.56.1
+    command: ["-scheme", "http", "-port", "4443", "-backend", "filesystem", "-filesystem-root", "/data"]
     ports:
-      # Host ports are overridable: another project on this machine may already
-      # hold 9000. The in-container port never changes.
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-change-me-in-local-env}
+      - "${GCS_EMULATOR_PORT:-4443}:4443"
     volumes:
-      - minio_data:/data
+      - gcs_data:/data
 
 volumes:
   mongo_data:
-  minio_data:
+  gcs_data:
