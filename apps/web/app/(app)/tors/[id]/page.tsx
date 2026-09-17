@@ -1,9 +1,19 @@
 import { notFound } from "next/navigation";
 import { getTorBySlug } from "../../../../src/data/tor-samples";
-import { fetchTorDocumentUrl } from "../../../../src/shared/api/tors.api";
+import { fetchTor, fetchTorDocumentUrl, type TorDetail } from "../../../../src/shared/api/tors.api";
 import { TorDetailView } from "../../../../src/views/TorDetailView";
+import { TorRecordView } from "../../../../src/views/TorRecordView";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
+
+async function documentUrlOrNull(id: string): Promise<string | null> {
+  try {
+    return await fetchTorDocumentUrl(id);
+  } catch (error) {
+    console.error("tor_document_url_fetch_failed", { id, error: String(error) });
+    return null;
+  }
+}
 
 /**
  * This segment deliberately has NO loading.tsx.
@@ -14,7 +24,10 @@ const OBJECT_ID = /^[0-9a-f]{24}$/i;
  * file present an unknown record answered 200, without it 404.
  *
  * This is a public page that crawlers index, and a wrong status is worse than
- * a missing skeleton. The page's own work is one signed-URL call.
+ * a missing skeleton.
+ *
+ * A record id renders the published record from the API; any other id is one
+ * of the ported sample TORs the dashboard still links to.
  */
 
 export default async function TorDetailPage({
@@ -23,22 +36,26 @@ export default async function TorDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tor = getTorBySlug(id);
-
-  // Resolve existence before any document request can suspend and start
-  // streaming. Calling notFound() after streaming begins would show the right
-  // UI with an HTTP 200 response, which is wrong for crawlers.
-  if (!tor) notFound();
-
-  let documentUrl: string | null = null;
 
   if (OBJECT_ID.test(id)) {
-    try {
-      documentUrl = await fetchTorDocumentUrl(id);
-    } catch (error) {
-      console.error("tor_document_url_fetch_failed", { id, error });
-    }
+    // Resolve existence before anything can stream: an unknown or taken-down
+    // record must answer 404, not a 404 screen with a 200.
+    const tor: TorDetail | null = await fetchTor(id);
+    if (!tor) notFound();
+
+    // The deadline may come from the project's invitation to bid; the reader
+    // gets that original too, not only this TOR's (NFR-F6).
+    const deadlineSource = tor.fields.deadline?.fromDocument;
+    const [documentUrl, deadlineDocumentUrl] = await Promise.all([
+      documentUrlOrNull(id),
+      deadlineSource ? documentUrlOrNull(deadlineSource) : Promise.resolve(null),
+    ]);
+
+    return <TorRecordView tor={tor} documentUrl={documentUrl} deadlineDocumentUrl={deadlineDocumentUrl} />;
   }
 
-  return <TorDetailView tor={tor} documentUrl={documentUrl} />;
+  const sample = getTorBySlug(id);
+  if (!sample) notFound();
+
+  return <TorDetailView tor={sample} documentUrl={null} />;
 }

@@ -1,120 +1,191 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../features/search/search.module.css";
-import icons from "../shared/ui/tor-actions.module.css";
-import slider from "../shared/ui/budget-range.module.css";
-import { useViewer } from "../shared/lib/viewer";
 import {
-  BUDGET_FILTER_MAX,
-  BUDGET_FILTER_MIN,
-  BUDGET_FILTER_STEP,
-  SEARCH_AGENCIES,
-  SEARCH_CATEGORIES,
-  TOR_SAMPLES,
-  formatBudgetFull,
-  formatBudgetShort,
-  type TorSample,
-} from "../data/tor-samples";
+  EMPTY_FILTERS,
+  hasActiveFilters,
+  toSearchQuery,
+  type SearchFilters,
+} from "../features/search/search.params";
+import type { TorFacets, TorListItem, TorSearchResult } from "../shared/api/tors.api";
+import {
+  deadlineParts,
+  formatBaht,
+  formatThaiDate,
+  formatThaiDateTime,
+  thaiDigitsToArabic,
+} from "../shared/lib/format";
+import { useViewer } from "../shared/lib/viewer";
+import { BudgetRange } from "../shared/ui/BudgetRange";
+import icons from "../shared/ui/tor-actions.module.css";
 
 /**
- * Public/registered TOR search (FR-A/FR-C). Ported from the "Search" screen of
- * mockups/TOR Radar App.dc.html. The mockup's logged-out state (a public
- * banner, hidden match scores, no star/bookmark icons) is not modelled here —
- * this app shell (see AppHeader.tsx) has no sign-out affordance and always
- * renders the signed-in nav/avatar, so this screen always renders as
- * logged-in too.
+ * Public TOR search (FR-E-3). The page renders this from the URL on the server;
+ * this component owns no results, only the controls. Every filter change
+ * pushes a URL, inside a transition, so the previous list stays on screen
+ * while the next one loads (rendering spec §3.1).
+ *
+ * Nothing on a row is a number this system has not computed: the quality
+ * score, match percentage and anomaly flag from the mockup return when their
+ * slices compute them (NFR-F6).
  */
 
-type Badge = {
-  label: string;
-  className: string;
-};
+/** How long the budget slider rests before its value becomes a search. */
+const BUDGET_COMMIT_DELAY_MS = 450;
+/** How long typing pauses before the keyword becomes a search, as the mockup filters while you type. */
+const QUERY_COMMIT_DELAY_MS = 450;
 
-/**
- * A match score is a vendor's own number, so a signed-out reader sees the
- * document's status instead. The mockup does the same: MATCH % is the reason
- * its public banner invites you to register.
- */
-function badgeFor(row: TorSample, signedIn: boolean): Badge {
-  if (row.anomaly) return { label: "◆ ความผิดปกติทางสถิติ", className: styles.badgeAnomaly };
+type Badge = { label: string; className: string };
+
+function badgeFor(row: TorListItem): Badge {
   if (row.unverified) return { label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified };
+  if (row.torStatus.value === "cancelled") return { label: "ยกเลิกแล้ว", className: styles.badgeClosed };
+  if (row.torStatus.value === "awarded") return { label: "ประกาศผู้ชนะแล้ว", className: styles.badgeClosed };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };
-  if (signedIn && row.match != null) return { label: `จับคู่ ${row.match}%`, className: styles.badgeMatch };
   return { label: "เปิดรับข้อเสนอ", className: styles.badgeOpen };
 }
 
-function priceClassFor(row: TorSample): string {
-  if (row.anomaly) return styles.priceAnomaly;
-  if (row.unverified) return styles.priceUnverified;
-  return styles.priceNormal;
+/** A slider step that gives roughly a hundred positions across the corpus's range. */
+function sliderStep(span: number): number {
+  const rough = Math.max(span / 100, 1);
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  return Math.ceil(rough / magnitude) * magnitude;
 }
 
-const BUDGET_SPAN = BUDGET_FILTER_MAX - BUDGET_FILTER_MIN;
-
-export function SearchView() {
+export function SearchView({
+  filters,
+  facets,
+  results,
+  queryMaxChars,
+}: {
+  filters: SearchFilters;
+  facets: TorFacets;
+  /** null when the API could not answer — search fails closed (rendering spec §8). */
+  results: TorSearchResult | null;
+  queryMaxChars: number;
+}) {
   const router = useRouter();
   const { signedIn, ready } = useViewer();
-  const gooId = useId().replace(/[:]/g, "");
+  const [pending, startTransition] = useTransition();
 
-  const [agencySel, setAgencySel] = useState<Record<string, boolean>>({});
-  const [catSel, setCatSel] = useState<Record<string, boolean>>({});
-  const [minBudget, setMinBudget] = useState(BUDGET_FILTER_MIN);
-  const [maxBudget, setMaxBudget] = useState(BUDGET_FILTER_MAX);
-  const [statusOpen, setStatusOpen] = useState(true);
-  const [query, setQuery] = useState("");
-  const [hoverMin, setHoverMin] = useState(false);
-  const [hoverMax, setHoverMax] = useState(false);
+  const [draftQuery, setDraftQuery] = useState(filters.q);
+  const lastCommittedQuery = useRef(filters.q);
   const [starSel, setStarSel] = useState<Record<string, boolean>>({});
   const [bookSel, setBookSel] = useState<Record<string, boolean>>({});
 
-  const agOn = Object.keys(agencySel).filter((k) => agencySel[k]);
-  const catOn = Object.keys(catSel).filter((k) => catSel[k]);
-  const q = query.trim();
+  // Only a change that arrives from outside — clear all, the back button —
+  // resets the field. The field's own search returning must not overwrite
+  // what the reader has typed since.
+  useEffect(() => {
+    if (filters.q !== lastCommittedQuery.current) {
+      lastCommittedQuery.current = filters.q;
+      setDraftQuery(filters.q);
+    }
+  }, [filters.q]);
 
-  const results = TOR_SAMPLES.filter(
-    (row) =>
-      (agOn.length === 0 || agOn.includes(row.agency)) &&
-      (catOn.length === 0 || catOn.includes(row.catKey)) &&
-      row.budget <= maxBudget &&
-      row.budget >= minBudget &&
-      (!statusOpen || row.open) &&
-      (!q || row.title.includes(q) || row.agency.includes(q)),
-  );
+  const budgetFacet = facets.budget;
+  const step = budgetFacet ? sliderStep(budgetFacet.max - budgetFacet.min) : 1;
+  const floor = budgetFacet ? Math.floor(budgetFacet.min / step) * step : 0;
+  const ceiling = budgetFacet ? Math.ceil(budgetFacet.max / step) * step : 0;
+  const committedMin = filters.minBudget ?? floor;
+  const committedMax = filters.maxBudget ?? ceiling;
+  const [draftBudget, setDraftBudget] = useState({ min: committedMin, max: committedMax });
+  const lastCommittedBudget = useRef({ min: committedMin, max: committedMax });
 
-  function openRow(slug: string) {
-    router.push(`/tors/${slug}`);
+  useEffect(() => {
+    // Only an outside change resets the slider. The slider's own commit
+    // returning must not snap a handle the reader is still dragging.
+    const last = lastCommittedBudget.current;
+    if (last.min !== committedMin || last.max !== committedMax) {
+      lastCommittedBudget.current = { min: committedMin, max: committedMax };
+      setDraftBudget({ min: committedMin, max: committedMax });
+    }
+  }, [committedMin, committedMax]);
+
+  /**
+   * Pushed, not replaced: every call is a committed choice — a click, Enter, a
+   * slider come to rest — so Back undoes the last filter instead of leaving
+   * the page (rendering spec §3.1).
+   */
+  function navigate(next: SearchFilters) {
+    const query = toSearchQuery(next);
+    startTransition(() => {
+      router.push(query ? `/search?${query}` : "/search", { scroll: false });
+    });
+  }
+
+  /** Any filter change starts again from the first page. */
+  function update(change: Partial<SearchFilters>) {
+    navigate({ ...filters, ...change, cursor: null });
+  }
+
+  function toggle(list: string[], value: string): string[] {
+    return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+  }
+
+  useEffect(() => {
+    const { min, max } = draftBudget;
+    const last = lastCommittedBudget.current;
+    if (min === last.min && max === last.max) return;
+
+    const timer = setTimeout(() => {
+      lastCommittedBudget.current = { min, max };
+      // A handle resting at the end of the range is no bound at all, so the URL omits it.
+      update({ minBudget: min <= floor ? null : min, maxBudget: max >= ceiling ? null : max });
+    }, BUDGET_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+    // Re-armed on the draft alone: `update` reads the filters of the render
+    // that scheduled it, which are the ones this change applies to.
+  }, [draftBudget]);
+
+  function commitQuery(value: string) {
+    const q = value.normalize("NFC").trim();
+    if (q === lastCommittedQuery.current) return;
+    lastCommittedQuery.current = q;
+    update({ q });
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => commitQuery(draftQuery), QUERY_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+    // Re-armed on the draft alone, as the budget slider is.
+  }, [draftQuery]);
+
+  function clearFilters() {
+    lastCommittedQuery.current = "";
+    lastCommittedBudget.current = { min: floor, max: ceiling };
+    setDraftBudget({ min: floor, max: ceiling });
+    setDraftQuery("");
+    navigate(EMPTY_FILTERS);
   }
 
   function toggleStar(e: React.SyntheticEvent, id: string) {
+    e.preventDefault();
     e.stopPropagation();
     setStarSel((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   function toggleBook(e: React.SyntheticEvent, id: string) {
+    e.preventDefault();
     e.stopPropagation();
     setBookSel((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  function clearFilters() {
-    setQuery("");
-    setMinBudget(BUDGET_FILTER_MIN);
-    setMaxBudget(BUDGET_FILTER_MAX);
-    // Matches the mockup's clearFilters exactly — it resets status to "ทั้งหมด"
-    // (statusOpen: false), not back to the screen's own "ยังเปิดรับ" default.
-    setStatusOpen(false);
-    setAgencySel({});
-    setCatSel({});
-  }
+  const filtered = hasActiveFilters(filters);
+  const firstPageQuery = toSearchQuery({ ...filters, cursor: null });
 
-  const minPct = ((minBudget - BUDGET_FILTER_MIN) / BUDGET_SPAN) * 100;
-  const maxPct = 100 - ((maxBudget - BUDGET_FILTER_MIN) / BUDGET_SPAN) * 100;
-  const minBallSize = hoverMin ? 28 : 15;
-  const maxBallSize = hoverMax ? 28 : 15;
-  const minHoleSize = hoverMin ? 13 : 0;
-  const maxHoleSize = hoverMax ? 13 : 0;
+  /** Names the filters that emptied the list (rendering spec §8). */
+  const activeNames = [
+    filters.q && `คำค้น “${thaiDigitsToArabic(filters.q)}”`,
+    filters.agencies.length > 0 && "หน่วยงาน",
+    filters.categories.length > 0 && "หมวดหมู่",
+    (filters.minBudget !== null || filters.maxBudget !== null) && "งบประมาณ",
+    (filters.deadlineFrom || filters.deadlineTo) && "กำหนดยื่นข้อเสนอ",
+    filters.open && "ยังเปิดรับ",
+  ].filter(Boolean);
 
   return (
     <main className={styles.searchPage}>
@@ -126,105 +197,87 @@ export function SearchView() {
           </button>
         </div>
 
-        <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>หน่วยงาน</div>
-          <div className={styles.toggleList}>
-            {SEARCH_AGENCIES.map((name) => (
-              <button
-                type="button"
-                key={name}
-                className={`${styles.toggleItem} ${agencySel[name] ? styles.toggleItemOn : ""}`}
-                onClick={() => setAgencySel((prev) => ({ ...prev, [name]: !prev[name] }))}
-              >
-                {agencySel[name] ? "☑" : "☐"} {name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
-          <div className={slider.sliderWrap}>
-            <svg width="0" height="0" style={{ position: "absolute" }}>
-              <defs>
-                <filter id={gooId}>
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b" />
-                  <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" result="g" />
-                  <feComposite in="SourceGraphic" in2="g" operator="atop" />
-                </filter>
-              </defs>
-            </svg>
-            <div className={slider.sliderTrackBg} />
-            <div className={slider.sliderGoo} style={{ filter: `url(#${gooId})` }}>
-              <div className={slider.sliderFill} style={{ left: `${minPct}%`, right: `${maxPct}%` }} />
-              <div
-                className={slider.sliderBall}
-                style={{ left: `${minPct}%`, width: minBallSize, height: minBallSize }}
-              />
-              <div
-                className={`${slider.sliderBall} ${slider.sliderBallMax}`}
-                style={{ right: `${maxPct}%`, width: maxBallSize, height: maxBallSize }}
-              />
+        {facets.agencies.length > 0 && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>หน่วยงาน</div>
+            <div className={styles.toggleList}>
+              {facets.agencies.map(({ value, count }) => {
+                const on = filters.agencies.includes(value);
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`${styles.toggleItem} ${on ? styles.toggleItemOn : ""}`}
+                    onClick={() => update({ agencies: toggle(filters.agencies, value) })}
+                    aria-pressed={on}
+                  >
+                    {on ? "☑" : "☐"} {thaiDigitsToArabic(value)} <span className={styles.facetCount}>{count}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div
-              className={slider.sliderHole}
-              style={{ left: `${minPct}%`, width: minHoleSize, height: minHoleSize }}
-            />
-            <div
-              className={`${slider.sliderHole} ${slider.sliderHoleMax}`}
-              style={{ right: `${maxPct}%`, width: maxHoleSize, height: maxHoleSize }}
-            />
-            <input
-              type="range"
-              className={slider.rangeInput}
-              min={BUDGET_FILTER_MIN}
-              max={BUDGET_FILTER_MAX}
-              step={BUDGET_FILTER_STEP}
-              value={minBudget}
-              onChange={(e) => setMinBudget(Math.min(Number(e.target.value), maxBudget))}
-              onMouseEnter={() => setHoverMin(true)}
-              onMouseLeave={() => setHoverMin(false)}
-              onTouchStart={() => setHoverMin(true)}
-              onTouchEnd={() => setHoverMin(false)}
-              aria-label="งบประมาณขั้นต่ำ"
-            />
-            <input
-              type="range"
-              className={slider.rangeInput}
-              min={BUDGET_FILTER_MIN}
-              max={BUDGET_FILTER_MAX}
-              step={BUDGET_FILTER_STEP}
-              value={maxBudget}
-              onChange={(e) => setMaxBudget(Math.max(Number(e.target.value), minBudget))}
-              onMouseEnter={() => setHoverMax(true)}
-              onMouseLeave={() => setHoverMax(false)}
-              onTouchStart={() => setHoverMax(true)}
-              onTouchEnd={() => setHoverMax(false)}
-              aria-label="งบประมาณสูงสุด"
+          </div>
+        )}
+
+        {budgetFacet && ceiling > floor && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
+            <BudgetRange
+              min={draftBudget.min}
+              max={draftBudget.max}
+              floor={floor}
+              ceiling={ceiling}
+              step={step}
+              onChange={setDraftBudget}
             />
           </div>
-          <div className={slider.sliderLabels}>
-            <span>฿500K</span>
-            <span className={slider.sliderLabelActive}>
-              {formatBudgetShort(minBudget)} — {formatBudgetShort(maxBudget)}
-            </span>
-            <span>฿9.4M</span>
+        )}
+
+        {facets.categories.length > 0 && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>หมวดหมู่</div>
+            <div className={styles.pillList}>
+              {facets.categories.map(({ value }) => {
+                const on = filters.categories.includes(value);
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`${styles.pill} ${on ? styles.pillOn : ""}`}
+                    onClick={() => update({ categories: toggle(filters.categories, value) })}
+                    aria-pressed={on}
+                  >
+                    {thaiDigitsToArabic(value)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>หมวดหมู่</div>
-          <div className={styles.pillList}>
-            {SEARCH_CATEGORIES.map((name) => (
-              <button
-                type="button"
-                key={name}
-                className={`${styles.pill} ${catSel[name] ? styles.pillOn : ""}`}
-                onClick={() => setCatSel((prev) => ({ ...prev, [name]: !prev[name] }))}
-              >
-                {name}
-              </button>
-            ))}
+          <div className={styles.filterGroupTitle}>กำหนดยื่นข้อเสนอ</div>
+          <div className={styles.dateRange}>
+            <label className={styles.dateField}>
+              <span className={styles.dateLabel}>ตั้งแต่</span>
+              <input
+                type="date"
+                className={styles.dateInput}
+                value={filters.deadlineFrom ?? ""}
+                max={filters.deadlineTo ?? undefined}
+                onChange={(e) => update({ deadlineFrom: e.target.value || null })}
+              />
+            </label>
+            <label className={styles.dateField}>
+              <span className={styles.dateLabel}>ถึง</span>
+              <input
+                type="date"
+                className={styles.dateInput}
+                value={filters.deadlineTo ?? ""}
+                min={filters.deadlineFrom ?? undefined}
+                onChange={(e) => update({ deadlineTo: e.target.value || null })}
+              />
+            </label>
           </div>
         </div>
 
@@ -233,34 +286,54 @@ export function SearchView() {
           <div className={styles.toggleList}>
             <button
               type="button"
-              className={`${styles.toggleItem} ${statusOpen ? styles.toggleItemOn : ""}`}
-              onClick={() => setStatusOpen(true)}
+              className={`${styles.toggleItem} ${filters.open ? styles.toggleItemOn : ""}`}
+              onClick={() => update({ open: true })}
+              aria-pressed={filters.open}
             >
-              {statusOpen ? "◉" : "○"} ยังเปิดรับ
+              {filters.open ? "◉" : "○"} ยังเปิดรับ
             </button>
             <button
               type="button"
-              className={`${styles.toggleItem} ${!statusOpen ? styles.toggleItemOn : ""}`}
-              onClick={() => setStatusOpen(false)}
+              className={`${styles.toggleItem} ${!filters.open ? styles.toggleItemOn : ""}`}
+              onClick={() => update({ open: false })}
+              aria-pressed={!filters.open}
             >
-              {statusOpen ? "○" : "◉"} ทั้งหมด (รวมปิดแล้ว)
+              {filters.open ? "○" : "◉"} ทั้งหมด (รวมปิดแล้ว)
             </button>
           </div>
         </div>
 
-        <div className={styles.sidebarFoot}>ผลลัพธ์ &lt; 2 วินาที · คลังข้อมูลตัวอย่าง</div>
+        <div className={styles.sidebarFoot}>
+          {results?.coverage.lastUpdatedAt && (
+            <>
+              อัปเดตข้อมูลล่าสุด {formatThaiDateTime(results.coverage.lastUpdatedAt)}
+              <br />
+            </>
+          )}
+          ครอบคลุมเฉพาะเอกสารที่ระบบรวบรวมได้ ไม่ใช่ประกาศจัดซื้อจัดจ้างทั้งหมดในประเทศ
+        </div>
       </div>
 
       <div className={styles.results}>
-        <div className={styles.searchBar}>
+        <form
+          className={styles.searchBar}
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            commitQuery(draftQuery);
+          }}
+        >
           <input
             className={styles.searchInput}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            type="search"
+            value={draftQuery}
+            maxLength={queryMaxChars}
+            onChange={(e) => setDraftQuery(e.target.value)}
             placeholder="⌕ ค้นหา เช่น ระบบสารสนเทศ, ปรับปรุงถนน…"
+            aria-label="ค้นหา TOR"
           />
-          <span className={styles.resultCount}>{results.length} ผลลัพธ์</span>
-        </div>
+          {results && <span className={styles.resultCount}>{results.total} ผลลัพธ์</span>}
+        </form>
 
         {ready && !signedIn && (
           <div className={styles.publicBanner}>
@@ -274,108 +347,158 @@ export function SearchView() {
           </div>
         )}
 
-        <div className={styles.resultList}>
-          {results.map((row) => {
-            const badge = badgeFor(row, signedIn);
-            return (
-              <div
-                key={row.slug}
-                className={`${styles.resultRow} ${!row.open ? styles.resultRowClosed : ""}`}
-                role="link"
-                tabIndex={0}
-                onClick={() => openRow(row.slug)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openRow(row.slug);
-                  }
-                }}
-              >
-                <div className={styles.resultLead}>
-                  <div className={styles.badgeRow}>
-                    <span className={`${styles.badge} ${badge.className}`}>{badge.label}</span>
-                    <span className={styles.resultId}>{row.id}</span>
+        {!results ? (
+          <div className={styles.emptyState} role="alert">
+            ค้นหาไม่ได้ในขณะนี้ — ยังเชื่อมต่อกับบริการข้อมูลไม่ได้ จึงไม่แสดงผลที่อาจไม่ครบถ้วน
+            ลองใหม่อีกครั้งภายหลัง
+          </div>
+        ) : (
+          <div
+            className={`${styles.resultList} ${pending ? styles.resultListPending : ""}`}
+            aria-busy={pending}
+          >
+            {results.items.map((row) => {
+              const badge = badgeFor(row);
+              return (
+                <Link
+                  key={row.id}
+                  href={`/tors/${row.id}`}
+                  className={`${styles.resultRow} ${!row.open ? styles.resultRowClosed : ""}`}
+                >
+                  <div className={styles.resultLead}>
+                    <div className={styles.badgeRow}>
+                      <span className={`${styles.badge} ${badge.className}`}>{badge.label}</span>
+                      {row.referenceNo?.raw && <span className={styles.resultId}>{row.referenceNo.raw}</span>}
+                    </div>
+                    <div className={styles.resultTitle}>{row.title.raw || "ไม่พบชื่อโครงการในเอกสาร"}</div>
+                    <div className={styles.resultMeta}>
+                      {row.agency.raw || "ไม่ระบุหน่วยงาน"}
+                      {row.announcedAt && ` · ประกาศ ${formatThaiDate(row.announcedAt)}`}
+                    </div>
                   </div>
-                  <div className={styles.resultTitle}>{row.title}</div>
-                  <div className={styles.resultMeta}>
-                    {row.agency} · ประกาศ {row.posted} · คุณภาพ {row.quality}/10
+                  <div
+                    className={`${styles.resultPrice} ${
+                      row.budget.verified ? styles.priceNormal : styles.priceUnverified
+                    }`}
+                    title={row.budget.verified ? undefined : "ค่าที่สกัดยังไม่ได้รับการยืนยัน"}
+                  >
+                    {row.budget.raw ? (
+                      <>
+                        {typeof row.budget.value === "number" ? formatBaht(row.budget.value) : row.budget.raw}
+                        {!row.budget.verified && "*"}
+                      </>
+                    ) : (
+                      <span className={styles.valueMissing}>ไม่ระบุงบประมาณ</span>
+                    )}
                   </div>
+                  <div className={styles.resultDeadline}>
+                    {row.open ? "ยื่นภายใน" : "ปิดรับ"}
+                    {/* Formatted in Arabic numerals; the document's own wording is the
+                        tooltip here and is shown in full on the detail page (NFR-F7). */}
+                    <span className={styles.resultDeadlineValue} title={row.deadline.raw || undefined}>
+                      {(() => {
+                        const mark = row.deadline.raw && !row.deadline.verified ? "*" : "";
+                        const parts = deadlineParts(row.deadline.value, row.deadline.raw);
+                        if (!parts) return `${row.deadline.raw || "ยังไม่ประกาศเชิญชวน"}${mark}`;
+                        return (
+                          <>
+                            {parts.date}
+                            {mark}
+                            {parts.window && <span className={styles.resultDeadlineWindow}>{parts.window}</span>}
+                          </>
+                        );
+                      })()}
+                    </span>
+                  </div>
+                  {signedIn && (
+                    <div className={styles.resultActions}>
+                      <span
+                        className={`${styles.actionBtn} ${styles.starBtn} ${starSel[row.id] ? styles.starBtnOn : ""}`}
+                        role="button"
+                        tabIndex={0}
+                        title="เคยทำงานลักษณะนี้ (ส่วนตัว — ช่วยให้ AI จับคู่แม่นขึ้น ไม่มีผลต่อการค้นหา)"
+                        onClick={(e) => toggleStar(e, row.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") toggleStar(e, row.id);
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          className={`${icons.starIcon} ${starSel[row.id] ? icons.starIconOn : ""}`}
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      </span>
+                      <span
+                        className={`${styles.actionBtn} ${styles.bookBtn} ${bookSel[row.id] ? styles.bookBtnOn : ""}`}
+                        role="button"
+                        tabIndex={0}
+                        title="บุ๊กมาร์ก — เก็บไว้ดูภายหลัง"
+                        onClick={(e) => toggleBook(e, row.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") toggleBook(e, row.id);
+                        }}
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          className={`${icons.bookIcon} ${bookSel[row.id] ? icons.bookIconOn : ""}`}
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+                        </svg>
+                      </span>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+
+            {results.total === 0 &&
+              (filtered ? (
+                <div className={styles.emptyState}>
+                  ไม่พบ TOR ที่ตรงกับตัวกรอง ({activeNames.join(" · ")}) —{" "}
+                  <button type="button" className={styles.emptyClear} onClick={clearFilters}>
+                    ล้างตัวกรอง
+                  </button>
                 </div>
-                <div className={`${styles.resultPrice} ${priceClassFor(row)}`}>
-                  {formatBudgetFull(row.budget)}
-                  {row.unverified ? "*" : ""}
+              ) : (
+                <div className={styles.emptyState}>
+                  ยังไม่มี TOR ที่เผยแพร่ในระบบ — เมื่อมีเอกสารที่สกัดข้อมูลแล้ว รายการจะปรากฏที่นี่
                 </div>
-                <div className={styles.resultDeadline}>
-                  {row.open ? "ยื่นภายใน" : "ปิดรับ"}
-                  <span className={styles.resultDeadlineValue}>{row.deadline}</span>
-                </div>
-                {signedIn && (
-                <div className={styles.resultActions}>
-                  <span
-                    className={`${styles.actionBtn} ${styles.starBtn} ${starSel[row.id] ? styles.starBtnOn : ""}`}
-                    role="button"
-                    tabIndex={0}
-                    title="เคยทำงานลักษณะนี้ (ส่วนตัว — ช่วยให้ AI จับคู่แม่นขึ้น ไม่มีผลต่อการค้นหา)"
-                    onClick={(e) => toggleStar(e, row.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleStar(e, row.id);
-                      }
-                    }}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      className={`${icons.starIcon} ${starSel[row.id] ? icons.starIconOn : ""}`}
-                      strokeWidth="2"
-                      strokeLinejoin="round"
+              ))}
+
+            {results.total > 0 && (
+              <div className={styles.resultsFootHint}>
+                <span>คลิกรายการเพื่อดูรายละเอียด</span>
+                <span className={styles.pager}>
+                  {filters.cursor && (
+                    <Link
+                      href={firstPageQuery ? `/search?${firstPageQuery}` : "/search"}
+                      className={styles.pagerLink}
                     >
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  </span>
-                  <span
-                    className={`${styles.actionBtn} ${styles.bookBtn} ${bookSel[row.id] ? styles.bookBtnOn : ""}`}
-                    role="button"
-                    tabIndex={0}
-                    title="บุ๊กมาร์ก — เก็บไว้ดูภายหลัง"
-                    onClick={(e) => toggleBook(e, row.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleBook(e, row.id);
-                      }
-                    }}
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      className={`${icons.bookIcon} ${bookSel[row.id] ? icons.bookIconOn : ""}`}
-                      strokeWidth="2"
-                      strokeLinejoin="round"
+                      ← หน้าแรก
+                    </Link>
+                  )}
+                  {results.nextCursor && (
+                    <Link
+                      href={`/search?${toSearchQuery({ ...filters, cursor: results.nextCursor })}`}
+                      className={styles.pagerLink}
                     >
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-                    </svg>
-                  </span>
-                </div>
-                )}
+                      หน้าถัดไป →
+                    </Link>
+                  )}
+                </span>
               </div>
-            );
-          })}
-
-          {results.length === 0 && (
-            <div className={styles.emptyState}>
-              ไม่พบ TOR ที่ตรงกับตัวกรอง —{" "}
-              <button type="button" className={styles.emptyClear} onClick={clearFilters}>
-                ล้างตัวกรอง
-              </button>
-            </div>
-          )}
-
-          <div className={styles.resultsFootHint}>คลิกรายการเพื่อดูรายละเอียด</div>
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

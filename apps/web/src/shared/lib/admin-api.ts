@@ -11,7 +11,11 @@ import "server-only";
  * Which is also why the browser never calls the API directly for admin work.
  * The Next server holds the key, calls the API, and returns only the data —
  * the pattern decided for every privileged surface (docs/API.md §2).
+ *
+ * Every response comes back with Arabic numerals, as on the public pages.
  */
+
+import { withArabicDigits } from "./format";
 
 const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000";
 const API_PREFIX = "/api/v1";
@@ -97,7 +101,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (response.status === 404) throw new AdminRecordNotFound(detail);
     throw new AdminApiFailed(detail);
   }
-  return (await response.json()) as T;
+  return withArabicDigits((await response.json()) as T);
 }
 
 export interface AdminOverview {

@@ -1,3 +1,5 @@
+import { formatBaht } from "../shared/lib/format";
+
 /**
  * Sample TOR corpus shared by the Search and TOR Detail screens, ported from
  * mockups/TOR Radar App.dc.html (the `data()` method of its Component class).
@@ -241,7 +243,7 @@ export function getTorBySlug(slug: string): TorSample | undefined {
 
 /** "฿4,850,000" style — matches the mockup's `'฿' + n.toLocaleString()`. */
 export function formatBudgetFull(n: number): string {
-  return "฿" + n.toLocaleString("en-US");
+  return formatBaht(n);
 }
 
 /** "฿4.9M" / "฿500K" style — matches the mockup's `fmtM()` slider label. */

@@ -143,6 +143,8 @@
 
 .resultDeadlineValue { display: block; font: 600 12px var(--data); color: var(--ink); }
 
+.resultDeadlineWindow { display: block; font: 500 11px var(--data); color: var(--ink-65); }
+
 .resultActions { display: flex; gap: 6px; justify-content: flex-end; }
 
 .actionBtn {
@@ -181,7 +183,44 @@
   padding: 14px 10px;
   font: 11px var(--data);
   color: rgba(18, 35, 60, 0.6);
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
 }
+
+/* ---- live search: counts, deadline range, pending, paging ---- */
+
+.facetCount { font: 10px var(--data); color: var(--ink-55); margin-left: 2px; }
+
+.dateRange { display: grid; gap: 8px; }
+
+.dateField { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 8px; font-size: 12px; }
+
+.dateLabel { color: rgba(18, 35, 60, 0.7); }
+
+.dateInput {
+  width: 100%;
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font: 12px var(--data);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+/* The previous results stay while the next arrive — dimmed, never blanked (rendering spec §3.1). */
+.resultListPending { opacity: 0.55; transition: opacity 0.15s ease; }
+
+.resultRow { color: inherit; text-decoration: none; }
+
+.valueMissing { font: 500 12px var(--body); color: var(--ink-55); }
+
+.pager { display: flex; gap: 16px; }
+
+.pagerLink { color: var(--blue); text-decoration: none; font-weight: 600; }
+
+.pagerLink:hover { text-decoration: underline; }
 
 /* Signed-out notice on Search: says what an account adds, in the mockup's words. */
 
