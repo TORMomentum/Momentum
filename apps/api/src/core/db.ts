@@ -1,5 +1,5 @@
 import { MongoClient, type Collection, type Db } from "mongodb";
-import type { ConfidenceLevel, Provenance, TorFields } from "@tor-radar/shared";
+import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
 
@@ -18,6 +18,12 @@ export interface TorDocument {
   fields: Partial<TorFields>;
   /** The TOR's own publication date, extracted in slice 2 - never the ingestion time. */
   announcedAt: Date | null;
+  /** "source" when the source system stated `announcedAt`; extraction then leaves it alone. */
+  announcedAtOrigin?: "source";
+  /** Absent means "tor". An invitation only supplies fields its project's TOR lacks. */
+  documentType?: DocumentType;
+  /** The source project this document belongs to — what links a TOR to its invitation. */
+  sourceProject?: SourceProject;
   sourceUrl: string | null;
   confidenceLevel?: ConfidenceLevel;
   unverified: boolean;
@@ -179,7 +185,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // served by the three-field compound below, whose prefix covers it - one
   // index, not two, because every extra index is paid for on every write.
   await tors(db).createIndex({ "fields.category.value": 1, announcedAt: -1 });
-  await tors(db).createIndex({ announcedAt: -1 });
+  // The _id suffix is the public list's cursor tie-breaker, so the unfiltered
+  // listing reads its order straight from this index (search spec §4).
+  await tors(db).createIndex({ announcedAt: -1, _id: -1 });
   await tors(db).createIndex({
     "fields.agency.value": 1,
     announcedAt: -1,

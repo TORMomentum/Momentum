@@ -28,6 +28,27 @@ export interface ExtractedField<T = string> {
   currency?: string;
   /** qualifications only: taxonomy tags mapped from `value` (FR-B-4). */
   tags?: string[];
+  /**
+   * "source" when the source system published the value (the BMA e-GP API, say)
+   * rather than a model reading it from the document. Such a value is not
+   * AI-produced (NFR-F6), and extraction never overwrites it.
+   */
+  origin?: "source";
+  /**
+   * The record this value was read from, when it is not this record's own
+   * document — e.g. a TOR's deadline read from its project's invitation to bid.
+   */
+  fromDocument?: string;
+}
+
+/** What a stored document is. A record without one is a TOR. */
+export type DocumentType = "tor" | "invitation";
+
+/** The source system's project a document belongs to; every document of one project shares it. */
+export interface SourceProject {
+  system: "bma-egp";
+  projectId: string;
+  projectNumber?: string;
 }
 
 /** Extraction provenance recorded on every AI-produced record (NFR-F6). */
@@ -67,6 +88,11 @@ export interface TorRecord {
   reviewReasons?: ReviewReason[];
   fields: Partial<TorFields>;
   announcedAt: string | null;
+  /** "source" when the source system stated the announcement date, not the document. */
+  announcedAtOrigin?: "source";
+  /** Absent means "tor". An invitation is a supporting document and is never listed publicly. */
+  documentType?: DocumentType;
+  sourceProject?: SourceProject;
   sourceUrl: string | null;
   confidenceLevel?: ConfidenceLevel;
   unverified: boolean;

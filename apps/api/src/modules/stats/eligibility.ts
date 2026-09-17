@@ -54,6 +54,15 @@ export function eligibilityOf(record: EligibilityRecord, bounds: BudgetBounds): 
  * index. Equality on both sides keeps one predicate, indexable, with no
  * silently-unindexed second copy.
  */
+/**
+ * An invitation to bid is a supporting document of a TOR (e-GP project linking
+ * spec): its budget is the same project's budget, so counting it would count
+ * the project twice. Kept out of every figure and peer group. Not part of
+ * eligibleFilter(), because a partial index cannot express `$ne` — queries add
+ * it, and the index still serves them, since they select a subset of it.
+ */
+export const NOT_SUPPORTING_DOCUMENT = { documentType: { $ne: "invitation" } } as const;
+
 export function eligibleFilter() {
   return {
     "pipeline.state": "published",

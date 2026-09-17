@@ -1,8 +1,9 @@
 import { ObjectId, type Db } from "mongodb";
 import { torEvents, torMeta, tors, type TorDocument } from "../../core/db.js";
-import type { ExtractedField } from "@tor-radar/shared";
+import type { TorFields } from "@tor-radar/shared";
 import type { StoredObject } from "../../ports/storage.port.js";
 import type { CohortKey } from "../stats/cohort.js";
+import type { SourceContext } from "./intake.service.js";
 
 export interface SourceRefInput {
   route: "upload" | "url" | "api";
@@ -25,7 +26,20 @@ export interface FoundTor {
  * written by that slice" are indistinguishable, and a migration has nothing
  * to select on. Bump it when the shape of a written record changes.
  */
-export const TOR_SCHEMA_VERSION = 1;
+export const TOR_SCHEMA_VERSION = 2;
+
+/** A source context as record fields; nothing for a plain upload. */
+function contextFields(context: SourceContext | undefined): Partial<TorDocument> {
+  if (!context) return {};
+  const fields: Partial<TorDocument> = {};
+  if (context.documentType) fields.documentType = context.documentType;
+  if (context.sourceProject) fields.sourceProject = context.sourceProject;
+  if (context.announcedAt) {
+    fields.announcedAt = context.announcedAt;
+    fields.announcedAtOrigin = "source";
+  }
+  return fields;
+}
 
 /** The only intake code that touches MongoDB. */
 export class IntakeRepository {
@@ -50,7 +64,8 @@ export class IntakeRepository {
     contentHash: string,
     storedObject: StoredObject,
     source: SourceRefInput,
-    knownFields?: Record<string, ExtractedField>,
+    knownFields?: Partial<TorFields>,
+    context?: SourceContext,
     cohort?: { cohort: CohortKey; cohortDateSource: "announced" | "intake" } | null,
   ): Promise<string> {
     const now = new Date();
@@ -65,6 +80,7 @@ export class IntakeRepository {
       // ingestion time: FR-E-1's trend and FR-E-3's filter mean the agency's
       // date, and defaulting it here would report a backfill as today's work.
       announcedAt: null,
+      ...contextFields(context),
       sourceUrl: source.url ?? null,
       unverified: true,
       statusHistory: [
@@ -99,6 +115,12 @@ export class IntakeRepository {
     await torMeta(this.db).updateOne({ _id: "dashboard" }, { $set: { lastIntakeAt: at } }, { upsert: true });
   }
 
+  /** Records what a source states about a document that was already stored. */
+  async attachSourceContext(id: string, context: SourceContext): Promise<void> {
+    const fields = contextFields(context);
+    if (Object.keys(fields).length === 0) return;
+    await tors(this.db).updateOne({ _id: new ObjectId(id) }, { $set: { ...fields, updatedAt: new Date() } });
+  }
 
   /** FR-A-3: the same document arriving again records the new source, not a new record. */
   async appendSourceRef(id: string, source: SourceRefInput): Promise<void> {

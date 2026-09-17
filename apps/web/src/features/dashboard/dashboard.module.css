@@ -220,8 +220,14 @@
 
 .grid { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(18, 35, 60, 0.15); }
 
+/* The size lives here, not in the component: BudgetPlot places a dot by its
+   left/bottom coordinate only, and without a size every dot rendered 0 × 0.
+   The negative margins centre the dot on its value. */
 .dot {
   position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: 0 0 -4.5px -4.5px;
   border-radius: 50%;
   background: var(--ink);
   cursor: pointer;
@@ -236,6 +242,9 @@
 /* the flagged point lands, then keeps pulsing the way the mockup does */
 
 .dotFlagged {
+  width: 12px;
+  height: 12px;
+  margin: 0 0 -6px -6px;
   background: var(--anomaly);
   animation:
     dotIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both,
@@ -257,12 +266,23 @@
   font: 10px var(--data);
   color: var(--anomaly);
   white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-.plotCategory { position: absolute; bottom: -24px; font: 11px var(--data); color: var(--ink-62); }
+/* Centred under its column and no wider than it, so a long category name wraps
+   below the axis instead of running into its neighbour or off the plot. */
+.plotCategory {
+  position: absolute;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  font: 11px/1.4 var(--data);
+  color: var(--ink-62);
+  text-align: center;
+}
 
 .method {
-  margin-top: 42px;
+  margin-top: 56px;
   font: 10px var(--data);
   color: var(--ink-62);
   line-height: 1.7;

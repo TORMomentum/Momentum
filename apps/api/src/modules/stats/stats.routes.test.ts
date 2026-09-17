@@ -58,8 +58,9 @@ describe("public dashboard route", () => {
     expect(filtered.body.totals).toEqual({ torCount: 1, budgetSum: 300, agencyCount: 1, unverifiedBudgetCount: 1 });
   });
 
-  it("returns the specified payload, excludes restricted records, and exposes stale statistics", async () => {
-    await tors(db).insertMany([record(), record({ access: { restricted: true } })] as never);
+  it("returns the specified payload, excludes restricted records and invitations, and exposes stale statistics", async () => {
+    // An invitation to bid carries its project's budget; plotting it would show one project twice.
+    await tors(db).insertMany([record(), record({ access: { restricted: true } }), record({ documentType: "invitation" })] as never);
     await torRollups(db).insertOne({ agency: "Agency A", category: "roads", month: "2026-01", torCount: 1, budgetSum: 100, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() });
     const old = new Date(Date.now() - config.stats.staleAfterMs - 1);
     await torMeta(db).insertOne({ _id: "dashboard", lastIntakeAt: new Date("2026-01-01T00:00:00Z"), statsComputedAt: old, corpusSize: 2 });

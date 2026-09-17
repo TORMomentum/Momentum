@@ -1,5 +1,5 @@
 import { ObjectId, type Db } from "mongodb";
-import type { ConfidenceLevel, Provenance, TorFields } from "@tor-radar/shared";
+import type { ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
 import { tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import { NotFoundError } from "../../core/errors.js";
@@ -7,7 +7,22 @@ import { NotFoundError } from "../../core/errors.js";
 export interface ExtractionTarget {
   storageKey: string;
   contentType: string;
+  /** Fields the source already stated at intake; extraction keeps them as they are. */
+  knownFields: Partial<TorFields>;
+  /** The source's publication date, when it stated one; preferred over the document's. */
+  sourceAnnouncedAt: Date | null;
+  documentType: DocumentType;
+  sourceProject: SourceProject | null;
   createdAt: Date;
+}
+
+/** The grading reason for a deadline that falls before its document's announcement. */
+export const IMPLAUSIBLE_DEADLINE = "deadline-before-announcement";
+
+/** A deadline read from a project's invitation to bid, and which record it came from. */
+export interface LinkedDeadline {
+  invitationId: string;
+  field: ExtractedField;
 }
 
 export interface ExtractionResult {
@@ -30,10 +45,72 @@ export class ExtractionRepository {
   async load(torId: string): Promise<ExtractionTarget> {
     const doc = await tors(this.db).findOne(
       { _id: new ObjectId(torId) },
-      { projection: { storage: 1, createdAt: 1 } },
+      {
+        projection: {
+          storage: 1,
+          fields: 1,
+          announcedAt: 1,
+          announcedAtOrigin: 1,
+          documentType: 1,
+          sourceProject: 1,
+          createdAt: 1,
+        },
+      },
     );
     if (!doc) throw new NotFoundError(`tor ${torId} not found`);
-    return { storageKey: doc.storage.key, contentType: doc.storage.contentType, createdAt: doc.createdAt };
+
+    // Only origin "source" survives a (re-)extraction. Everything else was a
+    // model's reading, and reading the document again is the point.
+    const knownFields: Partial<TorFields> = {};
+    for (const [name, field] of Object.entries(doc.fields ?? {})) {
+      if (field?.origin === "source") {
+        (knownFields as Record<string, unknown>)[name] = field;
+      }
+    }
+
+    return {
+      storageKey: doc.storage.key,
+      contentType: doc.storage.contentType,
+      knownFields,
+      sourceAnnouncedAt: doc.announcedAtOrigin === "source" ? doc.announcedAt : null,
+      documentType: doc.documentType ?? "tor",
+      sourceProject: doc.sourceProject ?? null,
+      createdAt: doc.createdAt,
+    };
+  }
+
+  /** The deadline an invitation of this project has already yielded, if any. */
+  async findInvitationDeadline(projectId: string): Promise<LinkedDeadline | null> {
+    const invitation = await tors(this.db).findOne(
+      {
+        documentType: "invitation",
+        "sourceProject.projectId": projectId,
+        "fields.deadline.value": { $ne: null },
+        // Never a deadline grading found implausible (see linkDeadline's caller).
+        reviewReasons: { $ne: IMPLAUSIBLE_DEADLINE },
+        "access.restricted": { $ne: true },
+      },
+      { sort: { updatedAt: -1 }, projection: { "fields.deadline": 1 } },
+    );
+    if (!invitation?.fields.deadline) return null;
+    return { invitationId: invitation._id.toString(), field: invitation.fields.deadline };
+  }
+
+  /**
+   * Puts an invitation's deadline on every TOR of its project, marked with the
+   * invitation it came from (NFR-F6). Covers the TOR extracted before its
+   * invitation; the other order is `findInvitationDeadline`.
+   */
+  async linkDeadline(projectId: string, deadline: LinkedDeadline): Promise<void> {
+    await tors(this.db).updateMany(
+      { "sourceProject.projectId": projectId, documentType: { $ne: "invitation" } },
+      {
+        $set: {
+          "fields.deadline": { ...deadline.field, fromDocument: deadline.invitationId },
+          updatedAt: new Date(),
+        },
+      },
+    );
   }
 
   /**

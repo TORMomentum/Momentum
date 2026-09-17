@@ -1,8 +1,15 @@
 import { notFound } from "next/navigation";
 import { getTorBySlug } from "../../../../src/data/tor-samples";
+import { fetchTor, type TorDetail } from "../../../../src/shared/api/tors.api";
 import { TorDetailView } from "../../../../src/views/TorDetailView";
+import { TorRecordView } from "../../../../src/views/TorRecordView";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
+
+/** The proxy route that streams a stored original (spec §5.1 — the only path to it). */
+function documentHref(id: string): string {
+  return `/tors/${encodeURIComponent(id)}/document`;
+}
 
 /**
  * This segment deliberately has NO loading.tsx.
@@ -13,7 +20,10 @@ const OBJECT_ID = /^[0-9a-f]{24}$/i;
  * file present an unknown record answered 200, without it 404.
  *
  * This is a public page that crawlers index, and a wrong status is worse than
- * a missing skeleton. The page's own work is building the tor and checking it exists.
+ * a missing skeleton.
+ *
+ * A record id renders the published record from the API; any other id is one
+ * of the ported sample TORs.
  */
 
 export default async function TorDetailPage({
@@ -22,16 +32,30 @@ export default async function TorDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tor = getTorBySlug(id);
 
-  // Resolve existence before any document request can suspend and start
-  // streaming. Calling notFound() after streaming begins would show the right
-  // UI with an HTTP 200 response, which is wrong for crawlers.
-  if (!tor) notFound();
+  if (OBJECT_ID.test(id)) {
+    // Resolve existence before anything can stream: an unknown or taken-down
+    // record must answer 404, not a 404 screen with a 200.
+    const tor: TorDetail | null = await fetchTor(id);
+    if (!tor) notFound();
 
-  // Sample records (mock ids) have no stored original to stream; only a real
-  // Mongo id gets a document link (spec §5.1 — the proxy route is the only path).
-  const documentHref = OBJECT_ID.test(id) ? `/tors/${id}/document` : null;
+    // Originals are streamed through this app's proxy route, which checks the
+    // takedown state on every request (object storage spec §5). The deadline may
+    // come from the project's invitation to bid; the reader gets that original
+    // too, not only this TOR's (NFR-F6).
+    const deadlineSource = tor.fields.deadline?.fromDocument;
+    return (
+      <TorRecordView
+        tor={tor}
+        documentUrl={documentHref(id)}
+        deadlineDocumentUrl={deadlineSource ? documentHref(deadlineSource) : null}
+      />
+    );
+  }
 
-  return <TorDetailView tor={tor} documentHref={documentHref} />;
+  const sample = getTorBySlug(id);
+  if (!sample) notFound();
+
+  // Sample records have no stored original to stream.
+  return <TorDetailView tor={sample} documentHref={null} />;
 }

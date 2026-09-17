@@ -3,7 +3,7 @@ import type { Ai } from "../../ports/ai.port.js";
 import type { Storage } from "../../ports/storage.port.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
-import type { ExtractionRepository } from "./extraction.repository.js";
+import { IMPLAUSIBLE_DEADLINE, type ExtractionRepository } from "./extraction.repository.js";
 import { cohortFor } from "../stats/cohort.js";
 
 export interface ExtractionConfig {
@@ -48,12 +48,14 @@ export class ExtractionService {
   constructor(private readonly deps: ExtractionServiceDeps) {}
 
   run = async (torId: string): Promise<void> => {
-    const { storageKey, contentType, createdAt } = await this.deps.repo.load(torId);
+    const target = await this.deps.repo.load(torId);
+    const { storageKey, contentType, knownFields, createdAt } = target;
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
     const raw = await this.deps.ai.extract({ bytes, contentType });
-    const announcedAt = parseDate(raw.announcementDate.value);
+    // The source's own date wins: a TOR document rarely states when it was published.
+    const announcedAt = target.sourceAnnouncedAt ?? parseDate(raw.announcementDate.value);
 
     const { fields, confidenceLevel, unverified, reviewReasons } = grade(raw, {
       hasTextLayer: textLayer,
@@ -62,6 +64,7 @@ export class ExtractionService {
       tHigh: this.deps.config.tHigh,
       budgetMinThb: this.deps.config.budgetMinThb,
       budgetMaxThb: this.deps.config.budgetMaxThb,
+      knownFields,
     });
 
     const provenance: Provenance = {
@@ -72,6 +75,18 @@ export class ExtractionService {
       thresholdsVersion: this.deps.config.thresholdsVersion,
     };
 
+    // A TOR rarely states its submission deadline; its project's invitation to
+    // bid does (spec 2026-09-16 e-GP project linking). Whichever of the two is
+    // extracted second makes the link.
+    const projectId = target.sourceProject?.projectId;
+    let publishedFields = fields;
+    if (projectId && target.documentType === "tor") {
+      const linked = await this.deps.repo.findInvitationDeadline(projectId);
+      if (linked) {
+        publishedFields = { ...fields, deadline: { ...linked.field, fromDocument: linked.invitationId } };
+      }
+    }
+
     const cohort = cohortFor({
       category: typeof fields.category.value === "string" ? fields.category.value : "",
       announcedAt,
@@ -79,7 +94,7 @@ export class ExtractionService {
     }, this.deps.config.timezone);
 
     await this.deps.repo.writeExtraction(torId, {
-      fields,
+      fields: publishedFields,
       announcedAt,
       confidenceLevel,
       unverified,
@@ -88,5 +103,13 @@ export class ExtractionService {
       provenance,
       ...(cohort ? { cohort: cohort.cohort, cohortDateSource: cohort.cohortDateSource } : {}),
     });
+
+    // A deadline before the invitation's own announcement is a misreading — on a
+    // scan, ๙ read as ๕ turns 2569 into 2565. Grading already queued it for a
+    // reviewer; it must not travel to the TOR as if it were a date.
+    const deadlinePlausible = !reviewReasons.includes(IMPLAUSIBLE_DEADLINE);
+    if (projectId && target.documentType === "invitation" && fields.deadline.value !== null && deadlinePlausible) {
+      await this.deps.repo.linkDeadline(projectId, { invitationId: torId, field: fields.deadline });
+    }
   };
 }

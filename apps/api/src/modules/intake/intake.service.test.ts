@@ -48,7 +48,8 @@ function fakes() {
   const records = new Map<string, { id: string; hash: string }>();
   const sourceRefs: string[] = [];
   const insertedSources: unknown[] = [];
-  const inserted: { id: string; knownFields?: Record<string, unknown> }[] = [];
+  const inserted: { id: string; knownFields?: Record<string, unknown>; context?: unknown }[] = [];
+  const attached: { id: string; context: unknown }[] = [];
   const repository = {
     async findByHash(hash: string) {
       const found = [...records.values()].find((record) => record.hash === hash);
@@ -61,20 +62,24 @@ function fakes() {
       _stored: StoredObject,
       source: unknown,
       knownFields?: Record<string, unknown>,
+      context?: unknown,
     ) {
       const id = `id-${records.size + 1}`;
       records.set(id, { id, hash });
       insertedSources.push(source);
-      inserted.push({ id, knownFields });
+      inserted.push({ id, knownFields, context });
       return id;
     },
     async appendSourceRef(id: string) {
       sourceRefs.push(id);
     },
+    async attachSourceContext(id: string, context: unknown) {
+      attached.push({ id, context });
+    },
     async recordIntake() {},
   };
 
-  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted, insertedSources };
+  return { storage, queue, repository, enqueued, objects, sourceRefs, inserted, attached, insertedSources };
 }
 
 function serviceWith(overrides: Partial<typeof limits> = {}) {
@@ -204,6 +209,31 @@ describe("IntakeService.submit", () => {
     expect(inserted[0].knownFields).toBeUndefined();
   });
 
+  it("records which source project a document belongs to, what it is, and when the source published it", async () => {
+    const { service, inserted } = serviceWith();
+    const context = {
+      sourceProject: { system: "bma-egp" as const, projectId: "9104a1e4", projectNumber: "69099251609" },
+      documentType: "invitation" as const,
+      announcedAt: new Date("2026-09-11T00:00:00Z"),
+    };
+
+    await service.submit(pdf, { ...source, context });
+
+    expect(inserted[0].context).toEqual(context);
+  });
+
+  it("attaches that context to a document already stored, instead of creating a second record", async () => {
+    const { service, inserted, attached } = serviceWith();
+    const first = await service.submit(pdf, source);
+    const context = { sourceProject: { system: "bma-egp" as const, projectId: "9104a1e4" } };
+
+    const again = await service.submit(pdf, { ...source, context });
+
+    expect(again).toMatchObject({ torId: first.torId, duplicate: true });
+    expect(inserted).toHaveLength(1);
+    expect(attached).toEqual([{ id: first.torId, context }]);
+  });
+
   it("records the submitted filename on the source reference", async () => {
     const { service, insertedSources } = serviceWith();
 
@@ -212,3 +242,4 @@ describe("IntakeService.submit", () => {
     expect(insertedSources[0]).toMatchObject({ originalFilename: "ประกาศจ้างเหมา.pdf" });
   });
 });
+

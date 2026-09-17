@@ -102,6 +102,7 @@ export function buildApp(config: Config, db: Db): Express {
     buildTorsRouter({
       service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
+      search: config.search,
     }),
   );
 

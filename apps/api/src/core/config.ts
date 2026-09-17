@@ -78,6 +78,16 @@ const schema = z.object({
 
   /** How many review-queue rows one request returns (FR-G-1). */
   ADMIN_QUEUE_PAGE_SIZE: z.coerce.number().int().positive().max(200).default(25),
+
+  // Public search (FR-E-3, NFR-F2). Ceilings bound what one request can ask the database for.
+  SEARCH_PAGE_SIZE: z.coerce.number().int().positive().default(20),
+  SEARCH_MAX_PAGE_SIZE: z.coerce.number().int().positive().max(500).default(100),
+  SEARCH_QUERY_MAX_CHARS: z.coerce.number().int().positive().default(100),
+  SEARCH_MAX_FILTER_VALUES: z.coerce.number().int().positive().default(20),
+  SEARCH_FACET_LIMIT: z.coerce.number().int().positive().default(50),
+  /** Whose calendar decides "today" — when a deadline has passed. */
+  TIME_ZONE: z.string().min(1).default("Asia/Bangkok"),
+
   API_PORT: z.coerce.number().int().positive().default(4000),
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
@@ -91,6 +101,9 @@ const schema = z.object({
 }).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GOOGLE_CLOUD_PROJECT), {
   message: "GOOGLE_CLOUD_PROJECT is required unless GCS_API_ENDPOINT points at the emulator",
   path: ["GOOGLE_CLOUD_PROJECT"],
+}).refine((v) => v.SEARCH_PAGE_SIZE <= v.SEARCH_MAX_PAGE_SIZE, {
+  message: "SEARCH_PAGE_SIZE must not exceed SEARCH_MAX_PAGE_SIZE",
+  path: ["SEARCH_PAGE_SIZE"],
 });
 
 export interface Config {
@@ -143,7 +156,17 @@ export interface Config {
     timezone: string;
   };
   adminQueuePageSize: number;
+  search: SearchConfig;
   apiPort: number;
+}
+
+export interface SearchConfig {
+  pageSize: number;
+  maxPageSize: number;
+  queryMaxChars: number;
+  maxFilterValues: number;
+  facetLimit: number;
+  timeZone: string;
 }
 
 /**
@@ -212,6 +235,14 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       timezone: parsed.COHORT_TIMEZONE,
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
+    search: {
+      pageSize: parsed.SEARCH_PAGE_SIZE,
+      maxPageSize: parsed.SEARCH_MAX_PAGE_SIZE,
+      queryMaxChars: parsed.SEARCH_QUERY_MAX_CHARS,
+      maxFilterValues: parsed.SEARCH_MAX_FILTER_VALUES,
+      facetLimit: parsed.SEARCH_FACET_LIMIT,
+      timeZone: parsed.TIME_ZONE,
+    },
     apiPort: parsed.API_PORT,
   };
 }

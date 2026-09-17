@@ -7,6 +7,7 @@ import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { DashboardPayload } from "../shared/api/stats.api";
+import { thaiDigitsToArabic } from "../shared/lib/format";
 import { serialiseDashboardFilters, type DashboardFilters } from "../shared/lib/dashboard-filters";
 
 const ALL = "all";
@@ -82,7 +83,7 @@ export function DashboardView({
           open={openDrop === "agency"}
           onToggle={() => setOpenDrop(openDrop === "agency" ? null : "agency")}
           onPick={(agency) => { updateFilters({ agency: agency === ALL ? undefined : agency }); setOpenDrop(null); }}
-          options={[{ value: ALL, label: "ทั้งหมด" }, ...agencies.map((agency) => ({ value: agency.agency, label: agency.agency, meta: String(agency.torCount) }))]}
+          options={[{ value: ALL, label: "ทั้งหมด" }, ...agencies.map((agency) => ({ value: agency.agency, label: thaiDigitsToArabic(agency.agency), meta: String(agency.torCount) }))]}
         />
         <FilterDrop
           label="หมวดหมู่"
@@ -90,7 +91,7 @@ export function DashboardView({
           open={openDrop === "category"}
           onToggle={() => setOpenDrop(openDrop === "category" ? null : "category")}
           onPick={(category) => { updateFilters({ category: category === ALL ? undefined : category }); setOpenDrop(null); }}
-          options={[{ value: ALL, label: "ทั้งหมด" }, ...categories.map((category) => ({ value: category, label: category }))]}
+          options={[{ value: ALL, label: "ทั้งหมด" }, ...categories.map((category) => ({ value: category, label: thaiDigitsToArabic(category) }))]}
         />
       </div>
 

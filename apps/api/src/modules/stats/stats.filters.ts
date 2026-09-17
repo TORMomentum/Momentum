@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Filter } from "mongodb";
 import type { TorDocument } from "../../core/db.js";
+import { NOT_SUPPORTING_DOCUMENT } from "./eligibility.js";
 
 export interface DashboardFilters {
   agency?: string;
@@ -51,6 +52,7 @@ export function publicTorFilter(filters: DashboardFilters): Filter<TorDocument> 
   const filter: Record<string, unknown> = {
     "pipeline.state": "published", "access.restricted": false,
     "fields.budget.value": { $type: "number", $gt: 0 },
+    ...NOT_SUPPORTING_DOCUMENT,
   };
   if (filters.agency) filter["fields.agency.value"] = filters.agency;
   if (filters.category) filter["cohort.category"] = filters.category;

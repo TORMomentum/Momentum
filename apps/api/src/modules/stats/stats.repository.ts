@@ -2,7 +2,7 @@ import { ObjectId, type Db, type Filter, type WithId } from "mongodb";
 import { torMeta, torPeerStats, torRollups, tors, type TorDocument, type TorPeerStatsDocument, type TorRollupDocument } from "../../core/db.js";
 import type { Config } from "../../core/config.js";
 import type { CohortKey } from "./cohort.js";
-import { eligibleFilter, eligibilityOf } from "./eligibility.js";
+import { NOT_SUPPORTING_DOCUMENT, eligibleFilter, eligibilityOf } from "./eligibility.js";
 import { quantile, verdictFor, type PeerBounds } from "./anomaly.rule.js";
 
 function monthAfter(month: string, offset: number): string {
@@ -67,6 +67,7 @@ export class StatsRepository {
       .map((window) => window.month);
     const records = await tors(this.db).find({
       ...eligibleFilter(),
+      ...NOT_SUPPORTING_DOCUMENT,
       "cohort.category": key.category,
       "cohort.month": { $in: months },
     }, { projection: { "fields.budget.value": 1 } }).toArray();
@@ -118,6 +119,7 @@ export class StatsRepository {
     const records = await tors(this.db).find({
       "pipeline.state": "published", "access.restricted": false,
       "fields.budget.value": { $type: "number", $gt: 0 }, "cohort.month": { $in: months },
+      ...NOT_SUPPORTING_DOCUMENT,
     }).toArray();
     const bounds = await torPeerStats(this.db).find({ month: { $in: months } }).toArray();
     const byKey = new Map(bounds.map((bound) => [`${bound.category}\u0000${bound.month}`, bound]));
@@ -169,7 +171,7 @@ export class StatsRepository {
    * existed is invisible to anything that only reads tor_peer_stats.
    */
   async distinctCohorts(): Promise<CohortKey[]> {
-    const keys = await tors(this.db).distinct("cohort", eligibleFilter());
+    const keys = await tors(this.db).distinct("cohort", { ...eligibleFilter(), ...NOT_SUPPORTING_DOCUMENT });
     return keys.filter((key): key is CohortKey =>
       Boolean(key) && typeof (key as CohortKey).category === "string" && typeof (key as CohortKey).month === "string");
   }

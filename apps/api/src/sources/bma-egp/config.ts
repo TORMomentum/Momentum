@@ -12,6 +12,8 @@ export const TOR_ANNOUNCE_TYPE_ID =
 
 /** Upstream label for the same type, used to pick the TOR out of a project's document list. */
 export const TOR_ANNOUNCE_TYPE_NAME = "ร่างขอบเขตของงาน (TOR)";
+/** The invitation to bid — where a project's submission deadline is stated. */
+export const INVITATION_ANNOUNCE_TYPE_NAME = "ประกาศเชิญชวน";
 
 export const REQUEST_TIMEOUT_MS = Number(process.env.BMA_EGP_TIMEOUT_MS ?? 20_000);
 

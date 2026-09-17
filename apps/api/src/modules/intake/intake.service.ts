@@ -1,4 +1,4 @@
-import type { ExtractedField } from "@tor-radar/shared";
+import type { DocumentType, SourceProject, TorFields } from "@tor-radar/shared";
 import { sha256 } from "../../lib/hash.js";
 import { storageKeyFor } from "../../lib/storage-key.js";
 import { detectMimeType } from "../../lib/file-type.js";
@@ -20,7 +20,21 @@ export interface SubmitSource {
    * §4.2.1 never marks them an unverified extraction. Absent for a plain upload, where the
    * document is all there is.
    */
-  knownFields?: Record<string, ExtractedField>;
+  knownFields?: Partial<TorFields>;
+  /** What the source says this document is and when it published it. */
+  context?: SourceContext;
+}
+
+/**
+ * What a source states about a document beyond its fields: which project it
+ * belongs to, what kind of document it is, and its publication date. Absent for
+ * a plain upload.
+ */
+export interface SourceContext {
+  sourceProject?: SourceProject;
+  documentType?: DocumentType;
+  /** The source's publication date, as a calendar day. Extraction never overwrites it. */
+  announcedAt?: Date;
 }
 
 export interface SubmitResult {
@@ -76,6 +90,9 @@ export class IntakeService {
     const existing = await this.repository.findByHash(contentHash);
     if (existing) {
       await this.repository.appendSourceRef(existing.id, sourceRef);
+      // A source can say more on a later visit than on the first — this is how a
+      // record ingested before project linking gains its project.
+      if (source.context) await this.repository.attachSourceContext(existing.id, source.context);
       await this.repository.recordIntake(sourceRef.submittedAt);
       return { torId: existing.id, duplicate: true, state: "queued" };
     }
@@ -92,13 +109,18 @@ export class IntakeService {
     try {
       const category = source.knownFields?.category?.value;
       const cohort = this.stats && typeof category === "string"
-        ? cohortFor({ category, announcedAt: null, createdAt: sourceRef.submittedAt }, this.stats.timezone)
+        ? cohortFor(
+            // The source's publication date, when it states one, places the record in its real month.
+            { category, announcedAt: source.context?.announcedAt ?? null, createdAt: sourceRef.submittedAt },
+            this.stats.timezone,
+          )
         : null;
       torId = await this.repository.insert(
         contentHash,
         storedObject,
         sourceRef,
         source.knownFields,
+        source.context,
         cohort,
       );
     } catch (error) {

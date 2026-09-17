@@ -1,30 +1,32 @@
 import { Router, type Request, type Response } from "express";
+import type { SearchConfig } from "../../core/config.js";
 import { BadRequestError } from "../../core/errors.js";
 import { parseDisposition } from "../../lib/content-disposition.js";
 import { streamDocument } from "../../lib/stream-document.js";
 import type { Storage } from "../../ports/storage.port.js";
+import { parseSearchQuery } from "./tors.query.js";
 import type { TorsService } from "./tors.service.js";
-import { z } from "zod";
-import { parseDashboardFilters, publicTorFilter } from "../stats/stats.filters.js";
 
 export interface TorsRouterDeps {
   service: TorsService;
   storage: Storage;
+  search: SearchConfig;
 }
 
 /** Public TOR reads. Authentication middleware must not be mounted here. */
 export function buildTorsRouter(deps: TorsRouterDeps): Router {
   const router = Router();
 
-  const pageQuery = z.object({
-    page: z.preprocess((value) => typeof value === "string" ? value : undefined, z.coerce.number().int().positive().optional()),
-    pageSize: z.preprocess((value) => typeof value === "string" ? value : undefined, z.coerce.number().int().positive().max(200).optional()),
-  }).strip();
-
+  // FR-E-3. A malformed parameter is a ZodError, which the error middleware
+  // answers with 400 — never an operator reaching the database. Each row carries
+  // its statistical-anomaly verdict (dashboard spec §6.2).
   router.get("/", async (req, res) => {
-    const pagination = pageQuery.safeParse(req.query);
-    const { page = 1, pageSize = 25 } = pagination.success ? pagination.data : {};
-    res.json(await deps.service.list(publicTorFilter(parseDashboardFilters(req.query)), page, pageSize));
+    res.json(await deps.service.search(parseSearchQuery(req.query, deps.search)));
+  });
+
+  // Declared before "/:id", which would otherwise claim it.
+  router.get("/facets", async (_req, res) => {
+    res.json(await deps.service.facets());
   });
 
   const document = async (req: Request<{ id: string }>, res: Response) => {
@@ -38,5 +40,10 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
   // route matches, and the HEAD path must not open the object.
   router.head("/:id/document", document);
   router.get("/:id/document", document);
+
+  router.get("/:id", async (req: Request<{ id: string }>, res) => {
+    res.json(await deps.service.detail(req.params.id));
+  });
+
   return router;
 }

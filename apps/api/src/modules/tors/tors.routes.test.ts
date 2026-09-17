@@ -62,6 +62,7 @@ function buildTestApp() {
     buildTorsRouter({
       service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
+      search: config.search,
     }),
   );
   app.use(errorMiddleware);
@@ -148,7 +149,7 @@ describe("public TOR document route", () => {
 });
 
 describe("public TOR list route", () => {
-  it("filters public records and maps the page through one cohort-bounds read", async () => {
+  it("filters public records and gives each row its anomaly verdict from one cohort-bounds read", async () => {
     const now = new Date("2026-01-15T00:00:00Z");
     await tors(db).insertMany([
       {
@@ -166,11 +167,13 @@ describe("public TOR list route", () => {
       },
     ] as never);
 
-    const response = await request(buildTestApp()).get("/api/v1/tors?category=roads&page=1&pageSize=1");
+    // The search route (TOR-40/41) is the list: cursor-paged, with each row's verdict.
+    const response = await request(buildTestApp()).get("/api/v1/tors?category=roads&pageSize=1");
 
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ total: 1, page: 1, pageSize: 1 });
+    expect(response.body).toMatchObject({ total: 1, nextCursor: null });
     expect(response.body.items).toHaveLength(1);
-    expect(response.body.items[0]).toMatchObject({ fields: { budget: { value: 100 } }, verdict: { kind: "not-evaluated" } });
+    expect(response.body.items[0]).toMatchObject({ budget: { value: 100 }, verdict: { kind: "not-evaluated" } });
+    expect(response.body.items[0]).not.toHaveProperty("cohort");
   });
 });
