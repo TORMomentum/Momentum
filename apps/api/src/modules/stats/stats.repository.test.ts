@@ -97,6 +97,13 @@ describe("StatsRepository recomputation", () => {
     });
   });
 
+  it("leaves an invitation to bid out of the peer group, so a project is not counted twice", async () => {
+    for (const budget of [10, 20, 30, 40, 50, 60, 70, 80]) await tors(db).insertOne(eligibleRecord(budget) as never);
+    await tors(db).insertOne(eligibleRecord(80, "2026-01", { documentType: "invitation" }) as never);
+
+    expect(await repository.computeBounds({ category: "roads", month: "2026-01" }, config.stats)).toMatchObject({ n: 8 });
+  });
+
   it("does not clear a newer dirty generation after a mid-computation mark", async () => {
     const key = { category: "roads", month: "2026-01" };
     await repository.markCohortsDirty([key]);
