@@ -142,6 +142,7 @@ Listed here only so the register is complete; each has a home in [TODO.md](TODO.
 | The intake router is built and tested but never mounted in `app.ts`, so the running API serves only `/health` | Slice 1, task 12 |
 | Compose still has the pre-workspace shape: no worker service, no health gates, generic container names | Slice 1, task 15 |
 | Swap `mongo:7` for `mongodb-atlas-local`, so Thai search and transactions exist locally and in CI | Slice 1, task 15 |
+| Until that swap, search keywords (`q`) use an escaped, unindexed substring match instead of Atlas Search with `lucene.thai`. Correct for Thai and inside NFR-F2 at 5,000 records; its cost grows with the corpus. The repository clause becomes a `$search` stage after the swap, with no API change | TOR-40 · [search spec §5](superpowers/specs/2026-09-16-search-and-filter-design.md) |
 | Q6 · Wrap the pure-Mongo write pairs in transactions once that swap makes a replica set available. Ordering stays as the primary defence — a transaction cannot span MinIO, and ordering keeps working when a caller forgets a session | Slice 1, task 15 |
 | `putIfAbsent` is check-then-write, not atomic — benign while keys are content-addressed | Carried in TODO |
 | Queue enqueue is idempotent only probabilistically without a unique index | Carried in TODO |

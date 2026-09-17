@@ -60,7 +60,10 @@ function buildTestApp() {
         repo: new TorsRepository(db),
         storage,
         signedUrlTtlSeconds: config.signedUrlTtlSeconds,
+        facetLimit: config.search.facetLimit,
+        timeZone: config.search.timeZone,
       }),
+      search: config.search,
     }),
   );
   app.use(errorMiddleware);

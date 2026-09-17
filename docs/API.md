@@ -186,38 +186,69 @@ web app.
 
 ---
 
-## 4. Public reads ⬜ (slice 3)
+## 4. Public reads (slice 3)
 
-### `GET /api/v1/tors`
+Design: [search and filter spec](superpowers/specs/2026-09-16-search-and-filter-design.md).
 
-Query: `q`, `agency`, `category`, `status`, `minBudget`, `maxBudget`, `from`, `to`, `page`,
-`pageSize`. Filters compose; dates mean **`announcedAt`**, the agency's own publication date, never
-ingestion time.
+### `GET /api/v1/tors` ✅
 
-Filter values are parsed as primitives only, so no operator object can reach a Mongo query.
+Query: `q`, `agency` (repeatable), `category` (repeatable), `status`, `open=true`, `minBudget`,
+`maxBudget`, `deadlineFrom`, `deadlineTo`, `from`, `to`, `cursor`, `pageSize`. Different parameters
+combine with AND; repeated values OR together. `from`/`to` mean **`announcedAt`**, the agency's own
+publication date, never ingestion time. `open` means announced with a deadline today or later in
+`TIME_ZONE`, or none stated. Dates are `YYYY-MM-DD` and inclusive.
+
+Filter values are parsed as primitives only, so no operator object can reach a Mongo query; anything
+malformed is a 400. Every confidence tier is listed. Restricted, unpublished and duplicate records are
+not.
+
+Pagination is a cursor over `(announcedAt desc, _id desc)`: pass `nextCursor` back as `cursor`.
+(`page` from an earlier draft is superseded; see rendering spec §5.1.)
 
 ```json
-{ "items": [ { "id": "…", "reference": "TOR-2569-0812-041", "title": {…}, "agency": {…},
-               "budget": {…}, "deadline": {…}, "confidenceLevel": "high", "unverified": false } ],
-  "page": 1, "pageSize": 20, "total": 487,
-  "coverage": { "lastUpdated": "2026-08-12T09:42:00+07:00", "note": "ครอบคลุมเฉพาะเอกสารที่นำเข้าระบบ" } }
+{ "items": [ { "id": "…", "announcedAt": "2026-03-05T00:00:00.000Z", "confidenceLevel": "high",
+               "unverified": false, "open": true,
+               "title": { "raw": "…", "verified": true },
+               "referenceNo": { "raw": "69079434637", "verified": true },
+               "agency": { "raw": "…", "value": "…", "verified": true },
+               "category": { "raw": "…", "value": "…", "verified": true },
+               "budget": { "raw": "…", "value": 5524000, "verified": true },
+               "deadline": { "raw": "", "value": null, "verified": false },
+               "torStatus": { "value": "announced", "verified": true } } ],
+  "total": 10, "nextCursor": null,
+  "coverage": { "lastUpdatedAt": "2026-09-16T09:52:00.000Z" } }
 ```
 
-`coverage` is not decoration: `FR-E-6` requires every surface showing figures to state what they
-cover and when they were last updated.
+`coverage` is not decoration: `FR-E-6` requires every surface showing figures to state when they were
+last updated. Keyword matching (`q`) is an interim substring match until Atlas Search is available
+locally — see [PLAN.md](PLAN.md).
 
-### `GET /api/v1/tors/:id`
+### `GET /api/v1/tors/facets` ✅
 
-One record with all nine fields. Every extracted field is an object, never a bare value:
+The filter options that occur in the published corpus, most frequent first, capped at
+`SEARCH_FACET_LIMIT`: `{ agencies: [{value, count}], categories: [{value, count}], budget: {min, max} | null }`.
+
+### `GET /api/v1/tors/:id` ✅
+
+One published record with every extracted field as an object, never a bare value:
 
 ```json
-{ "budget": { "raw": "๑,๒๐๐,๐๐๐ บาท", "value": 1200000, "currency": "THB",
-              "confidence": 0.82, "verified": false } }
+{ "budget": { "raw": "๑,๒๐๐,๐๐๐ บาท", "value": 1200000, "confidence": 0.82, "verified": false } }
 ```
 
 `raw` is what the interface displays, exactly as extracted (`NFR-F7`); `value` is what statistics
-compute on. The response also carries `provenance` (model, version, extraction time) and
-`sourceUrl`, because `NFR-F6` requires AI output to be attributable.
+compute on. The response also carries `provenance` (model, version, extraction time), `sourceUrl`,
+`confidenceLevel`, `unverified` and `contentHash`, because `NFR-F6` requires AI output to be
+attributable. A field the source system stated (for example the BMA e-GP project budget) carries
+`"origin": "source"`, so it is never presented as AI output. A field read from another document
+carries `fromDocument` — a TOR's deadline read from its project's invitation to bid names that
+invitation, whose original is available at `GET /api/v1/tors/{fromDocument}/document`. A TOR collected
+from BMA e-GP carries `sourceProject` — `{ "system": "bma-egp", "projectNumber": "69099251609", "url":
+"https://egp2.bangkok.go.th/project-detail/…" }`, the project's own page on the source site — and `null`
+otherwise. Invitations
+themselves are supporting documents: never listed, counted, or served as a record of their own. Contact data passes through the public
+redaction serializer (`FR-B-5`); evidence quotes are not returned. A restricted or unpublished record
+is a 404.
 
 ### `GET /api/v1/tors/:id/document`
 
