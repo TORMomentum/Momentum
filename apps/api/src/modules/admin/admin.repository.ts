@@ -1,7 +1,8 @@
 import { ObjectId, type Db } from "mongodb";
 import type { ExtractedField, TorFields } from "@tor-radar/shared";
-import { corrections, torEvents, tors } from "../../core/db.js";
+import { corrections, torEvents, tors, type TorDocument } from "../../core/db.js";
 import { NotFoundError } from "../../core/errors.js";
+import { parseBudget } from "../../lib/parse-budget.js";
 
 /** One row in the queue list — enough to choose what to open, nothing more. */
 export interface QueueEntry {
@@ -49,7 +50,7 @@ export interface AdminEvent {
 
 export interface FieldEdit {
   field: keyof TorFields;
-  /** What the reviewer typed. Stored as the field's `raw` AND `value`. */
+  /** What the reviewer typed. `budget` is normalised before it is stored as `value`. */
   value: string;
 }
 
@@ -67,7 +68,10 @@ export type ReviewFieldName = {
  * keep in step.
  */
 export class AdminRepository {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly budgetMaxThb: number,
+  ) {}
 
   /**
    * Oldest first, so a record cannot starve behind a steady arrival of newer
@@ -145,7 +149,7 @@ export class AdminRepository {
    * write fails, an unused example exists, which is harmless, rather than a
    * changed value nobody can trace.
    */
-  async applyEdits(torId: string, edits: FieldEdit[], actor: string): Promise<void> {
+  async applyEdits(torId: string, edits: FieldEdit[], actor: string): Promise<TorDocument> {
     const doc = await tors(this.db).findOne({ _id: new ObjectId(torId) });
     if (!doc) throw new NotFoundError(`tor ${torId} not found`);
 
@@ -154,10 +158,16 @@ export class AdminRepository {
 
     for (const edit of edits) {
       const before = doc.fields?.[edit.field] as ExtractedField<unknown> | undefined;
+      const value = edit.field === "budget"
+        ? parseBudget(edit.value, this.budgetMaxThb)
+        : edit.value;
+      // The service validates before reaching this repository. Keeping this
+      // guard here protects direct callers from reintroducing mixed BSON types.
+      if (value === null) throw new Error("budget edit was not validated");
       const after = {
         ...(before ?? { evidence: undefined }),
         raw: edit.value,
-        value: edit.value,
+        value,
         confidence: 1,
         verified: true,
       };
@@ -175,6 +185,17 @@ export class AdminRepository {
     }
 
     await tors(this.db).updateOne({ _id: new ObjectId(torId) }, { $set: set });
+    return doc;
+  }
+
+  async statsRecord(torId: string): Promise<TorDocument> {
+    const doc = await tors(this.db).findOne({ _id: new ObjectId(torId) });
+    if (!doc) throw new NotFoundError(`tor ${torId} not found`);
+    return doc;
+  }
+
+  async setCohort(torId: string, cohort: TorDocument["cohort"], cohortDateSource: TorDocument["cohortDateSource"]): Promise<void> {
+    await tors(this.db).updateOne({ _id: new ObjectId(torId) }, { $set: { cohort, cohortDateSource } });
   }
 
   /**
@@ -186,12 +207,14 @@ export class AdminRepository {
     torId: string,
     field: ReviewFieldName,
     confirmed: boolean,
-  ): Promise<void> {
-    const result = await tors(this.db).updateOne(
+  ): Promise<TorDocument> {
+    const result = await tors(this.db).findOneAndUpdate(
       { _id: new ObjectId(torId) },
       { $set: { [`fields.${field}.verified`]: confirmed, updatedAt: new Date() } },
+      { returnDocument: "before" },
     );
-    if (result.matchedCount === 0) throw new NotFoundError(`tor ${torId} not found`);
+    if (!result) throw new NotFoundError(`tor ${torId} not found`);
+    return result;
   }
 
   /**
@@ -213,8 +236,8 @@ export class AdminRepository {
    * untouched — nothing in this system deletes an original, including a
    * reviewer deciding it was never a TOR.
    */
-  async reject(torId: string, reason: string, actor: string): Promise<void> {
-    const result = await tors(this.db).updateOne(
+  async reject(torId: string, reason: string, actor: string): Promise<TorDocument> {
+    const result = await tors(this.db).findOneAndUpdate(
       { _id: new ObjectId(torId) },
       {
         $set: {
@@ -223,8 +246,10 @@ export class AdminRepository {
           updatedAt: new Date(),
         },
       },
+      { returnDocument: "before" },
     );
-    if (result.matchedCount === 0) throw new NotFoundError(`tor ${torId} not found`);
+    if (!result) throw new NotFoundError(`tor ${torId} not found`);
+    return result;
   }
 
   /** The numbers the admin landing page reports. One round trip, not five. */

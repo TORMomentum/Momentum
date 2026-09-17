@@ -1,5 +1,5 @@
 import "../test/env.js";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DocumentUnreadableError } from "../core/errors.js";
@@ -67,7 +67,12 @@ describe("parseExtraction", () => {
 });
 
 const config = loadConfig(process.env);
-const hasCreds = Boolean(config.vertex.project && config.vertex.credentialsPath);
+// The file has to EXIST, not merely be configured. .env names the key file's
+// path whether or not the developer has been given the key, so gating on the
+// setting alone turns a missing secret into a failing suite for everyone.
+const hasCreds = Boolean(
+  config.vertex.project && config.vertex.credentialsPath && existsSync(config.vertex.credentialsPath),
+);
 
 // Skipped without a service-account credential so CI without secrets stays green.
 describe.skipIf(!hasCreds)("VertexAi.extract against real Vertex", () => {

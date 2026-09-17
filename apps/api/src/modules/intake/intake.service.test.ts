@@ -71,6 +71,7 @@ function fakes() {
     async appendSourceRef(id: string) {
       sourceRefs.push(id);
     },
+    async recordIntake() {},
   };
 
   return { storage, queue, repository, enqueued, objects, sourceRefs, inserted, insertedSources };

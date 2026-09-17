@@ -1,0 +1,7 @@
+.page { max-width: 760px; padding: 34px 36px 60px; }
+.page h1 { margin: 0 0 18px; font: 700 30px var(--display); }
+.page p { line-height: 1.8; }
+.rule { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr; gap: 10px 20px; margin: 24px 0; padding: 20px 0; border-top: var(--rule); border-bottom: var(--rule); }
+.rule dt { color: var(--ink-62); }
+.rule dd { margin: 0; font: 600 14px var(--data); }
+@media (max-width: 600px) { .page { padding: 24px 20px 48px; } .rule { grid-template-columns: 1fr; gap: 4px; } }

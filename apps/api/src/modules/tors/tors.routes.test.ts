@@ -60,7 +60,7 @@ function buildTestApp() {
   app.use(
     "/api/v1/tors",
     buildTorsRouter({
-      service: new TorsService({ repo: new TorsRepository(db) }),
+      service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
     }),
   );
@@ -144,5 +144,33 @@ describe("public TOR document route", () => {
 
     expect(receivedAuthorization).toBeUndefined();
     expect(response.status).toBe(200);
+  });
+});
+
+describe("public TOR list route", () => {
+  it("filters public records and maps the page through one cohort-bounds read", async () => {
+    const now = new Date("2026-01-15T00:00:00Z");
+    await tors(db).insertMany([
+      {
+        contentHash: "public-list-visible", storage: recordStorage, sourceRefs: [], pipeline: { state: "published", attempts: 1 },
+        fields: {
+          budget: { raw: "100", value: 100, confidence: 0.7, verified: true },
+          category: { raw: "roads", value: "roads", confidence: 1, verified: true },
+          agency: { raw: "A", value: "A", confidence: 1, verified: true },
+        }, announcedAt: now, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null,
+        createdAt: now, updatedAt: now, cohort: { category: "roads", month: "2026-01" }, cohortDateSource: "announced",
+      },
+      {
+        contentHash: "public-list-hidden", storage: recordStorage, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: {}, announcedAt: now,
+        sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: true }, duplicateOf: null, createdAt: now, updatedAt: now,
+      },
+    ] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/tors?category=roads&page=1&pageSize=1");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ total: 1, page: 1, pageSize: 1 });
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0]).toMatchObject({ fields: { budget: { value: 100 } }, verdict: { kind: "not-evaluated" } });
   });
 });

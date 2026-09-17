@@ -40,6 +40,7 @@ const config: ExtractionConfig = {
   thresholdsVersion: "2026-09-03",
   budgetMinThb: 10_000,
   budgetMaxThb: 100_000_000_000,
+  timezone: "Asia/Bangkok",
 };
 
 function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } = {}) {
@@ -47,7 +48,7 @@ function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } = {}) {
     getStream: vi.fn(async () => Readable.from([over.bytes ?? DIGITAL_PDF])),
   } as unknown as Storage;
   const ai = { extract: vi.fn(async () => cleanExtraction()), ...over.ai } as Ai;
-  const load = vi.fn(async () => ({ storageKey: "k", contentType: "application/pdf" }));
+  const load = vi.fn(async () => ({ storageKey: "k", contentType: "application/pdf", createdAt: new Date("2026-01-01T00:00:00Z") }));
   const writeExtraction = vi.fn<(torId: string, result: ExtractionResult) => Promise<void>>(async () => {});
   const repo = { load, writeExtraction } as unknown as ExtractionRepository;
   return { storage, ai, repo: { load, writeExtraction }, service: new ExtractionService({ storage, ai, repo, config }) };
