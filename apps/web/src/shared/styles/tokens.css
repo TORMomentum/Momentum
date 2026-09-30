@@ -38,6 +38,7 @@
   --danger: #be2026;        /* destructive/reject action hover (admin review queue) */
   --danger-wash: rgba(190, 32, 38, 0.06); /* a message reporting failure */
   --panel: #f4f7fb;         /* secondary panel surface (detail sidebar, profile cards) */
+  --viewer-ground: #525659; /* the document viewer's frame: the browser PDF viewer's own grey */
 
   /* type */
   --display: var(--font-display), "IBM Plex Sans Thai", system-ui, sans-serif;

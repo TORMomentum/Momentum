@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
 import type { TorDetail, TorDetailField } from "../shared/api/tors.api";
@@ -47,13 +48,11 @@ function Value({ field, missing }: { field: TorDetailField | undefined; missing:
 
 export function TorRecordView({
   tor,
-  documentUrl,
-  deadlineDocumentUrl = null,
+  originals,
 }: {
   tor: TorDetail;
-  documentUrl: string | null;
-  /** The invitation to bid the deadline was read from, when it was. */
-  deadlineDocumentUrl?: string | null;
+  /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
+  originals: OriginalDocument[];
 }) {
   const { fields } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.
@@ -67,6 +66,12 @@ export function TorRecordView({
     ? (fields.qualifications.value as unknown[]).filter((item): item is string => typeof item === "string")
     : [];
   const website = websiteFrom(fields.contact?.raw);
+  const hasInvitation = originals.some((document) => document.key === "invitation");
+  const previewProps = {
+    documents: originals,
+    title: fields.title?.raw || "ไม่พบชื่อโครงการในเอกสาร",
+    referenceNo: fields.referenceNo?.raw || undefined,
+  };
   const address = addressFrom(fields.contact?.raw);
 
   return (
@@ -134,10 +139,10 @@ export function TorRecordView({
                 <span className={styles.asWritten}>ตามเอกสาร: {deadline.raw}</span>
               )}
               {fields.deadline?.fromDocument &&
-                (deadlineDocumentUrl ? (
-                  <a className={styles.sourceLink} href={deadlineDocumentUrl} target="_blank" rel="noreferrer">
-                    จากประกาศเชิญชวน ↗
-                  </a>
+                (hasInvitation ? (
+                  <OriginalPreview {...previewProps} initial="invitation" className={styles.sourceLink}>
+                    จากประกาศเชิญชวน →
+                  </OriginalPreview>
                 ) : (
                   "จากประกาศเชิญชวน"
                 ))}
@@ -232,20 +237,10 @@ export function TorRecordView({
 
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
-          {documentUrl ? (
-            <a className={styles.openDocBtn} href={documentUrl} target="_blank" rel="noreferrer">
-              เปิดเอกสารต้นฉบับ ↗
-            </a>
-          ) : (
-            <button type="button" className={`${styles.openDocBtn} ${styles.openDocBtnUnavailable}`} disabled>
-              เปิดเอกสารต้นฉบับ ↗
-            </button>
-          )}
+          <OriginalPreview {...previewProps} className={styles.openDocBtn}>
+            เปิดเอกสารต้นฉบับ
+          </OriginalPreview>
         </div>
-
-        {!documentUrl && (
-          <span className={styles.documentUnavailableNote}>ยังเปิดเอกสารต้นฉบับไม่ได้ในขณะนี้</span>
-        )}
 
         {tor.sourceProject && (
           <a className={styles.sourceProjectBtn} href={tor.sourceProject.url} target="_blank" rel="noreferrer">
