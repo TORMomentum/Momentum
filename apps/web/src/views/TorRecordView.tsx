@@ -135,9 +135,9 @@ export function TorRecordView({
               )}
               {fields.deadline?.fromDocument &&
                 (deadlineDocumentUrl ? (
-                  <a className={styles.sourceLink} href={deadlineDocumentUrl} target="_blank" rel="noreferrer">
-                    จากประกาศเชิญชวน ↗
-                  </a>
+                  <Link className={styles.sourceLink} href={deadlineDocumentUrl}>
+                    จากประกาศเชิญชวน →
+                  </Link>
                 ) : (
                   "จากประกาศเชิญชวน"
                 ))}
@@ -233,9 +233,9 @@ export function TorRecordView({
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
           {documentUrl ? (
-            <a className={styles.openDocBtn} href={documentUrl} target="_blank" rel="noreferrer">
-              เปิดเอกสารต้นฉบับ ↗
-            </a>
+            <Link className={styles.openDocBtn} href={documentUrl}>
+              เปิดเอกสารต้นฉบับ
+            </Link>
           ) : (
             <button type="button" className={`${styles.openDocBtn} ${styles.openDocBtnUnavailable}`} disabled>
               เปิดเอกสารต้นฉบับ ↗

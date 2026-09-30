@@ -6,9 +6,9 @@ import { TorRecordView } from "../../../../src/views/TorRecordView";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
-/** The proxy route that streams a stored original (spec §5.1 — the only path to it). */
-function documentHref(id: string): string {
-  return `/tors/${encodeURIComponent(id)}/document`;
+/** The in-app viewer for this TOR's stored original, or for its invitation to bid. */
+function originalHref(id: string, invitation = false): string {
+  return `/tors/${encodeURIComponent(id)}/original${invitation ? "?doc=invitation" : ""}`;
 }
 
 /**
@@ -39,16 +39,16 @@ export default async function TorDetailPage({
     const tor: TorDetail | null = await fetchTor(id);
     if (!tor) notFound();
 
-    // Originals are streamed through this app's proxy route, which checks the
-    // takedown state on every request (object storage spec §5). The deadline may
-    // come from the project's invitation to bid; the reader gets that original
-    // too, not only this TOR's (NFR-F6).
+    // Originals open in the in-app viewer, which streams them through the proxy
+    // route (object storage spec §5). The deadline may come from the project's
+    // invitation to bid; the reader gets that original too, not only this
+    // TOR's (NFR-F6).
     const deadlineSource = tor.fields.deadline?.fromDocument;
     return (
       <TorRecordView
         tor={tor}
-        documentUrl={documentHref(id)}
-        deadlineDocumentUrl={deadlineSource ? documentHref(deadlineSource) : null}
+        documentUrl={originalHref(id)}
+        deadlineDocumentUrl={deadlineSource ? originalHref(id, true) : null}
       />
     );
   }
