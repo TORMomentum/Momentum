@@ -1,22 +1,8 @@
 import Link from "next/link";
+import type { OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import styles from "../features/tor-detail/tor-original.module.css";
 import type { TorDetail } from "../shared/api/tors.api";
 import { formatThaiDate } from "../shared/lib/format";
-
-/** One stored original the viewer can show: the TOR itself, or its invitation to bid. */
-export interface OriginalDocument {
-  key: "tor" | "invitation";
-  label: string;
-  /** This viewer, showing this document. */
-  href: string;
-  /** The proxy route, inline — what the frame displays. */
-  inlineUrl: string;
-  /** The proxy route, as an attachment — the download button. */
-  downloadUrl: string;
-  /** Known for the TOR; an invitation is not a public record, so its hash is not. */
-  contentHash: string | null;
-  contentType: string | null;
-}
 
 /**
  * The stored original of a TOR, shown inside the app (FR-A-2, NFR-F6): the

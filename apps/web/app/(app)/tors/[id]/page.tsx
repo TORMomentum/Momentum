@@ -2,14 +2,12 @@ import { notFound } from "next/navigation";
 import { getTorBySlug } from "../../../../src/data/tor-samples";
 import { fetchTor, type TorDetail } from "../../../../src/shared/api/tors.api";
 import { TorDetailView } from "../../../../src/views/TorDetailView";
+import { originalDocuments } from "../../../../src/features/tor-detail/original-documents";
 import { TorRecordView } from "../../../../src/views/TorRecordView";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
-/** The in-app viewer for this TOR's stored original, or for its invitation to bid. */
-function originalHref(id: string, invitation = false): string {
-  return `/tors/${encodeURIComponent(id)}/original${invitation ? "?doc=invitation" : ""}`;
-}
+
 
 /**
  * This segment deliberately has NO loading.tsx.
@@ -39,18 +37,11 @@ export default async function TorDetailPage({
     const tor: TorDetail | null = await fetchTor(id);
     if (!tor) notFound();
 
-    // Originals open in the in-app viewer, which streams them through the proxy
+    // Originals open in a preview over the page, streamed through the proxy
     // route (object storage spec §5). The deadline may come from the project's
     // invitation to bid; the reader gets that original too, not only this
     // TOR's (NFR-F6).
-    const deadlineSource = tor.fields.deadline?.fromDocument;
-    return (
-      <TorRecordView
-        tor={tor}
-        documentUrl={originalHref(id)}
-        deadlineDocumentUrl={deadlineSource ? originalHref(id, true) : null}
-      />
-    );
+    return <TorRecordView tor={tor} originals={originalDocuments(tor)} />;
   }
 
   const sample = getTorBySlug(id);
