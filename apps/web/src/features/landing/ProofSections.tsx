@@ -138,7 +138,7 @@ export function AnomalyPlot() {
       </Reveal>
 
       <Reveal className={styles.plotFoot}>
-        ชี้ที่จุด · 1 จุด = 1 TOR · ข้อมูลตัวอย่างจากคลังข้อมูลนำร่อง
+        ชี้ที่จุด · 1 จุด = 1 TOR · ภาพตัวอย่างประกอบการอธิบาย · ดูข้อมูลจริงที่แดชบอร์ด
       </Reveal>
     </section>
   );
@@ -151,7 +151,7 @@ export function QualityChecklist() {
     <section className={styles.section} id="quality">
       <div className={styles.quality}>
         <Reveal>
-          <div className={styles.eyebrow}>[ ตรวจคุณภาพข้อกำหนดด้วย AI</div>
+          <div className={styles.eyebrow}>[ ตรวจคุณภาพข้อกำหนดด้วย AI · ตัวอย่าง</div>
           <h2 className={styles.heading}>
             TOR เขียนดีแค่ไหน
             <br />
