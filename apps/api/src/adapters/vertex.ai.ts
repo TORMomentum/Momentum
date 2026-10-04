@@ -67,7 +67,21 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
 - category: คำสั้น ๆ เช่น งานก่อสร้าง-ทาง, งานก่อสร้าง-ชลประทาน, งานก่อสร้าง-อาคาร, จ้างเหมาบริการ, ซื้อครุภัณฑ์, จ้างที่ปรึกษา
 - required_qualifications: เฉพาะคุณสมบัติที่ใช้แยกแยะผู้เสนอราคา (ชั้นทะเบียนผู้รับเหมา, มอก., วิชาชีพวิศวกรรม ฯลฯ) ไม่เอา boilerplate (ล้มละลาย, ทิ้งงาน, ลงทะเบียน e-GP)
 - status: announced | closed | awarded | cancelled (ประกาศยกเลิก = cancelled)
+- วันที่ทุก field: ในเอกสารสแกน เลขไทย ๙ กับ ๕ (และ ๖ กับ ๘) มักดูคล้ายกัน ให้อ่านปี พ.ศ. โดยเทียบกับวันที่อื่นในเอกสารเดียวกัน เช่น "ประกาศ ณ วันที่" หรือ "ลงวันที่" ปีย่อสองหลัก (เช่น ก.ย. ๖๙) หมายถึง พ.ศ. ๒๕๖๙
+- submission_deadline: วันยื่นข้อเสนอต้องอยู่หลังวันที่ประกาศของเอกสารเดียวกัน และปกติห่างกันไม่เกินไม่กี่สัปดาห์ ถ้าอ่านแล้วได้วันยื่นข้อเสนอก่อนวันประกาศ ให้ตรวจตัวเลขนั้นใหม่ raw และ value ต้องเป็นการอ่านที่ตรวจแล้ว ถ้ายังไม่แน่ใจให้ลด confidence
 ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนำหน้าหรือต่อท้าย`;
+
+/**
+ * The instruction sent with the document. The source's publish date goes in as
+ * a check on date reading only; the prompt says it is not a value to copy.
+ */
+export function userPrompt(input: Pick<ExtractionInput, "sourcePublishedOn">): string {
+  if (!input.sourcePublishedOn) return "สกัดข้อมูลตาม schema";
+  return [
+    "สกัดข้อมูลตาม schema",
+    `ระบบต้นทางระบุว่าเอกสารนี้เผยแพร่วันที่ ${input.sourcePublishedOn} (ค.ศ.) ใช้เพื่อตรวจการอ่านปีในเอกสารเท่านั้น ห้ามใช้เป็นค่าของ field ใด`,
+  ].join("\n");
+}
 
 type ModelField = { raw?: unknown; value?: unknown; confidence?: unknown; evidence?: unknown };
 
@@ -170,7 +184,7 @@ export class VertexAi implements Ai {
           role: "user",
           parts: [
             { inlineData: { mimeType: input.contentType, data: input.bytes.toString("base64") } },
-            { text: "สกัดข้อมูลตาม schema" },
+            { text: userPrompt(input) },
           ],
         },
       ],

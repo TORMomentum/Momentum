@@ -1,6 +1,7 @@
 import type { Provenance } from "@tor-radar/shared";
 import type { Ai } from "../../ports/ai.port.js";
 import type { Storage } from "../../ports/storage.port.js";
+import { calendarDate } from "../../lib/calendar-date.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
 import { IMPLAUSIBLE_DEADLINE, type ExtractionRepository } from "./extraction.repository.js";
@@ -53,7 +54,13 @@ export class ExtractionService {
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
-    const raw = await this.deps.ai.extract({ bytes, contentType });
+    const raw = await this.deps.ai.extract({
+      bytes,
+      contentType,
+      ...(target.sourceAnnouncedAt
+        ? { sourcePublishedOn: calendarDate(target.sourceAnnouncedAt, this.deps.config.timezone) }
+        : {}),
+    });
     // The source's own date wins: a TOR document rarely states when it was published.
     const announcedAt = target.sourceAnnouncedAt ?? parseDate(raw.announcementDate.value);
 

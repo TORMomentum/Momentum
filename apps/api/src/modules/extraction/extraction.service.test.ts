@@ -75,6 +75,16 @@ function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } & FakeTarget = {}) {
 }
 
 describe("ExtractionService.run", () => {
+  it("gives the model the source's publish date to check date reading against, when the source states one", async () => {
+    const withDate = fakes({ sourceAnnouncedAt: new Date("2026-10-02T00:00:00Z") });
+    await withDate.service.run("tor-1");
+    expect(withDate.ai.extract).toHaveBeenCalledWith(expect.objectContaining({ sourcePublishedOn: "2026-10-02" }));
+
+    const withoutDate = fakes();
+    await withoutDate.service.run("tor-2");
+    expect(withoutDate.ai.extract).toHaveBeenCalledWith(expect.not.objectContaining({ sourcePublishedOn: expect.anything() }));
+  });
+
   it("writes the record once, graded, with provenance naming the model version", async () => {
     const { service, repo, ai } = fakes();
 
