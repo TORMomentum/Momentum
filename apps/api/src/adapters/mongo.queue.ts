@@ -40,13 +40,14 @@ export class MongoQueue implements Queue {
   /**
    * findOneAndUpdate is atomic, so two workers racing for the same document
    * produce exactly one winner. The lock expiry lets a job abandoned by a
-   * crashed worker become claimable again.
+   * crashed or stopped worker become claimable again: such a job is still
+   * "running", so a claim that looked only at "pending" would never see it.
    */
   async claim(): Promise<Job | null> {
     const now = new Date();
     const result = await jobs(this.db).findOneAndUpdate(
       {
-        state: "pending",
+        state: { $in: ["pending", "running"] },
         nextRunAt: { $lte: now },
         $or: [{ lockedUntil: { $exists: false } }, { lockedUntil: { $lte: now } }],
       },
