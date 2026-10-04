@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extensionFor, storageKeyFor } from "./storage-key.js";
+import { extensionFor, packageKeyFor, storageKeyFor } from "./storage-key.js";
 
 const HASH = "cfa3181c1ee36e8bce5e39f84959f4558ea7ba32c0e4539a8ab3c8ce8c716ec6";
 
@@ -30,5 +30,12 @@ describe("storageKeyFor", () => {
   it("falls back rather than throwing on a type it has no extension for", () => {
     expect(extensionFor("application/octet-stream")).toBe("bin");
     expect(storageKeyFor(HASH, "application/octet-stream").endsWith(".bin")).toBe(true);
+  });
+});
+
+describe("packageKeyFor", () => {
+  it("keeps source packages under their own prefix, with the same identity rules", () => {
+    const at = new Date("2026-10-04T04:00:00Z");
+    expect(packageKeyFor(HASH, "application/zip", at)).toBe(`packages/2026/10/${HASH}.zip`);
   });
 });
