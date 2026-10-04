@@ -188,6 +188,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // The _id suffix is the public list's cursor tie-breaker, so the unfiltered
   // listing reads its order straight from this index (search spec §4).
   await tors(db).createIndex({ announcedAt: -1, _id: -1 });
+  // The list's leading segment — still taking bids, closing soonest first —
+  // reads its order and cursor tie-breaker from this one.
+  await tors(db).createIndex({ "fields.deadline.value": 1, _id: 1 });
   await tors(db).createIndex({
     "fields.agency.value": 1,
     announcedAt: -1,

@@ -56,7 +56,8 @@ export class TorsService {
     const today = calendarDate(this.deps.now?.() ?? new Date(), config.search.timeZone);
 
     const page = await this.deps.repo.search(
-      { ...filter, openOn: open ? today : undefined },
+      // A vendor's first question is what they can still bid on, so those lead.
+      { ...filter, openOn: open ? today : undefined, closingFirstOn: today },
       request.pageSize,
       request.cursor,
     );
