@@ -186,10 +186,20 @@ and "other" buckets nobody bids on as a skill).
 Note that upstream reuses some category codes — `2001` is both ที่ดิน (เช่า) and ที่ดิน (ซื้อ) — so
 anything keyed on these records must use `category_id`, not `code`.
 
-## Not usable: national e-GP (`process5.gprocurement.go.th`)
+## National e-GP (`gprocurement.go.th`) — second source
 
-Thailand's national e-GP is an Angular micro-frontend over ~25 microservices at
-`process3.gprocurement.go.th` (an internal host, not directly reachable). It is gated behind
-Keycloak OAuth (`login-process5.gprocurement.go.th/auth/realms/egpms`) plus a Cloudflare Turnstile
-bot challenge. **Do not automate it** — no public access path, and its BMA content is largely
-redundant with the API above. Manual URL/file ingestion only.
+The e-GP **web site** is an Angular front end gated behind Keycloak OAuth
+(`login-process5.gprocurement.go.th/auth/realms/egpms`) and a Cloudflare Turnstile bot check — do
+not automate the site. Four **back-end endpoints** under it are public, need no login, cookie or
+special header, and were verified live on 2026-10-04:
+
+| Endpoint | Gives |
+| :-- | :-- |
+| `process.gprocurement.go.th/EPROCRssFeedWeb/egpannouncerss.xml?anounceType=B0\|D0&deptId=` | Today's announcements (Windows-874). Each item: title, link, date, and a description starting with the 11-digit project number. Empty at weekends. `process3.` redirects here |
+| `process5…/egp-approval-service/apv-common/infoProcureDocAnnounZip?projectId=` | `data.zipId` of the final bid package; `responseCode: "1"`, `data: null` when there is none |
+| `process5…/egp-doc-price-estimate-service/dpe-common/infoDocPriceestZipHis?projectId=` | `data.zipFileId` of the reference-price package (`pB0.pdf` line items, `pB1.pdf` budget and price sources) |
+| `process5…/egp-upload-service/v1/downloadFileTest?fileId=` | The package ZIP itself (7–10 MB, 9–22 files: `TOR(1).pdf`/`Attach_TOR_n.pdf`, `annoudoc_*.pdf` invitation, bid document, bonds, contract) |
+
+`downloadFileTest` is unofficial and may close; the BMA API above stays the fallback. Collected by
+`tools/import_national_egp_tors.mts` through `apps/api/src/sources/national-egp/` — design in
+[the national e-GP source spec](superpowers/specs/2026-10-04-national-egp-source-design.md).
