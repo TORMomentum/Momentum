@@ -37,6 +37,12 @@ export interface RawExtraction {
 export interface ExtractionInput {
   bytes: Buffer;
   contentType: string;
+  /**
+   * The publish date the source system states for this document, `YYYY-MM-DD`.
+   * A check on how dates are read — a scan's ๙ and ๕ look alike, and misread
+   * they move a deadline years into the past — never a value to extract.
+   */
+  sourcePublishedOn?: string;
 }
 
 /**

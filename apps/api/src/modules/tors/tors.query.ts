@@ -24,11 +24,14 @@ export interface SearchFilter {
   to?: string;
 }
 
-/** A position in the `(announcedAt desc, _id desc)` order. */
-export interface SearchCursor {
-  announcedAt: Date | null;
-  id: ObjectId;
-}
+/**
+ * A position in the list, which has two segments: TORs still taking bids with a
+ * stated deadline, in `(deadline asc, _id asc)` — closing soonest first — then
+ * every other record in `(announcedAt desc, _id desc)`.
+ */
+export type SearchCursor =
+  | { segment: "closing"; deadline: string; id: ObjectId }
+  | { segment: "rest"; announcedAt: Date | null; id: ObjectId };
 
 export interface SearchRequest {
   filter: SearchFilter;
@@ -125,23 +128,34 @@ export function parseSearchQuery(query: unknown, config: SearchConfig): SearchRe
 
 /** Opaque to callers: base64url JSON, so its shape can change without a contract change. */
 export function encodeCursor(cursor: SearchCursor): string {
-  const payload = { a: cursor.announcedAt?.toISOString() ?? null, i: cursor.id.toHexString() };
+  const payload =
+    cursor.segment === "closing"
+      ? { s: "c", d: cursor.deadline, i: cursor.id.toHexString() }
+      : { a: cursor.announcedAt?.toISOString() ?? null, i: cursor.id.toHexString() };
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }
 
 export function decodeCursor(value: string): SearchCursor {
   try {
     const payload = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as {
+      s?: unknown;
+      d?: unknown;
       a?: unknown;
       i?: unknown;
     };
     if (typeof payload.i !== "string" || !ObjectId.isValid(payload.i)) throw new Error("id");
-    if (payload.a !== null && typeof payload.a !== "string") throw new Error("announcedAt");
+    const id = new ObjectId(payload.i);
 
+    if (payload.s === "c") {
+      if (typeof payload.d !== "string" || payload.d.length > 40) throw new Error("deadline");
+      return { segment: "closing", deadline: payload.d, id };
+    }
+
+    if (payload.a !== null && typeof payload.a !== "string") throw new Error("announcedAt");
     const announcedAt = payload.a === null ? null : new Date(payload.a);
     if (announcedAt && Number.isNaN(announcedAt.getTime())) throw new Error("announcedAt");
 
-    return { announcedAt, id: new ObjectId(payload.i) };
+    return { segment: "rest", announcedAt, id };
   } catch {
     throw new BadRequestError("cursor is not valid");
   }

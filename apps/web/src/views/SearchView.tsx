@@ -45,6 +45,8 @@ function badgeFor(row: TorListItem): Badge {
   if (row.torStatus.value === "cancelled") return { label: "ยกเลิกแล้ว", className: styles.badgeClosed };
   if (row.torStatus.value === "awarded") return { label: "ประกาศผู้ชนะแล้ว", className: styles.badgeClosed };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };
+  // Announced with no deadline yet: the draft TOR is out, the invitation to bid is not.
+  if (row.deadline.value === null) return { label: "รอประกาศเชิญชวน", className: styles.badgeUpcoming };
   return { label: "เปิดรับข้อเสนอ", className: styles.badgeOpen };
 }
 
@@ -392,7 +394,7 @@ export function SearchView({
                     )}
                   </div>
                   <div className={styles.resultDeadline}>
-                    {row.open ? "ยื่นภายใน" : "ปิดรับ"}
+                    {row.deadline.value === null ? "กำหนดยื่น" : row.open ? "ยื่นภายใน" : "ปิดรับ"}
                     {/* Formatted in Arabic numerals; the document's own wording is the
                         tooltip here and is shown in full on the detail page (NFR-F7). */}
                     <span className={styles.resultDeadlineValue} title={row.deadline.raw || undefined}>

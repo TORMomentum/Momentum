@@ -43,7 +43,15 @@ export function RadarBackdrop() {
     // Antialiasing buys little on points and a hairline sweep, and fill rate
     // is what costs frames. Capping the pixel ratio at 1.5 roughly halves the
     // work on a 2x display with no visible difference at this scale.
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    // The backdrop is decoration. Without WebGL (disabled, blocked, or no GPU)
+    // three.js throws here, and an uncaught throw in an effect takes the whole
+    // page down — so the page renders without it instead.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    } catch {
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
 
     const scene = new THREE.Scene();

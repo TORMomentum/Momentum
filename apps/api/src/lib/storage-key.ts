@@ -37,17 +37,29 @@ const EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "text/html": "html",
+  "application/zip": "zip",
 };
 
 /** Documents live under one prefix so later kinds (exports, thumbnails) can have their own. */
 const PREFIX = "tors";
+/** Source packages a document was unpacked from, kept whole as originals. */
+const PACKAGE_PREFIX = "packages";
 
 export function extensionFor(contentType: string): string {
   return EXTENSIONS[contentType] ?? "bin";
 }
 
-export function storageKeyFor(contentHash: string, contentType: string, at: Date = new Date()): string {
+function keyUnder(prefix: string, contentHash: string, contentType: string, at: Date): string {
   const year = at.getUTCFullYear();
   const month = String(at.getUTCMonth() + 1).padStart(2, "0");
-  return `${PREFIX}/${year}/${month}/${contentHash}.${extensionFor(contentType)}`;
+  return `${prefix}/${year}/${month}/${contentHash}.${extensionFor(contentType)}`;
+}
+
+export function storageKeyFor(contentHash: string, contentType: string, at: Date = new Date()): string {
+  return keyUnder(PREFIX, contentHash, contentType, at);
+}
+
+/** Where a source package (an e-GP bid package ZIP, say) is archived — same identity rules as a document. */
+export function packageKeyFor(contentHash: string, contentType: string, at: Date = new Date()): string {
+  return keyUnder(PACKAGE_PREFIX, contentHash, contentType, at);
 }

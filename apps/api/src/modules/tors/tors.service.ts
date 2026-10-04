@@ -6,6 +6,7 @@ import { extensionFor } from "../../lib/content-disposition.js";
 import { redactTor } from "../../lib/redact.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import { buildProjectUrl } from "../../sources/bma-egp/client.js";
+import { buildProjectSearchUrl } from "../../sources/national-egp/client.js";
 import { verdictFor, type AnomalyVerdict, type PeerBounds } from "../stats/anomaly.rule.js";
 import { eligibilityOf } from "../stats/eligibility.js";
 import { encodeCursor, type SearchRequest } from "./tors.query.js";
@@ -56,7 +57,8 @@ export class TorsService {
     const today = calendarDate(this.deps.now?.() ?? new Date(), config.search.timeZone);
 
     const page = await this.deps.repo.search(
-      { ...filter, openOn: open ? today : undefined },
+      // A vendor's first question is what they can still bid on, so those lead.
+      { ...filter, openOn: open ? today : undefined, closingFirstOn: today },
       request.pageSize,
       request.cursor,
     );
@@ -135,16 +137,18 @@ export class TorsService {
       fields: publicFields,
       announcedAt: record.announcedAt,
       sourceUrl: record.sourceUrl,
-      // The project's own page on the source site, where a reader sees every announcement
-      // for it — the TOR, the invitation, the award — as the agency published them.
-      sourceProject:
-        record.sourceProject?.system === "bma-egp"
-          ? {
-              system: record.sourceProject.system,
-              projectNumber: record.sourceProject.projectNumber ?? null,
-              url: buildProjectUrl(record.sourceProject.projectId),
-            }
-          : null,
+      // The project on the source site, where a reader sees every announcement for it — the
+      // TOR, the invitation, the award — as the agency published them.
+      sourceProject: record.sourceProject
+        ? {
+            system: record.sourceProject.system,
+            projectNumber: record.sourceProject.projectNumber ?? null,
+            url:
+              record.sourceProject.system === "national-egp"
+                ? buildProjectSearchUrl(record.sourceProject.projectId)
+                : buildProjectUrl(record.sourceProject.projectId),
+          }
+        : null,
       provenance: record.provenance,
       confidenceLevel: record.confidenceLevel,
       unverified: record.unverified,

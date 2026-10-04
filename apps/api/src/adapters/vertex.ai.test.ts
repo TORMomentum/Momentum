@@ -4,9 +4,18 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DocumentUnreadableError } from "../core/errors.js";
 import { loadConfig } from "../core/config.js";
-import { parseExtraction, VertexAi } from "./vertex.ai.js";
+import { parseExtraction, userPrompt, VertexAi } from "./vertex.ai.js";
 
 const CORPUS = fileURLToPath(new URL("../../../../docs/corpus/", import.meta.url));
+
+describe("userPrompt", () => {
+  it("adds the source's publish date as a reading check only when there is one", () => {
+    expect(userPrompt({})).toBe("สกัดข้อมูลตาม schema");
+    const prompt = userPrompt({ sourcePublishedOn: "2026-10-02" });
+    expect(prompt).toContain("2026-10-02");
+    expect(prompt).toContain("ห้ามใช้เป็นค่าของ field ใด");
+  });
+});
 
 describe("parseExtraction", () => {
   const wellFormed = {

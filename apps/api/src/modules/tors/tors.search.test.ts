@@ -325,6 +325,55 @@ describe("GET /tors — pagination", () => {
   });
 });
 
+describe("GET /tors — what can still be bid on comes first", () => {
+  it("lists TORs still taking bids first, closing soonest, then the rest newest first", async () => {
+    // NOW is 2026-09-16 in Bangkok.
+    const newestNoDeadline = await seed({ announcedAt: "2026-09-15", deadline: null });
+    const closed = await seed({ announcedAt: "2026-09-14", deadline: "2026-09-10" });
+    const closingLater = await seed({ announcedAt: "2026-08-01", deadline: "2026-09-30" });
+    const closingToday = await seed({ announcedAt: "2026-08-02", deadline: "2026-09-16" });
+    const statusClosed = await seed({ announcedAt: "2026-09-13", deadline: "2026-09-20", status: "closed" });
+    const closingSoon = await seed({ announcedAt: "2026-08-03", deadline: "2026-09-18" });
+
+    const body = await search("");
+
+    expect(body.items.map((item) => item.id)).toEqual([
+      closingToday,
+      closingSoon,
+      closingLater,
+      newestNoDeadline,
+      closed,
+      statusClosed,
+    ]);
+  });
+
+  it("walks both segments by cursor, every record exactly once, across the boundary", async () => {
+    const seeded: string[] = [];
+    for (let i = 0; i < 5; i += 1) seeded.push(await seed({ deadline: `2026-09-${20 + (i % 2)}` }));
+    for (let i = 0; i < 4; i += 1) seeded.push(await seed({ announcedAt: `2026-08-${10 + i}`, deadline: "2026-09-01" }));
+    seeded.push(await seed({ announcedAt: null }));
+
+    const walked: Array<{ id: string; deadline: { value: string | null } }> = [];
+    let cursor: string | null = null;
+    let pages = 0;
+    do {
+      const response = await request(buildTestApp()).get(
+        `/api/v1/tors?pageSize=3${cursor ? `&cursor=${cursor}` : ""}`,
+      );
+      expect(response.status).toBe(200);
+      walked.push(...response.body.items);
+      cursor = response.body.nextCursor;
+      pages += 1;
+    } while (cursor && pages < 10);
+
+    expect(pages).toBe(4);
+    expect(walked.map((item) => item.id).sort()).toEqual(seeded.sort());
+    const leading = walked.slice(0, 5).map((item) => item.deadline.value as string);
+    expect(leading).toEqual([...leading].sort());
+    expect(leading.every((deadline) => deadline >= "2026-09-16")).toBe(true);
+  });
+});
+
 describe("GET /tors — input is primitives only", () => {
   it("rejects an operator object before it can reach a query", () => {
     expect(() => parseSearchQuery({ agency: { $ne: "x" } }, config.search)).toThrow();
@@ -413,6 +462,22 @@ describe("GET /tors/:id", () => {
       url: "https://egp2.bangkok.go.th/project-detail/ffe2ca8d-b909-4a3e-aa2f-1509051f5042",
     });
     expect(withoutProject.body.sourceProject).toBeNull();
+  });
+
+  it("links e-GP's public search for the project number when the TOR came from national e-GP", async () => {
+    const collected = await seed();
+    await tors(db).updateOne(
+      { contentHash: `search-test-${seq}` },
+      { $set: { sourceProject: { system: "national-egp", projectId: "68039469567", projectNumber: "68039469567" } } },
+    );
+
+    const response = await request(buildTestApp()).get(`/api/v1/tors/${collected}`);
+
+    expect(response.body.sourceProject).toEqual({
+      system: "national-egp",
+      projectNumber: "68039469567",
+      url: "https://process5.gprocurement.go.th/egp-agpc01-web/announcement?keywordSearch=68039469567",
+    });
   });
 
   it("says when a value came from the source system rather than AI (NFR-F6)", async () => {

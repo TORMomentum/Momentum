@@ -124,6 +124,32 @@ describe("IntakeRepository", () => {
     expect(events).toBe(transitions + 1);
   });
 
+  it("keeps a document's first source project when another system publishes the same file", async () => {
+    const id = await repository.insert("abc", stored, source, undefined, {
+      sourceProject: { system: "bma-egp", projectId: "ffe2ca8d-b909-4a3e-aa2f-1509051f5042", projectNumber: "69099198268" },
+    });
+
+    await repository.attachSourceContext(id, {
+      documentType: "tor",
+      sourceProject: { system: "national-egp", projectId: "69099198268", projectNumber: "69099198268" },
+    });
+
+    const document = await tors(db).findOne({ contentHash: "abc" });
+    expect(document?.sourceProject?.system).toBe("bma-egp");
+    expect(document?.documentType).toBe("tor");
+  });
+
+  it("lets a later visit from the same system, or the first one, link the project", async () => {
+    const unlinked = await repository.insert("abc", stored, source);
+    await repository.attachSourceContext(unlinked, { sourceProject: { system: "national-egp", projectId: "69099198268" } });
+    await repository.attachSourceContext(unlinked, {
+      sourceProject: { system: "national-egp", projectId: "69099198268", projectNumber: "69099198268" },
+    });
+
+    const document = await tors(db).findOne({ contentHash: "abc" });
+    expect(document?.sourceProject).toEqual({ system: "national-egp", projectId: "69099198268", projectNumber: "69099198268" });
+  });
+
   it("rejects a second insert of the same hash", async () => {
     await repository.insert("abc", stored, source);
     await expect(repository.insert("abc", stored, source)).rejects.toMatchObject({ code: 11000 });

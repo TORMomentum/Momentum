@@ -123,7 +123,11 @@
 
 .badgeMatch { background: var(--match); border-color: var(--match); color: var(--paper); }
 
-.badgeOpen { background: transparent; border-color: rgba(18, 35, 60, 0.35); color: rgba(18, 35, 60, 0.75); }
+/* Bidding is open now: the one state a vendor can act on today. */
+.badgeOpen { background: var(--verified-wash); border-color: var(--verified); color: var(--verified); }
+
+/* The draft TOR is out, the invitation to bid is not: time to prepare. */
+.badgeUpcoming { background: var(--blue-wash); border-color: var(--blue); color: var(--blue); }
 
 .resultId { font: 10px var(--data); color: rgba(18, 35, 60, 0.6); }
 

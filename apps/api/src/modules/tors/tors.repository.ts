@@ -1,4 +1,4 @@
-import { ObjectId, type Db, type Filter } from "mongodb";
+import { ObjectId, type Db, type Filter, type WithId } from "mongodb";
 import type { ConfidenceLevel, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
 import { torPeerStats, tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
@@ -14,6 +14,11 @@ export interface PublicTorDocumentRecord {
 export interface SearchCriteria extends Omit<SearchFilter, "open"> {
   /** Set when only open TORs are wanted: deadlines before this `YYYY-MM-DD` have passed. */
   openOn?: string;
+  /**
+   * Today as `YYYY-MM-DD`. When set, TORs still taking bids with a stated
+   * deadline lead the list, closing soonest first (see `closingOn`).
+   */
+  closingFirstOn?: string;
 }
 
 /** One search result row — only what a list renders (spec §2). */
@@ -183,10 +188,30 @@ function buildFilter(criteria: SearchCriteria): Filter<TorDocument> {
 }
 
 /**
+ * The list's leading segment: announced, with a deadline today or later. The
+ * same rule as "open" (`isOpenOn`) minus the unstated deadline — a TOR whose
+ * invitation to bid is not out yet has no date to put it in order by.
+ * Deadlines are ISO strings, so string order is date order.
+ */
+function closingOn(today: string): Filter<TorDocument> {
+  return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
+}
+
+/** Resumes after `cursor` in `(deadline asc, _id asc)`. */
+function afterClosing(cursor: Extract<SearchCursor, { segment: "closing" }>): Filter<TorDocument> {
+  return {
+    $or: [
+      { "fields.deadline.value": { $gt: cursor.deadline } },
+      { "fields.deadline.value": cursor.deadline, _id: { $gt: cursor.id } },
+    ],
+  };
+}
+
+/**
  * Resumes after `cursor` in `(announcedAt desc, _id desc)`. A missing
  * `announcedAt` sorts below every date, so undated records form the tail.
  */
-function afterCursor(cursor: SearchCursor): Filter<TorDocument> {
+function afterCursor(cursor: Extract<SearchCursor, { segment: "rest" }>): Filter<TorDocument> {
   if (cursor.announcedAt === null) {
     return { announcedAt: null, _id: { $lt: cursor.id } };
   }
@@ -199,27 +224,58 @@ function afterCursor(cursor: SearchCursor): Filter<TorDocument> {
   };
 }
 
+/** The position just after `doc`, in whichever segment it was read from. */
+function cursorAt(doc: WithId<TorDocument>, closing: boolean): SearchCursor {
+  return closing
+    ? { segment: "closing", deadline: String(doc.fields?.deadline?.value), id: doc._id }
+    : { segment: "rest", announcedAt: doc.announcedAt ?? null, id: doc._id };
+}
+
 /** The only public-TOR code that touches MongoDB. */
 export class TorsRepository {
   constructor(private readonly db: Db) {}
 
+  /**
+   * One page of the list. With `closingFirstOn`, the closing segment is read
+   * first and the rest fills whatever room the page has left; each segment
+   * reads its order straight from an index, so neither sorts in memory.
+   */
   async search(criteria: SearchCriteria, pageSize: number, cursor: SearchCursor | null): Promise<SearchPage> {
     const filter = buildFilter(criteria);
-    const pageFilter = cursor ? { $and: [filter, afterCursor(cursor)] } : filter;
+    const closing = criteria.closingFirstOn ? closingOn(criteria.closingFirstOn) : null;
+    // One extra row says whether another page exists without a second count.
+    const wanted = pageSize + 1;
 
-    const [docs, total, latest] = await Promise.all([
-      tors(this.db)
-        .find(pageFilter, {
-          sort: { announcedAt: -1, _id: -1 },
-          // One extra row says whether another page exists without a second count.
-          limit: pageSize + 1,
-          projection: LIST_PROJECTION,
-        })
-        .toArray(),
+    const [closingDocs, total, latest] = await Promise.all([
+      closing && cursor?.segment !== "rest"
+        ? tors(this.db)
+            .find(
+              { $and: [filter, closing, ...(cursor?.segment === "closing" ? [afterClosing(cursor)] : [])] },
+              { sort: { "fields.deadline.value": 1, _id: 1 }, limit: wanted, projection: LIST_PROJECTION },
+            )
+            .toArray()
+        : Promise.resolve([]),
       tors(this.db).countDocuments(filter),
       tors(this.db).findOne(VISIBLE, { sort: { createdAt: -1 }, projection: { createdAt: 1 } }),
     ]);
 
+    const restDocs =
+      closingDocs.length < wanted
+        ? await tors(this.db)
+            .find(
+              {
+                $and: [
+                  filter,
+                  ...(closing ? [{ $nor: [closing] }] : []),
+                  ...(cursor?.segment === "rest" ? [afterCursor(cursor)] : []),
+                ],
+              },
+              { sort: { announcedAt: -1, _id: -1 }, limit: wanted - closingDocs.length, projection: LIST_PROJECTION },
+            )
+            .toArray()
+        : [];
+
+    const docs = [...closingDocs, ...restDocs];
     const page = docs.slice(0, pageSize);
     const last = page.at(-1);
 
@@ -246,7 +302,7 @@ export class TorsRepository {
         restricted: doc.access?.restricted ?? true,
         state: doc.pipeline?.state ?? "",
       })),
-      next: docs.length > pageSize && last ? { announcedAt: last.announcedAt ?? null, id: last._id } : null,
+      next: docs.length > pageSize && last ? cursorAt(last, closingDocs.includes(last)) : null,
       total,
       lastUpdatedAt: latest?.createdAt ?? null,
     };

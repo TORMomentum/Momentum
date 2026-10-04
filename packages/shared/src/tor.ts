@@ -46,7 +46,8 @@ export type DocumentType = "tor" | "invitation";
 
 /** The source system's project a document belongs to; every document of one project shares it. */
 export interface SourceProject {
-  system: "bma-egp";
+  /** bma-egp: egp2.bangkok.go.th, a UUID projectId. national-egp: Thailand's e-GP, an 11-digit project number. */
+  system: "bma-egp" | "national-egp";
   projectId: string;
   projectNumber?: string;
 }

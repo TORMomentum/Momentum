@@ -58,6 +58,16 @@ describe("MongoQueue", () => {
     expect(await jobs(db).countDocuments({ torId: "tor-1" })).toBe(1);
   });
 
+  it("reclaims a job whose worker stopped mid-run once its lock expires, and not before", async () => {
+    await queue.enqueue("tor-1");
+    const first = requireJob(await queue.claim());
+    expect(await queue.claim()).toBeNull();
+
+    await jobs(db).updateOne({ torId: "tor-1" }, { $set: { lockedUntil: new Date(Date.now() - 1_000) } });
+    const again = requireJob(await queue.claim());
+    expect(again.id).toBe(first.id);
+  });
+
   it("returns null when nothing is due", async () => {
     expect(await queue.claim()).toBeNull();
   });

@@ -2,24 +2,18 @@
 
 import Link from "next/link";
 
+import { formatBudgetShort, formatThaiDate } from "../../shared/lib/format";
 import styles from "./landing.module.css";
+import { budgetParts, editionOf, type LandingFigures } from "./landing.figures";
 import { useCountUp } from "./useLandingMotion";
 import { Reveal } from "./Reveal";
 
-/** Placeholder figures. Replaced by the API in slice 3; see SampleDataNotice. */
-const SAMPLE = {
-  corpus: 487,
-  budgetMillions: 1284,
-  agencies: 128,
-  anomalies: 12,
-  lastUpdated: "12 ส.ค. 2569",
-} as const;
-
-export function Hero() {
+export function Hero({ figures }: { figures: LandingFigures | null }) {
+  const edition = editionOf(figures?.lastIntakeAt ?? null);
   return (
     <section className={styles.hero}>
       <div className={styles.eyebrow}>
-        ฉบับ 2569-08 · จัดซื้อจัดจ้างภาครัฐไทย ที่มองเห็นได้
+        {edition ? <>ฉบับ {edition} · </> : null}จัดซื้อจัดจ้างภาครัฐไทย ที่มองเห็นได้
       </div>
 
       <h1 className={styles.heroTitle}>
@@ -47,22 +41,34 @@ export function Hero() {
 
       <div className={styles.scrollHint}>เลื่อนลงเพื่ออ่านต่อ ↓</div>
       <div className={styles.heroMeta}>
-        คลังข้อมูลปัจจุบัน · <span className={styles.liveDot}>●</span> TOR {SAMPLE.corpus} ฉบับ
-        <br />
-        อัปเดตข้อมูลล่าสุด {SAMPLE.lastUpdated}
+        {figures ? (
+          <>
+            คลังข้อมูลปัจจุบัน · <span className={styles.liveDot}>●</span> TOR{" "}
+            {figures.torCount.toLocaleString("en-US")} ฉบับ
+            <br />
+            อัปเดตข้อมูลล่าสุด {figures.lastIntakeAt ? formatThaiDate(figures.lastIntakeAt) : "ยังไม่มีข้อมูล"}
+            <br />
+            ครอบคลุมเฉพาะเอกสารที่ระบบรวบรวมได้
+          </>
+        ) : (
+          <>ยังเชื่อมต่อข้อมูลไม่ได้ในขณะนี้</>
+        )}
       </div>
     </section>
   );
 }
 
+const ANOMALY_LABEL = "ความผิดปกติทางสถิติ";
+
 /** Headline figures on a loop. Duplicated once so the scroll never shows a gap. */
-export function Marquee() {
+export function Marquee({ figures }: { figures: LandingFigures | null }) {
+  if (!figures) return null;
   const items = [
-    `นำเข้า TOR ${SAMPLE.corpus} ฉบับ`,
-    `ติดตามงบประมาณ ฿1.28B`,
-    `หน่วยงานรัฐ ${SAMPLE.agencies} แห่ง`,
-    `ความผิดปกติทางสถิติ ${SAMPLE.anomalies} รายการ`,
-    "อีเมลจับคู่ภายใน 5 นาที",
+    `นำเข้า TOR ${figures.torCount.toLocaleString("en-US")} ฉบับ`,
+    `ติดตามงบประมาณ ${formatBudgetShort(figures.budgetSum)}`,
+    `หน่วยงานรัฐ ${figures.agencyCount.toLocaleString("en-US")} แห่ง`,
+    `${ANOMALY_LABEL} ${figures.anomalyCount ?? 0} รายการ`,
+    "ข้อมูลจากประกาศ e-GP จริง",
   ];
   const run = [...items, ...items];
 
@@ -71,7 +77,7 @@ export function Marquee() {
       <div className={styles.marqueeTrack}>
         {run.map((item, index) => (
           <span key={`${item}-${index}`}>
-            <span className={item.includes("ANOMALIES") ? styles.marqueeFlag : undefined}>
+            <span className={item.startsWith(ANOMALY_LABEL) ? styles.marqueeFlag : undefined}>
               {item}
             </span>
             <span aria-hidden="true"> ◆</span>
@@ -92,43 +98,52 @@ function Stat({
   flagged = false,
 }: {
   label: string;
-  value: number;
+  /** Null when the figure is unavailable: shown as a dash, never a guess. */
+  value: number | null;
   decimals?: number;
   prefix?: string;
   suffix?: string;
   note: string;
   flagged?: boolean;
 }) {
-  const counter = useCountUp(value, decimals);
+  const counter = useCountUp(value ?? 0, decimals);
   return (
     <div className={`${styles.stat} ${flagged ? styles.statFlagged : ""}`}>
       <div className={styles.statKey}>{label}</div>
       <div className={styles.statValue}>
-        {prefix}
-        <span ref={counter.ref}>{counter.text}</span>
-        {suffix}
+        {value === null ? (
+          "—"
+        ) : (
+          <>
+            {prefix}
+            <span ref={counter.ref}>{counter.text}</span>
+            {suffix}
+          </>
+        )}
       </div>
       <div className={styles.statNote}>{note}</div>
     </div>
   );
 }
 
-export function Stats() {
+export function Stats({ figures }: { figures: LandingFigures | null }) {
+  const budget = figures ? budgetParts(figures.budgetSum) : null;
   return (
     <section className={styles.section}>
       <Reveal className={styles.stats}>
-        <Stat label="TOR ทั้งหมด" value={SAMPLE.corpus} note="ฉบับ จากประกาศสาธารณะ" />
+        <Stat label="TOR ทั้งหมด" value={figures?.torCount ?? null} note="ฉบับ จากประกาศสาธารณะ" />
         <Stat
           label="งบประมาณรวม"
-          value={SAMPLE.budgetMillions}
+          value={budget?.value ?? null}
+          decimals={budget?.decimals ?? 0}
           prefix="฿"
-          suffix="M"
-          note="ตามราคากลางที่ประกาศ"
+          suffix={budget?.suffix ?? ""}
+          note="ตามงบประมาณที่ประกาศ"
         />
-        <Stat label="หน่วยงาน" value={SAMPLE.agencies} note="หน่วยงานรัฐทั่วประเทศ" />
+        <Stat label="หน่วยงาน" value={figures?.agencyCount ?? null} note="หน่วยงานในข้อมูลที่รวบรวมได้" />
         <Stat
-          label="ความผิดปกติทางสถิติ"
-          value={SAMPLE.anomalies}
+          label={ANOMALY_LABEL}
+          value={figures ? (figures.anomalyCount ?? 0) : null}
           note="เกณฑ์ 1.5×IQR — ไม่ใช่ข้อกล่าวหา"
           flagged
         />
