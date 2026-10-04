@@ -464,6 +464,22 @@ describe("GET /tors/:id", () => {
     expect(withoutProject.body.sourceProject).toBeNull();
   });
 
+  it("links e-GP's public search for the project number when the TOR came from national e-GP", async () => {
+    const collected = await seed();
+    await tors(db).updateOne(
+      { contentHash: `search-test-${seq}` },
+      { $set: { sourceProject: { system: "national-egp", projectId: "68039469567", projectNumber: "68039469567" } } },
+    );
+
+    const response = await request(buildTestApp()).get(`/api/v1/tors/${collected}`);
+
+    expect(response.body.sourceProject).toEqual({
+      system: "national-egp",
+      projectNumber: "68039469567",
+      url: "https://process5.gprocurement.go.th/egp-agpc01-web/announcement?keywordSearch=68039469567",
+    });
+  });
+
   it("says when a value came from the source system rather than AI (NFR-F6)", async () => {
     const id = await seed();
     await tors(db).updateOne(
