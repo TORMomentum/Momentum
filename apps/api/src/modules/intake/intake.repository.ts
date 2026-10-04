@@ -117,9 +117,23 @@ export class IntakeRepository {
 
   /** Records what a source states about a document that was already stored. */
   async attachSourceContext(id: string, context: SourceContext): Promise<void> {
-    const fields = contextFields(context);
-    if (Object.keys(fields).length === 0) return;
-    await tors(this.db).updateOne({ _id: new ObjectId(id) }, { $set: { ...fields, updatedAt: new Date() } });
+    const { sourceProject, ...fields } = contextFields(context);
+    if (Object.keys(fields).length > 0) {
+      await tors(this.db).updateOne({ _id: new ObjectId(id) }, { $set: { ...fields, updatedAt: new Date() } });
+    }
+    if (sourceProject) {
+      // The first system to link a document keeps it. The same PDF can be published on two
+      // systems (a BMA TOR on egp2.bangkok.go.th and on national e-GP); taking it over would
+      // swap its project link and cut it from the documents linked under the first system.
+      // A later visit from the same system may still say more about the project.
+      await tors(this.db).updateOne(
+        {
+          _id: new ObjectId(id),
+          $or: [{ sourceProject: { $exists: false } }, { "sourceProject.system": sourceProject.system }],
+        },
+        { $set: { sourceProject, updatedAt: new Date() } },
+      );
+    }
   }
 
   /** FR-A-3: the same document arriving again records the new source, not a new record. */
