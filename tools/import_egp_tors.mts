@@ -1,8 +1,9 @@
 /**
  * Imports real TORs from the BMA e-GP source API through the real intake path.
  *
- *   npx tsx tools/import_egp_tors.mts [--limit 20]    newest TOR projects
- *   npx tsx tools/import_egp_tors.mts --backfill      records imported before project linking
+ *   npx tsx tools/import_egp_tors.mts [--limit 20]                     newest TOR projects
+ *   npx tsx tools/import_egp_tors.mts --by invitation [--limit 20]     newest invitations to bid
+ *   npx tsx tools/import_egp_tors.mts --backfill                       records imported before project linking
  *
  * For each project: its TOR document, and — when the agency has published one — its invitation to
  * bid (ประกาศเชิญชวน), which is where the submission deadline is stated. Each file is downloaded
@@ -13,6 +14,12 @@
  *
  * What the source states is recorded as source values: title, agency, budget and project number
  * as `origin: "source"` fields, and each document's publish date as its announcement date.
+ *
+ * `--by invitation` walks the newest invitations instead of the newest TORs. A new TOR rarely has
+ * its invitation yet, so walking TORs yields records without a deadline; walking invitations yields
+ * the projects whose tender is live. Only projects that also carry a TOR are imported — an
+ * invitation-only project has no public record to attach to — so `--limit` counts projects checked,
+ * and roughly a third of them are imported (docs/DATA-SOURCES.md).
  *
  * Run the worker (`npm run worker -w @tor-radar/api`) to extract and publish what this queues.
  *
@@ -39,6 +46,7 @@ import {
   type BmaEgpAnnouncement,
   type BmaEgpProject,
 } from "../apps/api/src/sources/bma-egp/client.js";
+import { INVITATION_ANNOUNCE_TYPE_ID } from "../apps/api/src/sources/bma-egp/config.js";
 import { knownFieldsFromProject } from "../apps/api/src/sources/bma-egp/enrich.js";
 
 const rootEnv = fileURLToPath(new URL("../.env", import.meta.url));
@@ -47,6 +55,8 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 const limitArg = process.argv.indexOf("--limit");
 const LIMIT = limitArg > 0 ? Number(process.argv[limitArg + 1]) : 20;
 const BACKFILL = process.argv.includes("--backfill");
+const byArg = process.argv.indexOf("--by");
+const BY = byArg > 0 ? process.argv[byArg + 1] : "tor";
 /** Pause between requests to the source. */
 const DELAY_MS = Number(process.env.EGP_IMPORT_DELAY_MS ?? 1_000);
 const PAGE_SIZE = 20;
@@ -54,6 +64,10 @@ const SUBMITTED_BY = "egp-import";
 
 if (!Number.isInteger(LIMIT) || LIMIT < 1) {
   console.error("--limit must be a positive integer");
+  process.exit(1);
+}
+if (BY !== "tor" && BY !== "invitation") {
+  console.error("--by must be tor or invitation");
   process.exit(1);
 }
 
@@ -180,7 +194,11 @@ try {
     }
   } else {
     for (let page = 1; tally.projects < LIMIT; page += 1) {
-      const result = await searchTorProjects({ pageNo: page, pageSize: PAGE_SIZE });
+      const result = await searchTorProjects({
+        pageNo: page,
+        pageSize: PAGE_SIZE,
+        ...(BY === "invitation" ? { announceTypeId: INVITATION_ANNOUNCE_TYPE_ID } : {}),
+      });
       if (result.data.length === 0) break;
       await sleep(DELAY_MS);
 

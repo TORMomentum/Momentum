@@ -44,6 +44,8 @@ export interface TorSearchOptions {
   keyword?: string;
   /** MasterOrgGroups id, to narrow to a single BMA agency. */
   agencyId?: string;
+  /** MasterAnnounceTypes id the projects must carry; the TOR type unless given. */
+  announceTypeId?: string;
 }
 
 export class BmaEgpSourceError extends Error {
@@ -102,7 +104,8 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 /**
- * Search the upstream, filtered to TOR announcements only.
+ * Search the upstream, filtered to projects carrying one announcement type — the TOR unless
+ * `announceTypeId` names another.
  * Every query parameter must be present (empty when unused) or the endpoint rejects the request;
  * the misspellings below are the upstream's own.
  */
@@ -114,7 +117,7 @@ export async function searchTorProjects(
     projectSearchText: options.keyword ?? "",
     masterOrgGroupId: options.agencyId ?? "",
     masterOrgDepartmentId: "",
-    masterAnnounceTypeId: TOR_ANNOUNCE_TYPE_ID,
+    masterAnnounceTypeId: options.announceTypeId ?? TOR_ANNOUNCE_TYPE_ID,
     masterMethodIdId: "",
     masterTypeIdId: "",
     masterGoodIdId: "",
