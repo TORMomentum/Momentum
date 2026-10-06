@@ -7,8 +7,10 @@ import styles from "../features/search/search.module.css";
 import {
   EMPTY_FILTERS,
   hasActiveFilters,
+  SEARCH_STATES,
   toSearchQuery,
   type SearchFilters,
+  type SearchState,
 } from "../features/search/search.params";
 import type { TorFacets, TorListItem, TorSearchResult } from "../shared/api/tors.api";
 import {
@@ -37,6 +39,15 @@ import icons from "../shared/ui/tor-actions.module.css";
 const BUDGET_COMMIT_DELAY_MS = 450;
 /** How long typing pauses before the keyword becomes a search, as the mockup filters while you type. */
 const QUERY_COMMIT_DELAY_MS = 450;
+
+/** One vocabulary for the five states, shared with the dashboard's chips. */
+const STATE_LABELS: Record<SearchState, string> = {
+  open: "เปิดรับข้อเสนอ",
+  "awaiting-invitation": "รอประกาศเชิญชวน",
+  closed: "ปิดรับแล้ว",
+  awarded: "ประกาศผู้ชนะแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+};
 
 type Badge = { label: string; className: string };
 
@@ -257,23 +268,29 @@ export function SearchView({
 
         <div className={styles.filterGroup}>
           <div className={styles.filterGroupTitle}>สถานะ</div>
+          {/* The same five states the dashboard counts, so a reader who clicked
+              a chip there finds the same words here. "open" was two options
+              before, which could not say "waiting for its invitation to bid". */}
           <div className={styles.toggleList}>
             <button
               type="button"
-              className={`${styles.toggleItem} ${filters.open ? styles.toggleItemOn : ""}`}
-              onClick={() => update({ open: true })}
-              aria-pressed={filters.open}
+              className={`${styles.toggleItem} ${!filters.state ? styles.toggleItemOn : ""}`}
+              onClick={() => update({ state: null })}
+              aria-pressed={!filters.state}
             >
-              {filters.open ? "◉" : "○"} ยังเปิดรับ
+              {!filters.state ? "◉" : "○"} ทั้งหมด
             </button>
-            <button
-              type="button"
-              className={`${styles.toggleItem} ${!filters.open ? styles.toggleItemOn : ""}`}
-              onClick={() => update({ open: false })}
-              aria-pressed={!filters.open}
-            >
-              {filters.open ? "○" : "◉"} ทั้งหมด (รวมปิดแล้ว)
-            </button>
+            {SEARCH_STATES.map((state) => (
+              <button
+                type="button"
+                key={state}
+                className={`${styles.toggleItem} ${filters.state === state ? styles.toggleItemOn : ""}`}
+                onClick={() => update({ state })}
+                aria-pressed={filters.state === state}
+              >
+                {filters.state === state ? "◉" : "○"} {STATE_LABELS[state]}
+              </button>
+            ))}
           </div>
         </div>
 

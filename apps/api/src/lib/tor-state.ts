@@ -27,3 +27,34 @@ export function torStateOf(
   if (record.deadline === null) return "awaiting-invitation";
   return record.deadline >= today ? "open" : "closed";
 }
+
+/**
+ * The same five states as a database predicate, for the paginated list that
+ * cannot classify in memory.
+ *
+ * It lives beside `torStateOf` on purpose: two definitions of one rule drift,
+ * and a drift here would mean a TOR counted as open on the dashboard and
+ * missing from the open list. `tor-state.db.test.ts` inserts records, runs both,
+ * and fails if they ever disagree.
+ */
+export function stateFilter(state: TorState, today: string): Record<string, unknown> {
+  switch (state) {
+    case "open":
+      return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
+    case "awaiting-invitation":
+      // The scope is published; the invitation that carries the deadline is not.
+      return { "fields.torStatus.value": "announced", "fields.deadline.value": null };
+    case "awarded":
+    case "cancelled":
+      return { "fields.torStatus.value": state };
+    case "closed":
+      // Anything not announced, awarded or cancelled, plus an announcement whose
+      // deadline has passed. A missing deadline is NOT closed — it is awaiting.
+      return {
+        $or: [
+          { "fields.torStatus.value": { $nin: ["announced", "awarded", "cancelled"] } },
+          { "fields.torStatus.value": "announced", "fields.deadline.value": { $ne: null, $lt: today } },
+        ],
+      };
+  }
+}

@@ -169,7 +169,11 @@ export function DashboardView({
           <section className={styles.splitLeft}>
           <div className={styles.panelHead}>
             <h2 className={styles.panelTitle}>TOR ตามหน่วยงาน</h2>
-            <span className={styles.panelHint}>คลิกแท่งเพื่อกรอง</span>
+            {/* The way out sits where the filter was set. The one at the top
+                of the page is out of sight once a reader is down here. */}
+            {filters.agency
+              ? <button type="button" className={styles.panelClear} onClick={() => updateFilters({ agency: undefined })}>ล้างตัวกรองหน่วยงาน</button>
+              : <span className={styles.panelHint}>คลิกแท่งเพื่อกรอง</span>}
           </div>
           <div className={styles.bars}>
             {/* Every agency stays on screen when one is picked; the rest fade.
@@ -212,7 +216,9 @@ export function DashboardView({
             })}
           </div>
 
-            <div className={`${styles.panelHead} ${styles.panelHeadStacked}`}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2><span className={styles.panelHint}>คลิกเดือนเพื่อกรอง</span></div>
+            <div className={`${styles.panelHead} ${styles.panelHeadStacked}`}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2>{filters.month
+              ? <button type="button" className={styles.panelClear} onClick={() => updateFilters({ month: undefined })}>ล้างตัวกรองเดือน</button>
+              : <span className={styles.panelHint}>คลิกเดือนเพื่อกรอง</span>}</div>
             {/* Drawn as bars for the same reason the agency chart is: a column of
                 numbers is a table, and a trend is a shape. Scaled to the busiest
                 month so the months are read against each other. */}

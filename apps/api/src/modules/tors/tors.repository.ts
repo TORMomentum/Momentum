@@ -3,6 +3,7 @@ import type { ConfidenceLevel, ExtractedField, Provenance, SourceProject, TorFie
 import { torPeerStats, tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
+import { stateFilter } from "../../lib/tor-state.js";
 
 export interface PublicTorDocumentRecord {
   storage: { key: string; contentType: string; bytes: number };
@@ -12,6 +13,8 @@ export interface PublicTorDocumentRecord {
 
 /** A filter the repository can run: the service has already decided what "today" is. */
 export interface SearchCriteria extends Omit<SearchFilter, "open"> {
+  /** Required when `state` is set: the five states depend on today's date. */
+  today?: string;
   /** Set when only open TORs are wanted: deadlines before this `YYYY-MM-DD` have passed. */
   openOn?: string;
   /**
@@ -156,6 +159,11 @@ function buildFilter(criteria: SearchCriteria): Filter<TorDocument> {
   }
   if (criteria.status) {
     clauses.push({ "fields.torStatus.value": criteria.status });
+  }
+  // The same five states the dashboard counts, as a predicate from the one file
+  // that defines them, so the list and the counts cannot disagree.
+  if (criteria.state && criteria.today) {
+    clauses.push(stateFilter(criteria.state, criteria.today) as Filter<TorDocument>);
   }
   if (criteria.openOn) {
     clauses.push({ "fields.torStatus.value": "announced" });
