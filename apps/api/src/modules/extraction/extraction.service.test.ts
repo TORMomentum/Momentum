@@ -50,9 +50,10 @@ interface FakeTarget {
   documentType?: "tor" | "invitation";
   sourceProject?: { system: "bma-egp"; projectId: string } | null;
   invitationDeadline?: LinkedDeadline | null;
+  annexes?: Array<{ key: string; contentType: string; bytes: number; filename?: string }>;
 }
 
-function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } & FakeTarget = {}) {
+function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer; config?: Partial<ExtractionConfig> } & FakeTarget = {}) {
   const storage = {
     getStream: vi.fn(async () => Readable.from([over.bytes ?? DIGITAL_PDF])),
   } as unknown as Storage;
@@ -64,6 +65,7 @@ function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } & FakeTarget = {}) {
     sourceAnnouncedAt: over.sourceAnnouncedAt ?? null,
     documentType: over.documentType ?? "tor",
     sourceProject: over.sourceProject ?? null,
+    annexes: over.annexes ?? [],
     createdAt: new Date("2026-01-01T00:00:00Z"),
   }));
   const writeExtraction = vi.fn<(torId: string, result: ExtractionResult) => Promise<void>>(async () => {});
@@ -71,10 +73,25 @@ function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer } & FakeTarget = {}) {
   const linkDeadline = vi.fn<(projectId: string, deadline: LinkedDeadline) => Promise<void>>(async () => {});
   const fakeRepo = { load, writeExtraction, findInvitationDeadline, linkDeadline };
   const repo = fakeRepo as unknown as ExtractionRepository;
-  return { storage, ai, repo: fakeRepo, service: new ExtractionService({ storage, ai, repo, config }) };
+  return { storage, ai, repo: fakeRepo, service: new ExtractionService({ storage, ai, repo, config: { ...config, ...over.config } }) };
 }
 
 describe("ExtractionService.run", () => {
+  it("reads a TOR's annexes with it while they fit the count and the byte budget, and says how many were left out", async () => {
+    const annex = (name: string, bytes: number) => ({ key: `tors/${name}`, contentType: "application/pdf", bytes, filename: name });
+    const { service, ai } = fakes({
+      annexes: [annex("Attach_TOR_2.pdf", 1_000), annex("Attach_TOR_3.pdf", 50_000_000), annex("Attach_BOQ_1.pdf", 1_000)],
+      config: { maxAnnexes: 1, maxInputBytes: 20_000_000 },
+    });
+
+    await service.run("tor-1");
+
+    // Annex 3 is too big for the budget; the BOQ fits the bytes but not the one-annex count.
+    const input = (ai.extract as unknown as { mock: { calls: Array<[{ attachments?: Array<{ name: string }>; annexesLeftOut?: number }]> } }).mock.calls[0][0];
+    expect(input.attachments?.map((a) => a.name)).toEqual(["Attach_TOR_2.pdf"]);
+    expect(input.annexesLeftOut).toBe(2);
+  });
+
   it("gives the model the source's publish date to check date reading against, when the source states one", async () => {
     const withDate = fakes({ sourceAnnouncedAt: new Date("2026-10-02T00:00:00Z") });
     await withDate.service.run("tor-1");

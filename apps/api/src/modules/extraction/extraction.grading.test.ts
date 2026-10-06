@@ -15,7 +15,7 @@ function goodDigital(over: Partial<RawExtraction> = {}): RawExtraction {
     title: rf("ประกวดราคาจ้างก่อสร้างขุดลอกคลองบางน้อย"),
     agency: rf("สำนักงานเขตทวีวัฒนา"),
     budget: rf<number>(5_524_000),
-    category: rf("งานก่อสร้าง-ชลประทาน"),
+    category: rf("งานก่อสร้าง-ชลประทานและระบบน้ำ"),
     scopeSummary: rf("ขุดลอกคลองบางน้อย จากที่ดินเอกชนถึงถนนกาญจนาภิเษก เพื่อเพิ่มประสิทธิภาพการระบายน้ำ"),
     qualifications: rf<string[]>(["ขึ้นทะเบียนงานก่อสร้างชั้น 6"]),
     deadline: rf("2026-02-01"),
@@ -37,6 +37,21 @@ const ctx = (over: Partial<GradingContext> = {}): GradingContext => ({
   budgetMinThb: 10_000,
   budgetMaxThb: 100_000_000_000,
   ...over,
+});
+
+describe("grade — category", () => {
+  it("verifies a confident category only when it is on the closed list", () => {
+    expect(grade(goodDigital({ category: rf("งานก่อสร้าง-ชลประทานและระบบน้ำ", 0.99) }), ctx()).fields.category.verified).toBe(true);
+    expect(grade(goodDigital({ category: rf("ซื้อยา", 0.99) }), ctx()).fields.category.verified).toBe(false);
+  });
+});
+
+describe("grade — scope items", () => {
+  it("verifies a confident whole-number count, and carries nothing when the model gave none", () => {
+    expect(grade({ ...goodDigital(), scopeItems: rf<number>(14, 0.97) }, ctx()).fields.scopeItems).toMatchObject({ value: 14, verified: true });
+    expect(grade({ ...goodDigital(), scopeItems: rf<number>(null, 0.97) }, ctx()).fields.scopeItems?.verified).toBe(false);
+    expect(grade(goodDigital(), ctx()).fields.scopeItems).toBeUndefined();
+  });
 });
 
 describe("grade — record level", () => {
