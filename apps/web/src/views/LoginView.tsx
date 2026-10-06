@@ -69,7 +69,7 @@ const TRUST_POINTS = [
         <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" />
       </>
     ),
-    text: "ดาวและบุ๊กมาร์กของคุณเป็นข้อมูลส่วนตัว ไม่แสดงต่อสาธารณะ · PDPA · ส่งออกหรือลบข้อมูลได้ทุกเมื่อ",
+    text: "บุ๊กมาร์กของคุณเป็นข้อมูลส่วนตัว ไม่แสดงต่อสาธารณะ · PDPA · ส่งออกหรือลบข้อมูลได้ทุกเมื่อ",
   },
 ];
 
@@ -194,23 +194,31 @@ export function LoginView() {
         </div>
 
         <div className={styles.alternatives}>
-          {/* Both are placeholders for identity providers that slice 4 wires
-              up; neither can sign anyone in yet, so they say so rather than
-              silently doing what the password form does. */}
+          {/* Google is the only identity provider. ThaiD and an organisation
+              directory were dropped deliberately: this is a public platform for
+              vendors, so sign-in must not require a government identity, and no
+              national ID or tax ID is collected anywhere (SRS Appendix, TOR-156). */}
           <button
             type="button"
             className={styles.alternative}
-            onClick={() => setError("ThaiD จะเปิดใช้งานเมื่อระบบบัญชีจริงพร้อม")}
+            onClick={() => setError("การเข้าสู่ระบบด้วย Google จะเปิดใช้งานเมื่อเชื่อมต่อบัญชีแล้ว")}
           >
-            <span className={styles.thaid}>ThaiD</span>
-            ดำเนินการต่อด้วย ThaiD
-          </button>
-          <button
-            type="button"
-            className={styles.alternative}
-            onClick={() => setError("การเข้าสู่ระบบด้วยอีเมลองค์กรจะเปิดใช้งานเมื่อระบบบัญชีจริงพร้อม")}
-          >
-            ดำเนินการต่อด้วยอีเมลองค์กร
+            <svg className={styles.providerMark} viewBox="0 0 48 48" aria-hidden="true">
+              <path
+                fill="#4285F4"
+                d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8a10 10 0 0 1-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"
+              />
+              <path
+                fill="#34A853"
+                d="M24 46c6 0 11-2 14.5-5.4l-7.1-5.5A13 13 0 0 1 24 37c-5.8 0-10.7-3.9-12.4-9.1H4.3v5.7A22 22 0 0 0 24 46z"
+              />
+              <path fill="#FBBC05" d="M11.6 27.9a13 13 0 0 1 0-8.4v-5.7H4.3a22 22 0 0 0 0 19.8l7.3-5.7z" />
+              <path
+                fill="#EA4335"
+                d="M24 11c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4.5 30 2.4 24 2.4A22 22 0 0 0 4.3 13.8l7.3 5.7C13.3 14.3 18.2 11 24 11z"
+              />
+            </svg>
+            ดำเนินการต่อด้วย Google
           </button>
         </div>
 
