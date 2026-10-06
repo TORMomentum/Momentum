@@ -49,6 +49,9 @@ const STATE_LABELS: Record<SearchState, string> = {
   cancelled: "ยกเลิกแล้ว",
 };
 
+/** How many agencies the panel shows before it asks to be expanded. */
+const AGENCY_LIMIT = 6;
+
 type Badge = { label: string; className: string };
 
 function badgeFor(row: TorListItem): Badge {
@@ -83,6 +86,13 @@ export function SearchView({
   const router = useRouter();
   const { signedIn, ready } = useViewer();
   const [pending, startTransition] = useTransition();
+  const [allAgencies, setAllAgencies] = useState(false);
+  // An agency already filtering the list must stay on screen even when it falls
+  // outside the shown few, or the reader cannot see what is narrowing their
+  // results, let alone switch it off.
+  const visibleAgencies = allAgencies
+    ? facets.agencies
+    : facets.agencies.filter((agency, index) => index < AGENCY_LIMIT || filters.agencies.includes(agency.value));
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
   const lastCommittedQuery = useRef(filters.q);
@@ -204,68 +214,6 @@ export function SearchView({
           </button>
         </div>
 
-        {budgetFacet && ceiling > floor && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
-            <BudgetRange
-              min={draftBudget.min}
-              max={draftBudget.max}
-              floor={floor}
-              ceiling={ceiling}
-              step={step}
-              onChange={setDraftBudget}
-            />
-          </div>
-        )}
-
-        {facets.categories.length > 0 && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>หมวดหมู่</div>
-            <div className={styles.pillList}>
-              {facets.categories.map(({ value }) => {
-                const on = filters.categories.includes(value);
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    className={`${styles.pill} ${on ? styles.pillOn : ""}`}
-                    onClick={() => update({ categories: toggle(filters.categories, value) })}
-                    aria-pressed={on}
-                  >
-                    {thaiDigitsToArabic(value)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>กำหนดยื่นข้อเสนอ</div>
-          <div className={styles.dateRange}>
-            <label className={styles.dateField}>
-              <span className={styles.dateLabel}>ตั้งแต่</span>
-              <input
-                type="date"
-                className={styles.dateInput}
-                value={filters.deadlineFrom ?? ""}
-                max={filters.deadlineTo ?? undefined}
-                onChange={(e) => update({ deadlineFrom: e.target.value || null })}
-              />
-            </label>
-            <label className={styles.dateField}>
-              <span className={styles.dateLabel}>ถึง</span>
-              <input
-                type="date"
-                className={styles.dateInput}
-                value={filters.deadlineTo ?? ""}
-                min={filters.deadlineFrom ?? undefined}
-                onChange={(e) => update({ deadlineTo: e.target.value || null })}
-              />
-            </label>
-          </div>
-        </div>
-
         <div className={styles.filterGroup}>
           <div className={styles.filterGroupTitle}>สถานะ</div>
           {/* The same five states the dashboard counts, so a reader who clicked
@@ -294,11 +242,80 @@ export function SearchView({
           </div>
         </div>
 
+        <div className={styles.filterGroup}>
+          <div className={styles.filterGroupTitle}>กำหนดยื่นข้อเสนอ</div>
+          <div className={styles.dateRange}>
+            <label className={styles.dateField}>
+              <span className={styles.dateLabel}>ตั้งแต่</span>
+              <input
+                type="date"
+                className={styles.dateInput}
+                value={filters.deadlineFrom ?? ""}
+                max={filters.deadlineTo ?? undefined}
+                onChange={(e) => update({ deadlineFrom: e.target.value || null })}
+              />
+            </label>
+            <label className={styles.dateField}>
+              <span className={styles.dateLabel}>ถึง</span>
+              <input
+                type="date"
+                className={styles.dateInput}
+                value={filters.deadlineTo ?? ""}
+                min={filters.deadlineFrom ?? undefined}
+                onChange={(e) => update({ deadlineTo: e.target.value || null })}
+              />
+            </label>
+          </div>
+        </div>
+        {facets.categories.length > 0 && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>หมวดหมู่</div>
+            <div className={styles.pillList}>
+              {facets.categories.map(({ value }) => {
+                const on = filters.categories.includes(value);
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`${styles.pill} ${on ? styles.pillOn : ""}`}
+                    onClick={() => update({ categories: toggle(filters.categories, value) })}
+                    aria-pressed={on}
+                  >
+                    {thaiDigitsToArabic(value)}
+                  </button>
+                );
+              })}
+              {facets.agencies.length > AGENCY_LIMIT && (
+                <button type="button" className={styles.moreAgencies} onClick={() => setAllAgencies(!allAgencies)}>
+                  {allAgencies ? "แสดงน้อยลง" : `ดูทั้งหมด (${facets.agencies.length})`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {budgetFacet && ceiling > floor && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
+            <BudgetRange
+              min={draftBudget.min}
+              max={draftBudget.max}
+              floor={floor}
+              ceiling={ceiling}
+              step={step}
+              onChange={setDraftBudget}
+            />
+          </div>
+        )}
+
         {facets.agencies.length > 0 && (
           <div className={styles.filterGroup}>
             <div className={styles.filterGroupTitle}>หน่วยงาน</div>
+            {/* The one list with no ceiling: a national corpus has hundreds of
+                agencies, and all of them would push every other filter off the
+                screen. The busiest few are shown, anything already chosen stays
+                visible, and the rest are one click away. */}
             <div className={styles.toggleList}>
-              {facets.agencies.map(({ value, count }) => {
+              {visibleAgencies.map(({ value, count }) => {
                 const on = filters.agencies.includes(value);
                 return (
                   <button
@@ -312,6 +329,11 @@ export function SearchView({
                   </button>
                 );
               })}
+              {facets.agencies.length > AGENCY_LIMIT && (
+                <button type="button" className={styles.moreAgencies} onClick={() => setAllAgencies(!allAgencies)}>
+                  {allAgencies ? "แสดงน้อยลง" : `ดูทั้งหมด (${facets.agencies.length})`}
+                </button>
+              )}
             </div>
           </div>
         )}
