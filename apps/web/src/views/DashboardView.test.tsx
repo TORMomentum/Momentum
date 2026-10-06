@@ -59,7 +59,11 @@ describe("DashboardView states", () => {
 
   it("marks stale figures as recalculating", async () => {
     await render(dashboard({ meta: { lastIntakeAt: null, statsComputedAt: null, stale: true, corpusSize: 1 } }));
-    expect(container.textContent).toContain("กำลังคำนวณข้อมูลสถิติใหม่");
+    // It may only say the figures are old. Claiming a recalculation is under
+    // way would be false whenever the worker is stopped — which is exactly when
+    // a reader sees this.
+    expect(container.textContent).toContain("ตัวเลขสถิติอาจยังไม่เป็นปัจจุบัน");
+    expect(container.textContent).not.toContain("กำลังคำนวณ");
   });
 });
 

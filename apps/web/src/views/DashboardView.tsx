@@ -103,7 +103,18 @@ export function DashboardView({
         </div>
       </div>
 
-      {dashboard.meta.stale && <p className={styles.stale} role="status">กำลังคำนวณข้อมูลสถิติใหม่ ตัวเลขอาจยังไม่เป็นปัจจุบัน</p>}
+      {/* States the fact, and does not claim work is under way. The banner only
+          knows the figures are old; whether anything is recalculating them is
+          not something this page can see, and saying so when the worker is
+          stopped would be the kind of claim FR-E-6 exists to prevent. */}
+      {dashboard.meta.stale && (
+        <p className={styles.stale} role="status">
+          ตัวเลขสถิติอาจยังไม่เป็นปัจจุบัน
+          {dashboard.meta.statsComputedAt
+            ? ` — คำนวณล่าสุด ${formatDate(dashboard.meta.statsComputedAt)}`
+            : " — ยังไม่เคยคำนวณ"}
+        </p>
+      )}
 
       <div className={styles.filters}>
         <FilterDrop
