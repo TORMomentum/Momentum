@@ -5,6 +5,7 @@ import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
 import { sessionContext } from "./core/session-context.js";
 import { createStorage } from "./adapters/storage.factory.js";
+import { createMailer } from "./adapters/mailer.factory.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
 import { IntakeService } from "./modules/intake/intake.service.js";
@@ -31,6 +32,9 @@ export const API_PREFIX = "/api/v1";
 export function buildApp(config: Config, db: Db): Express {
   const app = express();
   const storage = createStorage(config, "api");
+  // Feature services receive this port as they gain outbound email behaviour.
+  // Constructing it here makes a production SMTP omission fail during startup.
+  void createMailer(config);
   const statsRepository = new StatsRepository(db);
 
   app.use(express.json());

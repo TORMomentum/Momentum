@@ -16,6 +16,8 @@ describe("loadConfig", () => {
     const config = loadConfig(base);
     expect(config.maxUploadBytes).toBe(26_214_400);
     expect(config.jobMaxAttempts).toBe(5);
+    expect(config.mail.from).toBe("TOR Radar <noreply@tor-radar.example>");
+    expect(config.mail.timeoutMs).toBe(10_000);
   });
 
   it("parses the API key list into individual keys", () => {
@@ -55,8 +57,39 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...base, APP_ORIGIN: "not an origin" })).toThrow();
   });
 
+  it("treats a blank optional value as absent, the way a .env file writes it", () => {
+    // `.env.example` ships SMTP_URL= and GOOGLE_CLOUD_PROJECT= to mean "not
+    // set". Read literally those are empty strings, and the API would not boot
+    // from its own template.
+    const config = loadConfig({
+      ...base,
+      SMTP_URL: "",
+      GCS_CREDENTIALS: "   ",
+      GOOGLE_CLOUD_PROJECT: "",
+      GOOGLE_APPLICATION_CREDENTIALS: "",
+    });
+    expect(config.mail.smtpUrl).toBeUndefined();
+    expect(config.gcs.credentialsPath).toBeUndefined();
+    expect(config.vertex.project).toBeUndefined();
+    // A value that is actually present still has to be valid.
+    expect(() => loadConfig({ ...base, SMTP_URL: "not-a-url" })).toThrow(/SMTP_URL/);
+  });
+
+  it("carries the mail settings and rejects an unusable timeout", () => {
+    const config = loadConfig(base);
+    expect(config.mail.from.length).toBeGreaterThan(0);
+    expect(config.mail.timeoutMs).toBe(10_000);
+    expect(() => loadConfig({ ...base, MAIL_TIMEOUT_MS: "0" })).toThrow();
+    expect(() => loadConfig({ ...base, MAIL_TIMEOUT_MS: "soon" })).toThrow();
+  });
+
   it("rejects a non-numeric override instead of silently coercing", () => {
     expect(() => loadConfig({ ...base, MAX_UPLOAD_BYTES: "big" })).toThrow();
+  });
+
+  it("rejects a non-numeric or zero SMTP timeout", () => {
+    expect(() => loadConfig({ ...base, MAIL_TIMEOUT_MS: "slow" })).toThrow(/MAIL_TIMEOUT_MS/);
+    expect(() => loadConfig({ ...base, MAIL_TIMEOUT_MS: "0" })).toThrow(/MAIL_TIMEOUT_MS/);
   });
 
   it("carries the measured confidence thresholds and their version (O1 closed)", () => {

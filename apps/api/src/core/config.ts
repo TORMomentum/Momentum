@@ -1,6 +1,20 @@
 import { z } from "zod";
 
 /**
+ * A `.env` file says "not set" by writing `KEY=`, which arrives as an empty
+ * string rather than as an absent variable. Without this, every optional
+ * setting would reject the very template the repository ships: `SMTP_URL=` in
+ * `.env.example` stopped the API booting at all. Blank means absent, once,
+ * for every optional value.
+ */
+function blankAsAbsent<T extends z.ZodTypeAny>(inner: T) {
+  return z.preprocess((value) => {
+    if (typeof value === "string" && value.trim() === "") return undefined;
+    return value;
+  }, inner.optional());
+}
+
+/**
  * Every threshold and tunable in the system (NFR-S7). Nothing below may appear
  * as a literal anywhere else in the codebase.
  */
@@ -9,17 +23,22 @@ const schema = z.object({
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
+  // Outbound mail. Production must configure SMTP_URL (mailer.factory.ts).
+  SMTP_URL: blankAsAbsent(z.string().url()),
+  MAIL_FROM: z.string().min(1).default("TOR Radar <noreply@tor-radar.example>"),
+  MAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+
   // Storage — Google Cloud Storage (spec §6)
   GCS_BUCKET: z.string().min(1),
   /** Set only for fake-gcs-server. Unset in deployment. */
-  GCS_API_ENDPOINT: z.url().optional(),
+  GCS_API_ENDPOINT: blankAsAbsent(z.url()),
   /**
    * The DEDICATED storage service account's key file. Deliberately not
    * GOOGLE_APPLICATION_CREDENTIALS: that is Vertex AI's identity, and the Google
    * client would silently adopt it if this were left to application-default
    * credentials — giving one compromised key both powers.
    */
-  GCS_CREDENTIALS: z.string().min(1).optional(),
+  GCS_CREDENTIALS: blankAsAbsent(z.string().min(1)),
   STORAGE_TIMEOUT_API_MS: z.coerce.number().int().positive().default(10_000),
   STORAGE_TIMEOUT_WORKER_MS: z.coerce.number().int().positive().default(60_000),
 
@@ -61,8 +80,8 @@ const schema = z.object({
   // and in tests that use a fake Ai; vertex.ai.ts checks it when actually called.
   GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
   VERTEX_LOCATION: z.string().min(1).default("global"),
-  GOOGLE_CLOUD_PROJECT: z.string().min(1).optional(),
-  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
+  GOOGLE_CLOUD_PROJECT: blankAsAbsent(z.string().min(1)),
+  GOOGLE_APPLICATION_CREDENTIALS: blankAsAbsent(z.string().min(1)),
   EXTRACT_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   // Confidence thresholds — measured, not chosen (O1 closed; docs/corpus/BENCHMARK.md).
@@ -120,6 +139,12 @@ const schema = z.object({
 
 export interface Config {
   mongoUrl: string;
+  nodeEnv: "development" | "test" | "production";
+  mail: {
+    smtpUrl?: string;
+    from: string;
+    timeoutMs: number;
+  };
   gcs: {
     bucket: string;
     apiEndpoint?: string;
@@ -212,6 +237,12 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
   const parsed = schema.parse(env);
   return {
     mongoUrl: parsed.MONGO_URL,
+    nodeEnv: parsed.NODE_ENV,
+    mail: {
+      smtpUrl: parsed.SMTP_URL,
+      from: parsed.MAIL_FROM,
+      timeoutMs: parsed.MAIL_TIMEOUT_MS,
+    },
     gcs: {
       bucket: parsed.GCS_BUCKET,
       apiEndpoint: parsed.GCS_API_ENDPOINT,
