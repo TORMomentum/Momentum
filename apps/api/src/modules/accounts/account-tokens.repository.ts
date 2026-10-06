@@ -28,4 +28,8 @@ export class AccountTokensRepository {
     });
     return result ? { accountId: result.accountId } : null;
   }
+
+  async removeAllForAccount(accountId: string): Promise<void> {
+    await accountTokens(this.db).deleteMany({ accountId });
+  }
 }

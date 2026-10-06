@@ -21,7 +21,7 @@ import { useViewer } from "../shared/lib/viewer";
  */
 
 /** Account-creation rule, stated once. The signup placeholder reads from it. */
-const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 8;
 
 /** Deliberately loose: one @, something either side, a dot in the domain.
  * The server decides whether an address is real; this only catches typos. */
@@ -186,7 +186,7 @@ export function LoginView() {
               <label className={styles.label} htmlFor="login-password">
                 รหัสผ่าน
               </label>
-              {!isSignup && <span className={styles.forgot}>ลืมรหัสผ่าน?</span>}
+              {!isSignup && <Link className={styles.forgot} href="/forgot-password">ลืมรหัสผ่าน?</Link>}
             </div>
             <input
               id="login-password"

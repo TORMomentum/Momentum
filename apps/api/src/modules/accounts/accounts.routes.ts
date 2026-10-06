@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { UnauthorizedError } from "../../core/errors.js";
+import { BadRequestError, UnauthorizedError } from "../../core/errors.js";
 import { authRateLimit } from "../../core/auth-rate-limit.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import type { Config } from "../../core/config.js";
@@ -15,6 +15,7 @@ const loginSchema = z.object({ email: z.string().email().max(320), password: z.s
 const credentialsSchema = z.object({ email: z.string().email().max(320), password: z.string().min(8).max(1024) });
 const tokenSchema = z.object({ token: z.string().min(1).max(1024) });
 const changeSchema = z.object({ currentPassword: z.string().min(1).max(1024), password: z.string().min(8).max(1024) });
+const deleteSchema = z.object({ currentPassword: z.string().min(1).max(1024) });
 const registerSchema = credentialsSchema.extend({ consent: z.literal(true), displayName: z.string().trim().min(1).max(200).optional() });
 const AUTH_FAILURE = "ไม่สามารถเข้าสู่ระบบได้";
 
@@ -134,6 +135,34 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     if (!req.auth) throw new UnauthorizedError();
     const account = req.auth.account;
     res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString() });
+  });
+
+  router.get("/me/export", async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    const data = await deps.accounts.exportOwnedData(req.auth.account._id.toString());
+    res.set({
+      "cache-control": "no-store",
+      "content-disposition": 'attachment; filename="tor-radar-account-export.json"',
+      "content-type": "application/json; charset=utf-8",
+    }).json(data);
+  });
+
+  router.delete("/me", ...writes, async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    const input = deleteSchema.parse(req.body);
+    const account = req.auth.account;
+    // Google-only accounts cannot prove possession with this endpoint.
+    if (!account.passwordHash) {
+      throw new BadRequestError("บัญชีนี้ไม่มีรหัสผ่านสำหรับยืนยันการลบ");
+    }
+    if (!await verifyPassword(account.passwordHash, input.currentPassword)) {
+      throw new UnauthorizedError(AUTH_FAILURE);
+    }
+    const accountId = account._id.toString();
+    await deps.tokens.removeAllForAccount(accountId);
+    await deps.accounts.removeOwnedData(accountId);
+    await deps.accounts.softDelete(accountId);
+    res.json({ ok: true });
   });
   return router;
 }

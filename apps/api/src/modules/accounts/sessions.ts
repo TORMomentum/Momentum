@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { ObjectId, type Db, type WithId } from "mongodb";
-import { accounts, sessions, type AccountDocument, type AccountRole } from "../../core/db.js";
+import { accounts, sessions, type AccountDocument, type AccountRole, type SessionDocument } from "../../core/db.js";
 
 export interface ResolvedSession {
   account: WithId<AccountDocument>;
@@ -44,5 +44,10 @@ export class SessionsRepository {
 
   async revokeAllForAccountExcept(accountId: string, sessionId: string): Promise<void> {
     await sessions(this.db).deleteMany({ accountId, _id: { $ne: sessionId } });
+  }
+
+  async exportMetadataForAccount(accountId: string): Promise<Array<Omit<SessionDocument, "_id" | "accountId">>> {
+    return (await sessions(this.db).find({ accountId }, { projection: { _id: 0, accountId: 0 } }).toArray())
+      .map(({ createdAt, expiresAt, lastSeenAt }) => ({ createdAt, expiresAt, lastSeenAt }));
   }
 }

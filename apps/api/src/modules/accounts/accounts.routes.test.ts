@@ -6,7 +6,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { LogMailer } from "../../adapters/log.mailer.js";
 import { loadConfig } from "../../core/config.js";
-import { accounts, accountTokens, connect, disconnect, ensureIndexes, sessions } from "../../core/db.js";
+import { accounts, accountTokens, bookmarks, connect, disconnect, ensureIndexes, sessions, tors } from "../../core/db.js";
 import { errorMiddleware } from "../../core/errors.js";
 import { sessionContext } from "../../core/session-context.js";
 import { isolatedDbUrl } from "../../test/mongo.js";
@@ -89,6 +89,8 @@ beforeEach(async () => {
     accounts(db).deleteMany({}),
     accountTokens(db).deleteMany({}),
     sessions(db).deleteMany({}),
+    bookmarks(db).deleteMany({}),
+    tors(db).deleteMany({}),
   ]);
   mailer = new LogMailer();
   app = buildTestApp();
@@ -168,6 +170,18 @@ describe("account routes", () => {
     expect(verified.status).toBe(200);
     expect((await accounts(db).findOne({ email: "vendor@example.test" }))?.emailVerifiedAt).toBeInstanceOf(Date);
     expect(repeated.status).toBe(401);
+  });
+
+  it("verify and reset reject missing or malformed tokens", async () => {
+    const missingVerify = await write(request(app).post("/api/v1/verify")).send({});
+    const malformedVerify = await write(request(app).post("/api/v1/verify")).send({ token: "" });
+    const missingReset = await write(request(app).post("/api/v1/password/reset")).send({ password: "new-password" });
+    const malformedReset = await write(request(app).post("/api/v1/password/reset")).send({ token: "", password: "new-password" });
+
+    expect(missingVerify.status).toBe(400);
+    expect(malformedVerify.status).toBe(400);
+    expect(missingReset.status).toBe(400);
+    expect(malformedReset.status).toBe(400);
   });
 
   it("login creates a session that me resolves and logout removes it", async () => {
@@ -253,5 +267,71 @@ describe("account routes", () => {
     expect(anonymous.status).toBe(401);
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ email: "vendor@example.test", displayName: "Vendor", role: "vendor", emailVerifiedAt: expect.any(String) });
+  });
+
+  it("exports only the signed-in account's owned data without hashes, tokens, or session ids", async () => {
+    await verifiedAccount();
+    await verifiedAccount("other@example.test");
+    const signedIn = await login();
+    const account = await accounts(db).findOne({ email: "vendor@example.test" });
+    const other = await accounts(db).findOne({ email: "other@example.test" });
+    await bookmarks(db).insertMany([
+      { accountId: account!._id.toString(), torId: "mine", createdAt: new Date() },
+      { accountId: other!._id.toString(), torId: "theirs", createdAt: new Date() },
+    ]);
+
+    const response = await request(app).get("/api/v1/me/export").set("x-session-id", signedIn.body.sessionId as string);
+    const serialized = JSON.stringify(response.body);
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-disposition"]).toContain("attachment");
+    expect(response.headers["cache-control"]).toContain("no-store");
+    expect(response.body.account.email).toBe("vendor@example.test");
+    expect(response.body.account.consent).toMatchObject({ noticeVersion: config.consentNotice.version });
+    expect(response.body.bookmarks).toHaveLength(1);
+    expect(response.body.bookmarks[0].torId).toBe("mine");
+    expect(serialized).not.toContain("passwordHash");
+    expect(serialized).not.toContain("token");
+    expect(serialized).not.toContain("other@example.test");
+    expect(serialized).not.toContain("theirs");
+    expect(serialized).not.toContain(signedIn.body.sessionId as string);
+  });
+
+  it("deletion requires the current password and changes nothing when it is wrong", async () => {
+    await verifiedAccount();
+    const signedIn = await login();
+    const account = await accounts(db).findOne({ email: "vendor@example.test" });
+    await bookmarks(db).insertOne({ accountId: account!._id.toString(), torId: "mine", createdAt: new Date() });
+    const rejected = await write(request(app).delete("/api/v1/me")).set("x-session-id", signedIn.body.sessionId as string).send({ currentPassword: "wrong-password" });
+
+    expect(rejected.status).toBe(401);
+    expect((await accounts(db).findOne({ _id: account!._id }))?.email).toBe("vendor@example.test");
+    expect(await bookmarks(db).countDocuments({ accountId: account!._id.toString() })).toBe(1);
+    expect(await sessions(db).countDocuments({ accountId: account!._id.toString() })).toBe(1);
+  });
+
+  it("deletion tombstones its account, revokes sessions, removes owned records, and leaves TORs untouched", async () => {
+    await verifiedAccount();
+    const first = await login();
+    const second = await login();
+    const account = await accounts(db).findOne({ email: "vendor@example.test" });
+    await bookmarks(db).insertOne({ accountId: account!._id.toString(), torId: "mine", createdAt: new Date() });
+    await tors(db).insertOne({
+      contentHash: "delete-preserved-tor", storage: { bucket: "test", key: "tor", contentType: "application/pdf", bytes: 1 }, sourceRefs: [],
+      pipeline: { state: "done", attempts: 1 }, fields: {}, announcedAt: null, sourceUrl: null, unverified: false,
+      statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+    const beforeTors = await tors(db).countDocuments({});
+    const deleted = await write(request(app).delete("/api/v1/me")).set("x-session-id", first.body.sessionId as string).send({ currentPassword: "correct-password" });
+    const tombstone = await accounts(db).findOne({ _id: account!._id });
+
+    expect(deleted.status).toBe(200);
+    expect(tombstone?.deletedAt).toBeInstanceOf(Date);
+    expect(tombstone?.email).toMatch(/^deleted:/);
+    expect(await sessions(db).countDocuments({ accountId: account!._id.toString() })).toBe(0);
+    expect(await bookmarks(db).countDocuments({ accountId: account!._id.toString() })).toBe(0);
+    expect((await login()).status).toBe(401);
+    expect((await request(app).get("/api/v1/me").set("x-session-id", second.body.sessionId as string)).status).toBe(401);
+    expect(await tors(db).countDocuments({})).toBe(beforeTors);
   });
 });

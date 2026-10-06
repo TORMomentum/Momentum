@@ -172,6 +172,13 @@ export interface AccountTokenDocument {
   expiresAt: Date;
 }
 
+/** A saved TOR belongs to one vendor and is removed with that vendor. */
+export interface BookmarkDocument {
+  accountId: string;
+  torId: string;
+  createdAt: Date;
+}
+
 let client: MongoClient | null = null;
 
 export async function connect(mongoUrl: string): Promise<Db> {
@@ -225,6 +232,10 @@ export function accountTokens(db: Db): Collection<AccountTokenDocument> {
   return db.collection<AccountTokenDocument>("auth_tokens");
 }
 
+export function bookmarks(db: Db): Collection<BookmarkDocument> {
+  return db.collection<BookmarkDocument>("bookmarks");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -234,6 +245,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await sessions(db).createIndex({ accountId: 1 });
   await accountTokens(db).createIndex({ tokenHash: 1 }, { unique: true });
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

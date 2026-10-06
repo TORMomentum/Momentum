@@ -74,14 +74,19 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
 
   const output = new NextResponse(responseText, {
     status: response.status,
-    headers: { "content-type": response.headers.get("content-type") ?? "application/json" },
+    headers: {
+      "content-type": response.headers.get("content-type") ?? "application/json",
+      ...(response.headers.get("content-disposition") ? { "content-disposition": response.headers.get("content-disposition")! } : {}),
+      ...(response.headers.get("cache-control") ? { "cache-control": response.headers.get("cache-control")! } : {}),
+    },
   });
-  if (route === "logout") output.cookies.delete(COOKIE);
+  if (route === "logout" || (route === "me" && request.method === "DELETE" && response.ok)) output.cookies.delete(COOKIE);
   return output;
 }
 
 export const POST = forward;
 export const GET = forward;
+export const DELETE = forward;
 
 /**
  * Every reply here depends on the request's own cookie and Origin, so there is
