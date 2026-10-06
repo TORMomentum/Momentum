@@ -151,6 +151,35 @@
 
 .panelHint { font: 10px var(--data); color: var(--ink-62); }
 
+/* A second panel stacked under the first in the same column needs its own
+   breathing room and a rule, or the last bar of the chart above reads as part
+   of this heading. */
+.trendLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.trendMonth { white-space: nowrap; }
+
+.trendStat { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
+
+/* Lighter than the agency fill: months are context for the agency comparison,
+   not a second thing competing for attention. */
+.trendFill {
+  display: block;
+  height: 6px;
+  background: rgba(29, 99, 216, 0.45);
+}
+
+.panelHeadStacked {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: var(--rule);
+}
+
 /* ---------- agency bars ---------- */
 
 .bars { display: flex; flex-direction: column; gap: 13px; }
@@ -310,14 +339,7 @@
 
 .trend { display: grid; gap: 8px; }
 
-.trendRow {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--ink-12);
-  font: 11px var(--data);
-}
+.trendRow { display: flex; flex-direction: column; gap: 5px; }
 
 .trendRow strong { color: var(--ink); font-weight: 600; }
 

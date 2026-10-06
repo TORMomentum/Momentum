@@ -7,7 +7,7 @@ import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { DashboardPayload } from "../shared/api/stats.api";
-import { thaiDigitsToArabic } from "../shared/lib/format";
+import { formatThaiMonth, thaiDigitsToArabic } from "../shared/lib/format";
 import { serialiseDashboardFilters, type DashboardFilters } from "../shared/lib/dashboard-filters";
 
 const ALL = "all";
@@ -64,6 +64,7 @@ export function DashboardView({
   // The widest bar is the scale, so one agency's share is readable against the
   // others rather than against an arbitrary ceiling.
   const widestBudget = agencies.reduce((widest, row) => Math.max(widest, row.budgetSum), 0);
+  const widestMonth = dashboard.trend.reduce((widest, row) => Math.max(widest, row.budgetSum), 0);
   const categories = [...new Set(dashboard.points.map((point) => point.category))];
 
   return (
@@ -152,8 +153,23 @@ export function DashboardView({
             })}
           </div>
 
-            <div className={styles.panelHead}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2><span className={styles.panelHint}>TOR และงบประมาณ</span></div>
-            <div className={styles.trend}>{dashboard.trend.map((row) => <div key={row.month} className={styles.trendRow}><span>{row.month}</span><span>{row.torCount.toLocaleString("th-TH")} TOR</span><strong>{formatBudget(row.budgetSum)}</strong></div>)}</div>
+            <div className={`${styles.panelHead} ${styles.panelHeadStacked}`}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2><span className={styles.panelHint}>TOR และงบประมาณ</span></div>
+            {/* Drawn as bars for the same reason the agency chart is: a column of
+                numbers is a table, and a trend is a shape. Scaled to the busiest
+                month so the months are read against each other. */}
+            <div className={styles.trend}>
+              {dashboard.trend.map((row) => (
+                <div key={row.month} className={styles.trendRow}>
+                  <span className={styles.trendLabel}>
+                    <span className={styles.trendMonth}>{formatThaiMonth(row.month)}</span>
+                    <span className={styles.trendStat}>{row.torCount.toLocaleString("th-TH")} · {formatBudget(row.budgetSum)}</span>
+                  </span>
+                  <span className={styles.barTrack}>
+                    <span className={styles.trendFill} style={{ width: `${widestMonth === 0 ? 0 : (row.budgetSum / widestMonth) * 100}%` }} />
+                  </span>
+                </div>
+              ))}
+            </div>
           </section>
           <section className={styles.splitRight}>
             <div className={styles.panelHead}><h2 className={styles.panelTitle}>งบประมาณตามหมวดหมู่</h2><span className={styles.panelHint}>1 จุด = 1 TOR</span></div>

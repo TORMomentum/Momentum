@@ -42,6 +42,20 @@ export function formatThaiDate(iso: string): string {
   return `${day} ${THAI_MONTHS[month - 1]} ${year + 543}`;
 }
 
+/**
+ * A cohort month as the interface writes dates everywhere else — "ก.ย. 2569".
+ *
+ * The API speaks YYYY-MM because that sorts as a string; a reader should never
+ * see that form, and a Thai screen should not print a Gregorian year (NFR-F7).
+ */
+export function formatThaiMonth(month: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return month;
+  const index = Number(match[2]) - 1;
+  if (index < 0 || index > 11) return month;
+  return `${THAI_MONTHS[index]} ${Number(match[1]) + 543}`;
+}
+
 /** "16 ก.ย. 2569 · 09:42" */
 export function formatThaiDateTime(iso: string): string {
   const date = new Date(iso);

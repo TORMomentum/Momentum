@@ -199,28 +199,6 @@ export function SearchView({
           </button>
         </div>
 
-        {facets.agencies.length > 0 && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>หน่วยงาน</div>
-            <div className={styles.toggleList}>
-              {facets.agencies.map(({ value, count }) => {
-                const on = filters.agencies.includes(value);
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    className={`${styles.toggleItem} ${on ? styles.toggleItemOn : ""}`}
-                    onClick={() => update({ agencies: toggle(filters.agencies, value) })}
-                    aria-pressed={on}
-                  >
-                    {on ? "☑" : "☐"} {thaiDigitsToArabic(value)} <span className={styles.facetCount}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {budgetFacet && ceiling > floor && (
           <div className={styles.filterGroup}>
             <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
@@ -304,6 +282,28 @@ export function SearchView({
             </button>
           </div>
         </div>
+
+        {facets.agencies.length > 0 && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>หน่วยงาน</div>
+            <div className={styles.toggleList}>
+              {facets.agencies.map(({ value, count }) => {
+                const on = filters.agencies.includes(value);
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`${styles.toggleItem} ${on ? styles.toggleItemOn : ""}`}
+                    onClick={() => update({ agencies: toggle(filters.agencies, value) })}
+                    aria-pressed={on}
+                  >
+                    {on ? "☑" : "☐"} {thaiDigitsToArabic(value)} <span className={styles.facetCount}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className={styles.sidebarFoot}>
           {results?.coverage.lastUpdatedAt && (
