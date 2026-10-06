@@ -19,6 +19,8 @@ export interface ListField<T> {
   raw: string;
   value: T | null;
   verified: boolean;
+  /** Set when the value was read from another document — a TOR's deadline from its invitation to bid. */
+  fromDocument?: string;
 }
 
 export type TorStatusValue = "announced" | "closed" | "awarded" | "cancelled";

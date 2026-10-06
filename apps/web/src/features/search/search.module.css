@@ -147,6 +147,12 @@
 
 .resultDeadlineValue { display: block; font: 600 12px var(--data); color: var(--ink); }
 
+.resultDeadlineSource {
+  display: block;
+  font: 9px var(--data);
+  color: var(--ink-62);
+}
+
 .resultDeadlineWindow { display: block; font: 500 11px var(--data); color: var(--ink-65); }
 
 .resultActions { display: flex; gap: 6px; justify-content: flex-end; }

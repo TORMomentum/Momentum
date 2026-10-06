@@ -406,6 +406,10 @@ export function SearchView({
                   </div>
                   <div className={styles.resultDeadline}>
                     {row.deadline.value === null ? "กำหนดยื่น" : row.open ? "ยื่นภายใน" : "ปิดรับ"}
+                    {/* A date the TOR itself does not state must say so here too,
+                        not only on the detail page: a bare date in a list reads
+                        as the TOR's own. */}
+                    {row.deadline.fromDocument && <span className={styles.resultDeadlineSource}>จากประกาศเชิญชวน</span>}
                     {/* Formatted in Arabic numerals; the document's own wording is the
                         tooltip here and is shown in full on the detail page (NFR-F7). */}
                     <span className={styles.resultDeadlineValue} title={row.deadline.raw || undefined}>
