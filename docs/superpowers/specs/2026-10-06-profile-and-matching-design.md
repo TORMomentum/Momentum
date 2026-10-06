@@ -140,3 +140,121 @@ keeping a hundred million rows nobody reads.
 | Does a vendor pick provinces, regions, or "anywhere"? | The profile form, with a vendor to ask |
 | Tag rarity needs a corpus large enough to measure rarity against | The corpus collection that is blocked on Vertex credentials |
 | Embeddings (§3.3) | A measured baseline from stage two first |
+
+---
+
+## 7. Revision 2 — 2026-10-07
+
+Revision 1 described what a profile holds. It did not say what a vendor is asked
+for *at registration*, and it treated the extracted category as something that
+could be matched against directly. Both are settled here, after a cross-model
+review that overturned one of the proposals outright.
+
+### 7.1 Registration asks for three things, and all three are taps
+
+`หมวดหมู่งาน` (from the taxonomy), `พื้นที่ให้บริการ`, `ช่วงงบประมาณ`. Nothing
+else, and no free text.
+
+Each additional field costs one to two percent of completions, and going from
+eight fields to four roughly doubles them (Baymard). A profile nobody finishes
+matches nothing, so the registration form is held to what matching cannot work
+without.
+
+Certifications and past projects stay out of registration and are prompted from
+the dashboard — but deferral is a policy, not an omission. A credential is asked
+for at the moment it would have changed an alert ("เพิ่มใบอนุญาตนี้
+เพื่อไม่ให้ได้รับแจ้งเตือนที่ไม่ตรง"), and a past project only after the vendor
+has seen the platform be useful. Neither is ever required to receive alerts.
+
+**This contradicts `FR-D-2`, which lists certifications, past projects and
+portfolio material as profile contents, and `FR-C-1`, which scores
+qualifications.** The SRS is amended to say when each is collected; the
+requirement that they are held and scored is unchanged.
+
+### 7.2 A company-size band is NOT collected
+
+Proposed on the strength of TenderKG's "staffing range", and rejected on review.
+That finding comes from a mature dataset with behavioural labels; here it would
+be a self-reported band with nothing to validate it against, and company size is
+a poor proxy for whether a firm will bid — a large firm may want small work, and
+firms bid jointly. It is not collected until there is a demonstrated use for it.
+
+### 7.3 Budget and area are preferences, not gates
+
+Stage one filters only on what is *factually* disqualifying: the deadline has
+passed, the record is taken down, or a stated mandatory qualification is one the
+vendor has explicitly said they do not hold. Budget band and service area move
+to stage two as scored signals.
+
+Hard-filtering on them produces silent false negatives — a vendor who would have
+bid never learns the TOR existed — and on a corpus this size a conjunction of
+verified category, verified budget, area and deadline can return nothing at all.
+
+### 7.4 Service area is where the work is, never where the agency is
+
+An agency's address is not the location of the work it is procuring. Matching on
+the issuing agency's province would be quietly wrong in a way no test would
+catch. Work location is derived from the document and carries its own confidence;
+where it is unknown, the record is scored without the area signal rather than
+excluded by it.
+
+### 7.5 The extracted category is evidence, not a classification
+
+`ประกวดราคาอิเล็กทรอนิกส์` appears in the live corpus as a category. It is a
+procurement method — a field-type error, not a bad category. One record in six
+proves a free-text category cannot be the input to a taxonomy match.
+
+The extracted string is preserved exactly, with its confidence and source, and a
+*separate* classification object is produced beside it, carrying:
+
+| Field | Holds |
+| :--- | :--- |
+| `scheme` | `unspsc`, the local crosswalk, or none |
+| `nodes` | candidate taxonomy nodes with scores |
+| `evidence` | the spans that produced them, from title, scope and stated qualifications — never the category field alone |
+| `outcome` | `classified`, `ambiguous`, `unknown`, or `invalid-field-type` |
+| `mapperVersion` | so a reclassification is reproducible and historical matches can be explained |
+
+Deterministic exclusions run first: a procurement method, an announcement type or
+a document label is recognised as such and never becomes a category.
+
+### 7.6 UNSPSC is an authority to cross-walk to, not the interface
+
+Thai e-GP classifies by UNSPSC (Segment, Family, Class, Commodity). The records
+here come from published announcements rather than e-GP's API, so a code is
+usually absent. The vendor-facing taxonomy is therefore our own, shallow and
+readable, with a crosswalk to UNSPSC used when a code is actually present. The
+hierarchy is what matters: a vendor who picks a coarse node still matches a TOR
+resolving beneath it, scoring lower the further apart they sit.
+
+### 7.7 Feedback is collected from the first release
+
+On save or dismiss, one optional question: relevant, not relevant, or cannot bid
+because — . Published procurement discloses only awarded suppliers, so
+vendor–TOR interactions are "extremely sparse and limited to positive outcomes"
+(TenderKG); this is the only place the missing signal can come from, and it is
+worth more than any further profile field.
+
+### 7.8 No notification email ships before a labelled benchmark exists
+
+A manually labelled vendor–TOR matrix, scored for precision, recall and the rate
+of "unknown because a field was missing". At this corpus size human judgement is
+cheap and is the only defensible evidence. Weights are not tuned by intuition.
+
+Until then the email says a TOR **may be relevant to the requirements stated**,
+never that it matches the vendor — which `NFR-F5` would require regardless.
+
+### 7.9 Known scaling limits, recorded now
+
+Scoring every TOR against every profile does not survive a large corpus:
+candidates are retrieved from an index on tags and location, and only candidates
+are scored. A broad parent tag plus a broad region will flood a vendor, so
+per-vendor caps and deduplication belong in the first release, not after the
+first complaint.
+
+### 7.10 Sources
+
+- TenderKG, arXiv 2608.14066 — company and tender features, and the sparsity finding
+- Bidders Recommender for Public Procurement Auctions (Spain) — under five bidders per lot
+- Thai e-GP / กรมบัญชีกลาง — UNSPSC as the national classification
+- Baymard Institute — form length against completion
