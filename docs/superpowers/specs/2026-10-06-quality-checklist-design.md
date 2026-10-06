@@ -18,11 +18,11 @@ Out (deferred, unchanged):
 
 | # | Check | Result rule |
 | :-- | :-- | :-- |
-| C1 | Budget stated | **pass** when the budget is a number and `verified` (verified means it reached the clean tier or an admin approved it, §4.2.1). Otherwise **fail**. |
+| C1 | Budget stated | **pass** when the budget is a number inside `BUDGET_MIN_THB`–`BUDGET_MAX_THB` (the same range the anomaly rule accepts) and `verified` (verified means it reached the clean tier or an admin approved it, §4.2.1). Otherwise **fail**. |
 | C2 | Deadline workable | **not evaluated** always. `MIN_BID_WINDOW_DAYS` is open (SRS §8 O2). Owner decision, 2026-10-06: show "not evaluated" rather than a made-up value. |
 | C3 | Scope specific | **not evaluated** always. `MIN_SCOPE_CHARS` / `MIN_SCOPE_SECTIONS` are open (O3). Same decision. |
-| C4 | Qualifications stated | **pass** when at least one taxonomy tag was mapped from the qualifications (FR-B-4). Otherwise **fail**. |
-| C5 | Budget within peer norm | Reuses the §4.5.1 verdict. **fail** on `anomaly`. **pass** on `normal`, and on `not-evaluated` with `insufficient-peers` (SRS: a peer group below `PEER_MIN_N` passes). Any other `not-evaluated` reason gives **not evaluated**. |
+| C4 | Qualifications stated | **pass** when at least one taxonomy tag was mapped from the qualifications (FR-B-4) and the qualifications are `verified`, the same bar C1 sets for the budget. Otherwise **fail**. |
+| C5 | Budget within peer norm | Reuses the §4.5.1 verdict. **fail** on `anomaly`. **pass** on `normal`, and on `not-evaluated` with `insufficient-peers` (SRS: a peer group below `PEER_MIN_N` passes). Any other `not-evaluated` reason gives **not evaluated**, and the reason names the cause (for example, an unverified category). |
 
 Score: `passed` out of `evaluated`, where `evaluated` excludes "not evaluated" checks. Every check
 carries a named reason, so no unexplained score is shown (NFR-F6).

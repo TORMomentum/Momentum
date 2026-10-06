@@ -137,19 +137,21 @@ export class TorsService {
     if (!record) throw new NotFoundError();
 
     // loadPublic reads only published, unrestricted records, so those two facts are fixed here.
-    const budget = record.fields.budget;
+    const budget = { value: record.fields.budget?.value ?? null, verified: record.fields.budget?.verified ?? false };
     const [verdict] = await this.verdicts([
       {
         cohort: record.cohort,
-        budget: { value: budget?.value ?? null, verified: budget?.verified ?? false },
+        budget,
         category: { value: record.fields.category?.value ?? null, verified: record.fields.category?.verified ?? false },
         state: "published",
         restricted: false,
       },
     ]);
     const checklist = evaluateChecklist({
-      budget: { value: budget?.value ?? null, verified: budget?.verified ?? false },
+      budget,
+      budgetRange: { min: this.deps.config.budgetMinThb, max: this.deps.config.budgetMaxThb },
       qualificationTags: record.fields.qualifications?.tags ?? [],
+      qualificationsVerified: record.fields.qualifications?.verified ?? false,
       verdict,
     });
 

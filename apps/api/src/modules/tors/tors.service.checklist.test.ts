@@ -8,7 +8,7 @@ const config = loadConfig({
   INTAKE_API_KEYS: "test-key",
   ADMIN_API_KEYS: "admin-key",
   GCS_BUCKET: "tor-raw",
-  GCS_API_ENDPOINT: "http://localhost:4443",
+  GCS_API_ENDPOINT: "http://gcs:4443",
 });
 
 const verified = (value: unknown) => ({ raw: String(value), value, confidence: 0.99, verified: true });
