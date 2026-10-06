@@ -10,11 +10,15 @@ export interface DashboardVerdict {
   n?: number;
 }
 
+/** The five states a reader acts on; the API names them in lib/tor-state.ts. */
+export type TorState = "open" | "awaiting-invitation" | "closed" | "awarded" | "cancelled";
+
 export interface DashboardPayload {
   totals: { torCount: number; budgetSum: number; agencyCount: number; unverifiedBudgetCount: number };
   flagged: { count: number | null };
   trend: Array<{ month: string; torCount: number; budgetSum: number }>;
   byAgency: Array<{ agency: string; torCount: number; budgetSum: number }>;
+  byState: Array<{ state: TorState; torCount: number; budgetSum: number }>;
   points: Array<{ id: string; category: string; month: string; budget: number; verdict: DashboardVerdict; confidence: number | null; verified: boolean; modelVersion: string | null }>;
   bounds: Array<{ category: string; month: string; n: number; q1: number | null; q3: number | null; lowBound: number | null; highBound: number | null; eligible: boolean }>;
   rule: { method: "IQR" | "ZSCORE"; iqrMultiplier: number; zScoreLimit: number; peerMinN: number; windowMonths: number; cohortTimezone: string };

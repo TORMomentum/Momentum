@@ -174,6 +174,29 @@
   background: rgba(29, 99, 216, 0.45);
 }
 
+/* A second, lighter row under the headline figures: same shape, smaller type,
+   so it reads as a breakdown of them rather than as four more headlines. */
+.states {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-bottom: var(--rule);
+}
+
+.state { padding: 14px 0 18px; }
+
+.state + .state { border-left: var(--rule); padding-left: 18px; }
+
+.stateKey { font: 10px var(--data); color: var(--ink-62); letter-spacing: 0.04em; }
+
+.stateValue { margin-top: 4px; font: 600 22px var(--display); color: var(--ink); }
+
+.stateNote { font: 10px var(--data); color: var(--ink-65); }
+
+/* The one a vendor is looking for. */
+.stateOpen .stateKey { color: var(--blue); }
+
+.stateOpen .stateValue { color: var(--blue); }
+
 .panelHeadStacked {
   margin-top: 32px;
   padding-top: 20px;

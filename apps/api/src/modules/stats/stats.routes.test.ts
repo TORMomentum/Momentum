@@ -45,7 +45,7 @@ beforeEach(async () => {
 afterAll(async () => { await disconnect(); });
 
 describe("public dashboard route", () => {
-  it("uses rollups for ordinary filters, but computes a budget filter from TORs", async () => {
+  it("derives every figure from the records, so a budget filter and a plain read agree", async () => {
     await tors(db).insertMany([record(), record({ fields: { ...record().fields, budget: { raw: "300", value: 300, confidence: 1, verified: false } } })] as never);
     await torRollups(db).insertOne({ agency: "Agency A", category: "roads", month: "2026-01", torCount: 2, budgetSum: 400, unverifiedBudgetCount: 1, flaggedCount: 0, computedAt: new Date() });
 
@@ -122,11 +122,11 @@ describe("the agency breakdown under an agency filter", () => {
     // proves the agency filter is NOT applied to the breakdown, and B proves the
     // category filter still is. Without C this passes even if the agency filter
     // were left in place.
-    await torRollups(db).insertMany([
-      { agency: "Agency A", category: "roads", month: "2026-01", torCount: 1, budgetSum: 100, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
-      { agency: "Agency C", category: "roads", month: "2026-01", torCount: 2, budgetSum: 500, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
-      { agency: "Agency B", category: "cleaning", month: "2026-01", torCount: 1, budgetSum: 900, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
-    ]);
+    await tors(db).insertMany([
+      record({ fields: { ...record().fields, agency: { raw: "Agency A", value: "Agency A", confidence: 1, verified: true }, category: { raw: "roads", value: "roads", confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true } }, cohort: { category: "roads", month: "2026-01" } }),
+      record({ fields: { ...record().fields, agency: { raw: "Agency C", value: "Agency C", confidence: 1, verified: true }, category: { raw: "roads", value: "roads", confidence: 1, verified: true }, budget: { raw: "500", value: 500, confidence: 1, verified: true } }, cohort: { category: "roads", month: "2026-01" } }),
+      record({ fields: { ...record().fields, agency: { raw: "Agency B", value: "Agency B", confidence: 1, verified: true }, category: { raw: "cleaning", value: "cleaning", confidence: 1, verified: true }, budget: { raw: "900", value: 900, confidence: 1, verified: true } }, cohort: { category: "cleaning", month: "2026-01" } }),
+    ] as never);
 
     const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A&category=roads");
 
@@ -138,9 +138,7 @@ describe("the agency breakdown under an agency filter", () => {
     // Otherwise its bar and its dropdown entry both disappear while the filter
     // stays in the URL: the screen looks unfiltered, shows no results, and
     // offers no way back out.
-    await torRollups(db).insertOne(
-      { agency: "Agency B", category: "cleaning", month: "2026-01", torCount: 1, budgetSum: 900, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
-    );
+    await tors(db).insertOne(record({ fields: { ...record().fields, agency: { raw: "Agency B", value: "Agency B", confidence: 1, verified: true }, category: { raw: "cleaning", value: "cleaning", confidence: 1, verified: true }, budget: { raw: "900", value: 900, confidence: 1, verified: true } }, cohort: { category: "cleaning", month: "2026-01" } }) as never);
 
     const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A&category=cleaning");
 
@@ -149,5 +147,35 @@ describe("the agency breakdown under an agency filter", () => {
       { agency: "Agency B", torCount: 1, budgetSum: 900 },
     ]);
     expect(response.body.totals).toMatchObject({ torCount: 0, agencyCount: 0 });
+  });
+});
+
+describe("the state breakdown", () => {
+  it("counts the five states a reader acts on, not the raw extracted status", async () => {
+    const base = record().fields;
+    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const past = "2020-01-01";
+    await tors(db).insertMany([
+      // Open: announced, deadline still ahead.
+      record({ fields: { ...base, deadline: { raw: future, value: future, confidence: 1, verified: true } } }),
+      // Announced but its invitation to bid is not out, so there is no deadline
+      // to act on — not the same thing as open.
+      record({ fields: { ...base, deadline: { raw: "", value: null, confidence: 1, verified: true } } }),
+      // Announced, but the deadline has passed: closed however it is labelled.
+      record({ fields: { ...base, deadline: { raw: past, value: past, confidence: 1, verified: true } } }),
+      record({ fields: { ...base, torStatus: { raw: "awarded", value: "awarded", confidence: 1, verified: true } } }),
+      record({ fields: { ...base, torStatus: { raw: "cancelled", value: "cancelled", confidence: 1, verified: true } } }),
+    ] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard");
+
+    expect(response.status).toBe(200);
+    const counts = Object.fromEntries(
+      response.body.byState.map((row: { state: string; torCount: number }) => [row.state, row.torCount]),
+    );
+    expect(counts).toEqual({ open: 1, "awaiting-invitation": 1, closed: 1, awarded: 1, cancelled: 1 });
+    // Every state carries its own budget, and together they account for the headline total.
+    const summed = response.body.byState.reduce((total: number, row: { budgetSum: number }) => total + row.budgetSum, 0);
+    expect(summed).toBe(response.body.totals.budgetSum);
   });
 });

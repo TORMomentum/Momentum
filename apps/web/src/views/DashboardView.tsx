@@ -6,11 +6,32 @@ import { useState } from "react";
 import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
 import styles from "../features/dashboard/dashboard.module.css";
-import type { DashboardPayload } from "../shared/api/stats.api";
+import type { DashboardPayload, TorState } from "../shared/api/stats.api";
 import { formatThaiMonth, thaiDigitsToArabic } from "../shared/lib/format";
 import { serialiseDashboardFilters, type DashboardFilters } from "../shared/lib/dashboard-filters";
 
 const ALL = "all";
+
+/**
+ * The same words the search results use for the same five states, so a reader
+ * moving between the two screens is not asked to learn a second vocabulary.
+ */
+const STATE_LABELS: Record<TorState, string> = {
+  open: "เปิดรับข้อเสนอ",
+  "awaiting-invitation": "รอประกาศเชิญชวน",
+  closed: "ปิดรับแล้ว",
+  awarded: "ประกาศผู้ชนะแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+};
+
+/**
+ * Extraction can fail to read an agency, and a record whose month could not be
+ * derived has nowhere to sit in time. Both are real and both must be NAMED: an
+ * unlabelled row reads as a rendering fault, and silently dropping it would
+ * leave the breakdown not adding up to the total above it.
+ */
+const UNKNOWN_AGENCY = "ไม่ระบุหน่วยงาน";
+const UNKNOWN_MONTH = "ไม่ระบุเดือน";
 
 function formatBudget(value: number): string {
   return `฿${value.toLocaleString("en-US")}`;
@@ -87,7 +108,7 @@ export function DashboardView({
           open={openDrop === "agency"}
           onToggle={() => setOpenDrop(openDrop === "agency" ? null : "agency")}
           onPick={(agency) => { updateFilters({ agency: agency === ALL ? undefined : agency }); setOpenDrop(null); }}
-          options={[{ value: ALL, label: "ทั้งหมด" }, ...agencies.map((agency) => ({ value: agency.agency, label: thaiDigitsToArabic(agency.agency), meta: String(agency.torCount) }))]}
+          options={[{ value: ALL, label: "ทั้งหมด" }, ...agencies.map((agency) => ({ value: agency.agency, label: agency.agency ? thaiDigitsToArabic(agency.agency) : UNKNOWN_AGENCY, meta: String(agency.torCount) }))]}
         />
         <FilterDrop
           label="หมวดหมู่"
@@ -108,6 +129,20 @@ export function DashboardView({
           <div className={styles.stat}><div className={styles.statKey}>หน่วยงาน</div><div className={styles.statValue}>{dashboard.totals.agencyCount.toLocaleString("th-TH")}</div><div className={styles.statNote}>หน่วยงานรัฐทั่วประเทศ</div></div>
           {dashboard.flagged.count !== null && <div className={`${styles.stat} ${styles.statFlagged}`}><div className={styles.statKey}>ความผิดปกติทางสถิติ</div><div className={styles.statValue}>{dashboard.flagged.count.toLocaleString("th-TH")}</div><div className={styles.statNote}>ดูวิธีคำนวณได้ที่ <Link href="/methodology">ระเบียบวิธี</Link></div></div>}
         </div>
+
+        {/* The headline figures count everything collected, which includes TORs
+            that closed last year. This answers the question a vendor actually
+            has — what can I still bid on — and shows the rest beside it so the
+            open count is read in proportion. */}
+        <section className={styles.states}>
+          {dashboard.byState.map((row) => (
+            <div key={row.state} className={`${styles.state} ${row.state === "open" ? styles.stateOpen : ""}`}>
+              <div className={styles.stateKey}>{STATE_LABELS[row.state]}</div>
+              <div className={styles.stateValue}>{row.torCount.toLocaleString("th-TH")}</div>
+              <div className={styles.stateNote}>{formatBudget(row.budgetSum)}</div>
+            </div>
+          ))}
+        </section>
 
         <div className={styles.split}>
           <section className={styles.splitLeft}>
@@ -134,7 +169,7 @@ export function DashboardView({
                   aria-pressed={picked}
                 >
                   <span className={styles.barLabel}>
-                    <span className={styles.barName}>{thaiDigitsToArabic(row.agency)}</span>
+                    <span className={styles.barName}>{row.agency ? thaiDigitsToArabic(row.agency) : UNKNOWN_AGENCY}</span>
                     <span className={styles.barStat}>
                       {row.torCount.toLocaleString("th-TH")} · {formatBudget(row.budgetSum)}
                     </span>
@@ -161,7 +196,7 @@ export function DashboardView({
               {dashboard.trend.map((row) => (
                 <div key={row.month} className={styles.trendRow}>
                   <span className={styles.trendLabel}>
-                    <span className={styles.trendMonth}>{formatThaiMonth(row.month)}</span>
+                    <span className={styles.trendMonth}>{row.month ? formatThaiMonth(row.month) : UNKNOWN_MONTH}</span>
                     <span className={styles.trendStat}>{row.torCount.toLocaleString("th-TH")} · {formatBudget(row.budgetSum)}</span>
                   </span>
                   <span className={styles.barTrack}>

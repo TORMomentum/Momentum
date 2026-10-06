@@ -1,23 +1,16 @@
 import { Router } from "express";
 import type { Config } from "../../core/config.js";
-import type { Db, Filter } from "mongodb";
-import type { TorRollupDocument } from "../../core/db.js";
+import type { Db } from "mongodb";
 import { redactTor } from "../../lib/redact.js";
 import { StatsRepository } from "./stats.repository.js";
 import { eligibilityOf } from "./eligibility.js";
 import { verdictFor } from "./anomaly.rule.js";
 import type { PeerBounds } from "./anomaly.rule.js";
-import { parseDashboardFilters, publicTorFilter, type DashboardFilters } from "./stats.filters.js";
+import { parseDashboardFilters, publicTorFilter } from "./stats.filters.js";
+import { calendarDate } from "../../lib/calendar-date.js";
+import { TOR_STATES, torStateOf } from "../../lib/tor-state.js";
 
 export interface StatsRouterDeps { db: Db; config: Config; }
-
-function rollupFilter(filters: DashboardFilters): Filter<TorRollupDocument> {
-  const filter: Record<string, unknown> = {};
-  if (filters.agency) filter.agency = filters.agency;
-  if (filters.category) filter.category = filters.category;
-  if (filters.from || filters.to) filter.month = { ...(filters.from ? { $gte: filters.from } : {}), ...(filters.to ? { $lte: filters.to } : {}) };
-  return filter as Filter<TorRollupDocument>;
-}
 
 const iso = (date: Date | undefined) => date?.toISOString() ?? null;
 
@@ -63,7 +56,6 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
         modelVersion: record.provenance?.modelVersion ?? null,
       }];
     });
-    const needsRecordTotals = filters.minBudget !== undefined || filters.maxBudget !== undefined || filters.status !== undefined;
     const asCells = (rows: typeof scopeRecords) => rows.map((record) => ({
       agency: agencyOf(record),
       month: record.cohort?.month ?? "", torCount: 1, budgetSum: record.fields.budget?.value as number,
@@ -82,9 +74,22 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
      * Every other filter still applies, so the comparison answers "within what
      * I am looking at, how do the agencies compare".
      */
-    const breakdownSource = needsRecordTotals
-      ? asCells(scopeRecords)
-      : await repository.dashboardRollups(rollupFilter(agencyScope));
+    /**
+     * Every figure on this page is derived from the records it has already
+     * read, and from nothing else.
+     *
+     * The totals used to come from the rollup cells instead — a cache the
+     * statistics worker maintains. That put two sources on one screen, and when
+     * the worker fell behind they disagreed in public: the headline read 18
+     * TORs and ฿172,150,000 while the breakdown under it, counted from the
+     * records, read 19 and ฿175,350,000.
+     *
+     * The cache saved nothing here, because the plot needs every matching
+     * record anyway, so the scan happens either way. tor_rollups and its worker
+     * stay for a future screen that reports aggregates WITHOUT per-record
+     * points; this page must not mix the two.
+     */
+    const breakdownSource = asCells(scopeRecords);
     const source = filters.agency
       ? breakdownSource.filter((cell) => cell.agency === filters.agency)
       : breakdownSource;
@@ -113,6 +118,28 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     // "how many agencies am I looking at" is a different question from "which
     // agencies can I choose between".
     const agencyCount = new Set(source.map((value) => value.agency)).size;
+    /**
+     * The same five states the search results badge, counted.
+     *
+     * "How many can I still bid on" is the question the headline figures cannot
+     * answer: a count of every collected TOR includes ones that closed last
+     * year. Counted from the records already read for the plot, on the same
+     * basis as the totals above them, so the two can never disagree.
+     */
+    const today = calendarDate(new Date(), deps.config.search.timeZone);
+    const stateTotals = new Map(TOR_STATES.map((state) => [state, { state, torCount: 0, budgetSum: 0 }]));
+    for (const record of records) {
+      const budget = record.fields.budget?.value;
+      if (typeof budget !== "number") continue;
+      const state = torStateOf({
+        torStatus: (record.fields.torStatus?.value as never) ?? null,
+        deadline: (record.fields.deadline?.value as string | null) ?? null,
+      }, today);
+      const cell = stateTotals.get(state)!;
+      cell.torCount += 1;
+      cell.budgetSum += budget;
+    }
+
     const evaluated = points.filter((point) => point.verdict.kind !== "not-evaluated");
     const flagged = evaluated.length === 0 ? null : points.filter((point) => point.verdict.kind === "anomaly").length;
     const corpusSize = meta?.corpusSize ?? await repository.corpusSize();
@@ -120,6 +147,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       totals: { ...totals, agencyCount }, flagged: { count: flagged },
       trend: [...trend.values()].sort((left, right) => left.month.localeCompare(right.month)),
       byAgency: [...byAgency.values()].sort((left, right) => left.agency.localeCompare(right.agency)), points,
+      byState: [...stateTotals.values()],
       // The band the plot draws behind its points, one per peer group on the
       // screen. Sent with the points rather than fetched separately: a reader
       // must see the same bounds the verdict beside them was decided by.
