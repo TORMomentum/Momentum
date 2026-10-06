@@ -34,6 +34,9 @@ const schema = z.object({
 
   // Accounts and sessions (accounts and sessions design §5).
   SESSION_SECRET: z.string().min(32),
+  APP_ORIGIN: z.url().refine((value) => new URL(value).origin === value, {
+    message: "APP_ORIGIN must be an origin without a path",
+  }),
   SESSION_LIFETIME_MS: z.coerce.number().int().positive().default(604_800_000),
   ARGON2_MEMORY_KIB: z.coerce.number().int().positive().default(19_456),
   ARGON2_ITERATIONS: z.coerce.number().int().positive().default(2),
@@ -136,6 +139,8 @@ export interface Config {
     secret: string;
     lifetimeMs: number;
   };
+  /** The browser origin allowed to make state-changing account requests. */
+  appOrigin: string;
   argon2: {
     memoryKiB: number;
     iterations: number;
@@ -226,6 +231,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       secret: parsed.SESSION_SECRET,
       lifetimeMs: parsed.SESSION_LIFETIME_MS,
     },
+    appOrigin: parsed.APP_ORIGIN,
     argon2: {
       memoryKiB: parsed.ARGON2_MEMORY_KIB,
       iterations: parsed.ARGON2_ITERATIONS,

@@ -9,6 +9,7 @@ x-api-env: &api-env
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me-admin-key}
   SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+  APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
 
 services:
   web:

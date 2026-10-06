@@ -6,6 +6,7 @@ const base = {
   INTAKE_API_KEYS: "test-key",
   ADMIN_API_KEYS: "admin-key",
   SESSION_SECRET: "test-session-secret-that-is-at-least-32-characters",
+  APP_ORIGIN: "https://app.example.test",
   GCS_BUCKET: "tor-raw",
   GCS_API_ENDPOINT: "http://localhost:4443",
 };
@@ -45,6 +46,13 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...base, SESSION_LIFETIME_MS: "0" })).toThrow();
     expect(() => loadConfig({ ...base, ARGON2_MEMORY_KIB: "memory" })).toThrow();
     expect(() => loadConfig({ ...base, AUTH_RATE_LIMIT_PER_IP: "1.5" })).toThrow();
+  });
+
+  it("requires the app origin used to defend state-changing browser requests", () => {
+    const { APP_ORIGIN, ...withoutAppOrigin } = base;
+    expect(() => loadConfig(withoutAppOrigin)).toThrow(/APP_ORIGIN/);
+    expect(loadConfig(base).appOrigin).toBe(APP_ORIGIN);
+    expect(() => loadConfig({ ...base, APP_ORIGIN: "not an origin" })).toThrow();
   });
 
   it("rejects a non-numeric override instead of silently coercing", () => {

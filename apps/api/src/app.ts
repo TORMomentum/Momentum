@@ -3,6 +3,7 @@ import type { Db } from "mongodb";
 import { sourcesRouter } from "./routes/sources";
 import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
+import { sessionContext } from "./core/session-context.js";
 import { createStorage } from "./adapters/storage.factory.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
@@ -17,6 +18,7 @@ import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
 import { StatsRepository } from "./modules/stats/stats.repository.js";
 import { buildStatsRouter } from "./modules/stats/stats.routes.js";
+import { SessionsRepository } from "./modules/accounts/sessions.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -32,6 +34,7 @@ export function buildApp(config: Config, db: Db): Express {
   const statsRepository = new StatsRepository(db);
 
   app.use(express.json());
+  app.use(sessionContext(new SessionsRepository(db, config.session.lifetimeMs)));
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "tor-radar-api" });
