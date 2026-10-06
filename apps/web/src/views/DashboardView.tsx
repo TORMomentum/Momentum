@@ -61,6 +61,9 @@ export function DashboardView({
 
   const empty = dashboard.totals.torCount === 0;
   const agencies = dashboard.byAgency;
+  // The widest bar is the scale, so one agency's share is readable against the
+  // others rather than against an arbitrary ceiling.
+  const widestBudget = agencies.reduce((widest, row) => Math.max(widest, row.budgetSum), 0);
   const categories = [...new Set(dashboard.points.map((point) => point.category))];
 
   return (
@@ -107,6 +110,48 @@ export function DashboardView({
 
         <div className={styles.split}>
           <section className={styles.splitLeft}>
+          <div className={styles.panelHead}>
+            <h2 className={styles.panelTitle}>TOR ตามหน่วยงาน</h2>
+            <span className={styles.panelHint}>คลิกแท่งเพื่อกรอง</span>
+          </div>
+          <div className={styles.bars}>
+            {/* Every agency stays on screen when one is picked; the rest fade.
+                That is what makes the selected bar readable AS a comparison —
+                dropping the other rows would leave a one-bar chart.
+
+                Clicking writes the same `agency` filter the dropdown writes, so
+                the two controls cannot disagree and the choice survives a
+                reload or a shared link. */}
+            {agencies.map((row, index) => {
+              const picked = filters.agency === row.agency;
+              return (
+                <button
+                  type="button"
+                  key={row.agency}
+                  className={`${styles.bar} ${filters.agency && !picked ? styles.barDim : ""}`}
+                  onClick={() => updateFilters({ agency: picked ? undefined : row.agency })}
+                  aria-pressed={picked}
+                >
+                  <span className={styles.barLabel}>
+                    <span className={styles.barName}>{thaiDigitsToArabic(row.agency)}</span>
+                    <span className={styles.barStat}>
+                      {row.torCount.toLocaleString("th-TH")} · {formatBudget(row.budgetSum)}
+                    </span>
+                  </span>
+                  <span className={styles.barTrack}>
+                    <span
+                      className={styles.barFill}
+                      style={{
+                        width: `${widestBudget === 0 ? 0 : (row.budgetSum / widestBudget) * 100}%`,
+                        animationDelay: `${index * 70}ms`,
+                      }}
+                    />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
             <div className={styles.panelHead}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2><span className={styles.panelHint}>TOR และงบประมาณ</span></div>
             <div className={styles.trend}>{dashboard.trend.map((row) => <div key={row.month} className={styles.trendRow}><span>{row.month}</span><span>{row.torCount.toLocaleString("th-TH")} TOR</span><strong>{formatBudget(row.budgetSum)}</strong></div>)}</div>
           </section>

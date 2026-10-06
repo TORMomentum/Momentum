@@ -93,3 +93,61 @@ describe("GET /api/v1/stats/dashboard freshness", () => {
     expect(response.body.meta).toMatchObject({ statsComputedAt: null, stale: true });
   });
 });
+
+describe("the agency breakdown under an agency filter", () => {
+  it("still lists every agency, so the control that sets the filter can also clear or change it", async () => {
+    // Filtered by the agency already chosen, the breakdown would collapse to one
+    // row: a one-bar chart comparing nothing, and a dropdown whose only option
+    // is the agency already picked.
+    await tors(db).insertMany([
+      record(),
+      record({ fields: { ...record().fields, agency: { raw: "Agency B", value: "Agency B", confidence: 1, verified: true } } }),
+    ] as never);
+    await torRollups(db).insertMany([
+      { agency: "Agency A", category: "roads", month: "2026-01", torCount: 1, budgetSum: 100, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+      { agency: "Agency B", category: "roads", month: "2026-01", torCount: 1, budgetSum: 900, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+    ]);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A");
+
+    expect(response.status).toBe(200);
+    expect(response.body.byAgency.map((row: { agency: string }) => row.agency)).toEqual(["Agency A", "Agency B"]);
+    // The figures themselves still honour the filter, and so does the count of
+    // agencies being looked at — a different question from which are on offer.
+    expect(response.body.totals).toMatchObject({ torCount: 1, budgetSum: 100, agencyCount: 1 });
+  });
+
+  it("applies the other filters to the breakdown, so it compares within what is on screen", async () => {
+    // Agency C shares the category, Agency B does not. Both halves matter: C
+    // proves the agency filter is NOT applied to the breakdown, and B proves the
+    // category filter still is. Without C this passes even if the agency filter
+    // were left in place.
+    await torRollups(db).insertMany([
+      { agency: "Agency A", category: "roads", month: "2026-01", torCount: 1, budgetSum: 100, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+      { agency: "Agency C", category: "roads", month: "2026-01", torCount: 2, budgetSum: 500, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+      { agency: "Agency B", category: "cleaning", month: "2026-01", torCount: 1, budgetSum: 900, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+    ]);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A&category=roads");
+
+    expect(response.body.byAgency.map((row: { agency: string }) => row.agency)).toEqual(["Agency A", "Agency C"]);
+    expect(response.body.totals).toMatchObject({ torCount: 1, budgetSum: 100, agencyCount: 1 });
+  });
+
+  it("keeps a chosen agency listed even when the other filters leave it with nothing", async () => {
+    // Otherwise its bar and its dropdown entry both disappear while the filter
+    // stays in the URL: the screen looks unfiltered, shows no results, and
+    // offers no way back out.
+    await torRollups(db).insertOne(
+      { agency: "Agency B", category: "cleaning", month: "2026-01", torCount: 1, budgetSum: 900, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+    );
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A&category=cleaning");
+
+    expect(response.body.byAgency).toEqual([
+      { agency: "Agency A", torCount: 0, budgetSum: 0 },
+      { agency: "Agency B", torCount: 1, budgetSum: 900 },
+    ]);
+    expect(response.body.totals).toMatchObject({ torCount: 0, agencyCount: 0 });
+  });
+});

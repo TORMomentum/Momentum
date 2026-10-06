@@ -28,10 +28,18 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
 
   router.get("/dashboard", async (req, res) => {
     const filters = parseDashboardFilters(req.query);
-    const [records, meta] = await Promise.all([
-      repository.dashboardRecords(publicTorFilter(filters)),
+    // Read the scope WITHOUT the agency filter once. The agency breakdown needs
+    // that wider set anyway (see below), and deriving the narrower one in memory
+    // keeps every figure on this page computed from a single snapshot — two
+    // reads could straddle a write and disagree with each other.
+    const agencyScope = { ...filters, agency: undefined };
+    const [scopeRecords, meta] = await Promise.all([
+      repository.dashboardRecords(publicTorFilter(agencyScope)),
       repository.dashboardMeta(),
     ]);
+    const agencyOf = (record: (typeof scopeRecords)[number]) =>
+      typeof record.fields.agency?.value === "string" ? record.fields.agency.value.trim() : "";
+    const records = filters.agency ? scopeRecords.filter((record) => agencyOf(record) === filters.agency) : scopeRecords;
     const keys = records.flatMap((record) => record.cohort ? [record.cohort] : []);
     // One bounds read for all plotted rows avoids a per-row lookup whose cost
     // grows with the page rather than with the number of distinct peer groups.
@@ -56,29 +64,60 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       }];
     });
     const needsRecordTotals = filters.minBudget !== undefined || filters.maxBudget !== undefined || filters.status !== undefined;
-    const cells = needsRecordTotals ? null : await repository.dashboardRollups(rollupFilter(filters));
-    const source = cells ?? records.map((record) => ({
-      agency: typeof record.fields.agency?.value === "string" ? record.fields.agency.value.trim() : "",
+    const asCells = (rows: typeof scopeRecords) => rows.map((record) => ({
+      agency: agencyOf(record),
       month: record.cohort?.month ?? "", torCount: 1, budgetSum: record.fields.budget?.value as number,
       unverifiedBudgetCount: record.fields.budget?.verified ? 0 : 1, flaggedCount: 0,
     }));
+
+    /**
+     * The agency breakdown deliberately ignores the agency filter.
+     *
+     * It is what the screen's agency control is built from — a comparison and a
+     * selector at once. Filtered by the agency already chosen it would collapse
+     * to a single row: a one-bar chart that compares nothing, and a dropdown
+     * whose only option is the one already picked, so a reader could never
+     * switch from one agency to another without clearing the filter first.
+     *
+     * Every other filter still applies, so the comparison answers "within what
+     * I am looking at, how do the agencies compare".
+     */
+    const breakdownSource = needsRecordTotals
+      ? asCells(scopeRecords)
+      : await repository.dashboardRollups(rollupFilter(agencyScope));
+    const source = filters.agency
+      ? breakdownSource.filter((cell) => cell.agency === filters.agency)
+      : breakdownSource;
     const totals = source.reduce((sum, value) => ({
       torCount: sum.torCount + value.torCount, budgetSum: sum.budgetSum + value.budgetSum,
       unverifiedBudgetCount: sum.unverifiedBudgetCount + value.unverifiedBudgetCount,
     }), { torCount: 0, budgetSum: 0, unverifiedBudgetCount: 0 });
     const byAgency = new Map<string, { agency: string; torCount: number; budgetSum: number }>();
     const trend = new Map<string, { month: string; torCount: number; budgetSum: number }>();
-    for (const value of source) {
+    for (const value of breakdownSource) {
       const agency = byAgency.get(value.agency) ?? { agency: value.agency, torCount: 0, budgetSum: 0 };
       agency.torCount += value.torCount; agency.budgetSum += value.budgetSum; byAgency.set(value.agency, agency);
+    }
+    for (const value of source) {
       const month = trend.get(value.month) ?? { month: value.month, torCount: 0, budgetSum: 0 };
       month.torCount += value.torCount; month.budgetSum += value.budgetSum; trend.set(value.month, month);
     }
+    // A chosen agency stays in the breakdown even when the other filters leave
+    // it with nothing. Dropped, its bar and its dropdown entry would both
+    // vanish while the filter stayed in the URL: the screen would look
+    // unfiltered, show no results, and offer no way back out of the state.
+    if (filters.agency && !byAgency.has(filters.agency)) {
+      byAgency.set(filters.agency, { agency: filters.agency, torCount: 0, budgetSum: 0 });
+    }
+    // Counted from what the filters actually select, not from the breakdown:
+    // "how many agencies am I looking at" is a different question from "which
+    // agencies can I choose between".
+    const agencyCount = new Set(source.map((value) => value.agency)).size;
     const evaluated = points.filter((point) => point.verdict.kind !== "not-evaluated");
     const flagged = evaluated.length === 0 ? null : points.filter((point) => point.verdict.kind === "anomaly").length;
     const corpusSize = meta?.corpusSize ?? await repository.corpusSize();
     res.json({
-      totals: { ...totals, agencyCount: byAgency.size }, flagged: { count: flagged },
+      totals: { ...totals, agencyCount }, flagged: { count: flagged },
       trend: [...trend.values()].sort((left, right) => left.month.localeCompare(right.month)),
       byAgency: [...byAgency.values()].sort((left, right) => left.agency.localeCompare(right.agency)), points,
       // The band the plot draws behind its points, one per peer group on the
