@@ -9,10 +9,12 @@ import styles from "./profile.module.css";
  * sits, and the copy says so, because an agency procures work far from its own
  * address all the time.
  *
- * Seventy-seven provinces as one flat row of buttons is a wall, and the whole
- * point of this screen is that it can be finished in a few taps. So the country
- * is the default, a region is one tap, and the provinces inside a region appear
- * only if someone opens it.
+ * Unlike the work taxonomy, this one DOES collapse: most vendors answer with
+ * the whole country or a region and never need a province, and a region's name
+ * tells them exactly what is inside it. That predictability is the condition
+ * under which collapsing is worth its interaction cost (NN/g on filter
+ * categories); seventy-seven provinces in one flat row is the wall this screen
+ * exists to avoid.
  */
 export function ServiceAreaPicker({
   value,
@@ -25,16 +27,14 @@ export function ServiceAreaPicker({
   const selected = new Set(value);
   const wholeCountry = selected.has(WHOLE_COUNTRY_AREA);
 
-  /** Selecting anywhere specific means the answer is no longer "everywhere". */
+  /** Naming anywhere specific means the answer is no longer "everywhere". */
   function withoutWholeCountry(ids: string[]): string[] {
     return ids.filter((id) => id !== WHOLE_COUNTRY_AREA);
   }
 
   function toggleProvince(id: string) {
     onChange(
-      selected.has(id)
-        ? value.filter((area) => area !== id)
-        : [...withoutWholeCountry(value), id],
+      selected.has(id) ? value.filter((area) => area !== id) : [...withoutWholeCountry(value), id],
     );
   }
 
@@ -48,49 +48,52 @@ export function ServiceAreaPicker({
     );
   }
 
-  const chosenProvinces = PROVINCES.filter((province) => selected.has(province.id));
+  const chosenCount = PROVINCES.filter((province) => selected.has(province.id)).length;
 
   return (
     <div>
-      <div className={styles.areaGrid}>
-        <button
-          type="button"
-          className={`${styles.skillPill} ${wholeCountry ? styles.skillPillOn : ""}`}
-          aria-pressed={wholeCountry}
-          onClick={() => onChange([WHOLE_COUNTRY_AREA])}
-        >
-          ทั่วประเทศ
-        </button>
-      </div>
+      <button
+        type="button"
+        className={`${styles.areaPrimary} ${wholeCountry ? styles.areaPrimaryOn : ""}`}
+        aria-pressed={wholeCountry}
+        onClick={() => onChange([WHOLE_COUNTRY_AREA])}
+      >
+        {wholeCountry ? "✓ " : ""}รับงานทั่วประเทศ
+      </button>
 
       {REGIONS.map((region) => {
-        const ids = PROVINCES.filter((province) => province.region === region.id);
-        const chosen = ids.filter((province) => selected.has(province.id)).length;
+        const provinces = PROVINCES.filter((province) => province.region === region.id);
+        const chosen = provinces.filter((province) => selected.has(province.id)).length;
+        const whole = chosen === provinces.length;
         const isOpen = opened === region.id;
         return (
-          <div className={styles.taxonomyGroup} key={region.id}>
-            <div className={styles.areaGrid}>
+          <div key={region.id}>
+            <div className={styles.regionRow}>
               <button
                 type="button"
-                className={`${styles.skillPill} ${chosen === ids.length ? styles.skillPillOn : ""}`}
-                aria-pressed={chosen === ids.length}
+                className={`${styles.skillPill} ${whole ? styles.skillPillOn : ""}`}
+                aria-pressed={whole}
                 onClick={() => toggleRegion(region.id)}
               >
                 {region.th}
-                {chosen > 0 && chosen < ids.length ? ` (${chosen}/${ids.length})` : ""}
               </button>
+              {chosen > 0 && (
+                <span className={styles.regionChosen}>
+                  {whole ? "ทั้งภาค" : `${chosen} จาก ${provinces.length} จังหวัด`}
+                </span>
+              )}
               <button
                 type="button"
-                className={styles.addSkillPill}
+                className={styles.regionExpand}
                 aria-expanded={isOpen}
                 onClick={() => setOpened(isOpen ? null : region.id)}
               >
-                {isOpen ? "ย่อจังหวัด" : "เลือกรายจังหวัด"}
+                {isOpen ? "ย่อ" : "เลือกรายจังหวัด"}
               </button>
             </div>
             {isOpen && (
-              <div className={styles.areaGrid}>
-                {ids.map((province) => (
+              <div className={styles.regionProvinces}>
+                {provinces.map((province) => (
                   <button
                     type="button"
                     key={province.id}
@@ -108,9 +111,7 @@ export function ServiceAreaPicker({
       })}
 
       <p className={styles.skillCount} role="status">
-        {wholeCountry
-          ? "รับงานทั่วประเทศ"
-          : `เลือกแล้ว ${chosenProvinces.length} จังหวัด — กดอีกครั้งเพื่อนำออก`}
+        {wholeCountry ? "รับงานทั่วประเทศ" : `เลือกแล้ว ${chosenCount} จังหวัด`}
       </p>
     </div>
   );
