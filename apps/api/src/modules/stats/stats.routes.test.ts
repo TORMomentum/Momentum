@@ -179,3 +179,49 @@ describe("the state breakdown", () => {
     expect(summed).toBe(response.body.totals.budgetSum);
   });
 });
+
+describe("filtering by state and month", () => {
+  const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  async function seedMixed() {
+    const base = record().fields;
+    await tors(db).insertMany([
+      record({ fields: { ...base, deadline: { raw: future, value: future, confidence: 1, verified: true } } }),
+      record({ fields: { ...base, torStatus: { raw: "cancelled", value: "cancelled", confidence: 1, verified: true } } }),
+      record({ cohort: { category: "roads", month: "2026-02" }, fields: { ...base, deadline: { raw: future, value: future, confidence: 1, verified: true } } }),
+      // No agency and no month: the rows a reader sees as "ไม่ระบุ".
+      record({ cohort: undefined, fields: { ...base, agency: { raw: "", value: null, confidence: 0, verified: false } } }),
+    ] as never);
+  }
+
+  it("narrows the figures to one state while still listing the others", async () => {
+    await seedMixed();
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?state=cancelled");
+
+    expect(response.body.totals.torCount).toBe(1);
+    // The control that set the filter must still offer the way out of it.
+    const states = Object.fromEntries(response.body.byState.map((r: { state: string; torCount: number }) => [r.state, r.torCount]));
+    expect(states.open).toBe(2);
+    expect(states.cancelled).toBe(1);
+  });
+
+  it("narrows to one month while the trend still shows every month", async () => {
+    await seedMixed();
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?month=2026-02");
+
+    expect(response.body.totals.torCount).toBe(1);
+    expect(response.body.trend.map((r: { month: string }) => r.month).sort()).toEqual(["", "2026-01", "2026-02"]);
+  });
+
+  it("can select the records whose agency or month could not be read", async () => {
+    await seedMixed();
+
+    const byAgency = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=__unknown__");
+    const byMonth = await request(buildTestApp()).get("/api/v1/stats/dashboard?month=__unknown__");
+
+    expect(byAgency.body.totals.torCount).toBe(1);
+    expect(byMonth.body.totals.torCount).toBe(1);
+  });
+});

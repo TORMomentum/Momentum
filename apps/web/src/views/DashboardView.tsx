@@ -7,8 +7,8 @@ import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { DashboardPayload, TorState } from "../shared/api/stats.api";
-import { formatThaiMonth, thaiDigitsToArabic } from "../shared/lib/format";
-import { serialiseDashboardFilters, type DashboardFilters } from "../shared/lib/dashboard-filters";
+import { formatBudgetShort, formatThaiMonth, thaiDigitsToArabic } from "../shared/lib/format";
+import { serialiseDashboardFilters, UNKNOWN, type DashboardFilters } from "../shared/lib/dashboard-filters";
 
 const ALL = "all";
 
@@ -81,7 +81,10 @@ export function DashboardView({
   }
 
   const empty = dashboard.totals.torCount === 0;
-  const agencies = dashboard.byAgency;
+  // Unknown sorts first by string order, and a row with no name reads as a
+  // fault when it leads the chart. It belongs at the end, with the others.
+  const agencies = [...dashboard.byAgency].sort((left, right) =>
+    left.agency === right.agency ? 0 : !left.agency ? 1 : !right.agency ? -1 : 0);
   // The widest bar is the scale, so one agency's share is readable against the
   // others rather than against an arbitrary ceiling.
   const widestBudget = agencies.reduce((widest, row) => Math.max(widest, row.budgetSum), 0);
@@ -130,18 +133,27 @@ export function DashboardView({
           {dashboard.flagged.count !== null && <div className={`${styles.stat} ${styles.statFlagged}`}><div className={styles.statKey}>ความผิดปกติทางสถิติ</div><div className={styles.statValue}>{dashboard.flagged.count.toLocaleString("th-TH")}</div><div className={styles.statNote}>ดูวิธีคำนวณได้ที่ <Link href="/methodology">ระเบียบวิธี</Link></div></div>}
         </div>
 
-        {/* The headline figures count everything collected, which includes TORs
-            that closed last year. This answers the question a vendor actually
-            has — what can I still bid on — and shows the rest beside it so the
-            open count is read in proportion. */}
-        <section className={styles.states}>
-          {dashboard.byState.map((row) => (
-            <div key={row.state} className={`${styles.state} ${row.state === "open" ? styles.stateOpen : ""}`}>
-              <div className={styles.stateKey}>{STATE_LABELS[row.state]}</div>
-              <div className={styles.stateValue}>{row.torCount.toLocaleString("th-TH")}</div>
-              <div className={styles.stateNote}>{formatBudget(row.budgetSum)}</div>
-            </div>
-          ))}
+        {/* One line rather than a third full-width band: this is a filter, and
+            it reads as one. The headline counts everything collected, including
+            what closed last year; these say what can still be bid on, and
+            clicking one narrows the page to it. */}
+        <section className={styles.states} aria-label="สถานะของ TOR">
+          {dashboard.byState.map((row) => {
+            const picked = filters.state === row.state;
+            return (
+              <button
+                type="button"
+                key={row.state}
+                className={`${styles.stateChip} ${row.state === "open" ? styles.stateChipOpen : ""} ${picked ? styles.stateChipOn : ""}`}
+                onClick={() => updateFilters({ state: picked ? undefined : row.state })}
+                aria-pressed={picked}
+              >
+                <span className={styles.stateChipKey}>{STATE_LABELS[row.state]}</span>
+                <span className={styles.stateChipValue}>{row.torCount.toLocaleString("th-TH")}</span>
+                <span className={styles.stateChipNote}>{formatBudgetShort(row.budgetSum)}</span>
+              </button>
+            );
+          })}
         </section>
 
         <div className={styles.split}>
@@ -159,13 +171,16 @@ export function DashboardView({
                 the two controls cannot disagree and the choice survives a
                 reload or a shared link. */}
             {agencies.map((row, index) => {
-              const picked = filters.agency === row.agency;
+              // An unreadable agency is still a row a reader may want to see on
+              // its own, so it carries the sentinel rather than no value at all.
+              const value = row.agency || UNKNOWN;
+              const picked = filters.agency === value;
               return (
                 <button
                   type="button"
-                  key={row.agency}
+                  key={value}
                   className={`${styles.bar} ${filters.agency && !picked ? styles.barDim : ""}`}
-                  onClick={() => updateFilters({ agency: picked ? undefined : row.agency })}
+                  onClick={() => updateFilters({ agency: picked ? undefined : value })}
                   aria-pressed={picked}
                 >
                   <span className={styles.barLabel}>
@@ -188,13 +203,20 @@ export function DashboardView({
             })}
           </div>
 
-            <div className={`${styles.panelHead} ${styles.panelHeadStacked}`}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2><span className={styles.panelHint}>TOR และงบประมาณ</span></div>
+            <div className={`${styles.panelHead} ${styles.panelHeadStacked}`}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2><span className={styles.panelHint}>คลิกเดือนเพื่อกรอง</span></div>
             {/* Drawn as bars for the same reason the agency chart is: a column of
                 numbers is a table, and a trend is a shape. Scaled to the busiest
                 month so the months are read against each other. */}
             <div className={styles.trend}>
-              {dashboard.trend.map((row) => (
-                <div key={row.month} className={styles.trendRow}>
+              {[...dashboard.trend].sort((left, right) =>
+                left.month === right.month ? 0 : !left.month ? 1 : !right.month ? -1 : 0).map((row) => (
+                <button
+                  type="button"
+                  key={row.month || UNKNOWN}
+                  className={`${styles.trendRow} ${filters.month && filters.month !== (row.month || UNKNOWN) ? styles.barDim : ""}`}
+                  onClick={() => updateFilters({ month: filters.month === (row.month || UNKNOWN) ? undefined : (row.month || UNKNOWN) })}
+                  aria-pressed={filters.month === (row.month || UNKNOWN)}
+                >
                   <span className={styles.trendLabel}>
                     <span className={styles.trendMonth}>{row.month ? formatThaiMonth(row.month) : UNKNOWN_MONTH}</span>
                     <span className={styles.trendStat}>{row.torCount.toLocaleString("th-TH")} · {formatBudget(row.budgetSum)}</span>
@@ -202,7 +224,7 @@ export function DashboardView({
                   <span className={styles.barTrack}>
                     <span className={styles.trendFill} style={{ width: `${widestMonth === 0 ? 0 : (row.budgetSum / widestMonth) * 100}%` }} />
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </section>

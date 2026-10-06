@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** Matches the API's sentinel for "the ones we could not read a value for". */
+export const UNKNOWN = "__unknown__";
+
+export type DashboardState = "open" | "awaiting-invitation" | "closed" | "awarded" | "cancelled";
+
 export interface DashboardFilters {
   agency?: string;
   category?: string;
@@ -8,6 +13,9 @@ export interface DashboardFilters {
   minBudget?: number;
   maxBudget?: number;
   status?: string;
+  state?: DashboardState;
+  /** One month, or UNKNOWN for records whose month could not be derived. */
+  month?: string;
 }
 
 const primitive = <T extends z.ZodType>(schema: T) => z.preprocess(
@@ -23,6 +31,8 @@ const primitive = <T extends z.ZodType>(schema: T) => z.preprocess(
 const text = primitive(z.string().trim().min(1).max(500).transform((value) => value.normalize("NFC")));
 const month = primitive(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/));
 const budget = primitive(z.coerce.number().finite().positive());
+const state = primitive(z.enum(["open", "awaiting-invitation", "closed", "awarded", "cancelled"]));
+const monthOrUnknown = primitive(z.string().regex(/^(\d{4}-(0[1-9]|1[0-2])|__unknown__)$/));
 
 const dashboardFilterSchema = z.object({
   agency: text,
@@ -32,6 +42,8 @@ const dashboardFilterSchema = z.object({
   minBudget: budget,
   maxBudget: budget,
   status: text,
+  state,
+  month: monthOrUnknown,
 }).strip();
 
 /** Values cross a public URL boundary, so they are reduced to individual primitives first. */

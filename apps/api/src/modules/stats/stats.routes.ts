@@ -6,7 +6,7 @@ import { StatsRepository } from "./stats.repository.js";
 import { eligibilityOf } from "./eligibility.js";
 import { verdictFor } from "./anomaly.rule.js";
 import type { PeerBounds } from "./anomaly.rule.js";
-import { parseDashboardFilters, publicTorFilter } from "./stats.filters.js";
+import { parseDashboardFilters, publicTorFilter, UNKNOWN } from "./stats.filters.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { TOR_STATES, torStateOf } from "../../lib/tor-state.js";
 
@@ -25,14 +25,37 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     // that wider set anyway (see below), and deriving the narrower one in memory
     // keeps every figure on this page computed from a single snapshot — two
     // reads could straddle a write and disagree with each other.
-    const agencyScope = { ...filters, agency: undefined };
+    const scope = { ...filters, agency: undefined, month: undefined };
     const [scopeRecords, meta] = await Promise.all([
-      repository.dashboardRecords(publicTorFilter(agencyScope)),
+      repository.dashboardRecords(publicTorFilter(scope)),
       repository.dashboardMeta(),
     ]);
+    const today = calendarDate(new Date(), deps.config.search.timeZone);
     const agencyOf = (record: (typeof scopeRecords)[number]) =>
       typeof record.fields.agency?.value === "string" ? record.fields.agency.value.trim() : "";
-    const records = filters.agency ? scopeRecords.filter((record) => agencyOf(record) === filters.agency) : scopeRecords;
+    const monthOf = (record: (typeof scopeRecords)[number]) => record.cohort?.month ?? "";
+    const stateOf = (record: (typeof scopeRecords)[number]) => torStateOf({
+      torStatus: (record.fields.torStatus?.value as never) ?? null,
+      deadline: (record.fields.deadline?.value as string | null) ?? null,
+    }, today);
+
+    /**
+     * Each breakdown ignores the filter ITS OWN control sets, and honours the
+     * rest. That is what lets a reader move from one agency to another, or from
+     * open to closed, without clearing the filter first: the control that set a
+     * value still shows the alternatives. Every figure comes from the one set
+     * of records read above, so no two of them can disagree.
+     */
+    const matchesAgency = (record: (typeof scopeRecords)[number]) =>
+      !filters.agency || (filters.agency === UNKNOWN ? agencyOf(record) === "" : agencyOf(record) === filters.agency);
+    const matchesMonth = (record: (typeof scopeRecords)[number]) =>
+      !filters.month || (filters.month === UNKNOWN ? monthOf(record) === "" : monthOf(record) === filters.month);
+    const matchesState = (record: (typeof scopeRecords)[number]) => !filters.state || stateOf(record) === filters.state;
+
+    const records = scopeRecords.filter((r) => matchesAgency(r) && matchesMonth(r) && matchesState(r));
+    const forAgencies = scopeRecords.filter((r) => matchesMonth(r) && matchesState(r));
+    const forStates = scopeRecords.filter((r) => matchesAgency(r) && matchesMonth(r));
+    const forTrend = scopeRecords.filter((r) => matchesAgency(r) && matchesState(r));
     const keys = records.flatMap((record) => record.cohort ? [record.cohort] : []);
     // One bounds read for all plotted rows avoids a per-row lookup whose cost
     // grows with the page rather than with the number of distinct peer groups.
@@ -89,10 +112,9 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
      * stay for a future screen that reports aggregates WITHOUT per-record
      * points; this page must not mix the two.
      */
-    const breakdownSource = asCells(scopeRecords);
-    const source = filters.agency
-      ? breakdownSource.filter((cell) => cell.agency === filters.agency)
-      : breakdownSource;
+    const breakdownSource = asCells(forAgencies);
+    const source = asCells(records);
+    const trendSource = asCells(forTrend);
     const totals = source.reduce((sum, value) => ({
       torCount: sum.torCount + value.torCount, budgetSum: sum.budgetSum + value.budgetSum,
       unverifiedBudgetCount: sum.unverifiedBudgetCount + value.unverifiedBudgetCount,
@@ -103,7 +125,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       const agency = byAgency.get(value.agency) ?? { agency: value.agency, torCount: 0, budgetSum: 0 };
       agency.torCount += value.torCount; agency.budgetSum += value.budgetSum; byAgency.set(value.agency, agency);
     }
-    for (const value of source) {
+    for (const value of trendSource) {
       const month = trend.get(value.month) ?? { month: value.month, torCount: 0, budgetSum: 0 };
       month.torCount += value.torCount; month.budgetSum += value.budgetSum; trend.set(value.month, month);
     }
@@ -111,8 +133,9 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     // it with nothing. Dropped, its bar and its dropdown entry would both
     // vanish while the filter stayed in the URL: the screen would look
     // unfiltered, show no results, and offer no way back out of the state.
-    if (filters.agency && !byAgency.has(filters.agency)) {
-      byAgency.set(filters.agency, { agency: filters.agency, torCount: 0, budgetSum: 0 });
+    const chosenAgency = filters.agency === UNKNOWN ? "" : filters.agency;
+    if (chosenAgency !== undefined && !byAgency.has(chosenAgency)) {
+      byAgency.set(chosenAgency, { agency: chosenAgency, torCount: 0, budgetSum: 0 });
     }
     // Counted from what the filters actually select, not from the breakdown:
     // "how many agencies am I looking at" is a different question from "which
@@ -126,16 +149,11 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
      * year. Counted from the records already read for the plot, on the same
      * basis as the totals above them, so the two can never disagree.
      */
-    const today = calendarDate(new Date(), deps.config.search.timeZone);
     const stateTotals = new Map(TOR_STATES.map((state) => [state, { state, torCount: 0, budgetSum: 0 }]));
-    for (const record of records) {
+    for (const record of forStates) {
       const budget = record.fields.budget?.value;
       if (typeof budget !== "number") continue;
-      const state = torStateOf({
-        torStatus: (record.fields.torStatus?.value as never) ?? null,
-        deadline: (record.fields.deadline?.value as string | null) ?? null,
-      }, today);
-      const cell = stateTotals.get(state)!;
+      const cell = stateTotals.get(stateOf(record))!;
       cell.torCount += 1;
       cell.budgetSum += budget;
     }
