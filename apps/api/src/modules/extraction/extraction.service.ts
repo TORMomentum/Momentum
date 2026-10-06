@@ -15,6 +15,9 @@ export interface ExtractionConfig {
   budgetMinThb: number;
   budgetMaxThb: number;
   timezone: string;
+  /** How many annexes, and how many bytes in all, one extraction request may carry. */
+  maxAnnexes?: number;
+  maxInputBytes?: number;
 }
 
 export interface ExtractionServiceDeps {
@@ -54,9 +57,30 @@ export class ExtractionService {
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
+    // The TOR's annexes go with it while they fit: in order, up to the count and the byte budget.
+    const attachments: Array<{ bytes: Buffer; contentType: string; name: string }> = [];
+    let used = bytes.byteLength;
+    // A record stored before annexes were kept has none.
+    const annexes = target.annexes ?? [];
+    for (const annex of annexes) {
+      const fits =
+        attachments.length < (this.deps.config.maxAnnexes ?? 0) &&
+        used + annex.bytes <= (this.deps.config.maxInputBytes ?? 0);
+      if (!fits) continue;
+      attachments.push({
+        bytes: await collect(await this.deps.storage.getStream(annex.key)),
+        contentType: annex.contentType,
+        name: annex.filename ?? annex.key,
+      });
+      used += annex.bytes;
+    }
+    const annexesLeftOut = annexes.length - attachments.length;
+
     const raw = await this.deps.ai.extract({
       bytes,
       contentType,
+      ...(attachments.length > 0 ? { attachments } : {}),
+      ...(annexesLeftOut > 0 ? { annexesLeftOut } : {}),
       ...(target.sourceAnnouncedAt
         ? { sourcePublishedOn: calendarDate(target.sourceAnnouncedAt, this.deps.config.timezone) }
         : {}),

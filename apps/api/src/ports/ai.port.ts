@@ -17,12 +17,18 @@ export interface RawField<T = string> {
  * detail page (FR-E-4) can show. `announcementDate` becomes the record's
  * `announcedAt`; the other two are stored but never anomaly- or match-gated.
  */
+export type ScopeLocation = "in_documents" | "in_annex_not_provided" | "none";
+
 export interface RawExtraction {
   title: RawField;
   agency: RawField;
   budget: RawField<number>;
   category: RawField;
   scopeSummary: RawField;
+  /** Concrete requirements in the scope (checklist C3); absent from a model answer that predates it. */
+  scopeItems?: RawField<number>;
+  /** Where the scope is: in what was read, in an annex not provided, or nowhere (checklist C3). */
+  scopeLocation?: RawField<ScopeLocation>;
   qualifications: RawField<string[]>;
   deadline: RawField;
   contact: RawField;
@@ -43,6 +49,10 @@ export interface ExtractionInput {
    * they move a deadline years into the past — never a value to extract.
    */
   sourcePublishedOn?: string;
+  /** The document's annexes, read with it — each labelled by its file name. */
+  attachments?: Array<{ bytes: Buffer; contentType: string; name: string }>;
+  /** Annexes the document has that did not fit in this request, so the model knows it has not seen all. */
+  annexesLeftOut?: number;
 }
 
 /**

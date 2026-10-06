@@ -1,5 +1,5 @@
 import { ObjectId, type Db } from "mongodb";
-import type { ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
+import type { ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import { tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import { NotFoundError } from "../../core/errors.js";
@@ -7,6 +7,8 @@ import { NotFoundError } from "../../core/errors.js";
 export interface ExtractionTarget {
   storageKey: string;
   contentType: string;
+  /** The TOR's annexes, read with it within the request's size budget. */
+  annexes: StoredAnnex[];
   /** Fields the source already stated at intake; extraction keeps them as they are. */
   knownFields: Partial<TorFields>;
   /** The source's publication date, when it stated one; preferred over the document's. */
@@ -54,6 +56,7 @@ export class ExtractionRepository {
           documentType: 1,
           sourceProject: 1,
           createdAt: 1,
+          annexes: 1,
         },
       },
     );
@@ -71,6 +74,7 @@ export class ExtractionRepository {
     return {
       storageKey: doc.storage.key,
       contentType: doc.storage.contentType,
+      annexes: doc.annexes ?? [],
       knownFields,
       sourceAnnouncedAt: doc.announcedAtOrigin === "source" ? doc.announcedAt : null,
       documentType: doc.documentType ?? "tor",

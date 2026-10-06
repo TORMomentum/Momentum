@@ -45,6 +45,15 @@ export interface ExtractedField<T = string> {
 export type DocumentType = "tor" | "invitation";
 
 /** The source system's project a document belongs to; every document of one project shares it. */
+/** A stored file that belongs to a TOR without being a record of its own — an annex read with it. */
+export interface StoredAnnex {
+  key: string;
+  contentType: string;
+  bytes: number;
+  /** As the source package named it, e.g. Attach_TOR_2.pdf. */
+  filename?: string;
+}
+
 export interface SourceProject {
   /** bma-egp: egp2.bangkok.go.th, a UUID projectId. national-egp: Thailand's e-GP, an 11-digit project number. */
   system: "bma-egp" | "national-egp";
@@ -68,6 +77,14 @@ export interface TorFields {
   budget: ExtractedField<number>;
   category: ExtractedField;
   scopeSummary: ExtractedField;
+  /**
+   * Checklist C3: how many concrete requirements the scope states — list items, specification-table
+   * rows, bill-of-quantities lines — across the TOR and the annexes read with it, as the model counted
+   * them (approximate for a very long scope). Absent from records extracted before it was asked.
+   */
+  scopeItems?: ExtractedField<number>;
+  /** Checklist C3: where the scope is — in what was read, in an annex not read, or nowhere. */
+  scopeLocation?: ExtractedField<"in_documents" | "in_annex_not_provided" | "none">;
   qualifications: ExtractedField<string[]>;
   deadline: ExtractedField;
   contact: ExtractedField;
@@ -94,6 +111,8 @@ export interface TorRecord {
   /** Absent means "tor". An invitation is a supporting document and is never listed publicly. */
   documentType?: DocumentType;
   sourceProject?: SourceProject;
+  /** The TOR's other files — annexes, bills of quantities — read together with it by extraction. */
+  annexes?: StoredAnnex[];
   sourceUrl: string | null;
   confidenceLevel?: ConfidenceLevel;
   unverified: boolean;
