@@ -14,6 +14,10 @@ jobs:
       GCS_API_ENDPOINT: http://localhost:4443
       INTAKE_API_KEYS: ci-intake-key
       ADMIN_API_KEYS: ci-admin-key
+      # Compose refuses to start without one, deliberately: a session signing key
+      # must never fall back to a default. CI supplies a throwaway value — it
+      # signs nothing that outlives the run.
+      SESSION_SECRET: ci-session-secret-not-used-outside-this-run
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -135,6 +135,34 @@ export interface TorMetaDocument {
   corpusSize?: number;
 }
 
+export type AccountRole = "vendor" | "admin";
+
+export interface AccountDocument {
+  email: string;
+  displayName?: string;
+  passwordHash?: string;
+  emailVerifiedAt?: Date;
+  google?: { sub: string };
+  role: AccountRole;
+  consent: {
+    noticeVersion: string;
+    noticeHash: string;
+    agreedAt: Date;
+    action: "checkbox";
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
+
+export interface SessionDocument {
+  _id: string;
+  accountId: string;
+  createdAt: Date;
+  expiresAt: Date;
+  lastSeenAt: Date;
+}
+
 let client: MongoClient | null = null;
 
 export async function connect(mongoUrl: string): Promise<Db> {
@@ -176,8 +204,21 @@ export function torMeta(db: Db): Collection<TorMetaDocument> {
   return db.collection<TorMetaDocument>("tor_meta");
 }
 
+export function accounts(db: Db): Collection<AccountDocument> {
+  return db.collection<AccountDocument>("accounts");
+}
+
+export function sessions(db: Db): Collection<SessionDocument> {
+  return db.collection<SessionDocument>("sessions");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
+  // A deleted account overwrites its address with a random tombstone, so an
+  // ordinary unique index both permits re-registration and retains no address.
+  await accounts(db).createIndex({ email: 1 }, { unique: true });
+  await sessions(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await sessions(db).createIndex({ accountId: 1 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index
