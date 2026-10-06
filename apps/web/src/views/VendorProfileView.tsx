@@ -6,13 +6,15 @@ import styles from "../features/profile/profile.module.css";
 import labels from "../shared/ui/labels.module.css";
 import icons from "../shared/ui/tor-actions.module.css";
 import {
-  BUDGET_FILTER_MAX,
-  BUDGET_FILTER_MIN,
-  BUDGET_FILTER_STEP,
   TOR_SAMPLES,
   formatBudgetShort,
   type TorSample,
 } from "../data/tor-samples";
+import {
+  BUDGET_PREFERENCE_MAX,
+  BUDGET_PREFERENCE_MIN,
+  BUDGET_PREFERENCE_STEP,
+} from "../shared/lib/budget-preference";
 import { useViewer } from "../shared/lib/viewer";
 import { BudgetRange } from "../shared/ui/BudgetRange";
 
@@ -221,15 +223,17 @@ export function VendorProfileView() {
 
             {editingBudget && (
               <div className={styles.factEditor}>
-                {/* The same two-handle slider the Search filters use, so the
-                    range is stated the way it is read. It cannot produce an
-                    invalid range: each handle stops at the other. */}
+                {/* The same two-handle slider Search uses, so the range is
+                    stated the way it is read — but on the vendor's OWN bounds,
+                    not the corpus's. What a vendor is interested in must not
+                    change because this month's documents happen to be cheaper
+                    or dearer than last month's. */}
                 <BudgetRange
                   min={budgetDraft.min}
                   max={budgetDraft.max}
-                  floor={BUDGET_FILTER_MIN}
-                  ceiling={BUDGET_FILTER_MAX}
-                  step={BUDGET_FILTER_STEP}
+                  floor={BUDGET_PREFERENCE_MIN}
+                  ceiling={BUDGET_PREFERENCE_MAX}
+                  step={BUDGET_PREFERENCE_STEP}
                   onChange={setBudgetDraft}
                   minLabel="งบประมาณต่ำสุดที่สนใจ"
                   maxLabel="งบประมาณสูงสุดที่สนใจ"
