@@ -19,9 +19,9 @@ const RESULT_CLASS: Record<CheckResult, string> = {
 export function ChecklistPanel({ checklist }: { checklist: Checklist }) {
   return (
     <section className={styles.checklistBlock} aria-labelledby="checklist-heading">
-      <div id="checklist-heading" className={labels.blockLabel}>
+      <h2 id="checklist-heading" className={labels.blockLabel}>
         การตรวจคุณภาพข้อกำหนด
-      </div>
+      </h2>
       <div className={styles.checklistScore}>
         ผ่าน {checklist.passed} จาก {checklist.evaluated} ข้อที่ประเมินได้
       </div>
