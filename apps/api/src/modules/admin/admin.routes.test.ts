@@ -111,6 +111,77 @@ afterAll(async () => {
   await disconnect();
 });
 
+/** A high-confidence TOR whose category and qualifications still await a person. */
+async function seedFieldsToConfirm(over: Record<string, unknown> = {}): Promise<string> {
+  const now = new Date();
+  const result = await tors(db).insertOne({
+    contentHash: `fields-${Math.random()}`,
+    storage: recordStorage,
+    sourceRefs: [{ route: "url", submittedBy: "national-egp-import", submittedAt: now }],
+    pipeline: { state: "published", attempts: 1 },
+    fields: {
+      title: { raw: "ประกวดราคาซื้อวัสดุ", value: "ประกวดราคาซื้อวัสดุ", confidence: 1, verified: true },
+      agency: { raw: "สำนักการแพทย์", value: "สำนักการแพทย์", confidence: 1, verified: true, origin: "source" },
+      budget: { raw: "1771700", value: 1_771_700, confidence: 1, verified: true, origin: "source" },
+      category: { raw: "ซื้อวัสดุ", value: "ซื้อวัสดุ", confidence: 0.9, verified: false },
+      qualifications: { raw: "ผู้ผลิตหรือตัวแทนจำหน่าย", value: ["ผู้ผลิตหรือตัวแทนจำหน่าย"], confidence: 0.9, verified: false, tags: [] },
+    },
+    announcedAt: null,
+    sourceUrl: null,
+    confidenceLevel: "high",
+    unverified: false,
+    reviewReasons: [],
+    statusHistory: [],
+    access: { restricted: false },
+    duplicateOf: null,
+    createdAt: now,
+    updatedAt: now,
+    ...over,
+  } as never);
+  return result.insertedId.toString();
+}
+
+describe("admin fields-to-confirm view", () => {
+  it("lists settled TORs whose category or qualifications are unverified, apart from the confidence queue", async () => {
+    const queued = await seedQueued();
+    const toConfirm = await seedFieldsToConfirm();
+    await seedFieldsToConfirm({ documentType: "invitation" });
+
+    const fields = await request(buildTestApp()).get("/api/v1/admin/queue?view=fields").set("authorization", `Bearer ${adminKey}`);
+    const confidence = await request(buildTestApp()).get("/api/v1/admin/queue").set("authorization", `Bearer ${adminKey}`);
+
+    expect(fields.status).toBe(200);
+    expect(fields.body.items.map((item: { id: string }) => item.id)).toEqual([toConfirm]);
+    expect(fields.body.items[0].reviewReasons).toEqual(["category-unconfirmed", "qualifications-unconfirmed"]);
+    expect(fields.body.fieldsToConfirm).toBe(1);
+    expect(confidence.body.items.map((item: { id: string }) => item.id)).toEqual([queued]);
+    expect(confidence.body.fieldsToConfirm).toBe(1);
+  });
+
+  it("accepts a category from the closed list and refuses one that is not on it", async () => {
+    const id = await seedFieldsToConfirm();
+    const patch = (value: string) =>
+      request(buildTestApp())
+        .patch(`/api/v1/admin/tors/${id}/fields`)
+        .set("authorization", `Bearer ${adminKey}`)
+        .send({ edits: [{ field: "category", value }] });
+
+    expect((await patch("ซื้อยา")).status).toBe(400);
+    const accepted = await patch("ซื้อครุภัณฑ์การแพทย์และวิทยาศาสตร์");
+    expect(accepted.status).toBe(200);
+    expect((await tors(db).findOne({ _id: new ObjectId(id) }))?.fields.category?.value).toBe("ซื้อครุภัณฑ์การแพทย์และวิทยาศาสตร์");
+  });
+
+  it("points the reviewer at the unverified category and qualifications of such a record", async () => {
+    const id = await seedFieldsToConfirm();
+
+    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}`).set("authorization", `Bearer ${adminKey}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.flaggedFields.sort()).toEqual(["category", "qualifications"]);
+  });
+});
+
 describe("admin document route", () => {
   it("streams a published record's document for staff, with nosniff and no-store", async () => {
     const id = await seedQueued();
