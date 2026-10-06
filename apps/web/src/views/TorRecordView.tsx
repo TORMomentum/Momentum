@@ -54,7 +54,7 @@ export function TorRecordView({
   /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
   originals: OriginalDocument[];
 }) {
-  const { fields } = tor;
+  const { fields, budgetYear } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.
   // The document's wording is still shown beneath it, exactly as extracted (NFR-F7).
   const deadline = fields.deadline;
@@ -148,6 +148,13 @@ export function TorRecordView({
                 ))}
               <Unconfirmed field={fields.deadline} />
             </div>
+          </div>
+          <div className={styles.factCell}>
+            <div className={styles.factLabel}>ปีงบประมาณ</div>
+            <div className={styles.factValue}>{budgetYear ?? "ไม่ระบุ"}</div>
+            {/* Derived from the announcement date, not read from the document,
+                so it is labelled as such rather than passed off as extracted. */}
+            <div className={styles.factNote}>{budgetYear ? "คำนวณจากวันที่ประกาศ (ต.ค.–ก.ย.)" : "ไม่มีวันที่ประกาศ"}</div>
           </div>
           <div className={styles.factCell}>
             <div className={styles.factLabel}>หมวดหมู่</div>

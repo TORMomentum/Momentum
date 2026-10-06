@@ -93,6 +93,8 @@ export interface TorDetail {
     >
   >;
   announcedAt: string | null;
+  /** ปีงบประมาณ in the Buddhist era, derived from the announcement date. */
+  budgetYear: number | null;
   sourceUrl: string | null;
   /** The TOR's project page on the source system; absent from an API older than this field. */
   sourceProject?: { system: string; projectNumber: string | null; url: string } | null;

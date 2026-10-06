@@ -2,6 +2,7 @@ import type { ExtractedField, TorFields } from "@tor-radar/shared";
 import type { Config } from "../../core/config.js";
 import { NotFoundError } from "../../core/errors.js";
 import { calendarDate } from "../../lib/calendar-date.js";
+import { budgetYearOf } from "../../lib/budget-year.js";
 import { extensionFor } from "../../lib/content-disposition.js";
 import { redactTor } from "../../lib/redact.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
@@ -136,6 +137,9 @@ export class TorsService {
       id: record.id,
       fields: publicFields,
       announcedAt: record.announcedAt,
+      // Derived here rather than stored: see lib/budget-year.ts. Null when the
+      // announcement date is unknown, never guessed from ingestion time.
+      budgetYear: budgetYearOf(record.announcedAt ? new Date(record.announcedAt) : null, this.deps.config.search.timeZone),
       sourceUrl: record.sourceUrl,
       // The project on the source site, where a reader sees every announcement for it — the
       // TOR, the invitation, the award — as the agency published them.
