@@ -1,6 +1,8 @@
 import { fetchDashboard } from "../../src/shared/api/stats.api";
 import type { LandingFigures } from "../../src/features/landing/landing.figures";
 import { LandingView } from "../../src/views/LandingView";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 /**
  * The public homepage. Its headline figures come from the dashboard API, so
@@ -8,6 +10,7 @@ import { LandingView } from "../../src/views/LandingView";
  * renders the page without figures rather than with plausible placeholders.
  */
 export default async function HomePage() {
+  if ((await cookies()).has("tor-radar-session")) redirect("/dashboard");
   let figures: LandingFigures | null = null;
   try {
     const dashboard = await fetchDashboard({});

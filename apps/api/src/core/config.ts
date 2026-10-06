@@ -62,6 +62,10 @@ const schema = z.object({
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
   AUTH_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(60),
   AUTH_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().positive().default(10),
+  VERIFY_TOKEN_TTL_MS: z.coerce.number().int().positive().default(86_400_000),
+  RESET_TOKEN_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
+  CONSENT_NOTICE_VERSION: z.string().min(1).default("2026-10-06"),
+  CONSENT_NOTICE_HASH: z.string().min(1).default("notice-not-published"),
 
   // Outbound fetch, URL intake route
   FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
@@ -173,6 +177,9 @@ export interface Config {
   };
   authRateLimitPerIp: number;
   authRateLimitPerEmail: number;
+  verifyTokenTtlMs: number;
+  resetTokenTtlMs: number;
+  consentNotice: { version: string; hash: string };
   fetchTimeoutMs: number;
   fetchMaxRedirects: number;
   fetchMaxBytes: number;
@@ -270,6 +277,9 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     authRateLimitPerIp: parsed.AUTH_RATE_LIMIT_PER_IP,
     authRateLimitPerEmail: parsed.AUTH_RATE_LIMIT_PER_EMAIL,
+    verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,
+    resetTokenTtlMs: parsed.RESET_TOKEN_TTL_MS,
+    consentNotice: { version: parsed.CONSENT_NOTICE_VERSION, hash: parsed.CONSENT_NOTICE_HASH },
     fetchTimeoutMs: parsed.FETCH_TIMEOUT_MS,
     fetchMaxRedirects: parsed.FETCH_MAX_REDIRECTS,
     fetchMaxBytes: parsed.FETCH_MAX_BYTES,

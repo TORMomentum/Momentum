@@ -55,6 +55,14 @@ export class AccountsRepository {
     );
   }
 
+  async setPassword(accountId: string, passwordHash: string): Promise<void> {
+    if (!ObjectId.isValid(accountId)) return;
+    await accounts(this.db).updateOne(
+      { _id: new ObjectId(accountId), deletedAt: { $exists: false } },
+      { $set: { passwordHash, updatedAt: new Date() } },
+    );
+  }
+
   async changeRole(accountId: string, role: AccountRole): Promise<void> {
     if (!ObjectId.isValid(accountId)) return;
     const result = await accounts(this.db).updateOne(

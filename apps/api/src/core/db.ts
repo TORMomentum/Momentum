@@ -163,6 +163,15 @@ export interface SessionDocument {
   lastSeenAt: Date;
 }
 
+export type AccountTokenPurpose = "verify" | "reset";
+
+export interface AccountTokenDocument {
+  tokenHash: string;
+  accountId: string;
+  purpose: AccountTokenPurpose;
+  expiresAt: Date;
+}
+
 let client: MongoClient | null = null;
 
 export async function connect(mongoUrl: string): Promise<Db> {
@@ -212,6 +221,10 @@ export function sessions(db: Db): Collection<SessionDocument> {
   return db.collection<SessionDocument>("sessions");
 }
 
+export function accountTokens(db: Db): Collection<AccountTokenDocument> {
+  return db.collection<AccountTokenDocument>("auth_tokens");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -219,6 +232,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accounts(db).createIndex({ email: 1 }, { unique: true });
   await sessions(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await sessions(db).createIndex({ accountId: 1 });
+  await accountTokens(db).createIndex({ tokenHash: 1 }, { unique: true });
+  await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

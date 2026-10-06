@@ -24,6 +24,17 @@ function apiBaseUrl(): string {
   return value;
 }
 
+export async function apiRequest(path: string, init: RequestInit = {}, sessionId?: string): Promise<Response> {
+  try {
+    return await fetch(`${apiBaseUrl()}${path}`, {
+      ...init, cache: "no-store", signal: AbortSignal.timeout(timeoutMs()),
+      headers: { ...(init.headers ?? {}), ...(sessionId ? { "x-session-id": sessionId } : {}) },
+    });
+  } catch (error) {
+    throw new ApiUnavailable(`${init.method ?? "GET"} ${path} failed: ${(error as Error).message}`);
+  }
+}
+
 function timeoutMs(): number {
   const configured = Number(process.env.API_TIMEOUT_MS);
   return Number.isInteger(configured) && configured > 0 ? configured : DEFAULT_TIMEOUT_MS;
@@ -32,10 +43,7 @@ function timeoutMs(): number {
 export async function getJson<T>(path: string, notFound?: () => T): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${apiBaseUrl()}${API_PREFIX}${path}`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(timeoutMs()),
-    });
+    response = await apiRequest(`${API_PREFIX}${path}`);
   } catch (error) {
     // A timeout is treated as unreachable, with the same copy (rendering spec §8).
     throw new ApiUnavailable(`GET ${path} failed: ${(error as Error).message}`);

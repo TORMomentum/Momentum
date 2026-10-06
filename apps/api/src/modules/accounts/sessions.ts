@@ -41,4 +41,8 @@ export class SessionsRepository {
   async revokeAllForAccount(accountId: string): Promise<void> {
     await sessions(this.db).deleteMany({ accountId });
   }
+
+  async revokeAllForAccountExcept(accountId: string, sessionId: string): Promise<void> {
+    await sessions(this.db).deleteMany({ accountId, _id: { $ne: sessionId } });
+  }
 }

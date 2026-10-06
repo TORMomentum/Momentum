@@ -20,6 +20,9 @@ import { buildTorsRouter } from "./modules/tors/tors.routes.js";
 import { StatsRepository } from "./modules/stats/stats.repository.js";
 import { buildStatsRouter } from "./modules/stats/stats.routes.js";
 import { SessionsRepository } from "./modules/accounts/sessions.js";
+import { AccountsRepository } from "./modules/accounts/accounts.repository.js";
+import { AccountTokensRepository } from "./modules/accounts/account-tokens.repository.js";
+import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -34,11 +37,12 @@ export function buildApp(config: Config, db: Db): Express {
   const storage = createStorage(config, "api");
   // Feature services receive this port as they gain outbound email behaviour.
   // Constructing it here makes a production SMTP omission fail during startup.
-  void createMailer(config);
+  const mailer = createMailer(config);
+  const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
   const statsRepository = new StatsRepository(db);
 
   app.use(express.json());
-  app.use(sessionContext(new SessionsRepository(db, config.session.lifetimeMs)));
+  app.use(sessionContext(sessionsRepository));
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "tor-radar-api" });
@@ -46,6 +50,12 @@ export function buildApp(config: Config, db: Db): Express {
 
   // Read-only view of the BMA eGP source system (docs/DATA-SOURCES.md).
   app.use("/sources", sourcesRouter);
+  const accountsRouter = buildAccountsRouter({
+    config, accounts: new AccountsRepository(db, sessionsRepository), tokens: new AccountTokensRepository(db),
+    sessions: sessionsRepository, mailer,
+  });
+  app.use("/auth", accountsRouter);
+  app.use(`${API_PREFIX}`, accountsRouter);
 
   const service = new IntakeService(
     storage,

@@ -7,15 +7,17 @@ import styles from "../features/auth/auth.module.css";
 import { useViewer } from "../shared/lib/viewer";
 
 /**
- * Sign in and registration (FR-D-1, FR-D-3). Ported from the "Login" screen of
- * mockups/TOR Radar App.dc.html.
+ * Sign in and registration (FR-D-1, FR-D-3).
  *
- * NOTHING IS AUTHENTICATED HERE. Slice 4 builds real accounts, password
- * hashing (NFR-S1) and consent records against the API. Until then the form
- * checks the SHAPE of what was typed and then signs the prototype viewer in
- * under that email, so the signed-in interaction can be reviewed. The password
- * is never sent anywhere and never stored — not in memory past this render,
- * not in localStorage.
+ * The password leaves this component exactly once, to the Next route handler
+ * that forwards it to the API over the server-side connection; it is never
+ * stored, never logged, and never put in a URL. The session that comes back
+ * lives in an httpOnly cookie this code cannot read.
+ *
+ * Shape checks below are courtesy only — they catch a typo before a round trip.
+ * The server decides every real question, and its answer for a failed sign-in
+ * is deliberately the same whether the address is unknown, the password wrong,
+ * or the account not yet verified.
  */
 
 /** Account-creation rule, stated once. The signup placeholder reads from it. */
@@ -24,6 +26,9 @@ const MIN_PASSWORD_LENGTH = 8;
 /** Deliberately loose: one @, something either side, a dot in the domain.
  * The server decides whether an address is real; this only catches typos. */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The server does not say which part was wrong, and neither does this. */
+const AUTH_FAILURE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้ยืนยันอีเมล";
 const COPY = {
   login: {
     kicker: "เข้าสู่ระบบผู้ประกอบการ",
@@ -85,8 +90,10 @@ export function LoginView() {
   const [password, setPassword] = useState("");
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  function submit() {
+  async function submit() {
     const address = email.trim();
 
     if (!EMAIL_SHAPE.test(address)) {
@@ -109,11 +116,40 @@ export function LoginView() {
     }
 
     setError(null);
-    setPassword("");
-    signIn({ email: address });
-    // Registering lands on the profile, where skills are chosen — that is the
-    // next thing a new vendor has to do before matching can say anything.
-    router.push(isSignup ? "/profile" : "/dashboard");
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/auth/${isSignup ? "register" : "login"}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          isSignup ? { email: address, password, consent: true } : { email: address, password },
+        ),
+      });
+      // Held no longer than the request that needed it.
+      setPassword("");
+
+      if (!response.ok) {
+        setError(isSignup ? "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" : AUTH_FAILURE);
+        return;
+      }
+
+      if (isSignup) {
+        // Registration never signs anyone in: the address has to be confirmed
+        // first, and the reply is the same whether or not it was already taken.
+        setSent(true);
+        return;
+      }
+
+      signIn({ email: address });
+      // The header and every other server-rendered part of the page were drawn
+      // for a signed-out reader; without this they stay that way.
+      router.refresh();
+      router.push("/dashboard");
+    } catch {
+      setError("เชื่อมต่อไม่ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -165,6 +201,12 @@ export function LoginView() {
 
           {error && <div className={styles.error}>{error}</div>}
 
+          {sent && (
+            <div className={styles.error} role="status">
+              ส่งลิงก์ยืนยันไปที่อีเมลของคุณแล้ว โปรดตรวจกล่องขาเข้าเพื่อยืนยันบัญชี
+            </div>
+          )}
+
           {isSignup && (
             <button
               type="button"
@@ -182,8 +224,8 @@ export function LoginView() {
             </button>
           )}
 
-          <button type="submit" className={styles.submit}>
-            {copy.cta}
+          <button type="submit" className={styles.submit} disabled={busy}>
+            {busy ? "กำลังดำเนินการ…" : copy.cta}
           </button>
         </form>
 
