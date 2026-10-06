@@ -54,14 +54,35 @@ const AGENCY_LIMIT = 6;
 
 type Badge = { label: string; className: string };
 
-function badgeFor(row: TorListItem): Badge {
-  if (row.unverified) return { label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified };
+/**
+ * Where a TOR stands. This is the leading badge and every row has exactly one:
+ * it is the thing a vendor decides on. Extraction quality is a separate axis
+ * and used to overwrite this one, which hid the state of every unverified
+ * record.
+ */
+function statusBadgeFor(row: TorListItem): Badge {
   if (row.torStatus.value === "cancelled") return { label: "ยกเลิกแล้ว", className: styles.badgeClosed };
   if (row.torStatus.value === "awarded") return { label: "ประกาศผู้ชนะแล้ว", className: styles.badgeClosed };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };
   // Announced with no deadline yet: the draft TOR is out, the invitation to bid is not.
   if (row.deadline.value === null) return { label: "รอประกาศเชิญชวน", className: styles.badgeUpcoming };
   return { label: "เปิดรับข้อเสนอ", className: styles.badgeOpen };
+}
+
+/**
+ * What we know about the record, beside its state: how well it matches this
+ * vendor, and whether its extracted values have been confirmed. Both sit to the
+ * right of the status so the state is never displaced by them.
+ */
+function markerBadgesFor(row: TorListItem): Badge[] {
+  const markers: Badge[] = [];
+  if (typeof row.matchScore === "number") {
+    markers.push({ label: `ตรงกับคุณ ${Math.round(row.matchScore * 100)}%`, className: styles.badgeMatch });
+  }
+  if (row.unverified) {
+    markers.push({ label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified });
+  }
+  return markers;
 }
 
 /** A slider step that gives roughly a hundred positions across the corpus's range. */
@@ -393,7 +414,8 @@ export function SearchView({
             aria-busy={pending}
           >
             {results.items.map((row) => {
-              const badge = badgeFor(row);
+              const status = statusBadgeFor(row);
+              const markers = markerBadgesFor(row);
               return (
                 <Link
                   key={row.id}
@@ -402,7 +424,12 @@ export function SearchView({
                 >
                   <div className={styles.resultLead}>
                     <div className={styles.badgeRow}>
-                      <span className={`${styles.badge} ${badge.className}`}>{badge.label}</span>
+                      <span className={`${styles.badge} ${status.className}`}>{status.label}</span>
+                      {markers.map((marker) => (
+                        <span className={`${styles.badge} ${marker.className}`} key={marker.label}>
+                          {marker.label}
+                        </span>
+                      ))}
                       {row.referenceNo?.raw && <span className={styles.resultId}>{row.referenceNo.raw}</span>}
                     </div>
                     <div className={styles.resultTitle}>{row.title.raw || "ไม่พบชื่อโครงการในเอกสาร"}</div>

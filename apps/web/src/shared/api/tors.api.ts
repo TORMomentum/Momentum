@@ -43,6 +43,12 @@ export interface TorListItem {
   budget: ListField<number>;
   deadline: ListField<string>;
   torStatus: { value: TorStatusValue | null; verified: boolean };
+  /**
+   * How well this TOR fits the signed-in vendor's profile, 0..1. Absent for a
+   * signed-out visitor and for a vendor with no profile yet, which is why it is
+   * optional rather than zero: no profile is not a bad match.
+   */
+  matchScore?: number;
 }
 
 export interface TorSearchResult {
