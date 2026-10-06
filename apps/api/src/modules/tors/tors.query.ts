@@ -32,13 +32,16 @@ export interface SearchFilter {
 }
 
 /**
- * A position in the list, which has two segments: TORs still taking bids with a
- * stated deadline, in `(deadline asc, _id asc)` — closing soonest first — then
- * every other record in `(announcedAt desc, _id desc)`.
+ * A position in the list, which has three segments: verified TORs still taking bids
+ * with a stated deadline, in `(deadline asc, _id asc)` — closing soonest first —
+ * then every other verified record, then every unverified one ("ยังไม่ยืนยันการสกัด"),
+ * each of the last two in `(announcedAt desc, _id desc)`. Unverified records stay
+ * listed — confidence controls marking, not visibility (SRS §4.2.1) — just not first.
  */
 export type SearchCursor =
   | { segment: "closing"; deadline: string; id: ObjectId }
-  | { segment: "rest"; announcedAt: Date | null; id: ObjectId };
+  | { segment: "rest"; announcedAt: Date | null; id: ObjectId }
+  | { segment: "unverified"; announcedAt: Date | null; id: ObjectId };
 
 export interface SearchRequest {
   filter: SearchFilter;
@@ -140,7 +143,12 @@ export function encodeCursor(cursor: SearchCursor): string {
   const payload =
     cursor.segment === "closing"
       ? { s: "c", d: cursor.deadline, i: cursor.id.toHexString() }
-      : { a: cursor.announcedAt?.toISOString() ?? null, i: cursor.id.toHexString() };
+      : {
+          // "rest" keeps its original shape, so a link made before this segment existed still works.
+          ...(cursor.segment === "unverified" ? { s: "u" } : {}),
+          a: cursor.announcedAt?.toISOString() ?? null,
+          i: cursor.id.toHexString(),
+        };
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }
 
@@ -164,7 +172,7 @@ export function decodeCursor(value: string): SearchCursor {
     const announcedAt = payload.a === null ? null : new Date(payload.a);
     if (announcedAt && Number.isNaN(announcedAt.getTime())) throw new Error("announcedAt");
 
-    return { segment: "rest", announcedAt, id };
+    return { segment: payload.s === "u" ? "unverified" : "rest", announcedAt, id };
   } catch {
     throw new BadRequestError("cursor is not valid");
   }
