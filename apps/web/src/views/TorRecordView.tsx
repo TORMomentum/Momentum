@@ -160,9 +160,23 @@ export function TorRecordView({
           <div className={styles.factCell}>
             <div className={styles.factLabel}>หมวดหมู่</div>
             <div className={styles.factValueSmall}>
-              <Value field={fields.category} missing="ไม่ระบุ" />
+              {/* The category is a classification onto the closed list, so its value is what a reader
+                  compares and filters by; the document's own wording is kept beneath it (NFR-F7). */}
+              {typeof fields.category?.value === "string" && fields.category.value ? (
+                fields.category.value
+              ) : (
+                <Value field={fields.category} missing="ไม่ระบุ" />
+              )}
               <Unconfirmed field={fields.category} />
             </div>
+            {typeof fields.category?.value === "string" &&
+              fields.category.raw &&
+              fields.category.raw !== fields.category.value && (
+                <div className={styles.factNote}>
+                  {/* Not "ตามเอกสาร": the document does not name a category — this is the text it was filed from. */}
+                  <span className={styles.asWritten}>จัดหมวดจาก: “{fields.category.raw}”</span>
+                </div>
+              )}
           </div>
         </div>
 
