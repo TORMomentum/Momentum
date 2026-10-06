@@ -5,6 +5,7 @@ const base = {
   MONGO_URL: "mongodb://mongo:27017/tor_radar",
   INTAKE_API_KEYS: "test-key",
   ADMIN_API_KEYS: "admin-key",
+  SESSION_SECRET: "test-session-secret-that-is-at-least-32-characters",
   GCS_BUCKET: "tor-raw",
   GCS_API_ENDPOINT: "http://localhost:4443",
 };
@@ -24,6 +25,26 @@ describe("loadConfig", () => {
   it("fails fast when a required value is missing", () => {
     const { MONGO_URL, ...withoutMongo } = base;
     expect(() => loadConfig(withoutMongo)).toThrow(/MONGO_URL/);
+  });
+
+  it("requires a session secret of at least 32 characters", () => {
+    const { SESSION_SECRET, ...withoutSessionSecret } = base;
+    expect(() => loadConfig(withoutSessionSecret)).toThrow(/SESSION_SECRET/);
+    expect(() => loadConfig({ ...base, SESSION_SECRET: "too-short" })).toThrow(/SESSION_SECRET/);
+  });
+
+  it("carries the account and session settings and rejects invalid overrides", () => {
+    const config = loadConfig(base);
+    expect(config.session.secret).toBe(base.SESSION_SECRET);
+    expect(config.session.lifetimeMs).toBeGreaterThan(0);
+    expect(config.argon2.memoryKiB).toBeGreaterThan(0);
+    expect(config.argon2.iterations).toBeGreaterThan(0);
+    expect(config.argon2.parallelism).toBeGreaterThan(0);
+    expect(config.authRateLimitPerIp).toBeGreaterThan(0);
+    expect(config.authRateLimitPerEmail).toBeGreaterThan(0);
+    expect(() => loadConfig({ ...base, SESSION_LIFETIME_MS: "0" })).toThrow();
+    expect(() => loadConfig({ ...base, ARGON2_MEMORY_KIB: "memory" })).toThrow();
+    expect(() => loadConfig({ ...base, AUTH_RATE_LIMIT_PER_IP: "1.5" })).toThrow();
   });
 
   it("rejects a non-numeric override instead of silently coercing", () => {

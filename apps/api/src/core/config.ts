@@ -32,6 +32,15 @@ const schema = z.object({
   INTAKE_API_KEYS: z.string().min(1),
   ADMIN_API_KEYS: z.string().min(1),
 
+  // Accounts and sessions (accounts and sessions design §5).
+  SESSION_SECRET: z.string().min(32),
+  SESSION_LIFETIME_MS: z.coerce.number().int().positive().default(604_800_000),
+  ARGON2_MEMORY_KIB: z.coerce.number().int().positive().default(19_456),
+  ARGON2_ITERATIONS: z.coerce.number().int().positive().default(2),
+  ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
+  AUTH_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(60),
+  AUTH_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().positive().default(10),
+
   // Outbound fetch, URL intake route
   FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative().default(3),
@@ -123,6 +132,17 @@ export interface Config {
   intakeRateLimit: number;
   intakeApiKeys: string[];
   adminApiKeys: string[];
+  session: {
+    secret: string;
+    lifetimeMs: number;
+  };
+  argon2: {
+    memoryKiB: number;
+    iterations: number;
+    parallelism: number;
+  };
+  authRateLimitPerIp: number;
+  authRateLimitPerEmail: number;
   fetchTimeoutMs: number;
   fetchMaxRedirects: number;
   fetchMaxBytes: number;
@@ -202,6 +222,17 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     intakeRateLimit: parsed.INTAKE_RATE_LIMIT,
     intakeApiKeys: parsed.INTAKE_API_KEYS.split(",").map((value) => value.trim()).filter(Boolean),
     adminApiKeys: parsed.ADMIN_API_KEYS.split(",").map((value) => value.trim()).filter(Boolean),
+    session: {
+      secret: parsed.SESSION_SECRET,
+      lifetimeMs: parsed.SESSION_LIFETIME_MS,
+    },
+    argon2: {
+      memoryKiB: parsed.ARGON2_MEMORY_KIB,
+      iterations: parsed.ARGON2_ITERATIONS,
+      parallelism: parsed.ARGON2_PARALLELISM,
+    },
+    authRateLimitPerIp: parsed.AUTH_RATE_LIMIT_PER_IP,
+    authRateLimitPerEmail: parsed.AUTH_RATE_LIMIT_PER_EMAIL,
     fetchTimeoutMs: parsed.FETCH_TIMEOUT_MS,
     fetchMaxRedirects: parsed.FETCH_MAX_REDIRECTS,
     fetchMaxBytes: parsed.FETCH_MAX_BYTES,

@@ -132,14 +132,23 @@ both; it does not. Moving admins onto accounts is its own design, after this wor
 
 | Collection | Key | Fields |
 | :--- | :--- | :--- |
-| `accounts` | unique `email` **where `deletedAt` is absent** (partial) | `displayName`, `passwordHash?`, `emailVerifiedAt?`, `google?: { sub }`, `role`, `consent`, `createdAt`, `updatedAt`, `deletedAt?` |
+| `accounts` | unique `email` (plain) | `displayName`, `passwordHash?`, `emailVerifiedAt?`, `google?: { sub }`, `role`, `consent`, `createdAt`, `updatedAt`, `deletedAt?` |
 | `sessions` | `_id` random 256-bit | `accountId`, `createdAt`, `expiresAt`, `lastSeenAt` · TTL on `expiresAt` |
 | `auth_tokens` | `tokenHash` | `accountId`, `purpose: "verify" \| "reset"`, `expiresAt`, `consumedAt?` · TTL |
 | `oauth_transactions` | `_id` | `stateHash`, `nonce`, `codeVerifier`, `redirectUri`, `expiresAt`, `consumedAt?` · TTL |
 | `reauth_grants` | `_id` | `accountId`, `sessionId`, `expiresAt`, `consumedAt?` · TTL |
 
-The partial unique index is why deletion works twice: a plain unique index permits only one missing
-value, so a second deleted account would collide with the first.
+**Deletion replaces the address with a tombstone** — `deleted:<random uuid>` — rather than emptying
+it. Revision 2 called for a partial unique index on "where `deletedAt` is absent"; MongoDB rejects
+`$exists: false` inside `partialFilterExpression` (verified against the running server, which is also
+how the `$ne` restriction on the statistics index was settled).
+
+The tombstone is the better answer regardless. Deletion has to remove the address, because the
+address IS the personal data; a partial index would have kept it on the row for ever and called the
+account deleted. A random tombstone is not reversible to the address it replaced — a hash of the
+email would be, by dictionary — and uniqueness then holds with an ordinary index, so a second
+deletion and a re-registration of the same address both work. Verified: two deletions and a
+re-registration leave two rows and no collision.
 
 `consent` records what was agreed to, not merely that something was:
 `{ noticeVersion, noticeHash, agreedAt, action: "checkbox" }`. A version alone cannot show what the

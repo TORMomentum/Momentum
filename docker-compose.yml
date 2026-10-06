@@ -8,6 +8,7 @@ x-api-env: &api-env
   GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me-admin-key}
+  SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
 
 services:
   web:
