@@ -75,7 +75,6 @@ export function SearchView({
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
   const lastCommittedQuery = useRef(filters.q);
-  const [starSel, setStarSel] = useState<Record<string, boolean>>({});
   const [bookSel, setBookSel] = useState<Record<string, boolean>>({});
 
   // Only a change that arrives from outside — clear all, the back button —
@@ -164,11 +163,6 @@ export function SearchView({
     navigate(EMPTY_FILTERS);
   }
 
-  function toggleStar(e: React.SyntheticEvent, id: string) {
-    e.preventDefault();
-    e.stopPropagation();
-    setStarSel((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
 
   function toggleBook(e: React.SyntheticEvent, id: string) {
     e.preventDefault();
@@ -414,27 +408,6 @@ export function SearchView({
                   </div>
                   {signedIn && (
                     <div className={styles.resultActions}>
-                      <span
-                        className={`${styles.actionBtn} ${styles.starBtn} ${starSel[row.id] ? styles.starBtnOn : ""}`}
-                        role="button"
-                        tabIndex={0}
-                        title="เคยทำงานลักษณะนี้ (ส่วนตัว — ช่วยให้ AI จับคู่แม่นขึ้น ไม่มีผลต่อการค้นหา)"
-                        onClick={(e) => toggleStar(e, row.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") toggleStar(e, row.id);
-                        }}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          className={`${icons.starIcon} ${starSel[row.id] ? icons.starIconOn : ""}`}
-                          strokeWidth="2"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                      </span>
                       <span
                         className={`${styles.actionBtn} ${styles.bookBtn} ${bookSel[row.id] ? styles.bookBtnOn : ""}`}
                         role="button"

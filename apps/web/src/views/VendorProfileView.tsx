@@ -22,7 +22,7 @@ import { BudgetRange } from "../shared/ui/BudgetRange";
  * Vendor profile (FR-D). Ported from the "Vendor Profile" screen of
  * mockups/TOR Radar App.dc.html.
  *
- * The mockup's "starred" and "bookmarked" lists mirror star/bookmark toggles
+ * The mockup's "bookmarked" list mirrors the bookmark toggle
  * made on the Search screen — but that is single-page mockup state, and this
  * app has Search and Profile as separate routes with no shared client store
  * (nothing in the established pattern, e.g. DashboardView, wires cross-route
@@ -44,15 +44,16 @@ const DEFAULT_SKILLS: Record<string, boolean> = {
  * to update. It is scored against every published TOR (FR-C-1), so the range
  * is a real matching input rather than a profile decoration.
  *
- * "Past projects" used to sit beside it and has been dropped: the starred list
- * further down already records "I have done work like this", and two lists
- * saying the same thing invite two answers. FR-D-2 still names past projects
- * and portfolio material, so either that requirement gets amended or the field
- * returns with slice 4's real profile storage.
+ * "Past projects" used to sit beside it and was dropped because the starred
+ * list recorded the same thing — and the star itself has now gone too
+ * (2026-10-06: one save action, and bookmark is it). So nothing currently
+ * records "I have done work like this", which FR-D-2 asks for and which the
+ * matching engine would have used. PLAN.md Q5 is reopened on that account:
+ * either the requirement is amended or the field returns with slice 4's real
+ * profile storage.
  */
 const DEFAULT_BUDGET_RANGE = { min: 500_000, max: 5_000_000 };
 
-const SAMPLE_STARRED_SLUGS = ["TOR-2569-0812-041", "TOR-2569-0810-029"];
 const SAMPLE_BOOKED_SLUGS = ["demo-anomaly", "TOR-2569-0811-038"];
 
 /**
@@ -133,9 +134,6 @@ export function VendorProfileView() {
     setAddingSkill(false);
   }
 
-  const starredList = SAMPLE_STARRED_SLUGS.map((slug) => TOR_SAMPLES.find((t) => t.slug === slug)).filter(
-    (t): t is TorSample => Boolean(t),
-  );
   const bookedList = SAMPLE_BOOKED_SLUGS.map((slug) => TOR_SAMPLES.find((t) => t.slug === slug)).filter(
     (t): t is TorSample => Boolean(t),
   );
@@ -364,33 +362,6 @@ export function VendorProfileView() {
             </div>
           </div>
         )}
-      </div>
-
-      <div className={styles.profileCard}>
-        <div className={styles.trackLabelRow}>
-          <svg width="13" height="13" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>เคยทำงานลักษณะนี้ — ส่วนตัว</span>
-        </div>
-        {starredList.length > 0 ? (
-          <div className={styles.trackList}>
-            {starredList.map((tor) => (
-              <Link key={tor.slug} href={`/tors/${tor.slug}`} className={styles.trackRow}>
-                <div>
-                  <div className={styles.trackTitle}>{tor.title}</div>
-                  <div className={styles.trackAgency}>{tor.agency}</div>
-                </div>
-                <svg width="15" height="15" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.trackEmpty}>ยังไม่มี — กดไอคอนดาวในหน้าค้นหาเพื่อบอกว่าเคยทำงานลักษณะนี้</div>
-        )}
-        <div className={styles.trackFoot}>ข้อมูลส่วนตัว — ใช้ปรับปรุงการจับคู่ของ AI เท่านั้น ไม่แสดงต่อสาธารณะ</div>
       </div>
 
       <div className={`${styles.profileCard} ${styles.profileCardLast}`}>

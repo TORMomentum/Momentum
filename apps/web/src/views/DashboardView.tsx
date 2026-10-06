@@ -81,6 +81,7 @@ export function DashboardView({
   }
 
   const empty = dashboard.totals.torCount === 0;
+  const anyFilter = Object.values(filters).some((value) => value !== undefined);
   // Unknown sorts first by string order, and a row with no name reads as a
   // fault when it leads the chart. It belongs at the end, with the others.
   const agencies = [...dashboard.byAgency].sort((left, right) =>
@@ -121,6 +122,14 @@ export function DashboardView({
           onPick={(category) => { updateFilters({ category: category === ALL ? undefined : category }); setOpenDrop(null); }}
           options={[{ value: ALL, label: "ทั้งหมด" }, ...categories.map((category) => ({ value: category, label: thaiDigitsToArabic(category) }))]}
         />
+        {/* Four controls can be filtering at once — agency, category, state and
+            month — and clicking each one back off is four actions. Shown only
+            when something is actually filtered, so it is never a dead control. */}
+        {anyFilter && (
+          <button type="button" className={styles.clearFilters} onClick={() => router.push(pathname)}>
+            ล้างตัวกรอง
+          </button>
+        )}
       </div>
 
       {empty ? (

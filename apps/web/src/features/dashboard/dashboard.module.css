@@ -176,6 +176,17 @@
 
 /* One compact row, not a third full-width band: these are filters, and the
    page's own content should start as close to the top as it can. */
+.clearFilters {
+  padding: 7px 12px;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.clearFilters:hover { text-decoration: underline; }
+
 .states {
   display: flex;
   flex-wrap: wrap;
