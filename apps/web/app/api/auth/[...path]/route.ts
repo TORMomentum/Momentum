@@ -86,6 +86,7 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
 
 export const POST = forward;
 export const GET = forward;
+export const PUT = forward;
 export const DELETE = forward;
 
 /**

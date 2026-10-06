@@ -134,7 +134,13 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.get("/me", (req, res) => {
     if (!req.auth) throw new UnauthorizedError();
     const account = req.auth.account;
-    res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString() });
+    res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString(), consent: { noticeVersion: account.consent.noticeVersion, agreedAt: account.consent.agreedAt.toISOString(), withdrawnAt: account.consent.withdrawnAt?.toISOString() } });
+  });
+
+  router.post("/me/consent/withdraw", ...writes, async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    await deps.accounts.withdrawConsent(req.auth.account._id.toString());
+    res.json({ ok: true });
   });
 
   router.get("/me/export", async (req, res) => {

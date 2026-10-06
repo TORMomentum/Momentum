@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ObjectId, type Db, type WithId } from "mongodb";
-import { accounts, bookmarks, type AccountDocument, type AccountRole, type BookmarkDocument, type SessionDocument } from "../../core/db.js";
+import { accounts, bookmarks, vendorProfiles, type AccountDocument, type AccountRole, type BookmarkDocument, type SessionDocument, type VendorProfileDocument } from "../../core/db.js";
 import { SessionsRepository } from "./sessions.js";
 
 export interface CreateAccountInput {
@@ -74,6 +74,14 @@ export class AccountsRepository {
     if (result.matchedCount > 0) await this.sessionsRepository.revokeAllForAccount(accountId);
   }
 
+  async withdrawConsent(accountId: string): Promise<void> {
+    if (!ObjectId.isValid(accountId)) return;
+    await accounts(this.db).updateOne(
+      { _id: new ObjectId(accountId), deletedAt: { $exists: false } },
+      { $set: { "consent.withdrawnAt": new Date(), updatedAt: new Date() } },
+    );
+  }
+
   async softDelete(accountId: string): Promise<void> {
     if (!ObjectId.isValid(accountId)) return;
     const now = new Date();
@@ -87,17 +95,19 @@ export class AccountsRepository {
     await this.sessionsRepository.revokeAllForAccount(accountId);
   }
 
-  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[] }> {
+  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null }> {
     if (!ObjectId.isValid(accountId)) throw new Error("Invalid account id");
     const account = await accounts(this.db).findOne({ _id: new ObjectId(accountId) });
     if (!account) throw new Error("Account not found");
     const { passwordHash: _passwordHash, ...safeAccount } = account;
     const accountSessions = await this.sessionsRepository.exportMetadataForAccount(accountId);
     const ownedBookmarks = await bookmarks(this.db).find({ accountId }).toArray();
-    return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks };
+    const profile = await vendorProfiles(this.db).findOne({ accountId });
+    return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks, profile };
   }
 
   async removeOwnedData(accountId: string): Promise<void> {
     await bookmarks(this.db).deleteMany({ accountId });
+    await vendorProfiles(this.db).deleteMany({ accountId });
   }
 }

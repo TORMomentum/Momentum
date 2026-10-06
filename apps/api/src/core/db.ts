@@ -149,6 +149,7 @@ export interface AccountDocument {
     noticeHash: string;
     agreedAt: Date;
     action: "checkbox";
+    withdrawnAt?: Date;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -177,6 +178,16 @@ export interface BookmarkDocument {
   accountId: string;
   torId: string;
   createdAt: Date;
+}
+
+/** The three explicit preferences used to explain vendor-facing relevance. */
+export interface VendorProfileDocument {
+  accountId: string;
+  categories: string[];
+  areas: string[];
+  budget: { minThb: number; maxThb: number } | null;
+  taxonomyVersion: string;
+  updatedAt: Date;
 }
 
 let client: MongoClient | null = null;
@@ -236,6 +247,10 @@ export function bookmarks(db: Db): Collection<BookmarkDocument> {
   return db.collection<BookmarkDocument>("bookmarks");
 }
 
+export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
+  return db.collection<VendorProfileDocument>("vendor_profiles");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -246,6 +261,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accountTokens(db).createIndex({ tokenHash: 1 }, { unique: true });
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
+  await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index
