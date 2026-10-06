@@ -38,6 +38,8 @@ export interface ExtractedFieldView {
   confidence: number;
   verified: boolean;
   evidence?: string;
+  /** The record this value was read from when not this one — a TOR's deadline from its invitation. */
+  fromDocument?: string;
 }
 
 export interface ReviewRecord extends QueueEntry {
@@ -53,7 +55,12 @@ export interface ReviewRecord extends QueueEntry {
 export interface QueueView {
   items: QueueEntry[];
   unverifiedNotQueued: number;
+  /** TORs whose category or qualifications await a person; absent from an API older than this field. */
+  fieldsToConfirm?: number;
 }
+
+/** confidence: the low-confidence queue · fields: TORs whose category or qualifications await a person. */
+export type QueueKind = "confidence" | "fields";
 
 function adminKey(): string {
   // The API accepts a list; the web server presents the first.
@@ -136,9 +143,12 @@ export function fetchEvents(limit = 50): Promise<AdminEvent[]> {
   return call<AdminEvent[]>(`/admin/events?limit=${limit}`);
 }
 
-export function fetchQueue(reason?: string): Promise<QueueView> {
-  const query = reason ? `?reason=${encodeURIComponent(reason)}` : "";
-  return call<QueueView>(`/admin/queue${query}`);
+export function fetchQueue(reason?: string, view: QueueKind = "confidence"): Promise<QueueView> {
+  const params = new URLSearchParams();
+  if (reason) params.set("reason", reason);
+  if (view === "fields") params.set("view", "fields");
+  const query = params.toString();
+  return call<QueueView>(`/admin/queue${query ? `?${query}` : ""}`);
 }
 
 export function fetchRecord(id: string): Promise<ReviewRecord> {

@@ -1,4 +1,4 @@
-import { ObjectId, type Db } from "mongodb";
+import { ObjectId, type Db, type Filter } from "mongodb";
 import type { ExtractedField, TorFields } from "@tor-radar/shared";
 import { corrections, torEvents, tors, type TorDocument } from "../../core/db.js";
 import { NotFoundError } from "../../core/errors.js";
@@ -107,6 +107,47 @@ export class AdminRepository {
     }));
   }
 
+  /**
+   * TORs whose critical fields are settled but whose category or qualifications are not yet
+   * verified — the △ a reader sees in the specification-quality checklist (checks C4, C5). They
+   * never reach the confidence queue, which only takes low records, so they are listed here.
+   */
+  private fieldsToConfirmFilter(): Filter<TorDocument> {
+    return {
+      "pipeline.state": "published",
+      "access.restricted": { $ne: true },
+      documentType: { $ne: "invitation" },
+      duplicateOf: null,
+      confidenceLevel: { $ne: "low" },
+      $or: [{ "fields.category.verified": false }, { "fields.qualifications.verified": false }],
+    };
+  }
+
+  async listFieldsToConfirm(limit: number): Promise<QueueEntry[]> {
+    const docs = await tors(this.db)
+      .find(this.fieldsToConfirmFilter(), { sort: { createdAt: 1 }, limit })
+      .toArray();
+
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      title: doc.fields?.title?.raw ?? "",
+      agency: doc.fields?.agency?.raw ?? "",
+      confidence: doc.fields?.agency?.confidence ?? 0,
+      // Which fields still need a person, in the queue's own reason shape.
+      reviewReasons: [
+        ...(doc.fields?.category?.verified === false ? ["category-unconfirmed"] : []),
+        ...(doc.fields?.qualifications?.verified === false ? ["qualifications-unconfirmed"] : []),
+      ],
+      route: doc.sourceRefs[0]?.route ?? "unknown",
+      submittedAt: doc.sourceRefs[0]?.submittedAt ?? doc.createdAt,
+      contentType: doc.storage.contentType,
+    }));
+  }
+
+  async countFieldsToConfirm(): Promise<number> {
+    return tors(this.db).countDocuments(this.fieldsToConfirmFilter());
+  }
+
   /** How many records are unverified but never queued — the "not queued" figure. */
   async countUnverifiedNotQueued(): Promise<number> {
     return tors(this.db).countDocuments({
@@ -160,7 +201,9 @@ export class AdminRepository {
       const before = doc.fields?.[edit.field] as ExtractedField<unknown> | undefined;
       const value = edit.field === "budget"
         ? parseBudget(edit.value, this.budgetMaxThb)
-        : edit.value;
+        : edit.field === "category"
+          ? edit.value.trim()
+          : edit.value;
       // The service validates before reaching this repository. Keeping this
       // guard here protects direct callers from reintroducing mixed BSON types.
       if (value === null) throw new Error("budget edit was not validated");

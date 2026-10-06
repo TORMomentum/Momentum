@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { useMemo, useState, useTransition } from "react";
+import { TOR_CATEGORIES, isTorCategory } from "@tor-radar/shared";
 import styles from "../features/admin/admin.module.css";
 import { AdminConfirmDialog } from "../features/admin/admin-confirm-dialog";
 import {
@@ -37,6 +38,8 @@ const REASON_LABELS: Record<string, string> = {
   "cancelled-with-deadline": "ประกาศยกเลิกแต่มีวันยื่น",
   "closed-with-future-deadline": "ปิดรับแล้วแต่วันยื่นยังไม่ถึง",
   "copy-through": "หลายฟิลด์ซ้ำกัน",
+  "category-unconfirmed": "ยืนยันหมวดหมู่",
+  "qualifications-unconfirmed": "ยืนยันคุณสมบัติ",
 };
 
 function reasonLabel(reason: string): string {
@@ -67,6 +70,8 @@ function percentStyle(value: number, property: "--confidence-width" | "--progres
 export function AdminReviewView({
   queue,
   unverifiedNotQueued,
+  fieldsToConfirm = 0,
+  view = "confidence",
   record,
   documentHref,
   offline,
@@ -75,6 +80,10 @@ export function AdminReviewView({
 }: {
   queue: QueueEntry[];
   unverifiedNotQueued: number;
+  /** TORs whose category or qualifications await a person — the second tab's size. */
+  fieldsToConfirm?: number;
+  /** Which list the left pane shows: low-confidence records, or fields to confirm. */
+  view?: "confidence" | "fields";
   record: ReviewRecord | null;
   /** The staff document-stream proxy route for the open record, or null when none is open. */
   documentHref: string | null;
@@ -90,6 +99,8 @@ export function AdminReviewView({
   const [confirmation, setConfirmation] = useState<"approve" | "reextract" | "reject" | null>(null);
   /** The document href that failed to load, if any — see the viewer below. */
   const [brokenDocUrl, setBrokenDocUrl] = useState<string | null>(null);
+  /** Which original the viewer shows; kept per record, so opening the next one starts on its TOR. */
+  const [docShown, setDocShown] = useState<{ recordId: string; kind: "tor" | "invitation" } | null>(null);
   const [pending, startTransition] = useTransition();
 
   /** ObjectIds match by prefix only; all reviewer-facing text uses substring search. */
@@ -134,13 +145,36 @@ export function AdminReviewView({
     return result;
   }
 
+  // A TOR whose deadline came from its invitation can show that invitation beside it (staff route).
+  const invitationId = record?.fields.deadline?.fromDocument;
+  const shownKind = invitationId && docShown?.recordId === record?.id ? docShown.kind : "tor";
+  const viewerHref =
+    shownKind === "invitation" && invitationId ? `/admin/tors/${invitationId}/document` : documentHref;
+
   return (
     <main className={styles.adminPage}>
       <div className={styles.adminBar}>
         <h1 className={styles.adminTitle}>คิวตรวจสอบการสกัดข้อมูล</h1>
+        <nav className={styles.adminTabs} aria-label="รายการตรวจสอบ">
+          <Link
+            href="/admin/review"
+            className={`${styles.adminTab} ${view === "confidence" ? styles.adminTabOn : ""}`}
+            aria-current={view === "confidence" ? "page" : undefined}
+          >
+            ความเชื่อมั่นต่ำ{view === "confidence" ? ` · ${queue.length}` : ""}
+          </Link>
+          <Link
+            href="/admin/review?view=fields"
+            className={`${styles.adminTab} ${view === "fields" ? styles.adminTabOn : ""}`}
+            aria-current={view === "fields" ? "page" : undefined}
+          >
+            รอยืนยันฟิลด์ · {fieldsToConfirm}
+          </Link>
+        </nav>
         <span className={styles.adminMeta}>
-          ในคิว {queue.length} · ยังไม่ยืนยันและไม่เข้าคิว {unverifiedNotQueued} · เข้าคิวเมื่อความเชื่อมั่น
-          &lt; T_LOW หรือไม่ผ่านการตรวจความสมเหตุสมผล
+          {view === "fields"
+            ? "TOR ที่หน่วยงานและงบประมาณยืนยันแล้ว แต่หมวดหมู่หรือคุณสมบัติยังรอการยืนยัน — ค่าที่ยืนยันแล้วจะใช้ในการเปรียบเทียบงบประมาณและการจับคู่ผู้ขาย"
+            : <>ในคิว {queue.length} · ยังไม่ยืนยันและไม่เข้าคิว {unverifiedNotQueued} · เข้าคิวเมื่อความเชื่อมั่น &lt; T_LOW หรือไม่ผ่านการตรวจความสมเหตุสมผล</>}
         </span>
       </div>
 
@@ -153,7 +187,8 @@ export function AdminReviewView({
         </div>
       )}
 
-      {queue.length === 0 ? (
+      {/* An empty list still shows a record opened by link (?id=), so any TOR can be reviewed. */}
+      {queue.length === 0 && !record ? (
         <div className={`${styles.adminBody} ${styles.adminBodyBlank}`}>
           <div className={styles.adminBlank}>
             <h2 className={styles.adminBlankTitle}>
@@ -202,7 +237,7 @@ export function AdminReviewView({
                 placeholder="ค้นหาชื่อโครงการ หน่วยงาน หรือเหตุผล"
                 aria-label="ค้นหาในคิวตรวจสอบ"
               />
-              {reasons.length > 0 && (
+              {view === "confidence" && reasons.length > 0 && (
                 <div className={styles.queueReasons}>
                   <a href="/admin/review" className={`${styles.queueReason} ${activeReason ? "" : styles.queueReasonOn}`}>
                     ทั้งหมด
@@ -225,7 +260,7 @@ export function AdminReviewView({
             {shown.map((item) => (
               <a
                 key={item.id}
-                href={`/admin/review?id=${item.id}${activeReason ? `&reason=${encodeURIComponent(activeReason)}` : ""}`}
+                href={`/admin/review?id=${item.id}${view === "fields" ? "&view=fields" : ""}${activeReason ? `&reason=${encodeURIComponent(activeReason)}` : ""}`}
                 className={`${styles.adminQueueItem} ${record?.id === item.id ? styles.adminQueueItemOn : ""}`}
               >
                 <span className={styles.adminQueueIndex}>
@@ -251,8 +286,28 @@ export function AdminReviewView({
             <>
               <section className={styles.adminDoc} aria-label="เอกสารต้นฉบับ">
                 <div className={styles.adminDocToolbar}>
-                  <span>{record.contentType}</span>
-                  <span>{record.storage.bytes.toLocaleString("th-TH")} ไบต์</span>
+                  {invitationId ? (
+                    // A deadline read from the invitation to bid is checked against that document.
+                    <div className={styles.adminDocSwitch} role="tablist" aria-label="เอกสารที่แสดง">
+                      {(["tor", "invitation"] as const).map((kind) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          role="tab"
+                          aria-selected={shownKind === kind}
+                          className={`${styles.adminDocSwitchItem} ${shownKind === kind ? styles.adminDocSwitchOn : ""}`}
+                          onClick={() => setDocShown({ recordId: record.id, kind })}
+                        >
+                          {kind === "tor" ? "TOR" : "ประกาศเชิญชวน"}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <span>{record.contentType}</span>
+                  )}
+                  <span>
+                    {shownKind === "tor" ? `${record.storage.bytes.toLocaleString("th-TH")} ไบต์` : "ที่มาของวันยื่นข้อเสนอ"}
+                  </span>
                 </div>
                 <div className={styles.adminDocViewer}>
                   {/*
@@ -264,32 +319,32 @@ export function AdminReviewView({
                     load the way <img> does, so only the image path detects it;
                     the "open in a new tab" link is the fallback for the rest.
                   */}
-                  {documentHref && brokenDocUrl !== documentHref ? (
-                    record.contentType.startsWith("image/") ? (
+                  {viewerHref && brokenDocUrl !== viewerHref ? (
+                    shownKind === "tor" && record.contentType.startsWith("image/") ? (
                       <img
-                        src={`${documentHref}?disposition=inline`}
+                        src={`${viewerHref}?disposition=inline`}
                         alt="ต้นฉบับ TOR"
                         className={styles.adminDocImage}
-                        onError={() => setBrokenDocUrl(documentHref)}
+                        onError={() => setBrokenDocUrl(viewerHref)}
                       />
                     ) : (
                       <iframe
-                        src={`${documentHref}?disposition=inline`}
-                        title="ต้นฉบับ TOR"
+                        src={`${viewerHref}?disposition=inline`}
+                        title={shownKind === "tor" ? "ต้นฉบับ TOR" : "ต้นฉบับประกาศเชิญชวน"}
                         className={styles.adminDocFrame}
                         referrerPolicy="no-referrer"
                       />
                     )
                   ) : (
                     <p className={styles.adminDocError}>
-                      {documentHref
+                      {viewerHref
                         ? "เปิดต้นฉบับไม่ได้ — ไฟล์อาจยังไม่ถูกจัดเก็บ ข้อมูลที่สกัดได้ยังตรวจสอบได้ตามปกติ"
                         : "ไม่พบลิงก์ต้นฉบับ"}
                     </p>
                   )}
                 </div>
-                {documentHref && (
-                  <a href={documentHref} target="_blank" rel="noreferrer" className={styles.adminDocFallback}>
+                {viewerHref && (
+                  <a href={viewerHref} target="_blank" rel="noreferrer" className={styles.adminDocFallback}>
                     เปิดต้นฉบับในแท็บใหม่ ↗
                   </a>
                 )}
@@ -308,7 +363,8 @@ export function AdminReviewView({
                       spent 125px saying two short things, and the label
                       "เหตุผลที่ต้องตรวจสอบ" repeated what the reason already says. */}
                   <span className={styles.adminReasonNote} title="เหตุผลที่ต้องตรวจสอบ">
-                    {record.reviewReasons.map(reasonLabel).join(" · ") || "ความเชื่อมั่นต่ำกว่าเกณฑ์"}
+                    {record.reviewReasons.map(reasonLabel).join(" · ") ||
+                      (view === "fields" ? "รอยืนยันหมวดหมู่และคุณสมบัติ" : "ความเชื่อมั่นต่ำกว่าเกณฑ์")}
                   </span>
                 </header>
 
@@ -345,12 +401,27 @@ export function AdminReviewView({
                           {modified && <span className={styles.adminFieldEdited}>แก้ไขแล้ว</span>}
                           <span className={styles.adminFieldConfidence}>{confidence.toFixed(2)}</span>
                         </div>
-                        <input
-                          className={`${styles.adminFieldInput} ${field?.verified ? "" : styles.adminFieldInputWarn}`}
-                          value={value}
-                          placeholder={field ? "" : "ไม่พบค่าในเอกสาร — กรอกจากต้นฉบับ"}
-                          onChange={(event) => setEdits((previous) => ({ ...previous, [key]: event.target.value }))}
-                        />
+                        {key === "category" ? (
+                          // The closed list (packages/shared/src/categories.ts): pick, never type.
+                          <select
+                            className={`${styles.adminFieldInput} ${field?.verified ? "" : styles.adminFieldInputWarn}`}
+                            value={edits.category ?? (isTorCategory(field?.value) ? field.value : "")}
+                            onChange={(event) => setEdits((previous) => ({ ...previous, category: event.target.value }))}
+                            aria-label="หมวดหมู่"
+                          >
+                            <option value="" disabled>เลือกหมวดหมู่</option>
+                            {TOR_CATEGORIES.map((category) => (
+                              <option key={category} value={category}>{category}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            className={`${styles.adminFieldInput} ${field?.verified ? "" : styles.adminFieldInputWarn}`}
+                            value={value}
+                            placeholder={field ? "" : "ไม่พบค่าในเอกสาร — กรอกจากต้นฉบับ"}
+                            onChange={(event) => setEdits((previous) => ({ ...previous, [key]: event.target.value }))}
+                          />
+                        )}
                         <div className={styles.adminFieldNote}>
                           {field?.evidence ? `อ้างอิง: “${field.evidence}”` : "ไม่มีข้อความอ้างอิงจากการสกัด"}
                         </div>

@@ -21,13 +21,14 @@ export const dynamic = "force-dynamic";
 export default async function AdminReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; reason?: string }>;
+  searchParams: Promise<{ id?: string; reason?: string; view?: string }>;
 }) {
   // Page checks protect reads; the separate checks inside Server Actions
   // protect direct mutation requests that never render this page.
   if (!(await isStaff())) redirect("/admin/login");
 
-  const { id, reason } = await searchParams;
+  const { id, reason, view: requestedView } = await searchParams;
+  const view = requestedView === "fields" ? "fields" : "confidence";
 
   let queue: Awaited<ReturnType<typeof fetchQueue>> = { items: [], unverifiedNotQueued: 0 };
   let record: ReviewRecord | null = null;
@@ -37,7 +38,7 @@ export default async function AdminReviewPage({
   let missingRecord = false;
 
   try {
-    queue = await fetchQueue(reason);
+    queue = await fetchQueue(view === "fields" ? undefined : reason, view);
     // Opening the first item by default: a reviewer lands ready to work, and a
     // deep link from the activity log still wins.
     const requested = id ?? queue.items[0]?.id;
@@ -78,6 +79,8 @@ export default async function AdminReviewPage({
     <AdminReviewView
       queue={queue.items}
       unverifiedNotQueued={queue.unverifiedNotQueued}
+      fieldsToConfirm={queue.fieldsToConfirm ?? 0}
+      view={view}
       record={record}
       documentHref={documentHref}
       offline={offline}
