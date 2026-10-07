@@ -19,9 +19,9 @@ const config = loadConfig(process.env);
 let db: Db; let app: express.Express; let sessionsRepository: SessionsRepository;
 function testApp() { sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs); const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository)); result.use("/api/v1", buildMatchingRouter({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config) })); result.use(errorMiddleware); return result; }
 async function vendor(email: string) { const account = await new AccountsRepository(db, sessionsRepository).create({ email, displayName: "ผู้ขาย", passwordHash: await hashPassword("correct-password", config), consent: { noticeVersion: "test", noticeHash: "test", agreedAt: new Date(), action: "checkbox" } }); return { accountId: account.id, sessionId: (await sessionsRepository.create(account.id)).id }; }
-async function seed(title: string, budget: number) {
+async function seed(title: string, budget: number, over: Record<string, unknown> = {}) {
   const category = title.includes("คอมพิวเตอร์") ? "ซื้อคอมพิวเตอร์และอุปกรณ์ไอที" : "งานก่อสร้าง-ทาง สะพาน";
-  const inserted = await tors(db).insertOne({ contentHash: `${title}-${budget}`, storage: { bucket: "test", key: title, contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: title, value: title, confidence: 1, verified: true }, category: { raw: category, value: category, confidence: 1, verified: true }, budget: { raw: String(budget), value: budget, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: new Date(), updatedAt: new Date() });
+  const inserted = await tors(db).insertOne({ contentHash: `${title}-${budget}`, storage: { bucket: "test", key: title, contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: title, value: title, confidence: 1, verified: true }, category: { raw: category, value: category, confidence: 1, verified: true }, budget: { raw: String(budget), value: budget, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true }, torStatus: { raw: "announced", value: "announced", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: new Date(), updatedAt: new Date(), ...over } as never);
   await new MatchingRepository(db, config).classifyAndStore((await tors(db).findOne({ _id: inserted.insertedId }))!);
   return inserted.insertedId.toString();
 }
@@ -42,7 +42,7 @@ describe("matching routes", () => {
     // that records extracted before the national list still carry.
     const road = await vendor("cold@example.test");
     await vendorProfiles(db).insertOne({ accountId: road.accountId, categories: ["construction.road"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
-    const inserted = await tors(db).insertOne({ contentHash: "cold-cache", storage: { bucket: "test", key: "cold", contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: "ก่อสร้างถนนคอนกรีตเสริมเหล็ก", value: "ก่อสร้างถนนคอนกรีตเสริมเหล็ก", confidence: 1, verified: true }, category: { raw: "งานก่อสร้าง-ทาง", value: "งานก่อสร้าง-ทาง", confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: new Date(), updatedAt: new Date() });
+    const inserted = await tors(db).insertOne({ contentHash: "cold-cache", storage: { bucket: "test", key: "cold", contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: "ก่อสร้างถนนคอนกรีตเสริมเหล็ก", value: "ก่อสร้างถนนคอนกรีตเสริมเหล็ก", confidence: 1, verified: true }, category: { raw: "งานก่อสร้าง-ทาง", value: "งานก่อสร้าง-ทาง", confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true }, torStatus: { raw: "announced", value: "announced", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: new Date(), updatedAt: new Date() });
     expect(await torClassifications(db).countDocuments({})).toBe(0);
 
     const items = (await request(app).get("/api/v1/me/matches").set("x-session-id", road.sessionId)).body.items;
@@ -69,7 +69,7 @@ describe("matching routes", () => {
 
     const insert = async (title: string, category: string, ageDays: number) => {
       const at = new Date(Date.now() - ageDays * 86_400_000);
-      return (await tors(db).insertOne({ contentHash: `${title}-${ageDays}`, storage: { bucket: "test", key: title, contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: title, value: title, confidence: 1, verified: true }, category: { raw: category, value: category, confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: at, updatedAt: at })).insertedId.toString();
+      return (await tors(db).insertOne({ contentHash: `${title}-${ageDays}`, storage: { bucket: "test", key: title, contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: title, value: title, confidence: 1, verified: true }, category: { raw: category, value: category, confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true }, torStatus: { raw: "announced", value: "announced", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: at, updatedAt: at })).insertedId.toString();
     };
     const software = await insert("จ้างพัฒนาระบบสารสนเทศและเว็บไซต์", "จ้างเหมาบริการ", 30);
     // The noise has to land in the SAME national category. Security tenders do
@@ -121,5 +121,25 @@ describe("matching routes", () => {
     await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], otherCategories: ["คอมพิวเตอร์"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
     const id = await seed("จัดซื้อคอมพิวเตอร์", 100);
     expect((await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId)).body.items.map((item: { id: string }) => item.id)).toContain(id);
+  });
+
+  it("shows only TORs a vendor can still bid on, each project once, with what a card needs to be read", async () => {
+    const current = await vendor("card@example.test");
+    await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
+    const open = await seed("ปรับปรุงผิวจราจร เปิด", 100);
+    const field = (value: string) => ({ raw: value, value, confidence: 1, verified: true });
+    const base = { title: field("ปรับปรุงผิวจราจร"), category: field("งานก่อสร้าง-ทาง สะพาน"), budget: { raw: "100", value: 100, confidence: 1, verified: true } };
+    await seed("ปรับปรุงผิวจราจร ปิด", 100, { fields: { ...base, deadline: field("2020-01-01"), torStatus: field("announced") } });
+    await seed("ปรับปรุงผิวจราจร ผู้ชนะ", 100, { fields: { ...base, deadline: field("2027-01-01"), torStatus: field("awarded") } });
+    await seed("ปรับปรุงผิวจราจร กำลังสกัด", 100, { pipeline: { state: "extracting", attempts: 1 } });
+    await seed("ปรับปรุงผิวจราจร ถอด", 100, { access: { restricted: true, reason: "takedown" } });
+    await seed("ปรับปรุงผิวจราจร ประกาศเชิญชวน", 100, { documentType: "invitation" });
+    await seed("ปรับปรุงผิวจราจร ซ้ำ", 100, { duplicateOf: open });
+
+    const items = (await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId)).body.items;
+
+    expect(items.map((item: { id: string }) => item.id)).toEqual([open]);
+    expect(items[0]).toMatchObject({ budget: { raw: "100", value: 100, verified: true }, deadline: { value: "2027-01-01", verified: true }, unverified: false });
+    expect(items[0]).toHaveProperty("agency");
   });
 });
