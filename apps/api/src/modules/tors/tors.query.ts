@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
-import { MATCH_THRESHOLD } from "@tor-radar/shared";
+import { MATCH_RANGE } from "@tor-radar/shared";
 import type { SearchConfig } from "../../core/config.js";
 import { BadRequestError } from "../../core/errors.js";
 import { TOR_STATES, type TorState } from "../../lib/tor-state.js";
@@ -30,8 +30,9 @@ export interface SearchFilter {
   /** Inclusive `YYYY-MM-DD` bounds on `announcedAt` — the agency's date, never ingestion time. */
   from?: string;
   to?: string;
-  /** Vendor-only: keep TORs this vendor matches at least this whole percentage. */
+  /** Vendor-only: keep TORs this vendor matches within these whole percentages, inclusive. */
   minMatch?: number;
+  maxMatch?: number;
 }
 
 /**
@@ -88,6 +89,8 @@ const text = (maxChars: number) =>
  * Every parameter is a string or a list of strings. An object — the shape a Mongo
  * operator would need — fails the schema, so it never reaches a query (spec §5.6).
  */
+const matchBound = z.coerce.number().int().min(MATCH_RANGE.floor).max(MATCH_RANGE.ceiling);
+
 export function buildSearchQuerySchema(config: SearchConfig) {
   const values = z
     .union([z.string(), z.array(z.string())])
@@ -108,7 +111,8 @@ export function buildSearchQuerySchema(config: SearchConfig) {
     deadlineTo: isoDate.optional(),
     from: isoDate.optional(),
     to: isoDate.optional(),
-    minMatch: z.coerce.number().int().min(MATCH_THRESHOLD.min).max(MATCH_THRESHOLD.max).optional(),
+    minMatch: matchBound.optional(),
+    maxMatch: matchBound.optional(),
     cursor: z.string().max(200).optional(),
     pageSize: z
       .string()
@@ -137,6 +141,7 @@ export function parseSearchQuery(query: unknown, config: SearchConfig): SearchRe
       from: parsed.from,
       to: parsed.to,
       minMatch: parsed.minMatch,
+      maxMatch: parsed.maxMatch,
     },
     cursor: parsed.cursor ? decodeCursor(parsed.cursor) : null,
     pageSize: parsed.pageSize ?? config.pageSize,

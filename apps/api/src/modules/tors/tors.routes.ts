@@ -12,7 +12,7 @@ import { ProfileRepository } from "../profile/profile.repository.js";
 import { MatchingRepository } from "../matching/matching.repository.js";
 import { scoresForAccount } from "../matching/matching.scores.js";
 import { ObjectId } from "mongodb";
-import { matchPercent } from "@tor-radar/shared";
+import { MATCH_RANGE, matchPercent } from "@tor-radar/shared";
 
 export interface TorsRouterDeps {
   service: TorsService;
@@ -32,7 +32,8 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
   // its statistical-anomaly verdict (dashboard spec §6.2).
   router.get("/", async (req, res) => {
     const search = parseSearchQuery(req.query, deps.search);
-    if (!search.filter.minMatch) {
+    const { minMatch, maxMatch } = search.filter;
+    if (minMatch === undefined && maxMatch === undefined) {
       res.json(await deps.service.search(search));
       return;
     }
@@ -42,7 +43,10 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
     const matchIds = Object.entries(scores)
       // Compared as the rounded percentage the badge shows: a TOR labelled
       // "70%" must not vanish under a 70% filter because it scored 0.695.
-      .filter(([, score]) => matchPercent(score) >= search.filter.minMatch!)
+      .filter(([, score]) => {
+        const percent = matchPercent(score);
+        return percent >= (minMatch ?? MATCH_RANGE.floor) && percent <= (maxMatch ?? MATCH_RANGE.ceiling);
+      })
       .map(([id]) => new ObjectId(id));
     res.json(await deps.service.search(search, matchIds));
   });

@@ -33,17 +33,18 @@ const VENDOR = { email: "v@example.test", name: "ผู้ขาย", role: "ven
 const RESULTS = { items: [], total: 0, nextCursor: null, coverage: { lastUpdatedAt: null } };
 const FACETS = { agencies: [], categories: [], budget: null };
 
-function render(account: { email: string; name: string; role: "vendor" | "admin" } | null, minMatch: number | null = null) {
+function render(account: { email: string; name: string; role: "vendor" | "admin" } | null, minMatch: number | null = null, maxMatch: number | null = null) {
   act(() =>
     root.render(
       <ViewerProvider initialAccount={account}>
-        <SearchView filters={{ ...EMPTY_FILTERS, minMatch }} facets={FACETS} results={RESULTS} queryMaxChars={200} savedIds={[]} />
+        <SearchView filters={{ ...EMPTY_FILTERS, minMatch, maxMatch }} facets={FACETS} results={RESULTS} queryMaxChars={200} savedIds={[]} />
       </ViewerProvider>,
     ),
   );
 }
 
-const matchBox = () => container.querySelector<HTMLInputElement>('input[aria-label="คะแนนความตรงขั้นต่ำ (%)"]');
+const matchBox = () => container.querySelector<HTMLInputElement>('input[type="text"][aria-label="ความตรงขั้นต่ำ"]');
+const matchMaxBox = () => container.querySelector<HTMLInputElement>('input[type="text"][aria-label="ความตรงสูงสุด"]');
 
 function typeInto(input: HTMLInputElement, value: string) {
   act(() => input.focus());
@@ -73,6 +74,13 @@ describe("SearchView match filter", () => {
     typeInto(matchBox()!, "70");
     act(() => vi.runAllTimers());
     expect(push).toHaveBeenCalledWith("/search?minMatch=70", { scroll: false });
+  });
+
+  it("puts a typed upper bound in the URL", () => {
+    render(VENDOR);
+    typeInto(matchMaxBox()!, "85");
+    act(() => vi.runAllTimers());
+    expect(push).toHaveBeenCalledWith("/search?maxMatch=85", { scroll: false });
   });
 
   it("drops the threshold from the URL when set back to zero", () => {

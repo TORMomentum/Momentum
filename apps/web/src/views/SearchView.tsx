@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MATCH_THRESHOLD, matchPercent } from "@tor-radar/shared";
-import { MatchThreshold } from "../features/search/MatchThreshold";
+import { MATCH_RANGE, matchPercent } from "@tor-radar/shared";
 import styles from "../features/search/search.module.css";
 import {
   EMPTY_FILTERS,
@@ -153,17 +152,19 @@ export function SearchView({
     }
   }, [committedMin, committedMax]);
 
-  const committedMatch = filters.minMatch ?? MATCH_THRESHOLD.off;
-  const [draftMatch, setDraftMatch] = useState(committedMatch);
-  const lastCommittedMatch = useRef(committedMatch);
+  const committedMatchMin = filters.minMatch ?? MATCH_RANGE.floor;
+  const committedMatchMax = filters.maxMatch ?? MATCH_RANGE.ceiling;
+  const [draftMatch, setDraftMatch] = useState({ min: committedMatchMin, max: committedMatchMax });
+  const lastCommittedMatch = useRef({ min: committedMatchMin, max: committedMatchMax });
 
   useEffect(() => {
     // As with the budget: only an outside change (clear all, Back) moves it.
-    if (lastCommittedMatch.current !== committedMatch) {
-      lastCommittedMatch.current = committedMatch;
-      setDraftMatch(committedMatch);
+    const last = lastCommittedMatch.current;
+    if (last.min !== committedMatchMin || last.max !== committedMatchMax) {
+      lastCommittedMatch.current = { min: committedMatchMin, max: committedMatchMax };
+      setDraftMatch({ min: committedMatchMin, max: committedMatchMax });
     }
-  }, [committedMatch]);
+  }, [committedMatchMin, committedMatchMax]);
 
   /**
    * Pushed, not replaced: every call is a committed choice — a click, Enter, a
@@ -202,10 +203,16 @@ export function SearchView({
   }, [draftBudget]);
 
   useEffect(() => {
-    if (draftMatch === lastCommittedMatch.current) return;
+    const { min, max } = draftMatch;
+    const last = lastCommittedMatch.current;
+    if (min === last.min && max === last.max) return;
     const timer = setTimeout(() => {
-      lastCommittedMatch.current = draftMatch;
-      update({ minMatch: draftMatch === MATCH_THRESHOLD.off ? null : draftMatch });
+      lastCommittedMatch.current = { min, max };
+      // Ends of the range are no bound, as for the budget.
+      update({
+        minMatch: min <= MATCH_RANGE.floor ? null : min,
+        maxMatch: max >= MATCH_RANGE.ceiling ? null : max,
+      });
     }, BUDGET_COMMIT_DELAY_MS);
     return () => clearTimeout(timer);
     // Re-armed on the draft alone, as the budget slider is.
@@ -228,8 +235,8 @@ export function SearchView({
     lastCommittedQuery.current = "";
     lastCommittedBudget.current = { min: floor, max: ceiling };
     setDraftBudget({ min: floor, max: ceiling });
-    lastCommittedMatch.current = MATCH_THRESHOLD.off;
-    setDraftMatch(MATCH_THRESHOLD.off);
+    lastCommittedMatch.current = { min: MATCH_RANGE.floor, max: MATCH_RANGE.ceiling };
+    setDraftMatch({ min: MATCH_RANGE.floor, max: MATCH_RANGE.ceiling });
     setDraftQuery("");
     navigate(EMPTY_FILTERS);
   }
@@ -278,7 +285,18 @@ export function SearchView({
             <div className={styles.filterGroupTitle}>ตรงกับคุณ</div>
             {/* In the URL, so paging stays an API query rather than a filter
                 over one page in the browser. */}
-            <MatchThreshold value={draftMatch} onChange={setDraftMatch} />
+            <BudgetRange
+              min={draftMatch.min}
+              max={draftMatch.max}
+              floor={MATCH_RANGE.floor}
+              ceiling={MATCH_RANGE.ceiling}
+              step={MATCH_RANGE.step}
+              onChange={setDraftMatch}
+              unit="percent"
+              tone="match"
+              minLabel="ความตรงขั้นต่ำ"
+              maxLabel="ความตรงสูงสุด"
+            />
           </div>
         )}
 

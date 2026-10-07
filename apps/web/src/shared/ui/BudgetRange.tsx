@@ -14,6 +14,9 @@ import { thaiDigitsToArabic } from "../lib/format";
  * vendor screen. The two amounts can be TYPED as well as dragged: landing a
  * handle on an exact figure like ฿5,000,000 by dragging is fiddly, and a typed
  * value is what a vendor actually has in mind.
+ *
+ * Search's match filter reuses it with `unit="percent"` and the match tone, so
+ * there is one range control in the product, not two that drift apart.
  */
 export function BudgetRange({
   min,
@@ -24,6 +27,8 @@ export function BudgetRange({
   onChange,
   minLabel = "งบประมาณขั้นต่ำ",
   maxLabel = "งบประมาณสูงสุด",
+  unit = "baht",
+  tone = "blue",
 }: {
   min: number;
   max: number;
@@ -33,6 +38,9 @@ export function BudgetRange({
   onChange: (next: { min: number; max: number }) => void;
   minLabel?: string;
   maxLabel?: string;
+  unit?: Unit;
+  /** `match` uses the colour of the match-score badges the filter acts on. */
+  tone?: "blue" | "match";
 }) {
   // The SVG filter is referenced by id, so two sliders on one page must not
   // share one.
@@ -54,10 +62,11 @@ export function BudgetRange({
   const clamp = (value: number) => Math.min(Math.max(value, floor), ceiling);
 
   return (
-    <>
+    <div className={`${styles.root} ${tone === "match" ? styles.toneMatch : ""}`}>
       <div className={styles.amounts}>
         <AmountBox
           value={min}
+          unit={unit}
           label={minLabel}
           // A minimum typed above the maximum carries the maximum up with it,
           // rather than refusing the entry or quietly swapping the two.
@@ -71,6 +80,7 @@ export function BudgetRange({
         </span>
         <AmountBox
           value={max}
+          unit={unit}
           label={maxLabel}
           onCommit={(next) => {
             const value = clamp(next);
@@ -143,10 +153,10 @@ export function BudgetRange({
         />
       </div>
       <div className={styles.sliderLabels}>
-        <span>{formatBudgetShort(floor)}</span>
-        <span>{formatBudgetShort(ceiling)}</span>
+        <span>{UNITS[unit].short(floor)}</span>
+        <span>{UNITS[unit].short(ceiling)}</span>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -160,6 +170,14 @@ export function parseBaht(text: string): number | null {
 
 const BAHT = new Intl.NumberFormat("th-TH");
 
+type Unit = "baht" | "percent";
+
+/** How each unit reads: the symbol and on which side, and the end labels. */
+const UNITS: Record<Unit, { symbol: string; after: boolean; short: (value: number) => string }> = {
+  baht: { symbol: "฿", after: false, short: formatBudgetShort },
+  percent: { symbol: "%", after: true, short: (value) => `${value}%` },
+};
+
 /**
  * One typed amount. Kept as a draft while being typed and committed on Enter
  * or on leaving the box — committing every keystroke would drag the slider
@@ -168,10 +186,12 @@ const BAHT = new Intl.NumberFormat("th-TH");
  */
 function AmountBox({
   value,
+  unit,
   label,
   onCommit,
 }: {
   value: number;
+  unit: Unit;
   label: string;
   onCommit: (next: number) => void;
 }) {
@@ -186,9 +206,11 @@ function AmountBox({
 
   return (
     <label className={styles.amountBox}>
-      <span className={styles.amountCurrency} aria-hidden="true">
-        ฿
-      </span>
+      {!UNITS[unit].after && (
+        <span className={styles.amountCurrency} aria-hidden="true">
+          {UNITS[unit].symbol}
+        </span>
+      )}
       <input
         type="text"
         inputMode="numeric"
@@ -209,6 +231,11 @@ function AmountBox({
           if (event.key === "Escape") setDraft(null);
         }}
       />
+      {UNITS[unit].after && (
+        <span className={styles.amountCurrency} aria-hidden="true">
+          {UNITS[unit].symbol}
+        </span>
+      )}
     </label>
   );
 }

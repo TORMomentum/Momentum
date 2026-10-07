@@ -3,6 +3,12 @@
  * the vendor profile states its budget interest with it.
  */
 
+/* The fill, handles and focus ring take one tone, so a caller can recolour
+   the whole control (search's match filter uses the match-badge green). */
+.root { --range-tone: var(--blue); --range-ring: var(--blue-ring); }
+
+.toneMatch { --range-tone: var(--match); --range-ring: var(--match-ring); }
+
 /* ---- budget dual-range slider ---- */
 
 .sliderWrap { position: relative; height: 28px; margin: 4px 8px 2px; }
@@ -23,7 +29,7 @@
   position: absolute;
   top: 10px;
   height: 8px;
-  background: var(--blue);
+  background: var(--range-tone);
   transition: left 0.3s cubic-bezier(0.22, 1.4, 0.36, 1), right 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
 }
 
@@ -31,7 +37,7 @@
   position: absolute;
   top: 50%;
   border-radius: 50%;
-  background: var(--blue);
+  background: var(--range-tone);
   transform: translate(-50%, -50%);
   transition:
     width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -124,7 +130,7 @@
   background: var(--paper);
 }
 
-.amountBox:focus-within { border-color: var(--blue); outline: 2px solid var(--blue-ring); outline-offset: 1px; }
+.amountBox:focus-within { border-color: var(--range-tone); outline: 2px solid var(--range-ring); outline-offset: 1px; }
 
 .amountCurrency { font: 600 12px var(--data); color: var(--ink-55); }
 

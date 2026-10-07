@@ -167,18 +167,25 @@ describe("search filtered by match score", () => {
     // Inclusive, at the percentage the badge shows.
     const atLow = await request(app).get(`/api/v1/tors?minMatch=${low}`).set("x-session-id", current.sessionId);
     expect(atLow.body.items.map((item: { id: string }) => item.id).sort()).toEqual([best, lower].sort());
+
+    // An upper bound alone keeps the weaker match and drops the stronger one.
+    const below = await request(app).get(`/api/v1/tors?maxMatch=${high - 1}`).set("x-session-id", current.sessionId);
+    expect(below.body.items.map((item: { id: string }) => item.id)).toEqual([lower]);
+    expect(below.body.total).toBe(1);
   });
 
   it("refuses the filter without a session instead of quietly returning everything", async () => {
     await roadVendorWithTwoMatches();
     expect((await request(searchApp()).get("/api/v1/tors?minMatch=50")).status).toBe(401);
+    expect((await request(searchApp()).get("/api/v1/tors?maxMatch=50")).status).toBe(401);
   });
 
-  it("rejects a threshold outside whole percentages 1-100", async () => {
+  it("rejects a bound outside whole percentages 0-100", async () => {
     const app = searchApp();
     const { current } = await roadVendorWithTwoMatches();
-    for (const bad of ["0", "101", "7.5", "abc"]) {
+    for (const bad of ["-1", "101", "7.5", "abc"]) {
       expect((await request(app).get(`/api/v1/tors?minMatch=${bad}`).set("x-session-id", current.sessionId)).status).toBe(400);
+      expect((await request(app).get(`/api/v1/tors?maxMatch=${bad}`).set("x-session-id", current.sessionId)).status).toBe(400);
     }
   });
 

@@ -66,7 +66,7 @@ export class TorsService {
 
   async search(request: SearchRequest, matchIds?: ObjectId[]) {
     const { config } = this.deps;
-    const { open, minMatch: _minMatch, ...filter } = request.filter;
+    const { open, minMatch: _minMatch, maxMatch: _maxMatch, ...filter } = request.filter;
     const today = calendarDate(this.deps.now?.() ?? new Date(), config.search.timeZone);
 
     const page = await this.deps.repo.search(
