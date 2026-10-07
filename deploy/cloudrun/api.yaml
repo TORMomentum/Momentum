@@ -35,6 +35,10 @@ spec:
               value: /secrets/gcs-sa/key.json
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /secrets/vertex-sa/key.json
+            # The web service's own origin, for the accounts feature's CSRF check
+            # (Origin header must match). Set by deploy.yml once tor-radar-web exists.
+            - name: APP_ORIGIN
+              value: ${APP_ORIGIN}
             - name: MONGO_URL
               valueFrom:
                 secretKeyRef:
@@ -49,6 +53,19 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: ADMIN_API_KEYS
+                  key: latest
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: SESSION_SECRET
+                  key: latest
+            # createMailer (apps/api/src/adapters/mailer.factory.ts) throws at
+            # startup in production when this is blank — the worker never calls
+            # it, so worker.yaml doesn't carry this one.
+            - name: SMTP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: SMTP_URL
                   key: latest
           volumeMounts:
             - name: gcs-sa

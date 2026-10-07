@@ -161,7 +161,7 @@ and enable each of these three, one at a time:
 
 ### 7.3 Secret Manager (TOR-141)
 
-Six secrets the Cloud Run services read at request time; none of them belong in
+Eight secrets the Cloud Run services read at request time; none of them belong in
 `.env.example` because they're deployment-only. **Secret Manager → Create secret**, once
 per row. **The name must match the first column exactly, including case** —
 `deploy/cloudrun/*.yaml` looks up each secret by this literal name, and Secret Manager
@@ -177,21 +177,28 @@ existed, not recreating the secrets):
 | `intake-api-keys` | your comma-separated intake keys, pasted in |
 | `ADMIN_API_KEYS` | your comma-separated admin keys, pasted in |
 | `STAFF_ACCESS_SECRET` | the staff login passphrase, pasted in |
+| `SESSION_SECRET` | a random string of 32+ characters — generate one, don't reuse a short local-dev value |
+| `SMTP_URL` | a real SMTP provider's connection string (Mailtrap, SendGrid, Gmail SMTP relay with an app password, …) — `apps/api` refuses to start in production without one; no local-dev equivalent exists because Compose uses the mailpit container instead |
 | `gcs-storage-sa` | switch **Secret value** to **Upload file** → pick `secrets/gcs-storage-sa.json` |
 | `vertex-sa` | **Upload file** → pick `secrets/gcp-sa.json` |
 
-Leave replication at **Automatic** for all six, and **Create secret** each time.
+Leave replication at **Automatic** for all eight, and **Create secret** each time.
 
 **Grant access to each**, so the running service can actually read it:
 
 1. First find your project's **number** (not its id) — Console home page, the "Project
    info" card, or **IAM & Admin → Settings**
-2. Open each of the six secrets → **Permissions** tab → **Grant access**
+2. Open each of the eight secrets → **Permissions** tab → **Grant access**
 3. New principals: `<project-number>-compute@developer.gserviceaccount.com`
 4. Role: **Secret Manager Secret Accessor** → **Save**
-5. Repeat for all six — `api` and `worker` read all six; `web` only ever reads
-   `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET`, but granting access on the rest doesn't
-   hurt, since nothing reads a secret it was never configured to ask for.
+5. Repeat for all eight — `api` reads all eight; `worker` reads everything except
+   `SMTP_URL` (it never sends mail); `web` only ever reads `ADMIN_API_KEYS` and
+   `STAFF_ACCESS_SECRET`. Granting access on ones a service never asked for doesn't
+   hurt, so it's simpler to just grant all eight everywhere than track the difference.
+
+`APP_ORIGIN` is **not** a secret — it isn't sensitive, and `deploy.yml` fills it in itself
+from `tor-radar-web`'s own Cloud Run URL once that service exists (§7.5). Nothing to create
+here for it.
 
 ### 7.4 GitHub repository configuration (TOR-142)
 
@@ -215,8 +222,11 @@ Repo → **Settings → Secrets and variables → Actions**.
 ### 7.5 First deploy
 
 Actions tab → **Deploy to Cloud Run** → **Run workflow**, type `deploy` to confirm. It
-builds and pushes both images, then deploys api, worker, and web in that order (web needs
-api's URL for `API_BASE_URL`, so api goes first — `.github/workflows/deploy.yml`).
+builds and pushes both images, then deploys in three passes because `web` and `api` each
+need the other's URL: `web` first with a placeholder `API_BASE_URL` (just to make the
+service exist and get a real URL), then `api` and `worker` with `APP_ORIGIN` set to that
+URL, then `web` again with the real `API_BASE_URL` now that `api` exists
+(`.github/workflows/deploy.yml`).
 
 Every service deploys with `--no-allow-unauthenticated` — nothing is public yet (that
 switch is a later sprint's decision). After the first deploy, grant the reviewers who need
