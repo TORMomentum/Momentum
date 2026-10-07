@@ -118,7 +118,19 @@ Keeping both in the US is the simplest choice for Phase 1.
 The code side — the three `deploy/cloudrun/*.yaml` service definitions and
 `.github/workflows/deploy.yml` — is already in the repo (TOR-140, TOR-142). What's below
 is the console/CLI setup those files assume, in the order a first deploy needs it.
-`${PROJECT_ID}` below is the same project id from §1.
+
+Every `gcloud` command in this section reads `$PROJECT_ID` and `$REGION` as **shell
+variables**, not something `gcloud` fills in — set them once, in the same terminal
+session you'll run every command below in:
+
+```bash
+export PROJECT_ID=<your project id from §1, e.g. tor-radar-bkk-4xxxxx>
+export REGION=asia-southeast1
+gcloud config set project "$PROJECT_ID"
+```
+
+If a command answers `The project property is set to the empty string`, this step was
+skipped or you opened a new terminal since — `$PROJECT_ID` doesn't persist across shells.
 
 ### 7.1 Enable APIs (TOR-138)
 
