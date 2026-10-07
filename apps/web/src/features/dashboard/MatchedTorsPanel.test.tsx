@@ -50,6 +50,15 @@ describe("MatchedTorsPanel", () => {
     expect(container.querySelector('a[href="/tors/a"]')).not.toBeNull();
   });
 
+  it("shows the budget, and the days left to bid, beside each match", () => {
+    act(() => root.render(<MatchedTorsPanel matches={{ items: [match("a", 0.72)], reason: null }} />));
+    expect(container.textContent).toContain("1,000,000");
+    expect(container.textContent).toMatch(/เหลืออีก \d+ วัน/);
+    // Only the kind-of-work reason is highlighted; budget stays a supporting line.
+    const highlighted = [...container.querySelectorAll("li li")].filter((li) => li.className);
+    expect(highlighted.map((li) => li.textContent)).toEqual(["ตรงกับหมวดหมู่งานที่คุณเลือก"]);
+  });
+
   it("shows at most five and says how many more there are", () => {
     const items = Array.from({ length: 8 }, (_, i) => match(String(i), 0.9 - i * 0.05));
     act(() => root.render(<MatchedTorsPanel matches={{ items, reason: null }} />));

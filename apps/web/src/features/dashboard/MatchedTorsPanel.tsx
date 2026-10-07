@@ -1,6 +1,7 @@
 import { matchPercent } from "@tor-radar/shared";
 import Link from "next/link";
-import type { OwnMatches } from "../../shared/api/matches.api";
+import type { MatchRow, OwnMatches } from "../../shared/api/matches.api";
+import { DEADLINE_SOON_DAYS, daysLeftLabel, daysUntil, formatBaht } from "../../shared/lib/format";
 import styles from "./matched-tors.module.css";
 
 /** Enough to act on at a glance; the rest are a search away. */
@@ -8,6 +9,11 @@ const SHOWN = 5;
 
 /** Each match carries several reasons; two say why without crowding the row. */
 const REASONS_SHOWN = 2;
+
+/** The reason that says what kind of work it is — the one a vendor checks first. */
+function isWorkReason(code: string): boolean {
+  return code.startsWith("category") || code === "free-text";
+}
 
 /**
  * The vendor's best matches, at the top of the dashboard they land on after
@@ -52,10 +58,13 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
                 </Link>
                 <ul className={styles.reasons}>
                   {row.reasons.slice(0, REASONS_SHOWN).map((reason) => (
-                    <li key={reason.code}>{reason.th}</li>
+                    <li key={reason.code} className={isWorkReason(reason.code) ? styles.reasonWork : undefined}>
+                      {reason.th}
+                    </li>
                   ))}
                 </ul>
               </div>
+              <RowSide row={row} />
             </li>
           ))}
         </ol>
@@ -65,5 +74,24 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
         <p className={styles.more}>และอีก {matches.items.length - SHOWN} รายการที่ตรงกับคุณ — ดูได้ในหน้าค้นหา</p>
       )}
     </section>
+  );
+}
+
+/** Budget and time left: the two facts that decide whether to open the TOR. */
+function RowSide({ row }: { row: MatchRow }) {
+  const days = daysUntil(row.deadline.value);
+  const left = daysLeftLabel(days);
+  return (
+    <div className={styles.side}>
+      <div className={styles.budget} title={row.budget.verified ? undefined : "ค่าที่สกัดยังไม่ได้รับการยืนยัน"}>
+        {typeof row.budget.value === "number" ? formatBaht(row.budget.value) : row.budget.raw || "ไม่ระบุงบประมาณ"}
+        {row.budget.raw && !row.budget.verified && "*"}
+      </div>
+      {left ? (
+        <div className={`${styles.days} ${days !== null && days <= DEADLINE_SOON_DAYS ? styles.daysSoon : ""}`}>{left}</div>
+      ) : (
+        <div className={styles.waiting}>รอประกาศเชิญชวน</div>
+      )}
+    </div>
   );
 }
