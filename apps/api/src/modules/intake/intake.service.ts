@@ -1,4 +1,4 @@
-import type { DocumentType, SourceProject, TorFields } from "@tor-radar/shared";
+import type { DocumentType, SourceProject, StoredAnnex, TorFields } from "@tor-radar/shared";
 import { sha256 } from "../../lib/hash.js";
 import { storageKeyFor } from "../../lib/storage-key.js";
 import { detectMimeType } from "../../lib/file-type.js";
@@ -23,6 +23,11 @@ export interface SubmitSource {
   knownFields?: Partial<TorFields>;
   /** What the source says this document is and when it published it. */
   context?: SourceContext;
+  /**
+   * The document's other files — a TOR's annexes and bills of quantities — stored as originals and
+   * recorded on it, so extraction reads them together. Never records of their own.
+   */
+  annexes?: Array<{ bytes: Buffer; filename?: string }>;
 }
 
 /**
@@ -35,6 +40,8 @@ export interface SourceContext {
   documentType?: DocumentType;
   /** The source's publication date, as a calendar day. Extraction never overwrites it. */
   announcedAt?: Date;
+  /** Stored annexes; set by submit from `SubmitSource.annexes`. */
+  annexes?: StoredAnnex[];
 }
 
 export interface SubmitResult {
@@ -66,6 +73,23 @@ export class IntakeService {
    * exist. The reconciler in Task 11 covers the remaining gap, where the record
    * lands but the enqueue does not.
    */
+  private async storeAnnexes(annexes: Array<{ bytes: Buffer; filename?: string }>): Promise<StoredAnnex[]> {
+    const stored: StoredAnnex[] = [];
+    for (const annex of annexes) {
+      if (annex.bytes.byteLength > this.limits.maxUploadBytes) continue;
+      const contentType = detectMimeType(annex.bytes);
+      if (!contentType || !this.limits.allowedMimeTypes.includes(contentType)) continue;
+      const object = await this.storage.putIfAbsent(
+        storageKeyFor(sha256(annex.bytes), contentType, new Date()),
+        annex.bytes,
+        contentType,
+        { originalFilename: annex.filename, route: "url" },
+      );
+      stored.push({ key: object.key, contentType, bytes: object.bytes, ...(annex.filename ? { filename: annex.filename } : {}) });
+    }
+    return stored;
+  }
+
   async submit(bytes: Buffer, source: SubmitSource): Promise<SubmitResult> {
     if (bytes.byteLength > this.limits.maxUploadBytes) {
       throw new PayloadTooLargeError("Document exceeds the maximum accepted size");
@@ -79,6 +103,10 @@ export class IntakeService {
     }
 
     const contentHash = sha256(bytes);
+    // Annexes are originals too: same type check, same size cap, same immutable content-addressed
+    // storage. One that is not an accepted type, or too big, is left out — not the whole document.
+    const annexes = await this.storeAnnexes(source.annexes ?? []);
+    if (annexes.length > 0) source = { ...source, context: { ...source.context, annexes } };
     const sourceRef: SourceRefInput = {
       route: source.route,
       url: source.url,

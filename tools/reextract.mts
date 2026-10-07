@@ -4,6 +4,13 @@
  *   npx tsx tools/reextract.mts --implausible-deadline   invitations whose deadline was read as before
  *                                                        their own announcement (a scan's ๙ read as ๕)
  *   npx tsx tools/reextract.mts --project 69099075091    every document of these e-GP projects
+ *   npx tsx tools/reextract.mts --with-annexes           published TORs that have annexes, so the model reads
+ *                                                        the TOR and its annexes together (checklist C3)
+ *   npx tsx tools/reextract.mts --missing-scope-items    published TORs extracted before the scope was
+ *                                                        located and counted (checklist C3)
+ *   npx tsx tools/reextract.mts --unverified-category    published TORs whose category is not verified,
+ *                                                        so the model picks again from the closed list
+ *                                                        (packages/shared/src/categories.ts)
  *
  * Add --dry-run to list what would be queued without changing anything.
  *
@@ -37,8 +44,33 @@ if (args.includes("--implausible-deadline")) {
 } else if (projects.length > 0) {
   filter = { "sourceProject.projectNumber": { $in: projects }, "pipeline.state": { $ne: "queued" } };
   reason = "re-queued: requested for re-extraction";
+} else if (args.includes("--with-annexes")) {
+  filter = {
+    "pipeline.state": "published",
+    documentType: { $ne: "invitation" },
+    duplicateOf: null,
+    "annexes.0": { $exists: true },
+  };
+  reason = "re-queued: read with its annexes (checklist C3)";
+} else if (args.includes("--missing-scope-items")) {
+  filter = {
+    "pipeline.state": "published",
+    documentType: { $ne: "invitation" },
+    duplicateOf: null,
+    // Records from before C3 located the scope have a count but no location; C3 judges the location.
+    $or: [{ "fields.scopeItems": { $exists: false } }, { "fields.scopeLocation": { $exists: false } }],
+  };
+  reason = "re-queued: locate the scope (checklist C3)";
+} else if (args.includes("--unverified-category")) {
+  filter = {
+    "pipeline.state": "published",
+    documentType: { $ne: "invitation" },
+    duplicateOf: null,
+    "fields.category.verified": false,
+  };
+  reason = "re-queued: category to be chosen from the closed list";
 } else {
-  console.error("Choose one: --implausible-deadline, or --project <number...>  (optionally --dry-run)");
+  console.error("Choose one: --implausible-deadline, --with-annexes, --missing-scope-items, --unverified-category, or --project <number...>  (optionally --dry-run)");
   process.exit(1);
 }
 

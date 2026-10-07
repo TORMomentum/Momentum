@@ -1,3 +1,4 @@
+import { TOR_CATEGORIES, isTorCategory } from "@tor-radar/shared";
 import type { Queue } from "../../ports/queue.port.js";
 import { BadRequestError } from "../../core/errors.js";
 import { extensionFor } from "../../lib/content-disposition.js";
@@ -28,6 +29,8 @@ export interface QueueView {
   items: QueueEntry[];
   /** Unverified records that never tripped a check, so a reviewer knows the queue is not everything. */
   unverifiedNotQueued: number;
+  /** TORs whose category or qualifications await a person — the fields view's size. */
+  fieldsToConfirm: number;
 }
 
 /**
@@ -41,12 +44,14 @@ export interface QueueView {
 export class AdminService {
   constructor(private readonly deps: AdminDeps) {}
 
-  async queue(limit: number, reason?: string): Promise<QueueView> {
-    const [items, unverifiedNotQueued] = await Promise.all([
-      this.deps.repo.listQueue(limit, reason),
+  /** `view: "fields"` lists TORs with unverified category or qualifications instead of low records. */
+  async queue(limit: number, reason?: string, view: "confidence" | "fields" = "confidence"): Promise<QueueView> {
+    const [items, unverifiedNotQueued, fieldsToConfirm] = await Promise.all([
+      view === "fields" ? this.deps.repo.listFieldsToConfirm(limit) : this.deps.repo.listQueue(limit, reason),
       this.deps.repo.countUnverifiedNotQueued(),
+      this.deps.repo.countFieldsToConfirm(),
     ]);
-    return { items, unverifiedNotQueued };
+    return { items, unverifiedNotQueued, fieldsToConfirm };
   }
 
   /**
@@ -70,6 +75,14 @@ export class AdminService {
       if (!field) continue;
       const empty = field.value === null || field.value === undefined || field.raw.trim() === "";
       if (empty || field.confidence < this.deps.tLow) flags.add(name);
+    }
+
+    // A record that never failed a check — opened from the fields view — has only its unverified
+    // category and qualifications left for a person; those are what to look at.
+    if (record.reviewReasons.length === 0) {
+      for (const name of ["category", "qualifications"] as const) {
+        if (record.fields[name] && !record.fields[name]?.verified) flags.add(name);
+      }
     }
 
     // A field a reviewer has already corrected is settled, whatever the
@@ -109,6 +122,10 @@ export class AdminService {
     for (const edit of edits) {
       if (edit.field === "budget" && parseBudget(edit.value, this.deps.budgetMaxThb) === null) {
         throw new BadRequestError("งบประมาณต้องเป็นจำนวนเงินที่มากกว่าศูนย์และไม่เกินขอบเขตที่กำหนด");
+      }
+      // The closed list keeps search facets and the anomaly rule's peer groups whole.
+      if (edit.field === "category" && !isTorCategory(edit.value.trim())) {
+        throw new BadRequestError(`หมวดหมู่ต้องเป็นหนึ่งใน: ${TOR_CATEGORIES.join(", ")}`);
       }
     }
   }

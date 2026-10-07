@@ -48,6 +48,8 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
       budgetMinThb: config.budgetMinThb,
       budgetMaxThb: config.budgetMaxThb,
       timezone: config.stats.timezone,
+      maxAnnexes: config.extraction.maxAnnexes,
+      maxInputBytes: config.extraction.maxInputBytes,
     },
   });
   return service.run;

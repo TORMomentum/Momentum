@@ -87,6 +87,10 @@ const schema = z.object({
   GOOGLE_CLOUD_PROJECT: blankAsAbsent(z.string().min(1)),
   GOOGLE_APPLICATION_CREDENTIALS: blankAsAbsent(z.string().min(1)),
   EXTRACT_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+  // A TOR's annexes are read with it in one inline request. Vertex caps an inline request at 20 MB and
+  // base64 adds a third, so the raw files together stay under 14 MB; past the cap annexes are left out.
+  EXTRACT_MAX_ANNEXES: z.coerce.number().int().nonnegative().default(4),
+  EXTRACT_MAX_INPUT_BYTES: z.coerce.number().int().positive().default(14_000_000),
 
   // Confidence thresholds — measured, not chosen (O1 closed; docs/corpus/BENCHMARK.md).
   T_LOW: z.coerce.number().min(0).max(1).default(0.8),
@@ -96,6 +100,7 @@ const schema = z.object({
   // Budget plausibility bounds for the §4.2.1 sanity check.
   BUDGET_MIN_THB: z.coerce.number().positive().default(10_000),
   BUDGET_MAX_THB: z.coerce.number().positive().default(100_000_000_000),
+
 
   // Statistics (Dashboard anomaly rule). ANOMALY_METHOD remains open value O4.
   PEER_GROUP_WINDOW_MONTHS: z.coerce.number().int().positive().default(12),
@@ -196,6 +201,7 @@ export interface Config {
     credentialsPath?: string;
     timeoutMs: number;
   };
+  extraction: { maxAnnexes: number; maxInputBytes: number };
   tLow: number;
   tHigh: number;
   thresholdsVersion: string;
@@ -296,6 +302,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       credentialsPath: parsed.GOOGLE_APPLICATION_CREDENTIALS,
       timeoutMs: parsed.EXTRACT_TIMEOUT_MS,
     },
+    extraction: { maxAnnexes: parsed.EXTRACT_MAX_ANNEXES, maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES },
     tLow: parsed.T_LOW,
     tHigh: parsed.T_HIGH,
     thresholdsVersion: parsed.THRESHOLDS_VERSION,

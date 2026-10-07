@@ -94,6 +94,47 @@ describe("AdminReviewView confirmations", () => {
     container.remove();
   });
 
+  it("lets a reviewer switch the viewer to the invitation a TOR's deadline came from", async () => {
+    const record = makeRecord(false);
+    record.fields.deadline = { raw: "๘ ตุลาคม ๒๕๖๙", value: "2026-10-08", confidence: 0.97, verified: false, fromDocument: "inv-1" };
+    await act(async () => {
+      root.render(<AdminReviewView queue={[record]} unverifiedNotQueued={0} record={record} documentHref="/admin/tors/tor-1/document" offline={null} />);
+    });
+
+    const frame = () => container.querySelector("iframe")?.getAttribute("src");
+    expect(frame()).toBe("/admin/tors/tor-1/document?disposition=inline");
+
+    await act(async () => button(container, "ประกาศเชิญชวน").click());
+    expect(frame()).toBe("/admin/tors/inv-1/document?disposition=inline");
+
+    await act(async () => button(container, "TOR").click());
+    expect(frame()).toBe("/admin/tors/tor-1/document?disposition=inline");
+  });
+
+  it("opens a record linked by id even when its list is empty, so any TOR can be reviewed", async () => {
+    const record = makeRecord(false);
+    await act(async () => {
+      root.render(
+        <AdminReviewView queue={[]} unverifiedNotQueued={0} fieldsToConfirm={0} record={record} documentHref={null} offline={null} />,
+      );
+    });
+
+    expect(container.textContent).not.toContain("ไม่มีเอกสารรอตรวจสอบ");
+    expect(container.textContent).toContain("ฟิลด์ที่สกัดได้");
+  });
+
+  it("offers the fields-to-confirm list beside the confidence queue, with its size", async () => {
+    await act(async () => {
+      root.render(
+        <AdminReviewView queue={[]} unverifiedNotQueued={0} fieldsToConfirm={91} view="fields" record={null} documentHref={null} offline={null} />,
+      );
+    });
+
+    expect(container.textContent).toContain("ความเชื่อมั่นต่ำ");
+    expect(container.textContent).toContain("รอยืนยันฟิลด์ · 91");
+    expect(container.querySelector('a[href="/admin/review?view=fields"]')?.getAttribute("aria-current")).toBe("page");
+  });
+
   async function render(verified: boolean) {
     const record = makeRecord(verified);
     await act(async () => {

@@ -1,4 +1,5 @@
 import { GoogleAuth, type GoogleAuth as GoogleAuthType } from "google-auth-library";
+import { TOR_CATEGORIES, normalizeCategory } from "@tor-radar/shared";
 import { DocumentUnreadableError, ExtractionError } from "../core/errors.js";
 import type { Ai, ExtractionInput, RawExtraction, RawField, TorStatus } from "../ports/ai.port.js";
 
@@ -21,7 +22,7 @@ function vertexHost(location: string): string {
 // snake_case ones the TOR-18 benchmark validated; the mapping to the camelCase
 // port happens in parseExtraction.
 const MODEL_KEYS = [
-  "title", "agency", "budget_thb", "category", "scope_summary", "required_qualifications",
+  "title", "agency", "budget_thb", "category", "scope_summary", "scope_location", "scope_item_count", "required_qualifications",
   "submission_deadline", "contact", "status", "announcement_date", "procurement_method", "reference_no",
 ] as const;
 
@@ -42,8 +43,11 @@ const RESPONSE_SCHEMA = {
     title: field({ type: "string", nullable: true }),
     agency: field({ type: "string", nullable: true }),
     budget_thb: field({ type: "number", nullable: true }),
-    category: field({ type: "string", nullable: true }),
+    // The closed category list (packages/shared/src/categories.ts): the model chooses, never invents.
+    category: field({ type: "string", enum: [...TOR_CATEGORIES], nullable: true }),
     scope_summary: field({ type: "string", nullable: true }),
+    scope_location: field({ type: "string", enum: ["in_documents", "in_annex_not_provided", "none"], nullable: true }),
+    scope_item_count: field({ type: "integer", nullable: true }),
     required_qualifications: field({ type: "array", items: { type: "string" } }),
     submission_deadline: field({ type: "string", nullable: true }),
     contact: field({ type: "string", nullable: true }),
@@ -64,7 +68,9 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
 - evidence: ข้อความสั้น ๆ จากเอกสารที่ยืนยันค่านั้น หรืออธิบายว่าทำไมไม่พบ
 กติกาเฉพาะ field:
 - budget_thb: ห้ามใช้เลขหลักประกันการเสนอราคาแทนวงเงิน/ราคากลาง
-- category: คำสั้น ๆ เช่น งานก่อสร้าง-ทาง, งานก่อสร้าง-ชลประทาน, งานก่อสร้าง-อาคาร, จ้างเหมาบริการ, ซื้อครุภัณฑ์, จ้างที่ปรึกษา
+- category: เลือกหนึ่งหมวดจากรายการนี้เท่านั้น ห้ามตั้งชื่อใหม่ — ${TOR_CATEGORIES.join(", ")} จัดตามสิ่งที่ซื้อหรือจ้าง: ยา เวชภัณฑ์ เครื่องมือแพทย์ เครื่องมือห้องปฏิบัติการ = ซื้อครุภัณฑ์การแพทย์และวิทยาศาสตร์, คอมพิวเตอร์ ซอฟต์แวร์ เครือข่าย = ซื้อคอมพิวเตอร์และอุปกรณ์ไอที, ทำความสะอาด รักษาความปลอดภัย ดูแลต้นไม้ เก็บขยะ = จ้างทำความสะอาดและรักษาความปลอดภัย, ออกแบบ ศึกษา ควบคุมงาน = จ้างที่ปรึกษาและออกแบบ, ก่อสร้างหรือปรับปรุงอาคาร ทาง สะพาน ชลประทาน ประปา ให้เลือกหมวดงานก่อสร้างตามสิ่งที่สร้าง raw ให้ยกข้อความในเอกสารที่ใช้ตัดสิน
+- scope_location: ขอบเขตงานหรือรายละเอียดคุณลักษณะเฉพาะอยู่ที่ไหน in_documents = อยู่ในเอกสารที่ได้รับ (ไฟล์หลักหรือเอกสารแนบที่แนบมา), in_annex_not_provided = เอกสารอ้างถึงเอกสารแนบที่ไม่ได้แนบมาให้, none = ไม่มีขอบเขตงานหรือรายละเอียดคุณลักษณะเฉพาะเลย evidence ให้ระบุว่าพบที่เอกสารใด
+- scope_item_count: จำนวนข้อกำหนดที่เป็นรูปธรรมในขอบเขตงานทั้งหมดจากเอกสารที่ได้รับ นับรายการที่ระบุสิ่งที่ต้องส่งมอบหรือคุณลักษณะที่ต้องมี ไม่ว่าอยู่ในรูปแบบใด — ข้อย่อยที่มีเลขกำกับ แถวในตารางคุณลักษณะเฉพาะ รายการในบัญชีแสดงปริมาณงาน (BOQ) หรือคุณลักษณะของสินค้าแต่ละรายการ ถ้าขอบเขตงานยาวมากให้ประมาณได้และลด confidence ไม่นับหัวข้ออื่นของเอกสาร เช่น คุณสมบัติผู้ยื่นข้อเสนอ หลักประกัน หรือการจ่ายเงิน ถ้า scope_location ไม่ใช่ in_documents value = null
 - required_qualifications: เฉพาะคุณสมบัติที่ใช้แยกแยะผู้เสนอราคา (ชั้นทะเบียนผู้รับเหมา, มอก., วิชาชีพวิศวกรรม ฯลฯ) ไม่เอา boilerplate (ล้มละลาย, ทิ้งงาน, ลงทะเบียน e-GP)
 - status: announced | closed | awarded | cancelled (ประกาศยกเลิก = cancelled)
 - วันที่ทุก field: ในเอกสารสแกน เลขไทย ๙ กับ ๕ (และ ๖ กับ ๘) มักดูคล้ายกัน ให้อ่านปี พ.ศ. โดยเทียบกับวันที่อื่นในเอกสารเดียวกัน เช่น "ประกาศ ณ วันที่" หรือ "ลงวันที่" ปีย่อสองหลัก (เช่น ก.ย. ๖๙) หมายถึง พ.ศ. ๒๕๖๙
@@ -75,17 +81,35 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
  * The instruction sent with the document. The source's publish date goes in as
  * a check on date reading only; the prompt says it is not a value to copy.
  */
-export function userPrompt(input: Pick<ExtractionInput, "sourcePublishedOn">): string {
-  if (!input.sourcePublishedOn) return "สกัดข้อมูลตาม schema";
-  return [
-    "สกัดข้อมูลตาม schema",
-    `ระบบต้นทางระบุว่าเอกสารนี้เผยแพร่วันที่ ${input.sourcePublishedOn} (ค.ศ.) ใช้เพื่อตรวจการอ่านปีในเอกสารเท่านั้น ห้ามใช้เป็นค่าของ field ใด`,
-  ].join("\n");
+export function userPrompt(input: Pick<ExtractionInput, "sourcePublishedOn" | "attachments" | "annexesLeftOut">): string {
+  const lines = ["สกัดข้อมูลตาม schema"];
+  if (input.attachments && input.attachments.length > 0) {
+    lines.push(
+      `ไฟล์แรกคือเอกสารหลัก ไฟล์ที่ตามมาคือเอกสารแนบของเอกสารเดียวกัน (${input.attachments.map((a) => a.name).join(", ")}) อ่านรวมกันเป็น TOR ฉบับเดียว`,
+    );
+  }
+  if (input.annexesLeftOut && input.annexesLeftOut > 0) {
+    lines.push(`ยังมีเอกสารแนบอีก ${input.annexesLeftOut} ไฟล์ที่ไม่ได้แนบมา ถ้าขอบเขตงานอยู่ในไฟล์เหล่านั้นให้ตอบ scope_location = in_annex_not_provided`);
+  }
+  if (input.sourcePublishedOn) {
+    lines.push(`ระบบต้นทางระบุว่าเอกสารนี้เผยแพร่วันที่ ${input.sourcePublishedOn} (ค.ศ.) ใช้เพื่อตรวจการอ่านปีในเอกสารเท่านั้น ห้ามใช้เป็นค่าของ field ใด`);
+  }
+  return lines.join("\n");
 }
 
 type ModelField = { raw?: unknown; value?: unknown; confidence?: unknown; evidence?: unknown };
 
 const asString = (v: unknown): string => (typeof v === "string" ? v : "");
+const SCOPE_LOCATIONS = ["in_documents", "in_annex_not_provided", "none"] as const;
+const asScopeLocation = (v: unknown): (typeof SCOPE_LOCATIONS)[number] | null =>
+  typeof v === "string" && (SCOPE_LOCATIONS as readonly string[]).includes(v) ? (v as (typeof SCOPE_LOCATIONS)[number]) : null;
+
+/** A non-negative whole number, as a count must be, or null. */
+const asCountOrNull = (v: unknown): number | null => {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim()) : NaN;
+  return Number.isInteger(n) && n >= 0 ? n : null;
+};
+
 const asNumberOrNull = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 const asStringOrNull = (v: unknown): string | null =>
@@ -126,8 +150,11 @@ export function parseExtraction(modelJson: unknown, modelVersion: string): RawEx
     title: toField(m.title, asStringOrNull(m.title?.value)),
     agency: toField(m.agency, asStringOrNull(m.agency?.value)),
     budget: toField(m.budget_thb, asNumberOrNull(m.budget_thb?.value)),
-    category: toField(m.category, asStringOrNull(m.category?.value)),
+    // Defensive: a value off the list (an older model, a schema the endpoint ignored) is mapped onto it.
+    category: toField(m.category, normalizeCategory(asStringOrNull(m.category?.value))),
     scopeSummary: toField(m.scope_summary, asStringOrNull(m.scope_summary?.value)),
+    scopeItems: toField(m.scope_item_count, asCountOrNull(m.scope_item_count?.value)),
+    scopeLocation: toField(m.scope_location, asScopeLocation(m.scope_location?.value)),
     qualifications: toField(m.required_qualifications, quals),
     deadline: toField(m.submission_deadline, asStringOrNull(m.submission_deadline?.value)),
     contact: toField(m.contact, asStringOrNull(m.contact?.value)),
@@ -184,6 +211,11 @@ export class VertexAi implements Ai {
           role: "user",
           parts: [
             { inlineData: { mimeType: input.contentType, data: input.bytes.toString("base64") } },
+            // Each annex labelled, so the model can say which file a value came from.
+            ...(input.attachments ?? []).flatMap((annex) => [
+              { text: `เอกสารแนบ: ${annex.name}` },
+              { inlineData: { mimeType: annex.contentType, data: annex.bytes.toString("base64") } },
+            ]),
             { text: userPrompt(input) },
           ],
         },
