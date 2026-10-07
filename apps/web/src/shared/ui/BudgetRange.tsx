@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import styles from "./budget-range.module.css";
 import { formatBudgetShort } from "../../data/tor-samples";
 import { thaiDigitsToArabic } from "../lib/format";
@@ -63,7 +63,9 @@ export function BudgetRange({
 
   return (
     <div className={`${styles.root} ${tone === "match" ? styles.toneMatch : ""}`}>
-      <div className={styles.amounts}>
+      {/* The widest amount this range can hold sizes the boxes, so a ceiling
+          like ฿190,000,000 wraps them onto two lines instead of clipping. */}
+      <div className={styles.amounts} style={{ "--amount-chars": BAHT.format(ceiling).length } as CSSProperties}>
         <AmountBox
           value={min}
           unit={unit}
@@ -75,18 +77,22 @@ export function BudgetRange({
             onChange({ min: value, max: Math.max(max, value) });
           }}
         />
-        <span className={styles.amountDash} aria-hidden="true">
-          —
+        {/* The dash travels with the upper box, so a wrapped pair still
+            reads as a range: "฿0" over "— ฿190,000,000". */}
+        <span className={styles.amountUpper}>
+          <span className={styles.amountDash} aria-hidden="true">
+            —
+          </span>
+          <AmountBox
+            value={max}
+            unit={unit}
+            label={maxLabel}
+            onCommit={(next) => {
+              const value = clamp(next);
+              onChange({ min: Math.min(min, value), max: value });
+            }}
+          />
         </span>
-        <AmountBox
-          value={max}
-          unit={unit}
-          label={maxLabel}
-          onCommit={(next) => {
-            const value = clamp(next);
-            onChange({ min: Math.min(min, value), max: value });
-          }}
-        />
       </div>
       <div className={styles.sliderWrap}>
         <svg width="0" height="0" style={{ position: "absolute" }}>

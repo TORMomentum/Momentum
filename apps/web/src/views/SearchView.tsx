@@ -297,25 +297,6 @@ export function SearchView({
           </button>
         </div>
 
-        {vendorSignedIn && (
-          <FilterSection title="ตรงกับคุณ" active={filters.minMatch !== null || filters.maxMatch !== null ? 1 : 0}>
-            {/* In the URL, so paging stays an API query rather than a filter
-                over one page in the browser. */}
-            <BudgetRange
-              min={draftMatch.min}
-              max={draftMatch.max}
-              floor={MATCH_RANGE.floor}
-              ceiling={MATCH_RANGE.ceiling}
-              step={MATCH_RANGE.step}
-              onChange={setDraftMatch}
-              unit="percent"
-              tone="match"
-              minLabel="ความตรงขั้นต่ำ"
-              maxLabel="ความตรงสูงสุด"
-            />
-          </FilterSection>
-        )}
-
         <FilterSection title="สถานะ" active={filters.state ? 1 : 0}>
           {/* The same five states the dashboard counts, so a reader who clicked
               a chip there finds the same words here. */}
@@ -337,6 +318,25 @@ export function SearchView({
             })}
           </div>
         </FilterSection>
+
+        {vendorSignedIn && (
+          <FilterSection title="ตรงกับคุณ" active={filters.minMatch !== null || filters.maxMatch !== null ? 1 : 0}>
+            {/* In the URL, so paging stays an API query rather than a filter
+                over one page in the browser. */}
+            <BudgetRange
+              min={draftMatch.min}
+              max={draftMatch.max}
+              floor={MATCH_RANGE.floor}
+              ceiling={MATCH_RANGE.ceiling}
+              step={MATCH_RANGE.step}
+              onChange={setDraftMatch}
+              unit="percent"
+              tone="match"
+              minLabel="ความตรงขั้นต่ำ"
+              maxLabel="ความตรงสูงสุด"
+            />
+          </FilterSection>
+        )}
 
         {budgetFacet && ceiling > floor && (
           <FilterSection title="งบประมาณ (฿)" active={filters.minBudget !== null || filters.maxBudget !== null ? 1 : 0}>

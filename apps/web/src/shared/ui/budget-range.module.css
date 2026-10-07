@@ -116,11 +116,15 @@
 
 /* The two amounts, typed. Laid out as a range — low, a dash, high — so they
    read as the ends of the slider beneath them. */
-.amounts { display: flex; align-items: center; gap: 8px; margin: 0 8px 10px; }
+.amounts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 8px 10px; }
 
+/* The box's font is the input's, so `ch` measures the digits it will hold:
+   the widest amount, plus 2ch for the symbol and its gap, plus 22px for the
+   padding (2 x 10px) and the border (2 x 1px) below. */
 .amountBox {
-  flex: 1 1 0;
+  flex: 1 1 calc((var(--amount-chars) + 2) * 1ch + 22px);
   min-width: 0;
+  font: 600 12.5px var(--data);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -140,9 +144,22 @@
   border: 0;
   padding: 0;
   background: transparent;
-  font: 600 12.5px var(--data);
+  font: inherit;
   color: var(--ink);
   outline: none;
 }
 
 .amountDash { color: var(--ink-55); }
+
+/* Sized like the box it holds, plus the dash's width and gap; same
+   derivation as .amountBox. */
+.amountUpper {
+  flex: 1 1 calc((var(--amount-chars) + 4) * 1ch + 22px);
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 12.5px var(--data);
+}
+
+.amountUpper .amountBox { flex: 1 1 0; }
