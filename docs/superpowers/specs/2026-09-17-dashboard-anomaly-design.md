@@ -368,7 +368,29 @@ The page of results is fetched first, then one query fetches bounds for the dist
 page (`$in`, at most the page size), then each row is mapped through §4.1. No `$lookup` per row, and
 no expression comparison across the collection.
 
-### 6.3 Counts under filters (TOR-66)
+### 6.3 Counts under filters (TOR-66) — revised 2026-10-06
+
+**Superseded in practice.** The rule below put the totals on the rollup cache
+while the rest of the page read records, and when the worker fell behind the two
+disagreed in public: the headline read 18 TORs and ฿172,150,000 while the state
+breakdown under it read 19 and ฿175,350,000. Every figure on the dashboard now
+derives from the records the page already reads for the plot, which the cache was
+never saving anyway. `tor_rollups` and its worker remain for a screen that reports
+aggregates WITHOUT per-record points.
+
+Two rules replace it:
+
+1. **One source per screen.** A page may cache or it may read records; it may not
+   show figures from both.
+2. **A breakdown ignores the filter its own control sets**, and honours the rest.
+   That is what lets a reader move from one agency, month or state to another
+   without clearing the filter first — the control that set a value still shows
+   the alternatives. A chosen value that the other filters empty stays listed at
+   zero rather than vanishing.
+
+The original rule, kept for the trail:
+
+
 
 | Active filters | Source |
 | :--- | :--- |

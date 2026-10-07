@@ -1,424 +1,164 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import styles from "../features/profile/profile.module.css";
-import labels from "../shared/ui/labels.module.css";
-import icons from "../shared/ui/tor-actions.module.css";
+import { WHOLE_COUNTRY_AREA } from "@tor-radar/seeds";
 import {
-  BUDGET_FILTER_MAX,
-  BUDGET_FILTER_MIN,
-  BUDGET_FILTER_STEP,
-  TOR_SAMPLES,
-  formatBudgetShort,
-  type TorSample,
-} from "../data/tor-samples";
-import { useViewer } from "../shared/lib/viewer";
+  BUDGET_PREFERENCE_MAX,
+  BUDGET_PREFERENCE_MIN,
+  BUDGET_PREFERENCE_STEP,
+} from "../shared/lib/budget-preference";
 import { BudgetRange } from "../shared/ui/BudgetRange";
+import { ServiceAreaPicker } from "../features/profile/ServiceAreaPicker";
+import { TaxonomyPicker } from "../features/profile/TaxonomyPicker";
+import styles from "../features/profile/profile.module.css";
 
 /**
- * Vendor profile (FR-D). Ported from the "Vendor Profile" screen of
- * mockups/TOR Radar App.dc.html.
+ * The vendor's own answer to three questions, and nothing else (profile and
+ * matching design §7.1): what they do, where they will do it, and what size of
+ * work they want. Certifications and past projects are asked for later, from
+ * the dashboard, at the moment each one would have changed an alert.
  *
- * The mockup's "starred" and "bookmarked" lists mirror star/bookmark toggles
- * made on the Search screen — but that is single-page mockup state, and this
- * app has Search and Profile as separate routes with no shared client store
- * (nothing in the established pattern, e.g. DashboardView, wires cross-route
- * state). So, consistent with the rest of this app treating its numbers as
- * placeholder sample data, the two lists below are seeded with representative
- * sample TORs rather than live state carried over from /search.
+ * Everything here is loaded from and saved to the account's profile. The screen
+ * this replaced held every value in component state on a hardcoded default and
+ * persisted nothing, including a "90% complete" that was a literal.
  */
 
-const DEFAULT_SKILLS: Record<string, boolean> = {
-  "Next.js": true,
-  "GIS / แผนที่ดิจิทัล": true,
-  "พัฒนาเว็บแอปพลิเคชัน": true,
-  "Node.js / API": true,
-  "ความปลอดภัยไซเบอร์": false,
-};
-
-/**
- * The vendor's budget interest, editable here because FR-D-2 makes it theirs
- * to update. It is scored against every published TOR (FR-C-1), so the range
- * is a real matching input rather than a profile decoration.
- *
- * "Past projects" used to sit beside it and has been dropped: the starred list
- * further down already records "I have done work like this", and two lists
- * saying the same thing invite two answers. FR-D-2 still names past projects
- * and portfolio material, so either that requirement gets amended or the field
- * returns with slice 4's real profile storage.
- */
-const DEFAULT_BUDGET_RANGE = { min: 500_000, max: 5_000_000 };
-
-const SAMPLE_STARRED_SLUGS = ["TOR-2569-0812-041", "TOR-2569-0810-029"];
-const SAMPLE_BOOKED_SLUGS = ["demo-anomaly", "TOR-2569-0811-038"];
-
-/**
- * Notification presets — matches the mockup's `presets` array. Picking one
- * sets the minimum-match slider below to that preset's threshold, which the
- * "การตั้งค่าขั้นสูง" disclosure then lets the vendor fine-tune further.
- */
-const NOTIFY_PRESETS = [
-  {
-    key: "all" as const,
-    title: "ทุกงานที่เกี่ยวข้อง",
-    desc: "อีเมลทันทีทุกครั้งที่มี TOR ตรงกับทักษะ (≥ 50%)",
-    minMatch: 50,
-  },
-  {
-    key: "balanced" as const,
-    title: "สรุปรายวัน (แนะนำ)",
-    desc: "อีเมลวันละครั้ง รวมงานที่ตรง ≥ 70% + เตือนก่อนหมดเขต",
-    minMatch: 70,
-  },
-  {
-    key: "few" as const,
-    title: "เฉพาะงานที่ตรงมาก",
-    desc: "อีเมลเฉพาะงานที่ตรง ≥ 85% เท่านั้น",
-    minMatch: 85,
-  },
-];
-
-const LEAD_OPTIONS = [3, 7, 14];
-
-const EXTRA_OPTIONS = [
-  {
-    key: "deadline" as const,
-    label: "เตือน TOR ที่บุ๊กมาร์กใกล้หมดเขต",
-    note: "ตามจำนวนวันที่เลือกด้านบน",
-  },
-  {
-    key: "anomaly" as const,
-    label: "เตือนเมื่อพบความผิดปกติทางสถิติ",
-    note: "เหมาะกับนักข่าว/นักวิจัย — ไม่ใช่ข้อกล่าวหา",
-  },
-];
-
-function statusFor(tor: TorSample) {
-  return tor.open
-    ? { text: `เปิดรับ · ${tor.deadlineNote.replace("เหลืออีก ", "")}`, className: styles.trackStatusOpen }
-    : { text: "ปิดรับแล้ว", className: styles.trackStatusClosed };
+interface Profile {
+  categories: string[];
+  areas: string[];
+  /** Work the taxonomy has no node for. Kept, but not matched against. */
+  otherCategories: string[];
+  budget: { minThb: number; maxThb: number } | null;
 }
 
-export function VendorProfileView() {
-  const { account } = useViewer();
-  const [budget, setBudget] = useState(DEFAULT_BUDGET_RANGE);
-  const [editingBudget, setEditingBudget] = useState(false);
-  // The slider edits a draft, so ยกเลิก can put the saved range back.
-  const [budgetDraft, setBudgetDraft] = useState(DEFAULT_BUDGET_RANGE);
-  const [skillOn, setSkillOn] = useState<Record<string, boolean>>(DEFAULT_SKILLS);
+/** A vendor who has answered nothing yet still has a profile to edit. */
+const EMPTY: Profile = { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null };
 
-  const [addingSkill, setAddingSkill] = useState(false);
-  const [newSkill, setNewSkill] = useState("");
-  const [preset, setPreset] = useState<"all" | "balanced" | "few">("balanced");
-  const [minMatch, setMinMatch] = useState(70);
-  const [advanced, setAdvanced] = useState(false);
-  const [lead, setLead] = useState(7);
-  const [extras, setExtras] = useState({ deadline: true, anomaly: false });
+/**
+ * The vendor's own answers, and nothing the server owns.
+ *
+ * A reply also carries `taxonomyVersion` and `updatedAt`, which the API stamps.
+ * Holding the whole reply in state and posting it back sent those with it, and
+ * the API — rightly strict about what it accepts — refused the save.
+ */
+function ownedFields(profile: Profile): Profile {
+  return {
+    categories: profile.categories,
+    areas: profile.areas,
+    otherCategories: profile.otherCategories ?? [],
+    budget: profile.budget,
+  };
+}
 
-  const skillNames = Object.keys(skillOn);
-  const skillCount = skillNames.filter((name) => skillOn[name]).length;
+/** The account's own routes, reached through the handler that holds the cookie. */
+const PROFILE_URL = "/api/auth/me/profile";
 
-  function toggleSkill(name: string) {
-    setSkillOn((prev) => ({ ...prev, [name]: !prev[name] }));
+export function VendorProfileView({ initial }: { initial: Profile | null }) {
+  // Read on the server from the session cookie and handed in, so the vendor's
+  // own answers are in the first paint rather than a round trip later.
+  const [profile, setProfile] = useState<Profile>(initial ? ownedFields(initial) : EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(
+    initial === null ? "ไม่สามารถโหลดโปรไฟล์ได้ในขณะนี้ การแก้ไขจะยังไม่ถูกบันทึก" : null,
+  );
+
+  async function save() {
+    setMessage(null);
+    setSaving(true);
+    try {
+      const response = await fetch(PROFILE_URL, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(ownedFields(profile)),
+      });
+      if (response.ok) {
+        setProfile(ownedFields((await response.json()) as Profile));
+        setMessage("บันทึกโปรไฟล์แล้ว");
+        return;
+      }
+      // The server names the field it refused, in Thai, and saying which one
+      // beats a generic failure that leaves a vendor guessing at their own
+      // data. Anything NOT in Thai is a validator's default — a fault in this
+      // code rather than in what was typed — so it is not put in front of them.
+      const body = (await response.json().catch(() => null)) as
+        | { error?: { issues?: Array<{ message: string }> } }
+        | null;
+      const stated = (body?.error?.issues ?? [])
+        .map((issue) => issue.message)
+        .filter((message) => /[฀-๿]/.test(message));
+      setMessage(stated.length > 0 ? stated.join(" ") : "ไม่สามารถบันทึกโปรไฟล์ได้");
+    } catch {
+      setMessage("เชื่อมต่อไม่ได้ในขณะนี้");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function addSkill() {
-    const name = newSkill.trim();
-    if (!name) return;
-    setSkillOn((prev) => ({ ...prev, [name]: true }));
-    setNewSkill("");
-    setAddingSkill(false);
-  }
-
-  const starredList = SAMPLE_STARRED_SLUGS.map((slug) => TOR_SAMPLES.find((t) => t.slug === slug)).filter(
-    (t): t is TorSample => Boolean(t),
-  );
-  const bookedList = SAMPLE_BOOKED_SLUGS.map((slug) => TOR_SAMPLES.find((t) => t.slug === slug)).filter(
-    (t): t is TorSample => Boolean(t),
-  );
+  // Computed from what is actually filled in. A number here that did not follow
+  // from the data would be telling the vendor something untrue about their own
+  // matching.
+  const ready = profile.categories.length > 0 && profile.areas.length > 0;
+  const budget = profile.budget ?? { minThb: BUDGET_PREFERENCE_MIN, maxThb: BUDGET_PREFERENCE_MAX };
 
   return (
     <main className={styles.profilePage}>
-      {/* Name and email are the signed-in account's own; everything below is
-          still sample data until slice 4 stores a real vendor profile. */}
-      <div className={styles.profileHead}>
-        <span className={styles.profileAvatar} aria-hidden="true">
-          {account?.name.trim().charAt(0) || "ผ"}
-        </span>
+      <header className={styles.profileHead}>
         <div>
-          <h1 className={styles.profileName}>{account?.name}</h1>
-          <div className={styles.profileSub}>
-            {account?.email} ·{" "}
-            <span className={styles.profileComplete}>โปรไฟล์สมบูรณ์ 90%</span>
-          </div>
+          <h1 className={styles.profileName}>โปรไฟล์ผู้ประกอบการ</h1>
+          <p className={styles.profileSub}>
+            {ready
+              ? "ข้อมูลพร้อมสำหรับใช้ประกอบการจับคู่"
+              : "เลือกหมวดหมู่งานและพื้นที่ให้บริการ เพื่อให้การจับคู่เริ่มทำงานได้"}
+          </p>
         </div>
-      </div>
+      </header>
 
-      <div className={styles.profileCard}>
-        <div className={`${labels.blockLabel} ${labels.blockLabelWide}`}>ทักษะ — จากหมวดหมู่กลาง · คลิกเพื่อเปิด/ปิด</div>
-        <div className={styles.skillRow}>
-          {skillNames.map((name) => (
-            <button
-              type="button"
-              key={name}
-              className={`${styles.skillPill} ${skillOn[name] ? styles.skillPillOn : ""}`}
-              onClick={() => toggleSkill(name)}
-            >
-              {skillOn[name] ? name : `+ ${name}`}
-            </button>
-          ))}
-          <button type="button" className={styles.addSkillPill} onClick={() => setAddingSkill((v) => !v)}>
-            + เพิ่มทักษะ
-          </button>
-        </div>
+      <section className={styles.profileCard}>
+        <h2 className={styles.profileFactTitle}>หมวดหมู่งาน</h2>
+        <p className={styles.profileSub}>เลือกได้ทั้งกลุ่มงานหรือเฉพาะงานย่อย</p>
+        <TaxonomyPicker
+          value={profile.categories}
+          other={profile.otherCategories}
+          onChange={(categories) => setProfile((current) => ({ ...current, categories }))}
+          onOtherChange={(otherCategories) => setProfile((current) => ({ ...current, otherCategories }))}
+        />
+      </section>
 
-        {addingSkill && (
-          <div className={styles.addSkillRow}>
-            <input
-              className={styles.addSkillInput}
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") addSkill();
-              }}
-              placeholder="พิมพ์ชื่อทักษะ เช่น React Native…"
-            />
-            <button type="button" className={styles.addSkillConfirm} onClick={addSkill}>
-              เพิ่ม
-            </button>
-            <button type="button" className={styles.addSkillCancel} onClick={() => setAddingSkill(false)}>
-              ยกเลิก
-            </button>
-          </div>
-        )}
+      <section className={styles.profileCard}>
+        <h2 className={styles.profileFactTitle}>พื้นที่ให้บริการ</h2>
+        <p className={styles.profileSub}>พื้นที่ที่คุณรับทำงาน ไม่ใช่ที่ตั้งของหน่วยงานที่ประกาศ</p>
+        <ServiceAreaPicker
+          value={profile.areas}
+          onChange={(areas) => setProfile((current) => ({ ...current, areas }))}
+        />
+      </section>
 
-        <div className={styles.skillCount}>ทักษะที่เปิดใช้: {skillCount} · มีผลต่อการจับคู่ทันที</div>
+      <section className={`${styles.profileCard} ${styles.profileCardLast}`}>
+        <h2 className={styles.profileFactTitle}>ช่วงงบประมาณที่สนใจ</h2>
+        <p className={styles.profileSub}>
+          เป็นความต้องการของคุณ ใช้เป็นสัญญาณประกอบการจับคู่ ไม่ใช่เงื่อนไขตัดสิทธิ์
+        </p>
+        <BudgetRange
+          min={budget.minThb}
+          max={budget.maxThb}
+          floor={BUDGET_PREFERENCE_MIN}
+          ceiling={BUDGET_PREFERENCE_MAX}
+          step={BUDGET_PREFERENCE_STEP}
+          onChange={(next) =>
+            setProfile((current) => ({ ...current, budget: { minThb: next.min, maxThb: next.max } }))
+          }
+        />
+      </section>
 
-        <div className={styles.profileFactGrid}>
-          <div>
-            <div className={styles.profileFactHead}>
-              <div className={styles.profileFactTitle}>ช่วงงบประมาณที่สนใจ</div>
-              {!editingBudget && (
-                <button
-                  type="button"
-                  className={styles.factEdit}
-                  onClick={() => {
-                    setBudgetDraft(budget);
-                    setEditingBudget(true);
-                  }}
-                >
-                  แก้ไข
-                </button>
-              )}
-            </div>
-
-            {!editingBudget && (
-              <div className={styles.profileFactValue}>
-                {formatBudgetShort(budget.min)} — {formatBudgetShort(budget.max)}
-              </div>
-            )}
-
-            {editingBudget && (
-              <div className={styles.factEditor}>
-                {/* The same two-handle slider the Search filters use, so the
-                    range is stated the way it is read. It cannot produce an
-                    invalid range: each handle stops at the other. */}
-                <BudgetRange
-                  min={budgetDraft.min}
-                  max={budgetDraft.max}
-                  floor={BUDGET_FILTER_MIN}
-                  ceiling={BUDGET_FILTER_MAX}
-                  step={BUDGET_FILTER_STEP}
-                  onChange={setBudgetDraft}
-                  minLabel="งบประมาณต่ำสุดที่สนใจ"
-                  maxLabel="งบประมาณสูงสุดที่สนใจ"
-                />
-                <div className={styles.factActions}>
-                  <button
-                    type="button"
-                    className={styles.addSkillConfirm}
-                    onClick={() => {
-                      setBudget(budgetDraft);
-                      setEditingBudget(false);
-                    }}
-                  >
-                    บันทึก
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.addSkillCancel}
-                    onClick={() => setEditingBudget(false)}
-                  >
-                    ยกเลิก
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.profileCard}>
-        <div id="notif-settings" className={`${labels.blockLabel} ${labels.blockLabelWide}`}>การแจ้งเตือน</div>
-        <div className={styles.notifyIntro}>เลือกรูปแบบที่ใกล้เคียงที่สุด — ปรับละเอียดได้ภายหลัง</div>
-
-        <div className={styles.presetList}>
-          {NOTIFY_PRESETS.map((p) => (
-            <button
-              type="button"
-              key={p.key}
-              className={`${styles.presetCard} ${preset === p.key ? styles.presetCardOn : ""}`}
-              onClick={() => {
-                setPreset(p.key);
-                setMinMatch(p.minMatch);
-              }}
-            >
-              <span className={`${styles.presetDot} ${preset === p.key ? styles.presetDotOn : ""}`} />
-              <span>
-                <div className={styles.presetTitle}>{p.title}</div>
-                <div className={styles.presetDesc}>{p.desc}</div>
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className={styles.advancedToggle}
-          onClick={() => setAdvanced((v) => !v)}
-        >
-          <span className={`${styles.advancedArrow} ${advanced ? styles.advancedArrowOpen : ""}`}>▾</span>
-          <span className={styles.advancedLabel}>
-            {advanced ? "ซ่อนการตั้งค่าขั้นสูง" : "การตั้งค่าขั้นสูง"}
-          </span>
+      <div className={styles.saveRow}>
+        <button type="button" className={styles.addSkillConfirm} onClick={save} disabled={saving}>
+          {saving ? "กำลังบันทึก…" : "บันทึกโปรไฟล์"}
         </button>
-
-        {advanced && (
-          <div className={styles.advancedPanel}>
-            <div>
-              <div className={styles.advancedRow}>
-                <span className={styles.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
-                <span className={styles.advancedRowValue}>{minMatch}%</span>
-              </div>
-              <input
-                type="range"
-                className={styles.matchRangeInput}
-                min={50}
-                max={95}
-                step={5}
-                value={minMatch}
-                onChange={(e) => setMinMatch(Number(e.target.value))}
-                aria-label="คะแนนจับคู่ขั้นต่ำ"
-              />
-              <div className={styles.advancedSliderLabels}>
-                <span>50% (กว้าง)</span>
-                <span>95% (เฉพาะที่ตรงมาก)</span>
-              </div>
-            </div>
-
-            <div>
-              <div className={styles.leadGroupTitle}>เตือนก่อนกำหนดยื่นซอง</div>
-              <div className={styles.leadGroup}>
-                {LEAD_OPTIONS.map((n) => (
-                  <button
-                    type="button"
-                    key={n}
-                    className={`${styles.leadOption} ${lead === n ? styles.leadOptionOn : ""}`}
-                    onClick={() => setLead(n)}
-                  >
-                    {n} วัน
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className={styles.extraGroupTitle}>แจ้งเตือนเพิ่มเติม</div>
-              <div className={styles.extraList}>
-                {EXTRA_OPTIONS.map((x) => (
-                  <button
-                    type="button"
-                    key={x.key}
-                    className={styles.extraRow}
-                    onClick={() => setExtras((prev) => ({ ...prev, [x.key]: !prev[x.key] }))}
-                  >
-                    <span>
-                      <div className={styles.extraLabel}>{x.label}</div>
-                      <div className={styles.extraNote}>{x.note}</div>
-                    </span>
-                    <span className={`${styles.switchTrack} ${extras[x.key] ? styles.switchTrackOn : ""}`}>
-                      <span className={`${styles.switchKnob} ${extras[x.key] ? styles.switchKnobOn : ""}`} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.advancedFoot}>
-              อีเมลส่งภายใน 5 นาทีหลัง TOR เผยแพร่ · ยกเลิกการรับได้ทุกอีเมล (PDPA)
-            </div>
-          </div>
+        {message && (
+          <span className={styles.profileMessage} role="status">
+            {message}
+          </span>
         )}
-      </div>
-
-      <div className={styles.profileCard}>
-        <div className={styles.trackLabelRow}>
-          <svg width="13" height="13" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>เคยทำงานลักษณะนี้ — ส่วนตัว</span>
-        </div>
-        {starredList.length > 0 ? (
-          <div className={styles.trackList}>
-            {starredList.map((tor) => (
-              <Link key={tor.slug} href={`/tors/${tor.slug}`} className={styles.trackRow}>
-                <div>
-                  <div className={styles.trackTitle}>{tor.title}</div>
-                  <div className={styles.trackAgency}>{tor.agency}</div>
-                </div>
-                <svg width="15" height="15" viewBox="0 0 24 24" className={icons.starIcon + " " + icons.starIconOn}>
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.trackEmpty}>ยังไม่มี — กดไอคอนดาวในหน้าค้นหาเพื่อบอกว่าเคยทำงานลักษณะนี้</div>
-        )}
-        <div className={styles.trackFoot}>ข้อมูลส่วนตัว — ใช้ปรับปรุงการจับคู่ของ AI เท่านั้น ไม่แสดงต่อสาธารณะ</div>
-      </div>
-
-      <div className={`${styles.profileCard} ${styles.profileCardLast}`}>
-        <div className={styles.trackLabelRow}>
-          <svg width="12" height="12" viewBox="0 0 24 24" className={icons.bookIcon + " " + icons.bookIconOn}>
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-          </svg>
-          <span className={`${labels.blockLabel} ${labels.blockLabelInline}`}>บุ๊กมาร์ก — TOR ที่กำลังดู</span>
-        </div>
-        {bookedList.length > 0 ? (
-          <div className={styles.trackList}>
-            {bookedList.map((tor) => {
-              const status = statusFor(tor);
-              return (
-                <Link key={tor.slug} href={`/tors/${tor.slug}`} className={styles.trackRow}>
-                  <div>
-                    <div className={styles.trackTitle}>{tor.title}</div>
-                    <div className={styles.trackAgency}>{tor.agency}</div>
-                  </div>
-                  <span className={status.className}>{status.text}</span>
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <div className={styles.trackEmpty}>ยังไม่มี — กดไอคอนบุ๊กมาร์กในหน้าค้นหาเพื่อเก็บ TOR ไว้ดูภายหลัง</div>
-        )}
-        <div className={styles.trackFoot}>บุ๊กมาร์กเป็นข้อมูลส่วนตัว — ไม่แสดงต่อสาธารณะ</div>
-      </div>
-
-      <div className={styles.pdpaLine}>
-        PDPA: <a href="#">ส่งออกข้อมูลของฉัน</a> · <a href="#">ลบบัญชี</a> · ความยินยอมให้ไว้เมื่อ 12 มี.ค. 2569
       </div>
     </main>
   );

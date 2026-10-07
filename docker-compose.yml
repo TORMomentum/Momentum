@@ -8,6 +8,12 @@ x-api-env: &api-env
   GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me-admin-key}
+  SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+  APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
+  # Inside Compose the mail container is reached by service name, whatever the
+  # host's own .env says — a host port is meaningless from another container.
+  SMTP_URL: smtp://mail:1025
+  MAIL_FROM: ${MAIL_FROM:-TOR Radar <noreply@tor-radar.example>}
 
 services:
   web:
@@ -72,6 +78,27 @@ services:
     volumes:
       - gcs_data:/data
 
+  mail:
+    # An SMTP server with a web inbox, so development and CI exercise the REAL
+    # SMTP adapter instead of the recording one — a mail bug that only appears
+    # over SMTP would otherwise be invisible until deployment. Nothing it
+    # receives ever leaves the machine. Pinned for the same reason the storage
+    # emulator is.
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - "${MAIL_SMTP_PORT:-1025}:1025"
+      - "${MAIL_UI_PORT:-8025}:8025"
+    environment:
+      # A development server accepts whatever credentials it is handed; there
+      # is nothing here to protect, and refusing them would only mean the
+      # adapter is never exercised with authentication at all.
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mail_data:/data
+
 volumes:
   mongo_data:
   gcs_data:
+  mail_data:

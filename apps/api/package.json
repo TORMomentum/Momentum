@@ -14,17 +14,21 @@
   },
   "dependencies": {
     "@google-cloud/storage": "8.1.0",
+    "@tor-radar/seeds": "0.1.0",
+    "@node-rs/argon2": "2.2.1",
     "busboy": "^1.6.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "google-auth-library": "^11.0.2",
     "mongodb": "^7.6.0",
+    "nodemailer": "^10.0.15",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/busboy": "^1.5.4",
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.2.2",
     "tsx": "^4.20.0",

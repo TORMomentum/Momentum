@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-09-17_
+_last updated: 2026-10-06_
 
 ---
 
@@ -302,6 +302,34 @@ Plan: [`plans/2026-09-17-dashboard-anomaly.md`](superpowers/plans/2026-09-17-das
         real data showing how many spellings one agency has
   - [ ] TOR-57 and TOR-41 are Sran's cards but were built here, because TOR-62/65/66 could not be
         demonstrated without them — needs a word with the team
+
+## 2g. Review feedback, 2026-10-06 — five of eight done
+
+_Triage: [feedback-2026-10-06.md](feedback-2026-10-06.md). Decisions in [PLAN.md](PLAN.md)._
+
+- [x] **TOR-149 — ประกาศเชิญชวน as an explicit state**, counted on the dashboard as
+      clickable filters and offered as search filters. One vocabulary in
+      `lib/tor-state.ts`; the in-memory rule and the database predicate are tested
+      against each other so a TOR cannot be open on one screen and missing on another
+- [x] **TOR-150 — a deadline says which document it came from.** The detail page
+      already did; the results list does now, because a bare date in a row reads as
+      the TOR's own
+- [x] **TOR-151 — ปีงบประมาณ**, derived from the announcement date (Thai fiscal year,
+      October–September, named for the BE year it ends in) rather than stored. Not yet
+      a filter
+- [x] **TOR-152 — filters ordered by what narrows a list first** — สถานะ, กำหนดยื่น,
+      หมวดหมู่, งบประมาณ, หน่วยงาน — and the agency list capped at the busiest six
+- [x] **TOR-153 — one save action.** The star is gone; bookmark stays
+- [x] **Dashboard rebuilt around the states** — chips that filter, every breakdown row
+      a filter, unknown values named and sorted last, one source for every figure
+- [ ] **TOR-154 — signed-in dashboard** (on hand, closing soon, matched to me)
+- [ ] **TOR-155 — search ranked by relevance to the vendor.** The closing-soonest half
+      already works; the relevance half needs matching
+- [ ] **TOR-156 — no ThaiD, no national ID.** A constraint on registration, which does
+      not exist yet
+- [ ] **Carried:** removing the star left nothing recording "I have done work like
+      this", which FR-D-2 asks for and matching would use — PLAN.md Q5 reopened
+- [ ] **Carried:** "closing soon" as its own reading mode, distinct from search
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

@@ -7,23 +7,28 @@ import styles from "../features/auth/auth.module.css";
 import { useViewer } from "../shared/lib/viewer";
 
 /**
- * Sign in and registration (FR-D-1, FR-D-3). Ported from the "Login" screen of
- * mockups/TOR Radar App.dc.html.
+ * Sign in and registration (FR-D-1, FR-D-3).
  *
- * NOTHING IS AUTHENTICATED HERE. Slice 4 builds real accounts, password
- * hashing (NFR-S1) and consent records against the API. Until then the form
- * checks the SHAPE of what was typed and then signs the prototype viewer in
- * under that email, so the signed-in interaction can be reviewed. The password
- * is never sent anywhere and never stored — not in memory past this render,
- * not in localStorage.
+ * The password leaves this component exactly once, to the Next route handler
+ * that forwards it to the API over the server-side connection; it is never
+ * stored, never logged, and never put in a URL. The session that comes back
+ * lives in an httpOnly cookie this code cannot read.
+ *
+ * Shape checks below are courtesy only — they catch a typo before a round trip.
+ * The server decides every real question, and its answer for a failed sign-in
+ * is deliberately the same whether the address is unknown, the password wrong,
+ * or the account not yet verified.
  */
 
 /** Account-creation rule, stated once. The signup placeholder reads from it. */
-const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 8;
 
 /** Deliberately loose: one @, something either side, a dot in the domain.
  * The server decides whether an address is real; this only catches typos. */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The server does not say which part was wrong, and neither does this. */
+const AUTH_FAILURE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้ยืนยันอีเมล";
 const COPY = {
   login: {
     kicker: "เข้าสู่ระบบผู้ประกอบการ",
@@ -69,7 +74,7 @@ const TRUST_POINTS = [
         <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" />
       </>
     ),
-    text: "ดาวและบุ๊กมาร์กของคุณเป็นข้อมูลส่วนตัว ไม่แสดงต่อสาธารณะ · PDPA · ส่งออกหรือลบข้อมูลได้ทุกเมื่อ",
+    text: "บุ๊กมาร์กของคุณเป็นข้อมูลส่วนตัว ไม่แสดงต่อสาธารณะ · PDPA · ส่งออกหรือลบข้อมูลได้ทุกเมื่อ",
   },
 ];
 
@@ -85,8 +90,10 @@ export function LoginView() {
   const [password, setPassword] = useState("");
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  function submit() {
+  async function submit() {
     const address = email.trim();
 
     if (!EMAIL_SHAPE.test(address)) {
@@ -109,11 +116,40 @@ export function LoginView() {
     }
 
     setError(null);
-    setPassword("");
-    signIn({ email: address });
-    // Registering lands on the profile, where skills are chosen — that is the
-    // next thing a new vendor has to do before matching can say anything.
-    router.push(isSignup ? "/profile" : "/dashboard");
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/auth/${isSignup ? "register" : "login"}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          isSignup ? { email: address, password, consent: true } : { email: address, password },
+        ),
+      });
+      // Held no longer than the request that needed it.
+      setPassword("");
+
+      if (!response.ok) {
+        setError(isSignup ? "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" : AUTH_FAILURE);
+        return;
+      }
+
+      if (isSignup) {
+        // Registration never signs anyone in: the address has to be confirmed
+        // first, and the reply is the same whether or not it was already taken.
+        setSent(true);
+        return;
+      }
+
+      signIn({ email: address });
+      // The header and every other server-rendered part of the page were drawn
+      // for a signed-out reader; without this they stay that way.
+      router.refresh();
+      router.push("/dashboard");
+    } catch {
+      setError("เชื่อมต่อไม่ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -150,7 +186,7 @@ export function LoginView() {
               <label className={styles.label} htmlFor="login-password">
                 รหัสผ่าน
               </label>
-              {!isSignup && <span className={styles.forgot}>ลืมรหัสผ่าน?</span>}
+              {!isSignup && <Link className={styles.forgot} href="/forgot-password">ลืมรหัสผ่าน?</Link>}
             </div>
             <input
               id="login-password"
@@ -164,6 +200,12 @@ export function LoginView() {
           </div>
 
           {error && <div className={styles.error}>{error}</div>}
+
+          {sent && (
+            <div className={styles.error} role="status">
+              ส่งลิงก์ยืนยันไปที่อีเมลของคุณแล้ว โปรดตรวจกล่องขาเข้าเพื่อยืนยันบัญชี
+            </div>
+          )}
 
           {isSignup && (
             <button
@@ -182,8 +224,8 @@ export function LoginView() {
             </button>
           )}
 
-          <button type="submit" className={styles.submit}>
-            {copy.cta}
+          <button type="submit" className={styles.submit} disabled={busy}>
+            {busy ? "กำลังดำเนินการ…" : copy.cta}
           </button>
         </form>
 
@@ -194,23 +236,31 @@ export function LoginView() {
         </div>
 
         <div className={styles.alternatives}>
-          {/* Both are placeholders for identity providers that slice 4 wires
-              up; neither can sign anyone in yet, so they say so rather than
-              silently doing what the password form does. */}
+          {/* Google is the only identity provider. ThaiD and an organisation
+              directory were dropped deliberately: this is a public platform for
+              vendors, so sign-in must not require a government identity, and no
+              national ID or tax ID is collected anywhere (SRS Appendix, TOR-156). */}
           <button
             type="button"
             className={styles.alternative}
-            onClick={() => setError("ThaiD จะเปิดใช้งานเมื่อระบบบัญชีจริงพร้อม")}
+            onClick={() => setError("การเข้าสู่ระบบด้วย Google จะเปิดใช้งานเมื่อเชื่อมต่อบัญชีแล้ว")}
           >
-            <span className={styles.thaid}>ThaiD</span>
-            ดำเนินการต่อด้วย ThaiD
-          </button>
-          <button
-            type="button"
-            className={styles.alternative}
-            onClick={() => setError("การเข้าสู่ระบบด้วยอีเมลองค์กรจะเปิดใช้งานเมื่อระบบบัญชีจริงพร้อม")}
-          >
-            ดำเนินการต่อด้วยอีเมลองค์กร
+            <svg className={styles.providerMark} viewBox="0 0 48 48" aria-hidden="true">
+              <path
+                fill="#4285F4"
+                d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8a10 10 0 0 1-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"
+              />
+              <path
+                fill="#34A853"
+                d="M24 46c6 0 11-2 14.5-5.4l-7.1-5.5A13 13 0 0 1 24 37c-5.8 0-10.7-3.9-12.4-9.1H4.3v5.7A22 22 0 0 0 24 46z"
+              />
+              <path fill="#FBBC05" d="M11.6 27.9a13 13 0 0 1 0-8.4v-5.7H4.3a22 22 0 0 0 0 19.8l7.3-5.7z" />
+              <path
+                fill="#EA4335"
+                d="M24 11c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4.5 30 2.4 24 2.4A22 22 0 0 0 4.3 13.8l7.3 5.7C13.3 14.3 18.2 11 24 11z"
+              />
+            </svg>
+            ดำเนินการต่อด้วย Google
           </button>
         </div>
 

@@ -135,6 +135,69 @@ export interface TorMetaDocument {
   corpusSize?: number;
 }
 
+export type AccountRole = "vendor" | "admin";
+
+export interface AccountDocument {
+  email: string;
+  displayName?: string;
+  passwordHash?: string;
+  emailVerifiedAt?: Date;
+  google?: { sub: string };
+  role: AccountRole;
+  consent: {
+    noticeVersion: string;
+    noticeHash: string;
+    agreedAt: Date;
+    action: "checkbox";
+    withdrawnAt?: Date;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
+
+export interface SessionDocument {
+  _id: string;
+  accountId: string;
+  createdAt: Date;
+  expiresAt: Date;
+  lastSeenAt: Date;
+}
+
+export type AccountTokenPurpose = "verify" | "reset";
+
+export interface AccountTokenDocument {
+  tokenHash: string;
+  accountId: string;
+  purpose: AccountTokenPurpose;
+  expiresAt: Date;
+}
+
+/** A saved TOR belongs to one vendor and is removed with that vendor. */
+export interface BookmarkDocument {
+  accountId: string;
+  torId: string;
+  createdAt: Date;
+}
+
+/** The three explicit preferences used to explain vendor-facing relevance. */
+export interface VendorProfileDocument {
+  accountId: string;
+  categories: string[];
+  areas: string[];
+  /**
+   * Work the taxonomy has no node for, as the vendor wrote it. Deliberately
+   * separate from `categories`: these are NOT matched against, because free
+   * text is what the taxonomy exists to replace. They are the record of what
+   * the vocabulary is missing. Optional, so profiles written before the field
+   * existed still read.
+   */
+  otherCategories?: string[];
+  budget: { minThb: number; maxThb: number } | null;
+  taxonomyVersion: string;
+  updatedAt: Date;
+}
+
 let client: MongoClient | null = null;
 
 export async function connect(mongoUrl: string): Promise<Db> {
@@ -176,8 +239,37 @@ export function torMeta(db: Db): Collection<TorMetaDocument> {
   return db.collection<TorMetaDocument>("tor_meta");
 }
 
+export function accounts(db: Db): Collection<AccountDocument> {
+  return db.collection<AccountDocument>("accounts");
+}
+
+export function sessions(db: Db): Collection<SessionDocument> {
+  return db.collection<SessionDocument>("sessions");
+}
+
+export function accountTokens(db: Db): Collection<AccountTokenDocument> {
+  return db.collection<AccountTokenDocument>("auth_tokens");
+}
+
+export function bookmarks(db: Db): Collection<BookmarkDocument> {
+  return db.collection<BookmarkDocument>("bookmarks");
+}
+
+export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
+  return db.collection<VendorProfileDocument>("vendor_profiles");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
+  // A deleted account overwrites its address with a random tombstone, so an
+  // ordinary unique index both permits re-registration and retains no address.
+  await accounts(db).createIndex({ email: 1 }, { unique: true });
+  await sessions(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await sessions(db).createIndex({ accountId: 1 });
+  await accountTokens(db).createIndex({ tokenHash: 1 }, { unique: true });
+  await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
+  await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

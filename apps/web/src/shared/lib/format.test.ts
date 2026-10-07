@@ -3,6 +3,7 @@ import {
   addressFrom,
   formatBudgetShort,
   formatDeadline,
+  formatThaiMonth,
   thaiDigitsToArabic,
   timeWindowFrom,
   websiteFrom,
@@ -122,5 +123,17 @@ describe("chart labels", () => {
     expect(formatBudgetShort(500_000)).toBe("฿500K");
     expect(formatBudgetShort(4_860_000)).toBe("฿4.9M");
     expect(formatBudgetShort(1_280_000_000)).toBe("฿1.3B");
+  });
+});
+
+describe("formatThaiMonth", () => {
+  it("writes a cohort month the way the rest of the interface writes dates", () => {
+    expect(formatThaiMonth("2026-09")).toBe("ก.ย. 2569");
+    expect(formatThaiMonth("2025-12")).toBe("ธ.ค. 2568");
+  });
+
+  it("returns anything it cannot parse unchanged, rather than inventing a date", () => {
+    expect(formatThaiMonth("2026-13")).toBe("2026-13");
+    expect(formatThaiMonth("")).toBe("");
   });
 });

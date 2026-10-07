@@ -7,8 +7,10 @@ import styles from "../features/search/search.module.css";
 import {
   EMPTY_FILTERS,
   hasActiveFilters,
+  SEARCH_STATES,
   toSearchQuery,
   type SearchFilters,
+  type SearchState,
 } from "../features/search/search.params";
 import type { TorFacets, TorListItem, TorSearchResult } from "../shared/api/tors.api";
 import {
@@ -38,16 +40,49 @@ const BUDGET_COMMIT_DELAY_MS = 450;
 /** How long typing pauses before the keyword becomes a search, as the mockup filters while you type. */
 const QUERY_COMMIT_DELAY_MS = 450;
 
+/** One vocabulary for the five states, shared with the dashboard's chips. */
+const STATE_LABELS: Record<SearchState, string> = {
+  open: "เปิดรับข้อเสนอ",
+  "awaiting-invitation": "รอประกาศเชิญชวน",
+  closed: "ปิดรับแล้ว",
+  awarded: "ประกาศผู้ชนะแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+};
+
+/** How many agencies the panel shows before it asks to be expanded. */
+const AGENCY_LIMIT = 6;
+
 type Badge = { label: string; className: string };
 
-function badgeFor(row: TorListItem): Badge {
-  if (row.unverified) return { label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified };
+/**
+ * Where a TOR stands. This is the leading badge and every row has exactly one:
+ * it is the thing a vendor decides on. Extraction quality is a separate axis
+ * and used to overwrite this one, which hid the state of every unverified
+ * record.
+ */
+function statusBadgeFor(row: TorListItem): Badge {
   if (row.torStatus.value === "cancelled") return { label: "ยกเลิกแล้ว", className: styles.badgeClosed };
   if (row.torStatus.value === "awarded") return { label: "ประกาศผู้ชนะแล้ว", className: styles.badgeClosed };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };
   // Announced with no deadline yet: the draft TOR is out, the invitation to bid is not.
   if (row.deadline.value === null) return { label: "รอประกาศเชิญชวน", className: styles.badgeUpcoming };
   return { label: "เปิดรับข้อเสนอ", className: styles.badgeOpen };
+}
+
+/**
+ * What we know about the record, beside its state: how well it matches this
+ * vendor, and whether its extracted values have been confirmed. Both sit to the
+ * right of the status so the state is never displaced by them.
+ */
+function markerBadgesFor(row: TorListItem): Badge[] {
+  const markers: Badge[] = [];
+  if (typeof row.matchScore === "number") {
+    markers.push({ label: `ตรงกับคุณ ${Math.round(row.matchScore * 100)}%`, className: styles.badgeMatch });
+  }
+  if (row.unverified) {
+    markers.push({ label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified });
+  }
+  return markers;
 }
 
 /** A slider step that gives roughly a hundred positions across the corpus's range. */
@@ -72,10 +107,16 @@ export function SearchView({
   const router = useRouter();
   const { signedIn, ready } = useViewer();
   const [pending, startTransition] = useTransition();
+  const [allAgencies, setAllAgencies] = useState(false);
+  // An agency already filtering the list must stay on screen even when it falls
+  // outside the shown few, or the reader cannot see what is narrowing their
+  // results, let alone switch it off.
+  const visibleAgencies = allAgencies
+    ? facets.agencies
+    : facets.agencies.filter((agency, index) => index < AGENCY_LIMIT || filters.agencies.includes(agency.value));
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
   const lastCommittedQuery = useRef(filters.q);
-  const [starSel, setStarSel] = useState<Record<string, boolean>>({});
   const [bookSel, setBookSel] = useState<Record<string, boolean>>({});
 
   // Only a change that arrives from outside — clear all, the back button —
@@ -164,11 +205,6 @@ export function SearchView({
     navigate(EMPTY_FILTERS);
   }
 
-  function toggleStar(e: React.SyntheticEvent, id: string) {
-    e.preventDefault();
-    e.stopPropagation();
-    setStarSel((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
 
   function toggleBook(e: React.SyntheticEvent, id: string) {
     e.preventDefault();
@@ -199,63 +235,33 @@ export function SearchView({
           </button>
         </div>
 
-        {facets.agencies.length > 0 && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>หน่วยงาน</div>
-            <div className={styles.toggleList}>
-              {facets.agencies.map(({ value, count }) => {
-                const on = filters.agencies.includes(value);
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    className={`${styles.toggleItem} ${on ? styles.toggleItemOn : ""}`}
-                    onClick={() => update({ agencies: toggle(filters.agencies, value) })}
-                    aria-pressed={on}
-                  >
-                    {on ? "☑" : "☐"} {thaiDigitsToArabic(value)} <span className={styles.facetCount}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
+        <div className={styles.filterGroup}>
+          <div className={styles.filterGroupTitle}>สถานะ</div>
+          {/* The same five states the dashboard counts, so a reader who clicked
+              a chip there finds the same words here. "open" was two options
+              before, which could not say "waiting for its invitation to bid". */}
+          <div className={styles.toggleList}>
+            <button
+              type="button"
+              className={`${styles.toggleItem} ${!filters.state ? styles.toggleItemOn : ""}`}
+              onClick={() => update({ state: null })}
+              aria-pressed={!filters.state}
+            >
+              {!filters.state ? "◉" : "○"} ทั้งหมด
+            </button>
+            {SEARCH_STATES.map((state) => (
+              <button
+                type="button"
+                key={state}
+                className={`${styles.toggleItem} ${filters.state === state ? styles.toggleItemOn : ""}`}
+                onClick={() => update({ state })}
+                aria-pressed={filters.state === state}
+              >
+                {filters.state === state ? "◉" : "○"} {STATE_LABELS[state]}
+              </button>
+            ))}
           </div>
-        )}
-
-        {budgetFacet && ceiling > floor && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
-            <BudgetRange
-              min={draftBudget.min}
-              max={draftBudget.max}
-              floor={floor}
-              ceiling={ceiling}
-              step={step}
-              onChange={setDraftBudget}
-            />
-          </div>
-        )}
-
-        {facets.categories.length > 0 && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>หมวดหมู่</div>
-            <div className={styles.pillList}>
-              {facets.categories.map(({ value }) => {
-                const on = filters.categories.includes(value);
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    className={`${styles.pill} ${on ? styles.pillOn : ""}`}
-                    onClick={() => update({ categories: toggle(filters.categories, value) })}
-                    aria-pressed={on}
-                  >
-                    {thaiDigitsToArabic(value)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        </div>
 
         <div className={styles.filterGroup}>
           <div className={styles.filterGroupTitle}>กำหนดยื่นข้อเสนอ</div>
@@ -282,28 +288,76 @@ export function SearchView({
             </label>
           </div>
         </div>
-
-        <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>สถานะ</div>
-          <div className={styles.toggleList}>
-            <button
-              type="button"
-              className={`${styles.toggleItem} ${filters.open ? styles.toggleItemOn : ""}`}
-              onClick={() => update({ open: true })}
-              aria-pressed={filters.open}
-            >
-              {filters.open ? "◉" : "○"} ยังเปิดรับ
-            </button>
-            <button
-              type="button"
-              className={`${styles.toggleItem} ${!filters.open ? styles.toggleItemOn : ""}`}
-              onClick={() => update({ open: false })}
-              aria-pressed={!filters.open}
-            >
-              {filters.open ? "○" : "◉"} ทั้งหมด (รวมปิดแล้ว)
-            </button>
+        {facets.categories.length > 0 && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>หมวดหมู่</div>
+            <div className={styles.pillList}>
+              {facets.categories.map(({ value }) => {
+                const on = filters.categories.includes(value);
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`${styles.pill} ${on ? styles.pillOn : ""}`}
+                    onClick={() => update({ categories: toggle(filters.categories, value) })}
+                    aria-pressed={on}
+                  >
+                    {thaiDigitsToArabic(value)}
+                  </button>
+                );
+              })}
+              {facets.agencies.length > AGENCY_LIMIT && (
+                <button type="button" className={styles.moreAgencies} onClick={() => setAllAgencies(!allAgencies)}>
+                  {allAgencies ? "แสดงน้อยลง" : `ดูทั้งหมด (${facets.agencies.length})`}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+        {budgetFacet && ceiling > floor && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
+            <BudgetRange
+              min={draftBudget.min}
+              max={draftBudget.max}
+              floor={floor}
+              ceiling={ceiling}
+              step={step}
+              onChange={setDraftBudget}
+            />
+          </div>
+        )}
+
+        {facets.agencies.length > 0 && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>หน่วยงาน</div>
+            {/* The one list with no ceiling: a national corpus has hundreds of
+                agencies, and all of them would push every other filter off the
+                screen. The busiest few are shown, anything already chosen stays
+                visible, and the rest are one click away. */}
+            <div className={styles.toggleList}>
+              {visibleAgencies.map(({ value, count }) => {
+                const on = filters.agencies.includes(value);
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`${styles.toggleItem} ${on ? styles.toggleItemOn : ""}`}
+                    onClick={() => update({ agencies: toggle(filters.agencies, value) })}
+                    aria-pressed={on}
+                  >
+                    {on ? "☑" : "☐"} {thaiDigitsToArabic(value)} <span className={styles.facetCount}>{count}</span>
+                  </button>
+                );
+              })}
+              {facets.agencies.length > AGENCY_LIMIT && (
+                <button type="button" className={styles.moreAgencies} onClick={() => setAllAgencies(!allAgencies)}>
+                  {allAgencies ? "แสดงน้อยลง" : `ดูทั้งหมด (${facets.agencies.length})`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className={styles.sidebarFoot}>
           {results?.coverage.lastUpdatedAt && (
@@ -360,7 +414,8 @@ export function SearchView({
             aria-busy={pending}
           >
             {results.items.map((row) => {
-              const badge = badgeFor(row);
+              const status = statusBadgeFor(row);
+              const markers = markerBadgesFor(row);
               return (
                 <Link
                   key={row.id}
@@ -369,7 +424,12 @@ export function SearchView({
                 >
                   <div className={styles.resultLead}>
                     <div className={styles.badgeRow}>
-                      <span className={`${styles.badge} ${badge.className}`}>{badge.label}</span>
+                      <span className={`${styles.badge} ${status.className}`}>{status.label}</span>
+                      {markers.map((marker) => (
+                        <span className={`${styles.badge} ${marker.className}`} key={marker.label}>
+                          {marker.label}
+                        </span>
+                      ))}
                       {row.referenceNo?.raw && <span className={styles.resultId}>{row.referenceNo.raw}</span>}
                     </div>
                     <div className={styles.resultTitle}>{row.title.raw || "ไม่พบชื่อโครงการในเอกสาร"}</div>
@@ -395,6 +455,10 @@ export function SearchView({
                   </div>
                   <div className={styles.resultDeadline}>
                     {row.deadline.value === null ? "กำหนดยื่น" : row.open ? "ยื่นภายใน" : "ปิดรับ"}
+                    {/* A date the TOR itself does not state must say so here too,
+                        not only on the detail page: a bare date in a list reads
+                        as the TOR's own. */}
+                    {row.deadline.fromDocument && <span className={styles.resultDeadlineSource}>จากประกาศเชิญชวน</span>}
                     {/* Formatted in Arabic numerals; the document's own wording is the
                         tooltip here and is shown in full on the detail page (NFR-F7). */}
                     <span className={styles.resultDeadlineValue} title={row.deadline.raw || undefined}>
@@ -414,27 +478,6 @@ export function SearchView({
                   </div>
                   {signedIn && (
                     <div className={styles.resultActions}>
-                      <span
-                        className={`${styles.actionBtn} ${styles.starBtn} ${starSel[row.id] ? styles.starBtnOn : ""}`}
-                        role="button"
-                        tabIndex={0}
-                        title="เคยทำงานลักษณะนี้ (ส่วนตัว — ช่วยให้ AI จับคู่แม่นขึ้น ไม่มีผลต่อการค้นหา)"
-                        onClick={(e) => toggleStar(e, row.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") toggleStar(e, row.id);
-                        }}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          className={`${icons.starIcon} ${starSel[row.id] ? icons.starIconOn : ""}`}
-                          strokeWidth="2"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                      </span>
                       <span
                         className={`${styles.actionBtn} ${styles.bookBtn} ${bookSel[row.id] ? styles.bookBtnOn : ""}`}
                         role="button"

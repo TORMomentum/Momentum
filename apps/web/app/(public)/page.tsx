@@ -1,6 +1,8 @@
 import { fetchDashboard } from "../../src/shared/api/stats.api";
 import type { LandingFigures } from "../../src/features/landing/landing.figures";
 import { LandingView } from "../../src/views/LandingView";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 // Figures come from a live API call (FR-E-1), so this page cannot be prerendered once at
 // build time — a Cloud Run image built without API_BASE_URL would otherwise bake in
@@ -13,6 +15,7 @@ export const dynamic = "force-dynamic";
  * renders the page without figures rather than with plausible placeholders.
  */
 export default async function HomePage() {
+  if ((await cookies()).has("tor-radar-session")) redirect("/dashboard");
   let figures: LandingFigures | null = null;
   try {
     const dashboard = await fetchDashboard({});

@@ -30,6 +30,7 @@ describe("search URL canonicalisation", () => {
       agencies: ["สำนักงานเขตทวีวัฒนา"],
       categories: ["งานก่อสร้าง-ชลประทาน"],
       open: true,
+      state: "awaiting-invitation" as const,
       minBudget: 1_000_000,
       maxBudget: 6_000_000,
       deadlineFrom: "2026-09-01",
