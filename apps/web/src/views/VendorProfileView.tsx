@@ -10,6 +10,7 @@ import {
   BUDGET_PREFERENCE_STEP,
 } from "../shared/lib/budget-preference";
 import { BudgetRange } from "../shared/ui/BudgetRange";
+import { NotifyPreferences, type Notify } from "../features/profile/NotifyPreferences";
 import { ServiceAreaPicker } from "../features/profile/ServiceAreaPicker";
 import { TaxonomyPicker } from "../features/profile/TaxonomyPicker";
 import {
@@ -37,6 +38,7 @@ interface Profile {
   /** Work the taxonomy has no node for. Kept, but not matched against. */
   otherCategories: string[];
   budget: { minThb: number; maxThb: number } | null;
+  notify: Notify;
 }
 
 /** A vendor who has answered nothing yet still has a profile to edit. */
@@ -45,6 +47,7 @@ const EMPTY: Profile = {
   areas: [WHOLE_COUNTRY_AREA],
   otherCategories: [],
   budget: null,
+  notify: { preset: "daily", minMatch: 70, leadDays: 7, deadlineReminder: true, anomalyAlert: false },
 };
 
 /** The account's own routes, reached through the handler that holds the cookie. */
@@ -65,6 +68,7 @@ function ownedFields(profile: Profile): Profile {
     areas: profile.areas,
     otherCategories: profile.otherCategories ?? [],
     budget: profile.budget,
+    notify: profile.notify ?? EMPTY.notify,
   };
 }
 
@@ -304,6 +308,17 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
             <span />
           </div>
         )}
+      </section>
+
+      <section className={styles.profileCard}>
+        <h2 className={styles.profileFactTitle}>การแจ้งเตือนทางอีเมล</h2>
+        <p className={styles.profileSub}>
+          เลือกความถี่และความใกล้เคียงที่ต้องการ — จะเริ่มส่งเมื่อระบบจับคู่พร้อมใช้งาน
+        </p>
+        <NotifyPreferences
+          value={profile.notify}
+          onChange={(notify) => setProfile((current) => ({ ...current, notify }))}
+        />
       </section>
 
       {/* Listed, never nagged: neither is required to receive alerts (§7.1), so

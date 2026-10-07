@@ -5,6 +5,7 @@ import type { Config } from "../../core/config.js";
 import { UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { ProfileRepository } from "./profile.repository.js";
+import type { NotifyPreferences } from "../../core/db.js";
 
 const taxonomyIds = new Set([...WORK_CATEGORIES.map((group) => group.id), ...WORK_CATEGORY_LEAVES.map((leaf) => leaf.id)]);
 const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => province.id)]);
@@ -23,6 +24,20 @@ const profileSchema = z.object({
   areas: z.array(z.string()).min(1).max(78).refine((ids) => ids.every((id) => areaIds.has(id)), "มีพื้นที่ให้บริการที่ไม่อยู่ในรายการ"),
   budget: z.object({ minThb: z.number().finite().nonnegative(), maxThb: z.number().finite().nonnegative() }).nullable()
     .refine((value) => value === null || value.minThb <= value.maxThb, "งบประมาณต่ำสุดต้องไม่เกินงบประมาณสูงสุด"),
+  /**
+   * How often, and how closely matched, a vendor wants to be emailed. Stored
+   * now and acted on when matching and dispatch exist (design §7.8) — a stated
+   * preference is the vendor's to make whether or not we can honour it yet.
+   */
+  notify: z.object({
+    preset: z.enum(["all", "daily", "high"]),
+    minMatch: z.number().int().min(50).max(95),
+    leadDays: z.number().int().min(1).max(30),
+    deadlineReminder: z.boolean(),
+    anomalyAlert: z.boolean(),
+  }).optional().default({
+    preset: "daily", minMatch: 70, leadDays: 7, deadlineReminder: true, anomalyAlert: false,
+  }),
 }).strict();
 
 /**
@@ -31,11 +46,21 @@ const profileSchema = z.object({
  * and so the database's own `_id` — which belongs to the collection, not to the
  * vendor — stays out of the API.
  */
+/** What a vendor gets before stating a preference: a daily digest of close matches. */
+const DEFAULT_NOTIFY = {
+  preset: "daily" as const,
+  minMatch: 70,
+  leadDays: 7,
+  deadlineReminder: true,
+  anomalyAlert: false,
+};
+
 function profileResponse(profile: {
   categories: string[];
   areas: string[];
   otherCategories?: string[];
   budget: { minThb: number; maxThb: number } | null;
+  notify?: NotifyPreferences;
   taxonomyVersion: string;
   updatedAt: Date | null;
 }) {
@@ -44,6 +69,7 @@ function profileResponse(profile: {
     areas: profile.areas,
     otherCategories: profile.otherCategories ?? [],
     budget: profile.budget,
+    notify: profile.notify ?? DEFAULT_NOTIFY,
     taxonomyVersion: profile.taxonomyVersion,
     updatedAt: profile.updatedAt ? profile.updatedAt.toISOString() : null,
   };
@@ -55,7 +81,7 @@ function profileResponse(profile: {
  * that says "no preference stated" rather than "no answer".
  */
 function emptyProfile() {
-  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null };
+  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null };
 }
 
 export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository }): Router {
@@ -70,7 +96,7 @@ export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepo
     const input = profileSchema.parse(req.body);
     // Deduplication keeps a replace semantically stable and prevents needless score work.
     const profile = await deps.profiles.replace(req.auth.account._id.toString(), {
-      categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], otherCategories: [...new Set(input.otherCategories)], budget: input.budget, taxonomyVersion: TAXONOMY_VERSION,
+      categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], otherCategories: [...new Set(input.otherCategories)], budget: input.budget, notify: input.notify, taxonomyVersion: TAXONOMY_VERSION,
     });
     res.json(profileResponse(profile));
   });

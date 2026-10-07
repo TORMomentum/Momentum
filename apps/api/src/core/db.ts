@@ -181,6 +181,15 @@ export interface BookmarkDocument {
 }
 
 /** The three explicit preferences used to explain vendor-facing relevance. */
+/** A vendor's stated wish for how often and how closely to be emailed. */
+export interface NotifyPreferences {
+  preset: "all" | "daily" | "high";
+  minMatch: number;
+  leadDays: number;
+  deadlineReminder: boolean;
+  anomalyAlert: boolean;
+}
+
 export interface VendorProfileDocument {
   accountId: string;
   categories: string[];
@@ -194,6 +203,8 @@ export interface VendorProfileDocument {
    */
   otherCategories?: string[];
   budget: { minThb: number; maxThb: number } | null;
+  /** Optional, so profiles written before the field existed still read. */
+  notify?: NotifyPreferences;
   taxonomyVersion: string;
   updatedAt: Date;
 }

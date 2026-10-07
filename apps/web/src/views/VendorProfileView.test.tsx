@@ -51,6 +51,7 @@ const FROM_API = {
   areas: ["thailand"],
   otherCategories: [],
   budget: null,
+  notify: { preset: "daily" as const, minMatch: 70, leadDays: 7, deadlineReminder: true, anomalyAlert: false },
   taxonomyVersion: "2026-10-07b",
   updatedAt: "2026-10-07T00:00:00.000Z",
 };
@@ -88,7 +89,10 @@ describe("VendorProfileView", () => {
     mount(FROM_API);
     expect(container.textContent).toContain("สิ่งที่จะช่วยให้จับคู่แม่นขึ้น");
     expect(container.textContent).toContain("ไม่บังคับ");
-    expect(container.textContent).not.toMatch(/\d+%/);
+    // A completeness figure was a literal on the screen this replaced. The
+    // percentages that remain are the notification threshold, which is a real
+    // setting the vendor chose.
+    expect(container.textContent).not.toContain("โปรไฟล์สมบูรณ์");
   });
 
   it("sends only the vendor's own answers, never the fields the server stamps", async () => {
@@ -103,7 +107,13 @@ describe("VendorProfileView", () => {
     });
 
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
-    expect(Object.keys(sent).sort()).toEqual(["areas", "budget", "categories", "otherCategories"]);
+    expect(Object.keys(sent).sort()).toEqual([
+      "areas",
+      "budget",
+      "categories",
+      "notify",
+      "otherCategories",
+    ]);
   });
 
   it("does not put a validator's own English wording in front of a Thai reader", async () => {
