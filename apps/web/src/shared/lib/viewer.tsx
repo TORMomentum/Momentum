@@ -90,6 +90,19 @@ export function ViewerProvider({
   return <ViewerContext.Provider value={value}>{children}</ViewerContext.Provider>;
 }
 
+/**
+ * The viewer, or null when there is no provider above this component.
+ *
+ * For controls that hide themselves when nobody is signed in — a bookmark
+ * button, say. They already behave correctly with no account, so a page
+ * rendered without account context should show them hidden, not crash.
+ * Everything that genuinely needs an account keeps using useViewer, which
+ * throws, so a missing provider is still caught where it matters.
+ */
+export function useOptionalViewer(): ViewerState | null {
+  return useContext(ViewerContext);
+}
+
 export function useViewer(): ViewerState {
   const context = useContext(ViewerContext);
   if (!context) {

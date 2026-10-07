@@ -51,12 +51,16 @@ function Value({ field, missing }: { field: TorDetailField | undefined; missing:
 export function TorRecordView({
   tor,
   originals,
-  bookmarked,
+  bookmarked = false,
 }: {
   tor: TorDetail;
   /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
   originals: OriginalDocument[];
-  bookmarked: boolean;
+  /**
+   * Whether the signed-in vendor has saved this TOR. Optional, because most
+   * readers are not signed in and have saved nothing — absent means not saved.
+   */
+  bookmarked?: boolean;
 }) {
   const { fields, budgetYear } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.

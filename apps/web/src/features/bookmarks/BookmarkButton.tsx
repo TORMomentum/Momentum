@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import icons from "../../shared/ui/tor-actions.module.css";
-import { useViewer } from "../../shared/lib/viewer";
+import { useOptionalViewer } from "../../shared/lib/viewer";
 
 export function BookmarkButton({ torId, initial, className = "", onChanged }: { torId: string; initial: boolean; className?: string; onChanged?: (saved: boolean) => void }) {
-  const { signedIn } = useViewer();
+  const signedIn = useOptionalViewer()?.signedIn ?? false;
   const [saved, setSaved] = useState(initial);
   const [saving, setSaving] = useState(false);
   async function toggle(event: React.SyntheticEvent) {
