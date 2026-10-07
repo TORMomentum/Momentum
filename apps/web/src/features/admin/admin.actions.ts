@@ -45,6 +45,7 @@ export async function saveCorrections(id: string, edits: FieldEdit[]): Promise<v
   await requireStaff();
   await saveEdits(id, edits);
   revalidatePath(REVIEW_PATH);
+  revalidatePath(`/admin/tors/${id}`);
 }
 
 export async function approveRecordAction(id: string, edits: FieldEdit[]): Promise<void> {
@@ -61,6 +62,7 @@ export async function reextractRecordAction(id: string): Promise<void> {
   await requireStaff();
   await reextractRecord(id);
   revalidatePath(REVIEW_PATH);
+  revalidatePath(`/admin/tors/${id}`);
 }
 
 export async function rejectRecordAction(id: string, reason: string): Promise<void> {
@@ -79,6 +81,7 @@ export async function rejectRecordAction(id: string, reason: string): Promise<vo
   if (!trimmedReason) throw new Error("reject reason is required");
   await rejectRecord(id, trimmedReason);
   revalidatePath(REVIEW_PATH);
+  revalidatePath(`/admin/tors/${id}`);
 }
 
 export interface UploadState {
@@ -154,4 +157,5 @@ export async function restoreRecordAction(id: string): Promise<void> {
   await restoreRecord(id);
   revalidatePath(REVIEW_PATH);
   revalidatePath("/admin/tors");
+  revalidatePath(`/admin/tors/${id}`);
 }

@@ -21,7 +21,8 @@ const KIND_OPTIONS: Array<{ value: AdminTorKind; label: string }> = [
 function statusOf(row: AdminTorRow): { label: string; tone: string } {
   if (row.restricted) return { label: "ถอดจากหน้าสาธารณะ", tone: styles.torsStatusRestricted ?? "" };
   if (row.state === "failed") return { label: "สกัดไม่สำเร็จ", tone: styles.torsStatusFailed ?? "" };
-  if (row.state === "queued" || row.state === "extracting") return { label: "กำลังสกัด", tone: styles.torsStatusMuted ?? "" };
+  if (row.state === "queued" || row.state === "extracting")
+    return { label: "กำลังสกัด", tone: styles.torsStatusMuted ?? "" };
   if (row.unverified) return { label: "ยังไม่ยืนยันการสกัด", tone: styles.torsStatusMuted ?? "" };
   return { label: "เผยแพร่อยู่", tone: styles.torsStatusPublic ?? "" };
 }
@@ -37,7 +38,7 @@ function pageHref(query: { q?: string; status: AdminTorStatus; kind: AdminTorKin
 }
 
 /**
- * The all-records list: search, filter, and open any record in the review screen, where it can be
+ * The all-records list: search, filter, and open any record in its management screen, where it can be
  * corrected, re-extracted, taken down or restored. A plain GET form, so a filtered list is a link
  * a reviewer can share.
  */
@@ -55,7 +56,8 @@ export function AdminTorsView({
     <main className={styles.logPage}>
       <h1 className={styles.overviewTitle}>TOR ทั้งหมด</h1>
       <p className={styles.overviewLede}>
-        ทุกระเบียนในระบบ รวมที่เผยแพร่แล้วและที่ถอดออกจากหน้าสาธารณะ — เปิดเพื่อแก้ไข สกัดใหม่ ถอดออก หรือคืนสู่หน้าสาธารณะ
+        ทุกระเบียนในระบบ รวมที่เผยแพร่แล้วและที่ถอดออกจากหน้าสาธารณะ — เปิดเพื่อแก้ไข สกัดใหม่ ถอดออก
+        หรือคืนสู่หน้าสาธารณะ
       </p>
 
       <form className={styles.torsFilters} action="/admin/tors" method="get" role="search">
@@ -70,26 +72,35 @@ export function AdminTorsView({
         />
         <select name="status" defaultValue={query.status} aria-label="สถานะ" className={styles.torsSelect}>
           {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
         <select name="kind" defaultValue={query.kind} aria-label="ชนิดเอกสาร" className={styles.torsSelect}>
           {KIND_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
-        <button type="submit" className={styles.adminSecondaryBtn}>ค้นหา</button>
+        <button type="submit" className={styles.adminSecondaryBtn}>
+          ค้นหา
+        </button>
       </form>
 
       {offline && <div className={styles.overviewOffline}>{offline}</div>}
 
       {result && (
         <p className={styles.torsCount}>
-          พบ {result.total.toLocaleString("th-TH")} รายการ{pages > 1 ? ` · หน้า ${query.page} จาก ${pages}` : ""}
+          พบ {result.total.toLocaleString("th-TH")} รายการ
+          {pages > 1 ? ` · หน้า ${query.page} จาก ${pages}` : ""}
         </p>
       )}
 
-      {result && result.rows.length === 0 && <div className={styles.logEmpty}>ไม่พบระเบียนที่ตรงกับเงื่อนไขนี้</div>}
+      {result && result.rows.length === 0 && (
+        <div className={styles.logEmpty}>ไม่พบระเบียนที่ตรงกับเงื่อนไขนี้</div>
+      )}
 
       {result && result.rows.length > 0 && (
         <table className={styles.logTable}>
@@ -108,12 +119,28 @@ export function AdminTorsView({
               return (
                 <tr key={row.id}>
                   <td>
-                    <Link href={`/admin/review?id=${row.id}`}>{row.title || "ยังไม่มีชื่อ — ยังไม่ได้สกัด"}</Link>
-                    {row.documentType === "invitation" && <span className={styles.torsKind}>ประกาศเชิญชวน</span>}
+                    <Link
+                      href={`/admin/tors/${row.id}${(() => {
+                        const params = new URLSearchParams();
+                        if (query.q) params.set("q", query.q);
+                        if (query.status !== "all") params.set("status", query.status);
+                        if (query.kind !== "tor") params.set("kind", query.kind);
+                        if (query.page > 1) params.set("page", String(query.page));
+                        const search = params.toString();
+                        return search ? `?${search}` : "";
+                      })()}`}
+                    >
+                      {row.title || "ยังไม่มีชื่อ — ยังไม่ได้สกัด"}
+                    </Link>
+                    {row.documentType === "invitation" && (
+                      <span className={styles.torsKind}>ประกาศเชิญชวน</span>
+                    )}
                   </td>
                   <td>{row.agency || "—"}</td>
                   <td className={styles.logWhen}>{row.projectNumber ?? "—"}</td>
-                  <td><span className={`${styles.torsStatus} ${status.tone}`}>{status.label}</span></td>
+                  <td>
+                    <span className={`${styles.torsStatus} ${status.tone}`}>{status.label}</span>
+                  </td>
                   <td className={styles.logWhen}>
                     {new Date(row.createdAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}
                   </td>
