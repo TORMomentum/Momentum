@@ -89,13 +89,11 @@ jobs:
       # `services replace` only ever applies deploy/cloudrun/web.yaml's own spec, and IAP
       # enablement isn't expressible in that Knative YAML — it's a separate setting on the
       # service resource. Every replace above therefore silently drops it, so it has to be
-      # reasserted after each deploy, not configured once by hand. Both calls are idempotent:
-      # safe to repeat against a service that's already IAP-enabled with the binding in place.
+      # reasserted after each deploy, not configured once by hand. --iap sets up the IAP
+      # service agent's own invoker binding itself (confirmed live: "Setting IAP service
+      # agent ... done" in its own output) — no separate add-iam-policy-binding call needed,
+      # and that extra call only cost a dependency on an API this project never enabled
+      # (cloudresourcemanager.googleapis.com, to look up the project number). Idempotent:
+      # safe to repeat against a service that's already IAP-enabled.
       - name: Re-assert IAP on web (services replace doesn't carry it)
-        run: |
-          gcloud run services update tor-radar-web --region "$REGION" --iap
-          PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
-          gcloud run services add-iam-policy-binding tor-radar-web \
-            --region "$REGION" \
-            --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-iap.iam.gserviceaccount.com" \
-            --role=roles/run.invoker
+        run: gcloud run services update tor-radar-web --region "$REGION" --iap
