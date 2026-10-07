@@ -20,6 +20,12 @@ describe("loadConfig", () => {
     expect(config.mail.timeoutMs).toBe(10_000);
   });
 
+  it("gives the worker no probe port unless one is configured, never the API's own", () => {
+    expect(loadConfig(base).workerHealthPort).toBeUndefined();
+    expect(loadConfig({ ...base, WORKER_HEALTH_PORT: "" }).workerHealthPort).toBeUndefined();
+    expect(loadConfig({ ...base, WORKER_HEALTH_PORT: "8080" }).workerHealthPort).toBe(8080);
+  });
+
   it("parses the API key list into individual keys", () => {
     const config = loadConfig({ ...base, INTAKE_API_KEYS: "a,b , c" });
     expect(config.intakeApiKeys).toEqual(["a", "b", "c"]);

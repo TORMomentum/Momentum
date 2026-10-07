@@ -171,16 +171,33 @@ export async function downloadPackage(fileId: string): Promise<Buffer> {
 }
 
 /**
- * The newest announcements of one kind on e-GP's public list — draft TORs or invitations to bid —
- * up to the 50 the list's first page holds. The page is TIS-620; windows-874 is its superset.
+ * One page of the newest announcements of one kind on e-GP's public list — draft TORs or
+ * invitations to bid — 50 to a page. A later page is the list's own "ถัดไป": the same query with
+ * the row range it asks for, no search criteria and no captcha. The page is TIS-620; windows-874
+ * is its superset.
  */
-export async function fetchAnnouncementList(kind: ListKind): Promise<ListItem[]> {
+export async function fetchAnnouncementList(kind: ListKind, page = 1): Promise<ListItem[]> {
+  const bytes = await getBytes(announcementListUrl(kind, page), JSON_MAX_BYTES * 5);
+  return parseAnnouncementList(new TextDecoder("windows-874").decode(bytes));
+}
+
+/** Rows on one page of e-GP's public announcement list. */
+const LIST_PAGE_SIZE = 50;
+
+export function announcementListUrl(kind: ListKind, page = 1): string {
   const url = new URL("/egp2procmainWeb/procsearch.sch", SITE_BASE);
   url.searchParams.set("homeflag", "A");
   url.searchParams.set("proc_id", "FPRO9965");
   url.searchParams.set("servlet", "FPRO9965Servlet");
   url.searchParams.set("methodId", "");
   url.searchParams.set("announceType", LIST_TYPES[kind]);
-  const bytes = await getBytes(url.toString(), JSON_MAX_BYTES * 5);
-  return parseAnnouncementList(new TextDecoder("windows-874").decode(bytes));
+  if (page > 1) {
+    url.searchParams.set("govStatus", "A");
+    url.searchParams.set("mode", "SEARCH");
+    url.searchParams.set("beginrec", String((page - 1) * LIST_PAGE_SIZE + 1));
+    url.searchParams.set("endrec", String(page * LIST_PAGE_SIZE + 1));
+    url.searchParams.set("grouppage", String(page));
+  }
+  return url.toString();
 }
+

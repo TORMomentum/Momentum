@@ -53,6 +53,14 @@ const editSchema = z.object({
 const editsBodySchema = z.object({ edits: z.array(editSchema).max(20).default([]) });
 
 const rejectSchema = z.object({ reason: z.string().min(3).max(300) });
+
+/** The all-TORs list: primitives only, like every other admin filter. */
+const torsQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  status: z.enum(["all", "public", "restricted", "unverified", "processing", "failed"]).default("all"),
+  kind: z.enum(["tor", "invitation", "all"]).default("tor"),
+  page: z.coerce.number().int().positive().max(10_000).default(1),
+});
 const verificationParamsSchema = z.object({ field: z.enum(reviewFieldNames) });
 const verificationBodySchema = z.object({ confirmed: z.boolean() });
 
@@ -83,6 +91,11 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
   router.get("/events", async (req, res) => {
     const { limit } = queueQuerySchema.parse(req.query);
     res.json(await deps.service.events(limit ?? deps.queuePageSize * 2));
+  });
+
+  router.get("/tors", async (req, res) => {
+    const { q, status, kind, page } = torsQuerySchema.parse(req.query);
+    res.json(await deps.service.listAll({ ...(q ? { q } : {}), status, kind, page, pageSize: deps.queuePageSize }));
   });
 
   router.get("/tors/:id", async (req, res) => {
@@ -129,6 +142,11 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
     const { reason } = rejectSchema.parse(req.body);
     await deps.service.reject(req.params.id, reason, actorOf(req));
     res.json({ id: req.params.id, restricted: true });
+  });
+
+  router.post("/tors/:id/restore", async (req, res) => {
+    await deps.service.restore(req.params.id, actorOf(req));
+    res.json({ id: req.params.id, restricted: false });
   });
 
   return router;

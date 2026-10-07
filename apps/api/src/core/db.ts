@@ -157,6 +157,27 @@ export interface AccountDocument {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  /** Set by an admin: the account cannot sign in and every session it had is revoked. */
+  disabledAt?: Date;
+}
+
+/**
+ * What an admin did to a vendor's account (NFR-S2). Reading someone's profile is itself recorded,
+ * because personal data is involved, and so is every change and every email sent on their behalf.
+ */
+export interface AdminAuditDocument {
+  accountId: string;
+  action:
+    | "viewed"
+    | "profile-edited"
+    | "role-changed"
+    | "disabled"
+    | "enabled"
+    | "verification-email-sent"
+    | "password-reset-sent";
+  actor: string;
+  at: Date;
+  detail?: string;
 }
 
 export interface SessionDocument {
@@ -210,6 +231,8 @@ export interface VendorProfileDocument {
   notify?: NotifyPreferences;
   taxonomyVersion: string;
   updatedAt: Date;
+  /** Who made the last change. "admin" is shown to the vendor, so a staff edit is never passed off as theirs. */
+  updatedBy?: "vendor" | "admin";
 }
 
 /** Cached derived data; source TOR documents remain immutable after extraction. */
@@ -277,6 +300,10 @@ export function bookmarks(db: Db): Collection<BookmarkDocument> {
   return db.collection<BookmarkDocument>("bookmarks");
 }
 
+export function adminAudit(db: Db): Collection<AdminAuditDocument> {
+  return db.collection<AdminAuditDocument>("admin_audit");
+}
+
 export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
 }
@@ -301,6 +328,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // Precise candidates — records with leaf evidence for what a vendor chose —
   // are read before the coarse ones, so they need their own path.
   await torClassifications(db).createIndex({ "classification.leaves.id": 1, updatedAt: -1 });
+  await adminAudit(db).createIndex({ accountId: 1, at: -1 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

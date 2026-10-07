@@ -9,6 +9,7 @@ const actions = vi.hoisted(() => ({
   approve: vi.fn<() => Promise<void>>(),
   reextract: vi.fn<() => Promise<void>>(),
   reject: vi.fn<() => Promise<void>>(),
+  restore: vi.fn<() => Promise<void>>(),
   setFieldVerification: vi.fn<() => Promise<void>>(),
 }));
 
@@ -17,6 +18,7 @@ vi.mock("../features/admin/admin.actions", () => ({
   approveRecordAction: actions.approve,
   reextractRecordAction: actions.reextract,
   rejectRecordAction: actions.reject,
+  restoreRecordAction: actions.restore,
   setFieldVerificationAction: actions.setFieldVerification,
 }));
 
@@ -135,8 +137,8 @@ describe("AdminReviewView confirmations", () => {
     expect(container.querySelector('a[href="/admin/review?view=fields"]')?.getAttribute("aria-current")).toBe("page");
   });
 
-  async function render(verified: boolean) {
-    const record = makeRecord(verified);
+  async function render(verified: boolean, over: Partial<ReturnType<typeof makeRecord>> = {}) {
+    const record = { ...makeRecord(verified), ...over };
     await act(async () => {
       root.render(
         <AdminReviewView
@@ -153,11 +155,11 @@ describe("AdminReviewView confirmations", () => {
   it("does not allow rejection without a reason and passes the typed reason through", async () => {
     await render(false);
 
-    await act(async () => button(container, "ปฏิเสธ").click());
+    await act(async () => button(container, "ถอดจากหน้าสาธารณะ").click());
     const dialog = container.querySelector("dialog[open]");
     expect(dialog).not.toBeNull();
 
-    const confirm = button(dialog as HTMLElement, "ปฏิเสธ");
+    const confirm = button(dialog as HTMLElement, "ถอดออก");
     expect(confirm.disabled).toBe(true);
     confirm.click();
     expect(actions.reject).not.toHaveBeenCalled();
@@ -173,8 +175,19 @@ describe("AdminReviewView confirmations", () => {
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    await act(async () => button(dialog as HTMLElement, "ปฏิเสธ").click());
+    await act(async () => button(dialog as HTMLElement, "ถอดออก").click());
     expect(actions.reject).toHaveBeenCalledWith("tor-1", "เหตุผลจากผู้ตรวจสอบ");
+  });
+
+  it("shows a taken-down record as such, with restore in place of take down", async () => {
+    actions.restore.mockResolvedValue(undefined);
+    await render(false, { restricted: true, restrictedReason: "ไม่ใช่เอกสาร TOR" });
+
+    expect(container.textContent).toContain("ถอดจากหน้าสาธารณะแล้ว — ไม่ใช่เอกสาร TOR");
+    expect([...container.querySelectorAll("button")].some((b) => b.textContent === "ถอดจากหน้าสาธารณะ")).toBe(false);
+
+    await act(async () => button(container, "คืนสู่หน้าสาธารณะ").click());
+    expect(actions.restore).toHaveBeenCalledWith("tor-1");
   });
 
   it("approves immediately when all fields are confirmed", async () => {

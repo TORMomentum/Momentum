@@ -158,6 +158,9 @@ const schema = z.object({
   MATCH_AREA_SIGNAL_ENABLED: z.coerce.boolean().default(false),
 
   API_PORT: z.coerce.number().int().positive().default(4000),
+  // The extraction worker's probe server, for Cloud Run (TOR-140). Unset, as on a developer
+  // machine, it starts none: sharing API_PORT there put the worker on the API's own port.
+  WORKER_HEALTH_PORT: blankAsAbsent(z.coerce.number().int().positive()),
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
   path: ["T_LOW"],
@@ -257,6 +260,7 @@ export interface Config {
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
   };
   apiPort: number;
+  workerHealthPort?: number;
 }
 
 export interface SearchConfig {
@@ -376,5 +380,6 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
     },
     apiPort: parsed.API_PORT,
+    ...(parsed.WORKER_HEALTH_PORT !== undefined ? { workerHealthPort: parsed.WORKER_HEALTH_PORT } : {}),
   };
 }

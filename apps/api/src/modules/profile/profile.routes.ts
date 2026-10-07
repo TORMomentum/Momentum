@@ -10,7 +10,7 @@ import type { NotifyPreferences } from "../../core/db.js";
 const taxonomyIds = new Set([...WORK_CATEGORIES.map((group) => group.id), ...WORK_CATEGORY_LEAVES.map((leaf) => leaf.id)]);
 const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => province.id)]);
 
-const profileSchema = z.object({
+export const profileSchema = z.object({
   categories: z.array(z.string()).max(100).refine((ids) => ids.every((id) => taxonomyIds.has(id)), "มีหมวดหมู่งานที่ไม่อยู่ในรายการ"),
   /**
    * Work a vendor does that the taxonomy has no node for. Stored as the vendor
@@ -55,7 +55,7 @@ const DEFAULT_NOTIFY = {
   anomalyAlert: false,
 };
 
-function profileResponse(profile: {
+export function profileResponse(profile: {
   categories: string[];
   areas: string[];
   otherCategories?: string[];
@@ -63,6 +63,7 @@ function profileResponse(profile: {
   notify?: NotifyPreferences;
   taxonomyVersion: string;
   updatedAt: Date | null;
+  updatedBy?: "vendor" | "admin";
 }) {
   return {
     categories: profile.categories,
@@ -72,6 +73,7 @@ function profileResponse(profile: {
     notify: profile.notify ?? DEFAULT_NOTIFY,
     taxonomyVersion: profile.taxonomyVersion,
     updatedAt: profile.updatedAt ? profile.updatedAt.toISOString() : null,
+    updatedBy: profile.updatedBy ?? "vendor",
   };
 }
 
@@ -80,7 +82,7 @@ function profileResponse(profile: {
  * one: the screen has something to render and matching has something to read
  * that says "no preference stated" rather than "no answer".
  */
-function emptyProfile() {
+export function emptyProfile() {
   return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null };
 }
 
