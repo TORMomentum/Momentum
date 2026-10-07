@@ -10,6 +10,7 @@ import {
   approveRecordAction,
   reextractRecordAction,
   rejectRecordAction,
+  restoreRecordAction,
   setFieldVerificationAction,
 } from "../features/admin/admin.actions";
 import type { QueueEntry, ReviewRecord } from "../shared/lib/admin-api";
@@ -364,9 +365,28 @@ export function AdminReviewView({
                       "เหตุผลที่ต้องตรวจสอบ" repeated what the reason already says. */}
                   <span className={styles.adminReasonNote} title="เหตุผลที่ต้องตรวจสอบ">
                     {record.reviewReasons.map(reasonLabel).join(" · ") ||
-                      (view === "fields" ? "รอยืนยันหมวดหมู่และคุณสมบัติ" : "ความเชื่อมั่นต่ำกว่าเกณฑ์")}
+                      (view === "fields"
+                        ? "รอยืนยันหมวดหมู่และคุณสมบัติ"
+                        : queue.some((item) => item.id === record.id)
+                          ? "ความเชื่อมั่นต่ำกว่าเกณฑ์"
+                          : "เปิดจากรายการ TOR ทั้งหมด")}
                   </span>
                 </header>
+
+                {/* A takedown hides the record from the public only; staff still see and can lift it. */}
+                {record.restricted && (
+                  <div className={styles.restrictedBanner} role="status">
+                    <span>ถอดจากหน้าสาธารณะแล้ว{record.restrictedReason ? ` — ${record.restrictedReason}` : ""}</span>
+                    <button
+                      type="button"
+                      className={styles.adminSecondaryBtn}
+                      disabled={pending}
+                      onClick={() => void run(() => restoreRecordAction(record.id), "✓ คืนสู่หน้าสาธารณะแล้ว · บันทึกลงบันทึกกิจกรรม")}
+                    >
+                      คืนสู่หน้าสาธารณะ
+                    </button>
+                  </div>
+                )}
 
                 {toast && <div className={styles.adminToast}>{toast}</div>}
 
@@ -490,14 +510,16 @@ export function AdminReviewView({
                     >
                       สกัดใหม่
                     </button>
-                    <button
-                      type="button"
-                      className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
-                      disabled={pending}
-                      onClick={() => setConfirmation("reject")}
-                    >
-                      ปฏิเสธ
-                    </button>
+                    {!record.restricted && (
+                      <button
+                        type="button"
+                        className={`${styles.adminSecondaryBtn} ${styles.adminRejectBtn}`}
+                        disabled={pending}
+                        onClick={() => setConfirmation("reject")}
+                      >
+                        ถอดจากหน้าสาธารณะ
+                      </button>
+                    )}
                   </div>
 
                 </footer>
@@ -536,16 +558,16 @@ export function AdminReviewView({
 
                 <AdminConfirmDialog
                   open={confirmation === "reject"}
-                  title="ปฏิเสธระเบียนนี้หรือไม่"
-                  body="การปฏิเสธจะจำกัดการเข้าถึงสาธารณะและเขียนรายการลงบันทึกการตรวจสอบ เอกสารต้นฉบับจะยังถูกเก็บไว้และจะไม่ถูกลบ"
+                  title="ถอดระเบียนนี้จากหน้าสาธารณะหรือไม่"
+                  body="ระเบียนจะไม่แสดงต่อสาธารณะและจะบันทึกเหตุผลลงบันทึกกิจกรรม ผู้ดูแลยังเปิดดูได้และคืนได้ภายหลัง เอกสารต้นฉบับจะยังถูกเก็บไว้และไม่ถูกลบ"
                   cancelLabel="ยกเลิก"
-                  confirmLabel="ปฏิเสธ"
+                  confirmLabel="ถอดออก"
                   tone="danger"
-                  reason={{ label: "เหตุผลในการปฏิเสธ" }}
+                  reason={{ label: "เหตุผลที่ถอดออก" }}
                   onClose={() => setConfirmation(null)}
                   onConfirm={(reason) => run(
                     () => rejectRecordAction(record.id, reason ?? ""),
-                    "✕ ปฏิเสธ — จำกัดการเข้าถึงและบันทึกเหตุผล ต้นฉบับยังเก็บไว้",
+                    "✕ ถอดจากหน้าสาธารณะแล้ว — บันทึกเหตุผล ต้นฉบับยังเก็บไว้ คืนได้จากหน้านี้",
                   )}
                 />
               </section>

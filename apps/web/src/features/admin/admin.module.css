@@ -547,6 +547,41 @@
 .logReason { color: var(--ink-70); }
 .logEmpty { padding: 40px 0; color: var(--ink-62); font-size: 13px; }
 
+/* ---------- all TORs: search every record, open any in the review screen ---------- */
+.torsFilters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+
+.torsFilters .adminSecondaryBtn { flex: none; padding: 8px 18px; }
+
+.torsSearch { flex: 1 1 320px; min-width: 0; font: 13px var(--body); padding: 8px 12px; border: 1px solid var(--ink-28); border-radius: 4px; }
+
+.torsSelect { font: 12.5px var(--body); padding: 8px 10px; border: 1px solid var(--ink-28); border-radius: 4px; background: var(--paper, #fff); }
+
+.torsCount { margin: 0 0 10px; font: 11px var(--data); color: var(--ink-62); }
+
+.torsKind { margin-left: 8px; font: 10px var(--data); color: var(--ink-62); }
+
+.torsStatus { font: 600 11px var(--body); white-space: nowrap; }
+
+.torsStatusPublic { color: var(--verified); }
+
+.torsStatusRestricted { color: var(--danger); }
+
+.torsStatusFailed { color: var(--anomaly); }
+
+.torsStatusMuted { color: var(--ink-62); }
+
+.torsPager { display: flex; justify-content: space-between; margin-top: 18px; font-size: 13px; }
+
+/* A taken-down record says so above everything else, with the way back beside it. */
+.restrictedBanner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 4px; font-size: 12.5px; color: var(--danger); }
+
+.restrictedBanner .adminSecondaryBtn { flex: none; padding: 6px 14px; color: var(--ink); }
+
+@media (max-width: 720px) {
+  .logPage { padding: 24px 16px 48px; }
+  .logTable { display: block; overflow-x: auto; }
+}
+
 /* ---------- queue search and triage ---------- */
 .queueTools {
   display: flex;

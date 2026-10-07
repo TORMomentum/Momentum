@@ -50,6 +50,34 @@ export interface ReviewRecord extends QueueEntry {
   hasTextLayer: boolean;
   sourceUrl: string | null;
   contentHash: string;
+  /** Absent from an API older than the all-TORs list. */
+  state?: string;
+  restricted?: boolean;
+  restrictedReason?: string;
+  documentType?: "tor" | "invitation";
+}
+
+export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "failed";
+export type AdminTorKind = "tor" | "invitation" | "all";
+
+export interface AdminTorRow {
+  id: string;
+  title: string;
+  agency: string;
+  documentType: "tor" | "invitation";
+  state: string;
+  restricted: boolean;
+  unverified: boolean;
+  confidenceLevel: string | null;
+  projectNumber: string | null;
+  createdAt: string;
+}
+
+export interface AdminTorPage {
+  rows: AdminTorRow[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface QueueView {
@@ -153,6 +181,20 @@ export function fetchQueue(reason?: string, view: QueueKind = "confidence"): Pro
 
 export function fetchRecord(id: string): Promise<ReviewRecord> {
   return call<ReviewRecord>(`/admin/tors/${encodeURIComponent(id)}`);
+}
+
+export function fetchAllTors(query: { q?: string; status?: AdminTorStatus; kind?: AdminTorKind; page?: number }): Promise<AdminTorPage> {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.status && query.status !== "all") params.set("status", query.status);
+  if (query.kind && query.kind !== "tor") params.set("kind", query.kind);
+  if (query.page && query.page > 1) params.set("page", String(query.page));
+  const search = params.toString();
+  return call<AdminTorPage>(`/admin/tors${search ? `?${search}` : ""}`);
+}
+
+export function restore(id: string): Promise<{ id: string }> {
+  return call(`/admin/tors/${encodeURIComponent(id)}/restore`, { method: "POST" });
 }
 
 export interface FieldEdit {
