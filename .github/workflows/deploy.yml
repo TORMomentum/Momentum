@@ -47,20 +47,30 @@ jobs:
           docker push "$IMAGE"
           echo "AR_IMAGE_WEB=$IMAGE" >> "$GITHUB_ENV"
 
+      # web needs api's URL (API_BASE_URL) and api needs web's URL (APP_ORIGIN,
+      # the accounts feature's CSRF check) — each needs the other's, and Cloud
+      # Run only assigns a URL once a service exists. First pass creates web
+      # with a placeholder API_BASE_URL just to get its real URL; the second
+      # pass (after api and worker deploy) redeploys web with the real one.
+      - name: Deploy web (first pass, establishes its URL)
+        run: |
+          API_SERVICE_URL="https://placeholder.invalid"
+          export API_SERVICE_URL
+          envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
+          gcloud run services replace /tmp/web.yaml --region "$REGION"
+
       # api and worker share the api image but are separate services (different
       # scaling, different command) — see deploy/cloudrun/worker.yaml.
-      - name: Deploy api
+      - name: Deploy api and worker
         run: |
+          APP_ORIGIN=$(gcloud run services describe tor-radar-web --region "$REGION" --format='value(status.url)')
+          export APP_ORIGIN
           envsubst < deploy/cloudrun/api.yaml > /tmp/api.yaml
           gcloud run services replace /tmp/api.yaml --region "$REGION"
-
-      - name: Deploy worker
-        run: |
           envsubst < deploy/cloudrun/worker.yaml > /tmp/worker.yaml
           gcloud run services replace /tmp/worker.yaml --region "$REGION"
 
-      # web needs api's own URL, so api must already be deployed by this point.
-      - name: Deploy web
+      - name: Redeploy web with api's real URL
         run: |
           API_SERVICE_URL=$(gcloud run services describe tor-radar-api --region "$REGION" --format='value(status.url)')
           export API_SERVICE_URL

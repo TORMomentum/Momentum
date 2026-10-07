@@ -39,6 +39,10 @@ spec:
               value: /secrets/gcs-sa/key.json
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /secrets/vertex-sa/key.json
+            # Required by the same config schema api.yaml uses, even though the
+            # worker never serves a request an Origin check would apply to.
+            - name: APP_ORIGIN
+              value: ${APP_ORIGIN}
             - name: MONGO_URL
               valueFrom:
                 secretKeyRef:
@@ -53,6 +57,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: ADMIN_API_KEYS
+                  key: latest
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: SESSION_SECRET
                   key: latest
           volumeMounts:
             - name: gcs-sa

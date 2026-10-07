@@ -1,7 +1,12 @@
 # Build context is the repo root (see docker-compose.yml). Installed from the
 # workspace root, not apps/api alone, so every @tor-radar/* package resolves to
 # a real built package instead of a missing module (TOR-140).
-FROM node:22-alpine
+#
+# Debian-based, not alpine: alpine's musl/OpenSSL TLS stack has a documented
+# history of failing the TLS handshake against MongoDB Atlas specifically
+# ("SSL alert number 80" during MongoServerSelectionError) — seen on this
+# deploy even with Atlas Network Access allowing the connecting IP.
+FROM node:22-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
