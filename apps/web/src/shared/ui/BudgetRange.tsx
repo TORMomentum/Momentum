@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type CSSProperties } from "react";
+import { useId, useState } from "react";
 import styles from "./budget-range.module.css";
 import { formatBudgetShort } from "../../data/tor-samples";
 import { thaiDigitsToArabic } from "../lib/format";
@@ -29,6 +29,7 @@ export function BudgetRange({
   maxLabel = "งบประมาณสูงสุด",
   unit = "baht",
   tone = "blue",
+  stacked = false,
 }: {
   min: number;
   max: number;
@@ -41,6 +42,8 @@ export function BudgetRange({
   unit?: Unit;
   /** `match` uses the colour of the match-score badges the filter acts on. */
   tone?: "blue" | "match";
+  /** One labelled amount per row, for a column too narrow for a long figure beside another. */
+  stacked?: boolean;
 }) {
   // The SVG filter is referenced by id, so two sliders on one page must not
   // share one.
@@ -63,23 +66,46 @@ export function BudgetRange({
 
   return (
     <div className={`${styles.root} ${tone === "match" ? styles.toneMatch : ""}`}>
-      {/* The widest amount this range can hold sizes the boxes, so a ceiling
-          like ฿190,000,000 wraps them onto two lines instead of clipping. */}
-      <div className={styles.amounts} style={{ "--amount-chars": BAHT.format(ceiling).length } as CSSProperties}>
-        <AmountBox
-          value={min}
-          unit={unit}
-          label={minLabel}
-          // A minimum typed above the maximum carries the maximum up with it,
-          // rather than refusing the entry or quietly swapping the two.
-          onCommit={(next) => {
-            const value = clamp(next);
-            onChange({ min: value, max: Math.max(max, value) });
-          }}
-        />
-        {/* The dash travels with the upper box, so a wrapped pair still
-            reads as a range: "฿0" over "— ฿190,000,000". */}
-        <span className={styles.amountUpper}>
+      {stacked ? (
+        // A narrow column: one amount per row, labelled as the date range
+        // filter beside it is, so a long figure always has the full width.
+        <div className={styles.amountsStacked}>
+          <span className={styles.amountLabel}>ตั้งแต่</span>
+          <AmountBox
+            value={min}
+            unit={unit}
+            label={minLabel}
+            // A minimum typed above the maximum carries the maximum up with it,
+            // rather than refusing the entry or quietly swapping the two.
+            onCommit={(next) => {
+              const value = clamp(next);
+              onChange({ min: value, max: Math.max(max, value) });
+            }}
+          />
+          <span className={styles.amountLabel}>ถึง</span>
+          <AmountBox
+            value={max}
+            unit={unit}
+            label={maxLabel}
+            onCommit={(next) => {
+              const value = clamp(next);
+              onChange({ min: Math.min(min, value), max: value });
+            }}
+          />
+        </div>
+      ) : (
+        <div className={styles.amounts}>
+          <AmountBox
+            value={min}
+            unit={unit}
+            label={minLabel}
+            // A minimum typed above the maximum carries the maximum up with it,
+            // rather than refusing the entry or quietly swapping the two.
+            onCommit={(next) => {
+              const value = clamp(next);
+              onChange({ min: value, max: Math.max(max, value) });
+            }}
+          />
           <span className={styles.amountDash} aria-hidden="true">
             —
           </span>
@@ -92,8 +118,8 @@ export function BudgetRange({
               onChange({ min: Math.min(min, value), max: value });
             }}
           />
-        </span>
-      </div>
+        </div>
+      )}
       <div className={styles.sliderWrap}>
         <svg width="0" height="0" style={{ position: "absolute" }}>
           <defs>

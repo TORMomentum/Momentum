@@ -263,7 +263,7 @@
 
 .dateRange { display: grid; gap: 8px; }
 
-.dateField { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 8px; font-size: 12px; }
+.dateField { display: grid; grid-template-columns: var(--filter-label-width) 1fr; align-items: center; gap: 8px; font-size: 12px; }
 
 .dateLabel { color: rgba(18, 35, 60, 0.7); }
 

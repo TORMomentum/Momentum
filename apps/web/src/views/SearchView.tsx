@@ -347,6 +347,7 @@ export function SearchView({
               ceiling={ceiling}
               step={step}
               onChange={setDraftBudget}
+              stacked
             />
           </FilterSection>
         )}

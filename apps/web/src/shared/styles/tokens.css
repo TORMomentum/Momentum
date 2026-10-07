@@ -22,6 +22,7 @@
   --blue-dark: #1746a0;
   --blue-wash: rgba(29, 99, 216, 0.06);   /* a control that is holding a filter */
   --blue-ring: rgba(29, 99, 216, 0.12);   /* focus/open ring around one */
+  --filter-label-width: 44px; /* "ตั้งแต่ / ถึง" column of the search range filters */
   --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
   --anomaly-wash: rgba(180, 83, 9, 0.06); /* pending human confirmation */
   --verified: #0e7a5f;      /* a check that passed */
