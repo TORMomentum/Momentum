@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import type { OwnMatches } from "../shared/api/matches.api";
-import { MatchedTorsPanel } from "../features/dashboard/MatchedTorsPanel";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { ChecklistSummaryPanel } from "../features/dashboard/ChecklistSummaryPanel";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
+import { MatchesPanel } from "../features/dashboard/MatchesPanel";
 import styles from "../features/dashboard/dashboard.module.css";
+import type { OwnMatches } from "../shared/api/matches.api";
 import type { DashboardPayload, TorState } from "../shared/api/stats.api";
 import { formatBudgetShort, formatThaiMonth, thaiDigitsToArabic } from "../shared/lib/format";
 import { serialiseDashboardFilters, UNKNOWN, type DashboardFilters } from "../shared/lib/dashboard-filters";
@@ -51,12 +51,12 @@ export function DashboardView({
   dashboard,
   filters,
   error = false,
-  matches = null,
+  matches,
 }: {
   dashboard?: DashboardPayload;
   filters: DashboardFilters;
   error?: boolean;
-  /** The signed-in vendor's matches; null for a signed-out visitor. */
+  /** The signed-in vendor's matches; undefined for a visitor, who sees the public dashboard only. */
   matches?: OwnMatches | null;
 }) {
   const router = useRouter();
@@ -106,6 +106,38 @@ export function DashboardView({
   const widestMonth = dashboard.trend.reduce((widest, row) => Math.max(widest, row.budgetSum), 0);
   const categories = [...new Set(dashboard.points.map((point) => point.category))];
 
+  // Sits directly above the state chips it narrows alongside, rather than at the
+  // top of the page; with no results it stays above the empty state, so a filter
+  // that emptied the page can always be cleared.
+  const filterBar = (
+        <div className={styles.filters}>
+          <FilterDrop
+            label="หน่วยงาน"
+            value={filters.agency ?? ALL}
+            open={openDrop === "agency"}
+            onToggle={() => setOpenDrop(openDrop === "agency" ? null : "agency")}
+            onPick={(agency) => { updateFilters({ agency: agency === ALL ? undefined : agency }); setOpenDrop(null); }}
+            options={[{ value: ALL, label: "ทั้งหมด" }, ...agencies.map((agency) => ({ value: agency.agency, label: agency.agency ? thaiDigitsToArabic(agency.agency) : UNKNOWN_AGENCY, meta: String(agency.torCount) }))]}
+          />
+          <FilterDrop
+            label="หมวดหมู่"
+            value={filters.category ?? ALL}
+            open={openDrop === "category"}
+            onToggle={() => setOpenDrop(openDrop === "category" ? null : "category")}
+            onPick={(category) => { updateFilters({ category: category === ALL ? undefined : category }); setOpenDrop(null); }}
+            options={[{ value: ALL, label: "ทั้งหมด" }, ...categories.map((category) => ({ value: category, label: thaiDigitsToArabic(category) }))]}
+          />
+          {/* Four controls can be filtering at once — agency, category, state and
+              month — and clicking each one back off is four actions. Shown only
+              when something is actually filtered, so it is never a dead control. */}
+          {anyFilter && (
+            <button type="button" className={styles.clearFilters} onClick={() => router.push(pathname)}>
+              ล้างตัวกรอง
+            </button>
+          )}
+        </div>
+  );
+
   return (
     <main className={styles.page}>
       <div className={styles.pageHead}>
@@ -116,6 +148,8 @@ export function DashboardView({
           ครอบคลุมเฉพาะเอกสาร TOR ที่ระบบรวบรวมได้
         </div>
       </div>
+
+      {matches !== undefined && <MatchesPanel matches={matches} />}
 
       {/* States the fact, and does not claim work is under way. The banner only
           knows the figures are old; whether anything is recalculating them is
@@ -130,67 +164,47 @@ export function DashboardView({
         </p>
       )}
 
-      {matches && <MatchedTorsPanel matches={matches} />}
-
-      <div className={styles.filters}>
-        <FilterDrop
-          label="หน่วยงาน"
-          value={filters.agency ?? ALL}
-          open={openDrop === "agency"}
-          onToggle={() => setOpenDrop(openDrop === "agency" ? null : "agency")}
-          onPick={(agency) => { updateFilters({ agency: agency === ALL ? undefined : agency }); setOpenDrop(null); }}
-          options={[{ value: ALL, label: "ทั้งหมด" }, ...agencies.map((agency) => ({ value: agency.agency, label: agency.agency ? thaiDigitsToArabic(agency.agency) : UNKNOWN_AGENCY, meta: String(agency.torCount) }))]}
-        />
-        <FilterDrop
-          label="หมวดหมู่"
-          value={filters.category ?? ALL}
-          open={openDrop === "category"}
-          onToggle={() => setOpenDrop(openDrop === "category" ? null : "category")}
-          onPick={(category) => { updateFilters({ category: category === ALL ? undefined : category }); setOpenDrop(null); }}
-          options={[{ value: ALL, label: "ทั้งหมด" }, ...categories.map((category) => ({ value: category, label: thaiDigitsToArabic(category) }))]}
-        />
-        {/* Four controls can be filtering at once — agency, category, state and
-            month — and clicking each one back off is four actions. Shown only
-            when something is actually filtered, so it is never a dead control. */}
-        {anyFilter && (
-          <button type="button" className={styles.clearFilters} onClick={() => router.push(pathname)}>
-            ล้างตัวกรอง
-          </button>
-        )}
-      </div>
-
-      {empty ? (
+      {empty ? <>
+        {filterBar}
         <section className={styles.dataState} aria-live="polite"><div className={styles.dataStateContent}><h2 className={styles.dataStateTitle}>ยังไม่มี TOR สำหรับตัวกรองนี้</h2><p className={styles.dataStateBody}>ลองล้างตัวกรองเพื่อดูเอกสารที่ระบบรวบรวมได้</p></div></section>
-      ) : <>
+      </> : <>
+        {/* One toolbar, read as one filter: what to narrow by, then the states it
+            narrows across as a segmented control. It sits above the figures
+            because every figure below answers to it. The headline counts
+            everything collected; the states say what can still be bid on. */}
+        <section className={styles.filterBand} aria-label="ตัวกรอง">
+          <div className={styles.filterBandHead}>
+            <span className={styles.filterBandLabel}>กรองข้อมูล</span>
+            {filterBar}
+          </div>
+          <div className={styles.states} role="group" aria-label="สถานะของ TOR">
+            {dashboard.byState.map((row) => {
+              const picked = filters.state === row.state;
+              return (
+                <button
+                  type="button"
+                  key={row.state}
+                  className={`${styles.stateChip} ${row.state === "open" ? styles.stateChipOpen : ""} ${picked ? styles.stateChipOn : ""} ${row.torCount === 0 ? styles.stateChipNone : ""}`}
+                  onClick={() => updateFilters({ state: picked ? undefined : row.state })}
+                  aria-pressed={picked}
+                >
+                  <span className={styles.stateChipText}>
+                    <span className={styles.stateChipKey}>{STATE_LABELS[row.state]}</span>
+                    <span className={styles.stateChipNote}>{formatBudgetShort(row.budgetSum)}</span>
+                  </span>
+                  <span className={styles.stateChipValue}>{row.torCount.toLocaleString("th-TH")}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <div className={styles.stats}>
           <div className={styles.stat}><div className={styles.statKey}>TOR ทั้งหมด</div><div className={styles.statValue}>{dashboard.totals.torCount.toLocaleString("th-TH")}</div><div className={styles.statNote}>ฉบับ</div></div>
           <div className={styles.stat}><div className={styles.statKey}>งบประมาณรวม</div><div className={styles.statValue}>{formatBudget(dashboard.totals.budgetSum)}</div><div className={styles.statNote}>ตามราคากลางที่ประกาศ</div></div>
           <div className={styles.stat}><div className={styles.statKey}>หน่วยงาน</div><div className={styles.statValue}>{dashboard.totals.agencyCount.toLocaleString("th-TH")}</div><div className={styles.statNote}>หน่วยงานรัฐทั่วประเทศ</div></div>
           {dashboard.flagged.count !== null && <div className={`${styles.stat} ${styles.statFlagged}`}><div className={styles.statKey}>ความผิดปกติทางสถิติ</div><div className={styles.statValue}>{dashboard.flagged.count.toLocaleString("th-TH")}</div><div className={styles.statNote}>ดูวิธีคำนวณได้ที่ <Link href="/methodology">ระเบียบวิธี</Link></div></div>}
         </div>
-
-        {/* One line rather than a third full-width band: this is a filter, and
-            it reads as one. The headline counts everything collected, including
-            what closed last year; these say what can still be bid on, and
-            clicking one narrows the page to it. */}
-        <section className={styles.states} aria-label="สถานะของ TOR">
-          {dashboard.byState.map((row) => {
-            const picked = filters.state === row.state;
-            return (
-              <button
-                type="button"
-                key={row.state}
-                className={`${styles.stateChip} ${row.state === "open" ? styles.stateChipOpen : ""} ${picked ? styles.stateChipOn : ""}`}
-                onClick={() => updateFilters({ state: picked ? undefined : row.state })}
-                aria-pressed={picked}
-              >
-                <span className={styles.stateChipKey}>{STATE_LABELS[row.state]}</span>
-                <span className={styles.stateChipValue}>{row.torCount.toLocaleString("th-TH")}</span>
-                <span className={styles.stateChipNote}>{formatBudgetShort(row.budgetSum)}</span>
-              </button>
-            );
-          })}
-        </section>
 
         <div className={styles.split}>
           <section className={styles.splitLeft}>

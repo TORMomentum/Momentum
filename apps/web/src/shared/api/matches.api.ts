@@ -3,46 +3,48 @@ import "server-only";
 import { cookies } from "next/headers";
 import { apiRequest } from "./api-client";
 
-/**
- * The signed-in vendor's matches, read on the server from the session cookie,
- * like the profile and bookmarks. A signed-out visitor has no matches, which is
- * a different answer from "the service is unavailable" — so the list returns
- * null only when it could not be fetched.
- */
-
-export interface MatchReason {
-  code: string;
-  th: string;
+interface MatchField<T> {
+  raw: string;
+  value: T | null;
+  verified: boolean;
 }
 
+/** One TOR that may be relevant to the signed-in vendor, as `/me/matches` scores it. */
 export interface MatchRow {
   id: string;
   title: string;
+  agency: string;
+  budget: MatchField<number>;
+  deadline: MatchField<string> & { fromDocument?: string };
+  unverified: boolean;
   score: number;
-  reasons: MatchReason[];
+  reasons: Array<{ code: string; th: string }>;
 }
 
 export interface OwnMatches {
   items: MatchRow[];
-  /** Why the list is empty when the vendor has not chosen any work yet. */
+  /** Set when the profile cannot be matched yet — no work categories chosen. */
   reason: string | null;
 }
 
-async function ownRequest(path: string): Promise<Response | null> {
+/**
+ * The signed-in vendor's best matches, read on the server from the session
+ * cookie. `undefined` means nobody is signed in, so the dashboard stays the
+ * public one; `null` means the matches could not be read, which the panel says
+ * rather than showing an empty list that would read as "nothing fits you".
+ */
+export async function fetchOwnMatches(): Promise<OwnMatches | null | undefined> {
   const sessionId = (await cookies()).get("tor-radar-session")?.value;
-  if (!sessionId) return null;
+  if (!sessionId) return undefined;
   try {
-    return await apiRequest(`/api/v1${path}`, {}, sessionId);
+    const response = await apiRequest("/api/v1/me/matches", {}, sessionId);
+    // An expired session is a signed-out visitor, not a failure.
+    if (response.status === 401) return undefined;
+    if (!response.ok) return null;
+    return (await response.json()) as OwnMatches;
   } catch {
     return null;
   }
-}
-
-/** Best first, with the Thai reasons each match carries. */
-export async function fetchOwnMatches(): Promise<OwnMatches | null> {
-  const response = await ownRequest("/me/matches");
-  if (!response?.ok) return null;
-  return (await response.json()) as OwnMatches;
 }
 
 /**
@@ -51,8 +53,14 @@ export async function fetchOwnMatches(): Promise<OwnMatches | null> {
  * page that will not render.
  */
 export async function fetchOwnMatchScores(): Promise<Map<string, number>> {
-  const response = await ownRequest("/me/matches/scores");
-  if (!response?.ok) return new Map();
-  const { scores } = (await response.json()) as { scores: Record<string, number> };
-  return new Map(Object.entries(scores));
+  const sessionId = (await cookies()).get("tor-radar-session")?.value;
+  if (!sessionId) return new Map();
+  try {
+    const response = await apiRequest("/api/v1/me/matches/scores", {}, sessionId);
+    if (!response.ok) return new Map();
+    const { scores } = (await response.json()) as { scores: Record<string, number> };
+    return new Map(Object.entries(scores));
+  } catch {
+    return new Map();
+  }
 }

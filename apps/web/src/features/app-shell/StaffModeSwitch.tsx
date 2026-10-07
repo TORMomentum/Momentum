@@ -1,5 +1,4 @@
-import Link from "next/link";
-import styles from "./app-shell.module.css";
+import { ModeToggle } from "./ModeToggle";
 import { isStaff } from "../../shared/lib/staff-session";
 
 /**
@@ -16,16 +15,10 @@ import { isStaff } from "../../shared/lib/staff-session";
  * spec §7 asks for: the public shell stays static, the session-dependent piece
  * streams into its own hole.
  *
- * Worded to mirror the exit in the header — ออกจาก / กลับสู่ acting on the same
- * มุมมองผู้ดูแล. A noun like "ส่วนผู้ดูแลระบบ" reads as a label for where you
- * are, not as the way back to where you were.
+ * The same switch the staff area shows, from the other side.
  */
 export async function StaffModeSwitch() {
   if (!(await isStaff())) return null;
 
-  return (
-    <Link href="/admin" className={styles.modeSwitch}>
-      กลับสู่มุมมองผู้ดูแล
-    </Link>
-  );
+  return <ModeToggle mode="site" />;
 }

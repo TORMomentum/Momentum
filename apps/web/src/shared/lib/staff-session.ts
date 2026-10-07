@@ -2,12 +2,34 @@ import "server-only";
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { apiRequest } from "../api/api-client";
 
-const STAFF_COOKIE_NAME = "tor_staff";
+/** Exported so signing in as an account can drop it — see the auth route. */
+export const STAFF_COOKIE_NAME = "tor_staff";
 const TOKEN_VERSION = 1;
 // One working day limits exposure if a staff browser is left signed in while
 // avoiding repeated prompts during a normal review shift.
 const STAFF_SESSION_LIFETIME_MS = 8 * 60 * 60 * 1_000;
+/** The account session cookie, set by the auth route. */
+const ACCOUNT_COOKIE_NAME = "tor-radar-session";
+
+/**
+ * The staff pass is not tied to an account, so on its own it would follow the
+ * browser into whatever account signs in next. Whenever an account IS signed
+ * in, that account must itself be an admin: a vendor's session never carries
+ * staff rights, whatever pass is left in the cookie jar. No account signed in
+ * leaves the pass as the only credential, as before. If the role cannot be
+ * read, the answer is no — the staff area fails closed.
+ */
+async function signedInAccountMayActAsStaff(sessionId: string | undefined): Promise<boolean> {
+  if (!sessionId) return true;
+  const response = await apiRequest("/api/v1/me", {}, sessionId);
+  // An expired or revoked session is no account at all.
+  if (response.status === 401) return true;
+  if (!response.ok) return false;
+  const account = (await response.json()) as { role?: string };
+  return account.role === "admin";
+}
 
 export class StaffAuthRequired extends Error {
   constructor() {
@@ -85,6 +107,11 @@ export async function requireStaff(): Promise<void> {
     }
 
     if (expiresAt <= Date.now()) throw new StaffAuthRequired();
+
+    const store = await cookies();
+    if (!(await signedInAccountMayActAsStaff(store.get(ACCOUNT_COOKIE_NAME)?.value))) {
+      throw new StaffAuthRequired();
+    }
   } catch {
     // Authentication failures have one stable shape and never expose parsing,
     // cookie-store, or signature details to the caller.
