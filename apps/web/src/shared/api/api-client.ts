@@ -35,7 +35,7 @@ function apiBaseUrl(): string {
  * — the metadata server call is local to the instance, and traffic here is
  * tens of concurrent users (NFR-S4), not enough to make that cost real.
  */
-async function identityToken(audience: string): Promise<string | null> {
+export async function identityToken(audience: string): Promise<string | null> {
   if (!process.env.K_SERVICE) return null;
   const url = `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}`;
   const response = await fetch(url, { headers: { "Metadata-Flavor": "Google" } });

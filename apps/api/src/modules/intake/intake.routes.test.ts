@@ -35,7 +35,7 @@ describe("intake routes: access control", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/upload")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .attach("file", pdf, "tor.pdf");
 
     expect(response.status).toBe(202);
@@ -57,7 +57,7 @@ describe("intake routes: access control", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/upload")
-      .set("authorization", "Bearer intake-key")
+      .set("x-api-key", "intake-key")
       .attach("file", pdf, "tor.pdf");
 
     expect(response.status).toBe(401);
@@ -77,7 +77,7 @@ describe("intake routes: access control", () => {
 
     const response = await request(app)
       .post("/api/v1/intake")
-      .set("authorization", "Bearer intake-key")
+      .set("x-api-key", "intake-key")
       .attach("file", pdf, "tor.pdf");
 
     expect(response.status).toBe(202);
@@ -91,7 +91,7 @@ describe("intake routes: the URL route refuses what it must not fetch", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/url")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .send({ url: "http://169.254.169.254/latest/meta-data/" });
 
     expect(response.status).toBe(400);
@@ -103,7 +103,7 @@ describe("intake routes: the URL route refuses what it must not fetch", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/url")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .send({ url: "http://127.0.0.1:9010/tor-raw" });
 
     expect(response.status).toBe(400);
@@ -115,7 +115,7 @@ describe("intake routes: the URL route refuses what it must not fetch", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/url")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .send({ url: "file:///etc/passwd" });
 
     expect(response.status).toBe(400);
@@ -126,7 +126,7 @@ describe("intake routes: the URL route refuses what it must not fetch", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/url")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .send({ url: "not-a-url" });
 
     expect(response.status).toBe(400);
@@ -140,7 +140,7 @@ describe("intake routes: responses", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/upload")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .attach("file", pdf, "tor.pdf");
 
     expect(response.status).toBe(200);
@@ -152,7 +152,7 @@ describe("intake routes: responses", () => {
 
     const response = await request(app)
       .post("/api/v1/intake/upload")
-      .set("authorization", "Bearer admin-key")
+      .set("x-api-key", "admin-key")
       .field("note", "no file here");
 
     expect(response.status).toBe(400);

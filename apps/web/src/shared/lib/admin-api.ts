@@ -17,6 +17,7 @@ import type { IntakeResponse } from "@tor-radar/shared";
  */
 
 import { withArabicDigits } from "./format";
+import { identityToken } from "../api/api-client";
 
 const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000";
 const API_PREFIX = "/api/v1";
@@ -92,11 +93,13 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   // FormData bodies (file uploads) need fetch to set their own multipart
   // boundary — a forced "application/json" header would break the request.
   const isFormData = init.body instanceof FormData;
+  const token = await identityToken(BASE_URL);
   const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
     ...init,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      Authorization: `Bearer ${adminKey()}`,
+      "x-api-key": adminKey(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
     // The review queue changes as reviewers work; a cached queue would show a
