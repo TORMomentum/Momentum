@@ -155,16 +155,32 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
     maxThb: BUDGET_PREFERENCE_MAX,
   };
   const budgetPicker = (
-    <BudgetRange
-      min={budgetValue.minThb}
-      max={budgetValue.maxThb}
-      floor={BUDGET_PREFERENCE_MIN}
-      ceiling={BUDGET_PREFERENCE_MAX}
-      step={BUDGET_PREFERENCE_STEP}
-      onChange={(next) =>
-        setProfile((current) => ({ ...current, budget: { minThb: next.min, maxThb: next.max } }))
-      }
-    />
+    <>
+      <p className={styles.pickerHint}>
+        {profile.budget
+          ? "เลื่อนเพื่อปรับช่วง หรือกดล้างเพื่อกลับไปรับทุกช่วง"
+          : "ยังไม่ได้ระบุ = รับทุกช่วงงบประมาณ เลื่อนด้านล่างเพื่อจำกัดช่วง"}
+      </p>
+      <BudgetRange
+        min={budgetValue.minThb}
+        max={budgetValue.maxThb}
+        floor={BUDGET_PREFERENCE_MIN}
+        ceiling={BUDGET_PREFERENCE_MAX}
+        step={BUDGET_PREFERENCE_STEP}
+        onChange={(next) =>
+          setProfile((current) => ({ ...current, budget: { minThb: next.min, maxThb: next.max } }))
+        }
+      />
+      {profile.budget && (
+        <button
+          type="button"
+          className={styles.factEdit}
+          onClick={() => setProfile((current) => ({ ...current, budget: null }))}
+        >
+          ล้างช่วงงบประมาณ (รับทุกช่วง)
+        </button>
+      )}
+    </>
   );
 
   const saveRow = (
@@ -291,7 +307,7 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
           "budget",
           "ช่วงงบประมาณ",
           "เป็นความต้องการ ไม่ใช่เงื่อนไขตัดสิทธิ์",
-          profile.budget ? [describeBudget(profile.budget)] : [],
+          [describeBudget(profile.budget)],
           budgetPicker,
         )}
         {profile.otherCategories.length > 0 && (

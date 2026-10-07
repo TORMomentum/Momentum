@@ -59,8 +59,17 @@ export function describeAreas(ids: string[]): string[] {
   return labels.length > 0 ? labels : ["ยังไม่ได้เลือก"];
 }
 
+/**
+ * No stated budget is a complete answer, not a missing one.
+ *
+ * Budget is a scored signal rather than a gate (design §7.3), so "no preference"
+ * and "the whole range" match identically. They are NOT stored identically: the
+ * full range would claim the vendor said it, and if the ceiling is ever raised
+ * a stored one becomes a cap they never chose. So null is kept, and named for
+ * what it does.
+ */
 export function describeBudget(budget: { minThb: number; maxThb: number } | null): string {
-  if (!budget) return "ยังไม่ได้ระบุ";
+  if (!budget) return "ทุกช่วงงบประมาณ";
   const format = (value: number) => new Intl.NumberFormat("th-TH").format(value);
   return `฿${format(budget.minThb)} — ฿${format(budget.maxThb)}`;
 }
