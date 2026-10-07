@@ -2,6 +2,12 @@
 # Cloud Run URL, so api must be deployed first — deploy.yml does that ordering.
 # NEXT_PUBLIC_* values are compiled into the client bundle at image build time, not set
 # here; this file only carries what the server needs at request time.
+#
+# APP_ORIGIN is also this service's own URL, not just api's: app/api/auth/[...path]/route.ts
+# checks every register/login POST's Origin against it before forwarding to api, because
+# that's the only edge the browser's own Origin header reaches. Left unset, that check
+# throws on every call — found live (zero register/login requests ever reached api, web's
+# own logs showed "APP_ORIGIN is required to serve account routes" on each attempt).
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -24,6 +30,8 @@ spec:
               value: production
             - name: API_BASE_URL
               value: ${API_SERVICE_URL}
+            - name: APP_ORIGIN
+              value: ${APP_ORIGIN}
             - name: ADMIN_API_KEYS
               valueFrom:
                 secretKeyRef:

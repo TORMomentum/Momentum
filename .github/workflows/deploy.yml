@@ -56,6 +56,11 @@ jobs:
         run: |
           API_SERVICE_URL="https://placeholder.invalid"
           export API_SERVICE_URL
+          # web's own APP_ORIGIN (app/api/auth/[...path]/route.ts's same-origin check)
+          # isn't known until this pass creates the service — the third pass below
+          # redeploys with the real value once it exists.
+          APP_ORIGIN="https://placeholder.invalid"
+          export APP_ORIGIN
           envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
           gcloud run services replace /tmp/web.yaml --region "$REGION"
 
@@ -74,5 +79,9 @@ jobs:
         run: |
           API_SERVICE_URL=$(gcloud run services describe tor-radar-api --region "$REGION" --format='value(status.url)')
           export API_SERVICE_URL
+          # web's URL is stable across revisions once the first pass creates it, so
+          # this is the real value from here on, not another placeholder.
+          APP_ORIGIN=$(gcloud run services describe tor-radar-web --region "$REGION" --format='value(status.url)')
+          export APP_ORIGIN
           envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
           gcloud run services replace /tmp/web.yaml --region "$REGION"

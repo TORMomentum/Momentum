@@ -223,10 +223,11 @@ Repo → **Settings → Secrets and variables → Actions**.
 
 Actions tab → **Deploy to Cloud Run** → **Run workflow**, type `deploy` to confirm. It
 builds and pushes both images, then deploys in three passes because `web` and `api` each
-need the other's URL: `web` first with a placeholder `API_BASE_URL` (just to make the
-service exist and get a real URL), then `api` and `worker` with `APP_ORIGIN` set to that
-URL, then `web` again with the real `API_BASE_URL` now that `api` exists
-(`.github/workflows/deploy.yml`).
+need the other's URL: `web` first with placeholder `API_BASE_URL`/`APP_ORIGIN` values (just
+to make the service exist and get a real URL), then `api` and `worker` with `APP_ORIGIN` set
+to that URL, then `web` again with the real `API_BASE_URL` now that `api` exists and its own
+real `APP_ORIGIN` (`app/api/auth/[...path]/route.ts` needs it too, for the same-origin check
+on register/login) (`.github/workflows/deploy.yml`).
 
 Every service deploys with `--no-allow-unauthenticated` — nothing is public yet (that
 switch is a later sprint's decision). After the first deploy, grant the reviewers who need
