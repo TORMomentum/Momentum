@@ -90,6 +90,15 @@ export interface PublicTorRecord {
   createdAt: Date;
 }
 
+export interface BookmarkTorRow {
+  id: string;
+  title: string;
+  agency: string;
+  deadline: string | null;
+  budget: number | null;
+  open: boolean;
+}
+
 /**
  * What every public read is limited to. Confidence is deliberately absent:
  * every tier publishes, marked or not (SRS §4.2.1). A takedown restricts; a
@@ -409,6 +418,31 @@ export class TorsRepository {
       contentType: doc.storage.contentType,
       createdAt: doc.createdAt,
     };
+  }
+
+  /** Exists independently of public visibility: a later takedown does not turn an owned pointer invalid. */
+  async exists(id: string): Promise<boolean> {
+    if (!ObjectId.isValid(id)) return false;
+    return (await tors(this.db).countDocuments({ _id: new ObjectId(id) }, { limit: 1 })) > 0;
+  }
+
+  /** Minimal public projection for a vendor's saved-TOR rows. */
+  async bookmarkRows(ids: string[]): Promise<BookmarkTorRow[]> {
+    const objectIds = ids.filter(ObjectId.isValid).map((id) => new ObjectId(id));
+    if (objectIds.length === 0) return [];
+    const today = new Date().toISOString().slice(0, 10);
+    const docs = await tors(this.db).find(
+      { $and: [{ _id: { $in: objectIds } }, VISIBLE] },
+      { projection: { fields: 1 } },
+    ).toArray();
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      title: doc.fields?.title?.raw ?? "",
+      agency: doc.fields?.agency?.raw ?? "",
+      deadline: typeof doc.fields?.deadline?.value === "string" ? doc.fields.deadline.value : null,
+      budget: typeof doc.fields?.budget?.value === "number" ? doc.fields.budget.value : null,
+      open: doc.fields?.torStatus?.value === "announced" && (typeof doc.fields?.deadline?.value !== "string" || doc.fields.deadline.value >= today),
+    }));
   }
 
   async loadDocument(id: string): Promise<PublicTorDocumentRecord | null> {

@@ -427,6 +427,9 @@
 
 .trackRow:hover { background: rgba(29, 99, 216, 0.05); }
 
+.savedTorLink { color: inherit; text-decoration: none; flex: 1; min-width: 0; }
+.savedTorLink:hover .trackTitle { color: var(--blue); }
+
 .trackTitle { font-size: 13.5px; font-weight: 600; }
 
 .trackAgency { font-size: 11px; color: var(--ink-65); }

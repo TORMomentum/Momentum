@@ -97,12 +97,14 @@ export function SearchView({
   facets,
   results,
   queryMaxChars,
+  savedIds,
 }: {
   filters: SearchFilters;
   facets: TorFacets;
   /** null when the API could not answer — search fails closed (rendering spec §8). */
   results: TorSearchResult | null;
   queryMaxChars: number;
+  savedIds: string[];
 }) {
   const router = useRouter();
   const { signedIn, ready } = useViewer();
@@ -117,7 +119,7 @@ export function SearchView({
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
   const lastCommittedQuery = useRef(filters.q);
-  const [bookSel, setBookSel] = useState<Record<string, boolean>>({});
+  const [bookSel, setBookSel] = useState<Record<string, boolean>>(() => Object.fromEntries(savedIds.map((id) => [id, true])));
 
   // Only a change that arrives from outside — clear all, the back button —
   // resets the field. The field's own search returning must not overwrite
@@ -205,12 +207,21 @@ export function SearchView({
     navigate(EMPTY_FILTERS);
   }
 
-
-  function toggleBook(e: React.SyntheticEvent, id: string) {
+  async function toggleBook(e: React.SyntheticEvent, id: string) {
     e.preventDefault();
     e.stopPropagation();
-    setBookSel((prev) => ({ ...prev, [id]: !prev[id] }));
+    const previous = Boolean(bookSel[id]);
+    const next = !previous;
+    setBookSel((current) => ({ ...current, [id]: next }));
+    try {
+      const response = await fetch(`/api/auth/me/bookmarks/${encodeURIComponent(id)}`, { method: next ? "PUT" : "DELETE" });
+      if (!response.ok) throw new Error("bookmark request failed");
+    } catch {
+      // A failed write must not leave an icon claiming a state the server lacks.
+      setBookSel((current) => ({ ...current, [id]: previous }));
+    }
   }
+
 
   const filtered = hasActiveFilters(filters);
   const firstPageQuery = toSearchQuery({ ...filters, cursor: null });

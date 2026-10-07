@@ -13,6 +13,8 @@ import { BudgetRange } from "../shared/ui/BudgetRange";
 import { NotifyPreferences, type Notify } from "../features/profile/NotifyPreferences";
 import { ServiceAreaPicker } from "../features/profile/ServiceAreaPicker";
 import { TaxonomyPicker } from "../features/profile/TaxonomyPicker";
+import { SavedTorsSection } from "../features/profile/SavedTorList";
+import type { BookmarkRow } from "../shared/api/bookmarks.api";
 import {
   describeAreas,
   describeBudget,
@@ -72,7 +74,7 @@ function ownedFields(profile: Profile): Profile {
   };
 }
 
-export function VendorProfileView({ initial }: { initial: Profile | null }) {
+export function VendorProfileView({ initial, bookmarks = null }: { initial: Profile | null; bookmarks?: BookmarkRow[] | null }) {
   const [profile, setProfile] = useState<Profile>(initial ? ownedFields(initial) : EMPTY);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(
@@ -320,6 +322,8 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
           onChange={(notify) => setProfile((current) => ({ ...current, notify }))}
         />
       </section>
+
+      <SavedTorsSection initial={bookmarks} />
 
       {/* Listed, never nagged: neither is required to receive alerts (§7.1), so
           nothing here is marked missing or incomplete. The prompt that asks for

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
+import { BookmarkButton } from "../features/bookmarks/BookmarkButton";
 import type { TorDetail, TorDetailField } from "../shared/api/tors.api";
 import {
   addressFrom,
@@ -49,10 +50,12 @@ function Value({ field, missing }: { field: TorDetailField | undefined; missing:
 export function TorRecordView({
   tor,
   originals,
+  bookmarked,
 }: {
   tor: TorDetail;
   /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
   originals: OriginalDocument[];
+  bookmarked: boolean;
 }) {
   const { fields, budgetYear } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.
@@ -244,6 +247,7 @@ export function TorRecordView({
 
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
+          <BookmarkButton torId={tor.id} initial={bookmarked} />
           <OriginalPreview {...previewProps} className={styles.openDocBtn}>
             เปิดเอกสารต้นฉบับ
           </OriginalPreview>

@@ -25,6 +25,8 @@ import { AccountTokensRepository } from "./modules/accounts/account-tokens.repos
 import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
 import { ProfileRepository } from "./modules/profile/profile.repository.js";
 import { buildProfileRouter } from "./modules/profile/profile.routes.js";
+import { BookmarksRepository } from "./modules/bookmarks/bookmarks.repository.js";
+import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -62,9 +64,11 @@ export function buildApp(config: Config, db: Db): Express {
   // under only one of them made the profile screen ask for a path that did not
   // exist, which no API-level test could see.
   const profileRouter = buildProfileRouter({ config, profiles: new ProfileRepository(db) });
+  const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db) });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);
+    app.use(prefix, bookmarksRouter);
   }
 
   const service = new IntakeService(
