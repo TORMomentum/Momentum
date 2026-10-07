@@ -372,6 +372,22 @@
   text-align: center;
 }
 
+/* Many columns: one line per name, angled so it ends under its own column, cut short with an
+   ellipsis (the full name is the title) — and the plot keeps room beneath it for them. */
+/* 150px of name at 38° drops about 95px below the axis, plus its 8px offset and a line of type. This
+   margin collapses with the note's own top margin, so it alone is the gap — it must hold all of that. */
+.plotCrowded { margin-bottom: 148px; }
+
+.plotCategoryAngled {
+  max-width: 150px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: right;
+  transform-origin: right center;
+  transform: translateX(-100%) rotate(-38deg);
+}
+
 .method {
   margin-top: 56px;
   font: 10px var(--data);
