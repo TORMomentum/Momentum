@@ -147,8 +147,8 @@ describe("admin fields-to-confirm view", () => {
     const toConfirm = await seedFieldsToConfirm();
     await seedFieldsToConfirm({ documentType: "invitation" });
 
-    const fields = await request(buildTestApp()).get("/api/v1/admin/queue?view=fields").set("authorization", `Bearer ${adminKey}`);
-    const confidence = await request(buildTestApp()).get("/api/v1/admin/queue").set("authorization", `Bearer ${adminKey}`);
+    const fields = await request(buildTestApp()).get("/api/v1/admin/queue?view=fields").set("x-api-key", adminKey);
+    const confidence = await request(buildTestApp()).get("/api/v1/admin/queue").set("x-api-key", adminKey);
 
     expect(fields.status).toBe(200);
     expect(fields.body.items.map((item: { id: string }) => item.id)).toEqual([toConfirm]);
@@ -163,7 +163,7 @@ describe("admin fields-to-confirm view", () => {
     const patch = (value: string) =>
       request(buildTestApp())
         .patch(`/api/v1/admin/tors/${id}/fields`)
-        .set("authorization", `Bearer ${adminKey}`)
+        .set("x-api-key", adminKey)
         .send({ edits: [{ field: "category", value }] });
 
     expect((await patch("ซื้อยา")).status).toBe(400);
@@ -175,7 +175,7 @@ describe("admin fields-to-confirm view", () => {
   it("points the reviewer at the unverified category and qualifications of such a record", async () => {
     const id = await seedFieldsToConfirm();
 
-    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}`).set("authorization", `Bearer ${adminKey}`);
+    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}`).set("x-api-key", adminKey);
 
     expect(response.status).toBe(200);
     expect(response.body.flaggedFields.sort()).toEqual(["category", "qualifications"]);
@@ -188,7 +188,7 @@ describe("admin document route", () => {
 
     const response = await request(buildTestApp())
       .get(`/api/v1/admin/tors/${id}/document`)
-      .set("authorization", `Bearer ${adminKey}`);
+      .set("x-api-key", adminKey);
 
     expect(response.status).toBe(200);
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
@@ -199,7 +199,7 @@ describe("admin document route", () => {
   it("returns 404 for an unknown record", async () => {
     const response = await request(buildTestApp())
       .get(`/api/v1/admin/tors/${new ObjectId().toString()}/document`)
-      .set("authorization", `Bearer ${adminKey}`);
+      .set("x-api-key", adminKey);
 
     expect(response.status).toBe(404);
     expect(getStream).not.toHaveBeenCalled();
@@ -210,7 +210,7 @@ describe("admin document route", () => {
 
     const response = await request(buildTestApp())
       .head(`/api/v1/admin/tors/${id}/document`)
-      .set("authorization", `Bearer ${adminKey}`);
+      .set("x-api-key", adminKey);
 
     expect(response.status).toBe(200);
     expect(getStream).not.toHaveBeenCalled();
@@ -234,7 +234,7 @@ describe("admin field verification route", () => {
 
     const confirmed = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields/budget/verification`)
-      .set("authorization", `Bearer ${adminKey}`)
+      .set("x-api-key", adminKey)
       .send({ confirmed: true });
 
     expect(confirmed.status).toBe(200);
@@ -249,7 +249,7 @@ describe("admin field verification route", () => {
 
     const cleared = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields/budget/verification`)
-      .set("authorization", `Bearer ${adminKey}`)
+      .set("x-api-key", adminKey)
       .send({ confirmed: false });
 
     expect(cleared.status).toBe(200);
@@ -265,7 +265,7 @@ describe("admin field verification route", () => {
 
     const reloaded = await request(buildTestApp())
       .get(`/api/v1/admin/tors/${id}`)
-      .set("authorization", `Bearer ${adminKey}`);
+      .set("x-api-key", adminKey);
     expect(cleared.body).toEqual(reloaded.body);
   });
 
@@ -274,7 +274,7 @@ describe("admin field verification route", () => {
 
     const response = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields/procurementMethod/verification`)
-      .set("authorization", `Bearer ${adminKey}`)
+      .set("x-api-key", adminKey)
       .send({ confirmed: true });
 
     expect(response.status).toBe(400);
@@ -301,7 +301,7 @@ describe("admin budget correction route", () => {
 
     const response = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields`)
-      .set("authorization", `Bearer ${adminKey}`)
+      .set("x-api-key", adminKey)
       .send({ edits: [{ field: "budget", value: "ไม่ระบุ" }] });
 
     expect(response.status).toBe(400);
@@ -316,7 +316,7 @@ describe("admin budget correction route", () => {
 
     const response = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields`)
-      .set("authorization", `Bearer ${adminKey}`)
+      .set("x-api-key", adminKey)
       .send({ edits: [{ field: "budget", value: "1,200,000" }] });
 
     expect(response.status).toBe(200);

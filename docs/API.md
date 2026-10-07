@@ -18,8 +18,8 @@ scripts against the intake key.
 
 ```mermaid
 flowchart LR
-    admin["👤 Admin<br/><i>Bearer ADMIN key</i>"]
-    partner["🔌 Intake client<br/><i>Bearer INTAKE key</i>"]
+    admin["👤 Admin<br/><i>X-Api-Key: ADMIN key</i>"]
+    partner["🔌 Intake client<br/><i>X-Api-Key: INTAKE key</i>"]
     web["🌐 Next.js server<br/><i>public reads</i>"]
     vendor["👤 Vendor session<br/><i>slice 4</i>"]
 
@@ -47,7 +47,7 @@ flowchart LR
 
 | Group | Who calls it | Auth | Slice |
 | :--- | :--- | :--- | :--- |
-| `/intake/*` | admin console, partner scripts | Bearer key, per-role | 1 ✅ |
+| `/intake/*` | admin console, partner scripts | `X-Api-Key`, per-role | 1 ✅ |
 | `/tors/*` | the public site, through the Next server | none (public data) | 3 ⬜ |
 | `/stats/*`, `/export/*` | dashboard and CSV export | none | 3 ⬜ |
 | `/me/*` | a signed-in vendor | session cookie | 4 ⬜ |
@@ -62,8 +62,14 @@ flowchart LR
 Two separate key lists, because the routes differ in blast radius (`NFR-S1`):
 
 ```http
-Authorization: Bearer <key>
+X-Api-Key: <key>
 ```
+
+Deliberately not `Authorization`: once a Cloud Run service is deployed
+`--no-allow-unauthenticated` (the deployed default, §7.5), Cloud Run's own IAM
+check reads `Authorization` for a Google-signed identity token before the
+request reaches this app — a caller only gets the one header, so the app-level
+key needed a header of its own.
 
 | Key | Configured by | Opens |
 | :--- | :--- | :--- |
@@ -151,7 +157,7 @@ existing `torId` and the record gains one more `sourceRef` (`FR-A-3`).
 
 ```bash
 curl -X POST https://api.example/api/v1/intake/upload \
-  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "X-Api-Key: $ADMIN_API_KEY" \
   -F "file=@tor.pdf"
 ```
 

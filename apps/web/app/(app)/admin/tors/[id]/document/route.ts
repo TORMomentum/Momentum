@@ -9,7 +9,7 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
   const { id } = await params;
   const adminKey = (process.env.ADMIN_API_KEYS ?? "").split(",")[0]?.trim() ?? "";
   return proxyDocument(request, `/admin/tors/${encodeURIComponent(id)}/document`, {
-    authorization: `Bearer ${adminKey}`,
+    "x-api-key": adminKey,
   });
 }
 
