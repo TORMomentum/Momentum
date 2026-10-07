@@ -50,7 +50,7 @@ spec:
             - name: ADMIN_API_KEYS
               valueFrom:
                 secretKeyRef:
-                  name: admin-api-keys
+                  name: ADMIN_API_KEYS
                   key: latest
           volumeMounts:
             - name: gcs-sa
