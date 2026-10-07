@@ -63,7 +63,7 @@ describe("MatchedTorsPanel", () => {
   it("shows at most five and says how many more there are", () => {
     const items = Array.from({ length: 8 }, (_, i) => match(String(i), 0.9 - i * 0.05));
     act(() => root.render(<MatchedTorsPanel matches={{ items, reason: null }} />));
-    expect(container.querySelectorAll("li > span").length).toBe(5);
+    expect(container.querySelectorAll("ol > li").length).toBe(5);
     expect(container.textContent).toContain("และอีก 3 รายการ");
   });
 

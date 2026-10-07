@@ -46,9 +46,14 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
         <ol className={styles.list}>
           {rows.map((row) => (
             <li key={row.id} className={styles.row}>
-              <span className={styles.score} aria-label={`ความเกี่ยวข้อง ${matchPercent(row.score)}%`}>
-                {matchPercent(row.score)}%
-              </span>
+              {/* Score and time left together on the left: the two things that
+                  decide which card to open first. */}
+              <div className={styles.lead}>
+                <span className={styles.score} aria-label={`ความเกี่ยวข้อง ${matchPercent(row.score)}%`}>
+                  {matchPercent(row.score)}%
+                </span>
+                <DaysLeft row={row} />
+              </div>
               <div className={styles.body}>
                 <Link href={`/tors/${row.id}`} className={styles.rowTitle}>
                   {row.title || "ไม่พบชื่อโครงการในเอกสาร"}
@@ -62,7 +67,7 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
                     card, and the budget itself is already on the right. */}
                 <WorkReason row={row} />
               </div>
-              <RowSide row={row} />
+              <Budget row={row} />
             </li>
           ))}
         </ol>
@@ -75,21 +80,20 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
   );
 }
 
-/** Budget and time left: the two facts that decide whether to open the TOR. */
-function RowSide({ row }: { row: MatchRow }) {
+/** Under the score; "รอประกาศเชิญชวน" while no deadline has been announced. */
+function DaysLeft({ row }: { row: MatchRow }) {
   const days = daysUntil(row.deadline.value);
   const left = daysLeftLabel(days);
+  if (!left) return <div className={styles.waiting}>รอประกาศเชิญชวน</div>;
+  return <div className={`${styles.days} ${days !== null && days <= DEADLINE_SOON_DAYS ? styles.daysSoon : ""}`}>{left}</div>;
+}
+
+/** The budget on the right, starred while the extraction is unconfirmed. */
+function Budget({ row }: { row: MatchRow }) {
   return (
-    <div className={styles.side}>
-      <div className={styles.budget} title={row.budget.verified ? undefined : "ค่าที่สกัดยังไม่ได้รับการยืนยัน"}>
-        {typeof row.budget.value === "number" ? formatBaht(row.budget.value) : row.budget.raw || "ไม่ระบุงบประมาณ"}
-        {row.budget.raw && !row.budget.verified && "*"}
-      </div>
-      {left ? (
-        <div className={`${styles.days} ${days !== null && days <= DEADLINE_SOON_DAYS ? styles.daysSoon : ""}`}>{left}</div>
-      ) : (
-        <div className={styles.waiting}>รอประกาศเชิญชวน</div>
-      )}
+    <div className={styles.budget} title={row.budget.verified ? undefined : "ค่าที่สกัดยังไม่ได้รับการยืนยัน"}>
+      {typeof row.budget.value === "number" ? formatBaht(row.budget.value) : row.budget.raw || "ไม่ระบุงบประมาณ"}
+      {row.budget.raw && !row.budget.verified && "*"}
     </div>
   );
 }
