@@ -8,10 +8,12 @@ import { redactTor } from "../../lib/redact.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import { buildProjectUrl } from "../../sources/bma-egp/client.js";
 import { buildProjectSearchUrl } from "../../sources/national-egp/client.js";
+import { evaluateChecklist } from "../checklist/checklist.js";
 import { verdictFor, type AnomalyVerdict, type PeerBounds } from "../stats/anomaly.rule.js";
+import type { CohortKey } from "../stats/cohort.js";
 import { eligibilityOf } from "../stats/eligibility.js";
 import { encodeCursor, type SearchRequest } from "./tors.query.js";
-import type { SearchRow, TorsRepository } from "./tors.repository.js";
+import type { TorsRepository } from "./tors.repository.js";
 
 export interface TorsServiceDeps {
   repo: TorsRepository;
@@ -47,6 +49,15 @@ export function isOpenOn(
 ): boolean {
   return item.torStatus.value === "announced" && (item.deadline.value === null || item.deadline.value >= today);
 }
+
+/** What the verdict needs from a record. A search row and a detail record both supply it. */
+type VerdictRow = {
+  cohort: CohortKey | null;
+  budget: { value: number | null; verified: boolean };
+  category: { value: string | null; verified: boolean };
+  state: string;
+  restricted: boolean;
+};
 
 /** Public reads for published TOR records. */
 export class TorsService {
@@ -85,7 +96,7 @@ export class TorsService {
    * stored bounds (dashboard spec §2.1, §6.2). The bounds are fetched after
    * pagination, so a page never pays for peer groups it cannot show.
    */
-  private async verdicts(rows: SearchRow[]): Promise<AnomalyVerdict[]> {
+  private async verdicts(rows: VerdictRow[]): Promise<AnomalyVerdict[]> {
     const { config } = this.deps;
     const bounds = await this.deps.repo.boundsFor(rows.flatMap((row) => (row.cohort ? [row.cohort] : [])));
     const byKey = new Map(bounds.map((bound) => [`${bound.category}\u0000${bound.month}`, bound]));
@@ -126,6 +137,25 @@ export class TorsService {
     const record = await this.deps.repo.loadPublic(id);
     if (!record) throw new NotFoundError();
 
+    // loadPublic reads only published, unrestricted records, so those two facts are fixed here.
+    const budget = { value: record.fields.budget?.value ?? null, verified: record.fields.budget?.verified ?? false };
+    const [verdict] = await this.verdicts([
+      {
+        cohort: record.cohort,
+        budget,
+        category: { value: record.fields.category?.value ?? null, verified: record.fields.category?.verified ?? false },
+        state: "published",
+        restricted: false,
+      },
+    ]);
+    const checklist = evaluateChecklist({
+      budget,
+      budgetRange: { min: this.deps.config.budgetMinThb, max: this.deps.config.budgetMaxThb },
+      qualificationTags: record.fields.qualifications?.tags ?? [],
+      qualificationsVerified: record.fields.qualifications?.verified ?? false,
+      verdict,
+    });
+
     // The one redaction serializer (FR-B-5), before anything leaves the service.
     const { fields } = redactTor(record, "public");
     const publicFields: Partial<Record<keyof TorFields, ReturnType<typeof publicField>>> = {};
@@ -158,6 +188,7 @@ export class TorsService {
       unverified: record.unverified,
       contentHash: record.contentHash,
       contentType: record.contentType,
+      checklist,
     };
   }
 

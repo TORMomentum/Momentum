@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { Checklist } from "@tor-radar/shared";
 import { withArabicDigits } from "../lib/format";
 import { getJson } from "./api-client";
 
@@ -102,6 +103,8 @@ export interface TorDetail {
   /** ปีงบประมาณ in the Buddhist era, derived from the announcement date. */
   budgetYear: number | null;
   sourceUrl: string | null;
+  /** Absent from an API older than the checklist. */
+  checklist?: Checklist;
   /** The TOR's project page on the source system; absent from an API older than this field. */
   sourceProject?: { system: string; projectNumber: string | null; url: string } | null;
   provenance: {
