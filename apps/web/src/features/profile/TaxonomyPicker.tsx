@@ -40,6 +40,14 @@ export function TaxonomyPicker({
 
   const totalLeaves = WORK_CATEGORIES.reduce((n, group) => n + group.children.length, 0);
 
+  // What the vendor has actually covered, not how many ids are stored: accepting
+  // a group of eight is eight kinds of work, and counting it as one made the
+  // tally disagree with the screen.
+  const coveredCount = WORK_CATEGORIES.reduce((total, group) => {
+    if (selected.has(group.id)) return total + group.children.length;
+    return total + group.children.filter((leaf) => selected.has(leaf.id)).length;
+  }, 0);
+
   // A leaf matches on its own name OR on the words an announcement uses for it,
   // so searching "ถนน" finds งานทาง even though the label does not say it.
   const groups = useMemo(() => {
@@ -61,6 +69,26 @@ export function TaxonomyPicker({
     onChange(selected.has(id) ? value.filter((item) => item !== id) : [...value, id]);
   }
 
+  /**
+   * Pressing a single kind of work while the whole group is accepted means the
+   * vendor is narrowing: the group opens out into its own items so that one can
+   * be dropped, which is what "all construction except irrigation" has to mean.
+   */
+  function toggleLeaf(groupId: string, leafIds: string[], leafId: string) {
+    if (!selected.has(groupId)) {
+      toggle(leafId);
+      return;
+    }
+    const expanded = [...value.filter((item) => item !== groupId), ...leafIds];
+    onChange([...new Set(expanded)].filter((item) => item !== leafId));
+  }
+
+  /** Everything this group covers, whether taken wholesale or one at a time. */
+  function clearGroup(groupId: string, leafIds: string[]) {
+    const gone = new Set([groupId, ...leafIds]);
+    onChange(value.filter((item) => !gone.has(item)));
+  }
+
   function addOther() {
     const word = draft.trim();
     if (!word || other.includes(word)) {
@@ -75,7 +103,7 @@ export function TaxonomyPicker({
     <div>
       <div className={styles.pickerSummary}>
         <span className={styles.pickerCount} role="status">
-          เลือกแล้ว {value.length} รายการ
+          เลือกแล้ว {coveredCount} รายการ
         </span>
         <span className={styles.pickerHint}>กดอีกครั้งเพื่อนำออก</span>
       </div>
@@ -99,33 +127,46 @@ export function TaxonomyPicker({
 
       {groups.map((group) => {
         const groupOn = selected.has(group.id);
-        const chosen = group.children.filter((leaf) => selected.has(leaf.id)).length;
+        const leafIds = group.children.map((leaf) => leaf.id);
+        const chosen = groupOn
+          ? group.children.length
+          : group.children.filter((leaf) => selected.has(leaf.id)).length;
+        const anything = chosen > 0;
         return (
           <section className={styles.taxonomyGroup} key={group.id}>
             <div className={styles.groupHead}>
               <h3 className={styles.groupName}>{group.th}</h3>
+              {/* One control that says what it will do. Offering "accept the
+                  whole group" to someone who has already chosen within it asks
+                  a question they have answered. */}
               <button
                 type="button"
                 className={styles.groupAll}
-                aria-pressed={groupOn}
-                onClick={() => toggle(group.id)}
+                onClick={() => (anything ? clearGroup(group.id, leafIds) : toggle(group.id))}
               >
-                {groupOn ? "✓ รับทั้งกลุ่ม" : "รับทั้งกลุ่ม"}
+                {anything ? "ล้าง" : "รับทั้งกลุ่ม"}
               </button>
-              {chosen > 0 && <span className={styles.groupChosen}>เลือก {chosen}</span>}
+              {anything && (
+                <span className={styles.groupChosen}>
+                  {groupOn ? "ทั้งกลุ่ม" : `เลือก ${chosen}`}
+                </span>
+              )}
             </div>
             <div className={styles.skillRow}>
-              {group.children.map((leaf) => (
-                <button
-                  type="button"
-                  key={leaf.id}
-                  className={`${styles.skillPill} ${selected.has(leaf.id) ? styles.skillPillOn : ""}`}
-                  aria-pressed={selected.has(leaf.id)}
-                  onClick={() => toggle(leaf.id)}
-                >
-                  {leaf.th}
-                </button>
-              ))}
+              {group.children.map((leaf) => {
+                const on = selected.has(leaf.id);
+                return (
+                  <button
+                    type="button"
+                    key={leaf.id}
+                    className={`${styles.skillPill} ${on ? styles.skillPillOn : groupOn ? styles.skillPillCovered : ""}`}
+                    aria-pressed={on || groupOn}
+                    onClick={() => toggleLeaf(group.id, leafIds, leaf.id)}
+                  >
+                    {leaf.th}
+                  </button>
+                );
+              })}
             </div>
           </section>
         );
