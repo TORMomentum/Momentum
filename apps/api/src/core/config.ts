@@ -18,6 +18,27 @@ function blankAsAbsent<T extends z.ZodTypeAny>(inner: T) {
  * Every threshold and tunable in the system (NFR-S7). Nothing below may appear
  * as a literal anywhere else in the codebase.
  */
+/**
+ * A switch read from the environment.
+ *
+ * NOT z.coerce.boolean(): that is JavaScript's Boolean(), under which every
+ * non-empty string is true — so `NOTIFY_DISPATCH_ENABLED=false`, exactly as
+ * .env.example writes it, switched dispatch ON. A kill switch inverted by its
+ * own template is the worst way for one to fail. This accepts the words people
+ * actually write, treats blank as absent, and rejects anything else outright.
+ */
+function flag(defaultValue: boolean) {
+  return z.preprocess((value) => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === "boolean") return value;
+    const word = String(value).trim().toLowerCase();
+    if (word === "") return undefined;
+    if (["true", "1", "yes", "on"].includes(word)) return true;
+    if (["false", "0", "no", "off"].includes(word)) return false;
+    return value; // left as a string, so z.boolean() below rejects it by name
+  }, z.boolean().default(defaultValue));
+}
+
 const schema = z.object({
   MONGO_URL: z.string().min(1),
 
@@ -155,7 +176,17 @@ const schema = z.object({
   MATCH_BUDGET_OUTSIDE_MAX_SCORE: z.coerce.number().min(0).max(1).default(0.5),
   MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER: z.coerce.number().positive().default(2),
   // Turns on only when extraction supplies a work-location field; agency is never a substitute.
-  MATCH_AREA_SIGNAL_ENABLED: z.coerce.boolean().default(false),
+  MATCH_AREA_SIGNAL_ENABLED: flag(false),
+
+  // Dispatch remains opt-in until the labelled match-quality benchmark in the
+  // profile-and-matching design §7.8 exists.  The worker records dry runs while
+  // this is false so its behaviour can be reviewed safely.
+  NOTIFY_DISPATCH_ENABLED: flag(false),
+  NOTIFY_DISPATCH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  NOTIFY_DISPATCH_LEASE_MS: z.coerce.number().int().positive().default(55_000),
+  NOTIFY_BATCH_SIZE: z.coerce.number().int().positive().default(100),
+  NOTIFY_DAILY_BOUNDARY: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "NOTIFY_DAILY_BOUNDARY must be HH:MM").default("00:00"),
+  NOTIFY_HIGH_MIN_MATCH: z.coerce.number().min(0).max(100).default(80),
 
   API_PORT: z.coerce.number().int().positive().default(4000),
   // The extraction worker's probe server, for Cloud Run (TOR-140). Unset, as on a developer
@@ -258,6 +289,14 @@ export interface Config {
     categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
+  };
+  notifications: {
+    dispatchEnabled: boolean;
+    dispatchIntervalMs: number;
+    dispatchLeaseMs: number;
+    batchSize: number;
+    dailyBoundary: string;
+    highMinMatch: number;
   };
   apiPort: number;
   workerHealthPort?: number;
@@ -378,6 +417,14 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       budgetNeutralScore: parsed.MATCH_BUDGET_NEUTRAL_SCORE, budgetInsideScore: parsed.MATCH_BUDGET_INSIDE_SCORE,
       budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
+    },
+    notifications: {
+      dispatchEnabled: parsed.NOTIFY_DISPATCH_ENABLED,
+      dispatchIntervalMs: parsed.NOTIFY_DISPATCH_INTERVAL_MS,
+      dispatchLeaseMs: parsed.NOTIFY_DISPATCH_LEASE_MS,
+      batchSize: parsed.NOTIFY_BATCH_SIZE,
+      dailyBoundary: parsed.NOTIFY_DAILY_BOUNDARY,
+      highMinMatch: parsed.NOTIFY_HIGH_MIN_MATCH,
     },
     apiPort: parsed.API_PORT,
     ...(parsed.WORKER_HEALTH_PORT !== undefined ? { workerHealthPort: parsed.WORKER_HEALTH_PORT } : {}),

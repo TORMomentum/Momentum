@@ -207,7 +207,7 @@ export interface BookmarkDocument {
 /** The three explicit preferences used to explain vendor-facing relevance. */
 /** A vendor's stated wish for how often and how closely to be emailed. */
 export interface NotifyPreferences {
-  preset: "all" | "daily" | "high";
+  preset: "all" | "daily" | "high" | "off";
   minMatch: number;
   leadDays: number;
   deadlineReminder: boolean;
@@ -233,6 +233,26 @@ export interface VendorProfileDocument {
   updatedAt: Date;
   /** Who made the last change. "admin" is shown to the vendor, so a staff edit is never passed off as theirs. */
   updatedBy?: "vendor" | "admin";
+}
+
+/** Durable audit/deduplication row for one vendor, TOR and notification reason. */
+export interface NotificationDocument {
+  accountId: string;
+  torId: string;
+  reason: "match" | "deadline-reminder" | "daily-digest";
+  /** A dry-run is deliberately distinct: it must never suppress a later real send. */
+  dryRun: boolean;
+  period?: string;
+  createdAt: Date;
+  sentAt?: Date;
+  messageId?: string;
+}
+
+/** Singleton lease so two worker processes do not dispatch the same batch. */
+export interface NotificationLeaseDocument {
+  _id: "notify-dispatch";
+  owner: string;
+  leaseUntil: Date;
 }
 
 /** Cached derived data; source TOR documents remain immutable after extraction. */
@@ -312,6 +332,14 @@ export function torClassifications(db: Db): Collection<TorClassificationDocument
   return db.collection<TorClassificationDocument>("tor_classifications");
 }
 
+export function notifications(db: Db): Collection<NotificationDocument> {
+  return db.collection<NotificationDocument>("notifications");
+}
+
+export function notificationLeases(db: Db): Collection<NotificationLeaseDocument> {
+  return db.collection<NotificationLeaseDocument>("notification_leases");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -323,6 +351,10 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
   await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
+  // dryRun participates in the key so benchmark-safe previews cannot suppress
+  // the eventual live email. `reason` distinguishes a match from its reminder.
+  await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
+  await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   await torClassifications(db).createIndex({ "classification.coarse": 1, updatedAt: -1 });
   // Precise candidates — records with leaf evidence for what a vendor chose —

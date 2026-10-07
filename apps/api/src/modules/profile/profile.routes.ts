@@ -30,7 +30,7 @@ export const profileSchema = z.object({
    * preference is the vendor's to make whether or not we can honour it yet.
    */
   notify: z.object({
-    preset: z.enum(["all", "daily", "high"]),
+    preset: z.enum(["all", "daily", "high", "off"]),
     minMatch: z.number().int().min(50).max(95),
     leadDays: z.number().int().min(1).max(30),
     deadlineReminder: z.boolean(),
@@ -47,7 +47,7 @@ export const profileSchema = z.object({
  * vendor — stays out of the API.
  */
 /** What a vendor gets before stating a preference: a daily digest of close matches. */
-const DEFAULT_NOTIFY = {
+export const DEFAULT_NOTIFY = {
   preset: "daily" as const,
   minMatch: 70,
   leadDays: 7,

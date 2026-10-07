@@ -16,7 +16,7 @@ export interface VendorProfile {
   /** Work the taxonomy has no node for. Stored, but not matched against. */
   otherCategories: string[];
   budget: { minThb: number; maxThb: number } | null;
-  notify: { preset: "all" | "daily" | "high"; minMatch: number; leadDays: number; deadlineReminder: boolean; anomalyAlert: boolean };
+  notify: { preset: "all" | "daily" | "high" | "off"; minMatch: number; leadDays: number; deadlineReminder: boolean; anomalyAlert: boolean };
   taxonomyVersion: string;
   updatedAt: string | null;
 }

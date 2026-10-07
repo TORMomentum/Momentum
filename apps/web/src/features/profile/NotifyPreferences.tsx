@@ -14,7 +14,7 @@ import styles from "./profile.module.css";
  */
 
 export interface Notify {
-  preset: "all" | "daily" | "high";
+  preset: "all" | "daily" | "high" | "off";
   minMatch: number;
   leadDays: number;
   deadlineReminder: boolean;
@@ -40,6 +40,15 @@ const PRESETS: Array<{ key: Notify["preset"]; title: string; desc: string; minMa
     title: "เฉพาะงานที่ตรงมาก",
     desc: "เฉพาะงานที่ตรงตั้งแต่ 85% ขึ้นไป",
     minMatch: 85,
+  },
+  // Every notification email has to offer a way out. Before this there was
+  // none short of withdrawing consent entirely on the account page. The match
+  // threshold is kept, so switching back on restores what was set before.
+  {
+    key: "off",
+    title: "ปิดการแจ้งเตือนทางอีเมล",
+    desc: "ไม่ส่งอีเมลใด ๆ รวมถึงการเตือนก่อนหมดเขต — ยังดูงานที่ตรงกับคุณได้ที่แดชบอร์ด",
+    minMatch: 70,
   },
 ];
 
@@ -68,7 +77,9 @@ export function NotifyPreferences({
               aria-pressed={on}
               // Picking a preset moves the threshold with it; the advanced panel
               // then fine-tunes from there.
-              onClick={() => set({ preset: preset.key, minMatch: preset.minMatch })}
+              onClick={() =>
+                set(preset.key === "off" ? { preset: "off" } : { preset: preset.key, minMatch: preset.minMatch })
+              }
             >
               <span className={`${styles.presetDot} ${on ? styles.presetDotOn : ""}`} />
               <span>

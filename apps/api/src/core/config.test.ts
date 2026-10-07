@@ -89,6 +89,24 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...base, MAIL_TIMEOUT_MS: "soon" })).toThrow();
   });
 
+  it("reads a switch written as false as OFF — the template writes it that way", () => {
+    // z.coerce.boolean() made every non-empty string true, so
+    // NOTIFY_DISPATCH_ENABLED=false — the value .env.example ships — turned the
+    // dispatch kill switch ON. These are the cases that would have emailed real
+    // vendors before the match-quality benchmark existed.
+    for (const off of ["false", "FALSE", "0", "no", "off", ""]) {
+      const config = loadConfig({ ...base, NOTIFY_DISPATCH_ENABLED: off, MATCH_AREA_SIGNAL_ENABLED: off });
+      expect(config.notifications.dispatchEnabled).toBe(false);
+      expect(config.matching.areaSignalEnabled).toBe(false);
+    }
+    for (const on of ["true", "TRUE", "1", "yes", "on"]) {
+      expect(loadConfig({ ...base, NOTIFY_DISPATCH_ENABLED: on }).notifications.dispatchEnabled).toBe(true);
+    }
+    expect(loadConfig(base).notifications.dispatchEnabled).toBe(false);
+    // A value that is neither is a mistake to surface, not a guess to make.
+    expect(() => loadConfig({ ...base, NOTIFY_DISPATCH_ENABLED: "flase" })).toThrow();
+  });
+
   it("rejects a non-numeric override instead of silently coercing", () => {
     expect(() => loadConfig({ ...base, MAX_UPLOAD_BYTES: "big" })).toThrow();
   });
