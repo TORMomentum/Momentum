@@ -25,7 +25,10 @@ export function ChecklistPanel({ checklist }: { checklist: Checklist }) {
       <div className={styles.checklistScore}>
         ผ่าน {checklist.passed} จาก {checklist.evaluated} ข้อที่ประเมินได้
       </div>
+      {/* NFR-F7: the reader's language first; FR-F-2: the required words, verbatim. */}
       <div className={styles.checklistNote}>
+        การตรวจคุณภาพข้อกำหนดโดย AI — ไม่ใช่การวินิจฉัยทางกฎหมายหรือการทุจริต
+        <br />
         AI-generated specification-quality check — not a legal or corruption judgment
       </div>
       <ul className={styles.checklistList}>

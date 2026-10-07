@@ -28,6 +28,7 @@ describe("ChecklistPanel", () => {
 
   it("carries the required AI-generated label verbatim", () => {
     expect(html).toContain("AI-generated specification-quality check — not a legal or corruption judgment");
+    expect(html).toContain("การตรวจคุณภาพข้อกำหนดโดย AI — ไม่ใช่การวินิจฉัยทางกฎหมายหรือการทุจริต");
   });
 
   it("states the score over the evaluated checks only", () => {
