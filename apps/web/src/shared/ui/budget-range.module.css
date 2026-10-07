@@ -86,6 +86,9 @@
   margin: 0;
 }
 
+/* Lifts the min handle above the max one; see minOnTop in BudgetRange. */
+.rangeInputTop { z-index: 1; }
+
 .rangeInput::-webkit-slider-thumb {
   appearance: none;
   width: 26px;

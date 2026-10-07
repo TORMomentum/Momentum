@@ -97,4 +97,17 @@ describe("BudgetRange typed amounts", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(boxes()[0]!.value).toBe("500,000");
   });
+
+  it("keeps the handles movable when both are pushed to the same end", () => {
+    // Both at the ceiling: the max handle used to sit on top and could not
+    // move — not right (ceiling), not left (past min) — and min was buried.
+    const onChange = render(100_000_000, 100_000_000);
+    const [minRange, maxRange] = [...container.querySelectorAll('input[type="range"]')] as HTMLInputElement[];
+    expect(minRange!.className).toMatch(/rangeInputTop/);
+
+    // Both at the floor: max stays on top, and it is the one that can move.
+    act(() => root.render(<BudgetRange min={0} max={0} floor={0} ceiling={100_000_000} step={100_000} onChange={onChange} />));
+    expect(minRange!.className).not.toMatch(/rangeInputTop/);
+    expect(maxRange!.className).not.toMatch(/rangeInputTop/);
+  });
 });

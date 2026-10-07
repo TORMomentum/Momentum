@@ -64,6 +64,12 @@ export function BudgetRange({
 
   const clamp = (value: number) => Math.min(Math.max(value, floor), ceiling);
 
+  // The two inputs overlap, and the later one (max) is on top. When the
+  // handles meet, the one on top must be the one that can still move: in
+  // the right half that is min (max cannot go further right, and cannot go
+  // left past min), in the left half it is max.
+  const minOnTop = min >= floor + span / 2;
+
   return (
     <div className={`${styles.root} ${tone === "match" ? styles.toneMatch : ""}`}>
       {stacked ? (
@@ -157,7 +163,7 @@ export function BudgetRange({
         />
         <input
           type="range"
-          className={styles.rangeInput}
+          className={`${styles.rangeInput} ${minOnTop ? styles.rangeInputTop : ""}`}
           min={floor}
           max={ceiling}
           step={step}
