@@ -1,0 +1,78 @@
+# TOR-140. The extraction worker is a persistent poll loop, not a request handler, so it
+# needs minScale=1 (never cold) and CPU allocated even between requests — the opposite of
+# api.yaml's defaults. It shares api.yaml's image and secrets; only the command and the
+# scaling/CPU annotations differ. `startHealthServer` (apps/api/src/workers/health-server.ts)
+# is what makes this a valid Cloud Run service at all: the platform requires something
+# listening on the container port, which a bare poll loop never had before TOR-140.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: tor-radar-worker
+  labels:
+    app: tor-radar
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      containers:
+        - image: ${AR_IMAGE_API}
+          command: ["npm"]
+          args: ["run", "worker"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: API_PORT
+              value: "8080"
+            - name: GCS_BUCKET
+              value: ${GCS_BUCKET}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: ${PROJECT_ID}
+            - name: GCS_CREDENTIALS
+              value: /secrets/gcs-sa/key.json
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /secrets/vertex-sa/key.json
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-url
+                  key: latest
+            - name: INTAKE_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: intake-api-keys
+                  key: latest
+            - name: ADMIN_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: admin-api-keys
+                  key: latest
+          volumeMounts:
+            - name: gcs-sa
+              mountPath: /secrets/gcs-sa
+              readOnly: true
+            - name: vertex-sa
+              mountPath: /secrets/vertex-sa
+              readOnly: true
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: gcs-sa
+          secret:
+            secretName: gcs-storage-sa
+            items:
+              - key: latest
+                path: key.json
+        - name: vertex-sa
+          secret:
+            secretName: vertex-sa
+            items:
+              - key: latest
+                path: key.json

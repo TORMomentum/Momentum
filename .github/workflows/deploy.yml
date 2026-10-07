@@ -1,0 +1,68 @@
+name: Deploy to Cloud Run
+
+# TOR-142. Manually triggered only — the app isn't feature-complete yet, and every
+# service stays IAM-restricted (--no-allow-unauthenticated) regardless of who
+# deploys it. Auto-deploy-on-merge is Sprint 6's decision, not this workflow's.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event.inputs.confirm == 'deploy'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      AR_REPO: ${{ vars.GCP_AR_REPO }}
+      GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_DEPLOY_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push the api image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/api:${{ github.sha }}"
+          docker build -f apps/api/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "AR_IMAGE_API=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Build and push the web image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:${{ github.sha }}"
+          docker build -f apps/web/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "AR_IMAGE_WEB=$IMAGE" >> "$GITHUB_ENV"
+
+      # api and worker share the api image but are separate services (different
+      # scaling, different command) — see deploy/cloudrun/worker.yaml.
+      - name: Deploy api
+        run: |
+          envsubst < deploy/cloudrun/api.yaml > /tmp/api.yaml
+          gcloud run services replace /tmp/api.yaml --region "$REGION"
+
+      - name: Deploy worker
+        run: |
+          envsubst < deploy/cloudrun/worker.yaml > /tmp/worker.yaml
+          gcloud run services replace /tmp/worker.yaml --region "$REGION"
+
+      # web needs api's own URL, so api must already be deployed by this point.
+      - name: Deploy web
+        run: |
+          API_SERVICE_URL=$(gcloud run services describe tor-radar-api --region "$REGION" --format='value(status.url)')
+          export API_SERVICE_URL
+          envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
+          gcloud run services replace /tmp/web.yaml --region "$REGION"

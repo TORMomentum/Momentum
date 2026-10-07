@@ -1,0 +1,40 @@
+# TOR-140. Request-driven like api.yaml. API_BASE_URL points at the api service's own
+# Cloud Run URL, so api must be deployed first — deploy.yml does that ordering.
+# NEXT_PUBLIC_* values are compiled into the client bundle at image build time, not set
+# here; this file only carries what the server needs at request time.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: tor-radar-web
+  labels:
+    app: tor-radar
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+    spec:
+      containers:
+        - image: ${AR_IMAGE_WEB}
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: API_BASE_URL
+              value: ${API_SERVICE_URL}
+            - name: ADMIN_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: admin-api-keys
+                  key: latest
+            - name: STAFF_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: staff-access-secret
+                  key: latest
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi

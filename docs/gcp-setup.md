@@ -112,3 +112,135 @@ TOR-19 access verified.
 Gemini on Vertex runs in `us-central1` (also `asia-southeast1` if latency matters
 later — not for an offline benchmark). Document AI is multi-region only: `us` or `eu`.
 Keeping both in the US is the simplest choice for Phase 1.
+
+## 7. Cloud Run deployment (TOR-137–142)
+
+The code side — the three `deploy/cloudrun/*.yaml` service definitions and
+`.github/workflows/deploy.yml` — is already in the repo (TOR-140, TOR-142). What's below
+is the console/CLI setup those files assume, in the order a first deploy needs it.
+`${PROJECT_ID}` below is the same project id from §1.
+
+### 7.1 Enable APIs (TOR-138)
+
+Same project as Vertex AI / GCS. APIs & Services → Enable APIs & Services → enable:
+
+- **Cloud Run Admin API** (`run.googleapis.com`)
+- **Artifact Registry API** (`artifactregistry.googleapis.com`)
+- **Secret Manager API** (`secretmanager.googleapis.com`)
+
+Or, with `gcloud`:
+
+```bash
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com \
+  --project=${PROJECT_ID}
+```
+
+### 7.2 Artifact Registry repo + deploy service account (TOR-139)
+
+```bash
+gcloud artifacts repositories create tor-radar \
+  --repository-format=docker --location=${REGION} --project=${PROJECT_ID}
+
+gcloud iam service-accounts create tor-radar-deploy \
+  --display-name="TOR Radar CI deploy" --project=${PROJECT_ID}
+```
+
+Grant it exactly what it needs to push images and deploy — not a project-wide role:
+
+```bash
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:tor-radar-deploy@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:tor-radar-deploy@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:tor-radar-deploy@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+```
+
+Keys → Add key → **JSON** → download. This key goes into a **GitHub secret**, not
+`secrets/` (§7.4) — it never touches a developer's machine.
+
+### 7.3 Secret Manager (TOR-141)
+
+Five secrets the Cloud Run services read at request time, none of them in `.env.example`
+because they're deployment-only:
+
+```bash
+echo -n "<the real mongodb+srv:// URL>"  | gcloud secrets create mongo-url           --data-file=- --project=${PROJECT_ID}
+echo -n "<comma-separated intake keys>"  | gcloud secrets create intake-api-keys     --data-file=- --project=${PROJECT_ID}
+echo -n "<comma-separated admin keys>"   | gcloud secrets create admin-api-keys      --data-file=- --project=${PROJECT_ID}
+echo -n "<the staff login passphrase>"   | gcloud secrets create staff-access-secret --data-file=- --project=${PROJECT_ID}
+gcloud secrets create gcs-storage-sa --data-file=secrets/gcs-storage-sa.json --project=${PROJECT_ID}
+gcloud secrets create vertex-sa      --data-file=secrets/gcp-sa.json        --project=${PROJECT_ID}
+```
+
+Then let the **api** and **worker** services (both run as the api image) read the two
+key-file secrets and three of the four string secrets; **web** reads `admin-api-keys` and
+`staff-access-secret` only — grant `roles/secretmanager.secretAccessor` on each secret to
+that service's own runtime identity (the default compute service account, unless you later
+give each service its own):
+
+```bash
+for SECRET in mongo-url intake-api-keys admin-api-keys gcs-storage-sa vertex-sa; do
+  gcloud secrets add-iam-policy-binding $SECRET \
+    --member="serviceAccount:${PROJECT_ID}-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor" --project=${PROJECT_ID}
+done
+gcloud secrets add-iam-policy-binding admin-api-keys \
+  --member="serviceAccount:${PROJECT_ID}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" --project=${PROJECT_ID}
+gcloud secrets add-iam-policy-binding staff-access-secret \
+  --member="serviceAccount:${PROJECT_ID}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" --project=${PROJECT_ID}
+```
+
+### 7.4 GitHub repository configuration (TOR-142)
+
+Repo → **Settings → Secrets and variables → Actions**.
+
+**Variables** tab (plain values, not secret):
+
+| Name | Value |
+| :--- | :--- |
+| `GCP_PROJECT_ID` | `${PROJECT_ID}` from §1 |
+| `GCP_REGION` | e.g. `asia-southeast1` |
+| `GCP_AR_REPO` | `tor-radar` (the repo name from §7.2) |
+| `GCS_BUCKET` | the originals bucket name |
+
+**Secrets** tab:
+
+| Name | Value |
+| :--- | :--- |
+| `GCP_DEPLOY_SA_KEY` | the full JSON key downloaded in §7.2, pasted as-is |
+
+### 7.5 First deploy
+
+Actions tab → **Deploy to Cloud Run** → **Run workflow**, type `deploy` to confirm. It
+builds and pushes both images, then deploys api, worker, and web in that order (web needs
+api's URL for `API_BASE_URL`, so api goes first — `.github/workflows/deploy.yml`).
+
+Every service deploys with `--no-allow-unauthenticated` — nothing is public yet (that
+switch is a later sprint's decision). After the first deploy, grant the reviewers who need
+to see it:
+
+```bash
+gcloud run services add-iam-policy-binding tor-radar-web --region=${REGION} \
+  --member="user:reviewer@example.com" --role="roles/run.invoker" --project=${PROJECT_ID}
+```
+
+This binding persists across redeploys — it's a one-time step per reviewer, not part of
+the workflow.
+
+### What goes where
+
+| | Lives in | Committed |
+| :--- | :--- | :--- |
+| Cloud Run service shape (scaling, ports, env var *names*) | `deploy/cloudrun/*.yaml` | yes |
+| Project id, region, repo name, bucket name | GitHub Actions **variables** | no (set per-repo) |
+| The deploy service account's key | GitHub Actions **secrets** | never |
+| Mongo URL, API keys, staff passphrase, the two SA key files | GCP **Secret Manager** | never |
+| Who can call the deployed services | Cloud Run IAM (`run.invoker`) | n/a |
