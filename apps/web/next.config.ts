@@ -21,6 +21,10 @@ const allowedMimeTypes = process.env.ALLOWED_MIME_TYPES ?? "application/pdf,imag
 const nextConfig: NextConfig = {
   // The repo's agent rules live at the root; do not generate a second set here.
   agentRules: false,
+  // Development only, and it defaults to bottom-left — directly on top of the
+  // save control on any screen whose actions sit there. Kept, because it
+  // reports what a route rendered as, but moved out of the way.
+  devIndicators: { position: "bottom-right" },
   output: "standalone",
   // Exposes the same limits to the client bundle as NEXT_PUBLIC_* — see
   // UploadForm.tsx, which reads these instead of restating the numbers.

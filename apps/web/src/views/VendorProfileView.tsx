@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useViewer } from "../shared/lib/viewer";
 import { WHOLE_COUNTRY_AREA } from "@tor-radar/seeds";
 import {
@@ -78,6 +79,7 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
   // exactly one thing to do.
   const [settingUp, setSettingUp] = useState((initial?.categories.length ?? 0) === 0);
   const { account } = useViewer();
+  const router = useRouter();
   const [editing, setEditing] = useState<Section | null>(null);
 
   async function save() {
@@ -96,6 +98,16 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
         // and correcting them.
         setSettingUp(false);
         setEditing(null);
+        return;
+      }
+      // A session that has expired or been withdrawn is not a problem with what
+      // was typed, and telling a vendor their profile "could not be saved" sends
+      // them back to edit answers that were never the issue.
+      if (response.status === 401) {
+        setMessage("เซสชันหมดอายุแล้ว กรุณาเข้าสู่ระบบอีกครั้งแล้วบันทึกใหม่");
+        // The header and the rest of the page were rendered for someone signed
+        // in; this makes the whole screen agree that they are not.
+        router.refresh();
         return;
       }
       // The server names the field it refused, in Thai, and saying which one
