@@ -24,8 +24,10 @@ afterEach(() => {
 });
 
 function saveButton(): HTMLButtonElement {
+  // The label differs between the two states ("บันทึกและเริ่มใช้งาน" on a first
+  // run, "บันทึกการเปลี่ยนแปลง" afterwards); both are the same control.
   return [...container.querySelectorAll("button")].find((button) =>
-    button.textContent?.startsWith("บันทึกโปรไฟล์"),
+    button.textContent?.startsWith("บันทึก"),
   ) as HTMLButtonElement;
 }
 
@@ -40,6 +42,47 @@ const FROM_API = {
 };
 
 describe("VendorProfileView", () => {
+  it("leads with the pickers when nothing has been answered yet", () => {
+    act(() => {
+      root.render(<VendorProfileView initial={{ ...FROM_API, categories: [] }} />);
+    });
+    expect(container.textContent).toContain("ตั้งค่าโปรไฟล์ครั้งแรก");
+    expect(container.textContent).toContain("บันทึกและเริ่มใช้งาน");
+    // The full taxonomy is on screen, which is the one thing to do.
+    expect(container.querySelector('input[type="search"]')).not.toBeNull();
+  });
+
+  it("leads with the answers once they exist, not with the choices again", () => {
+    // A vendor coming back is owed their own words. Showing the sixty-five
+    // choices every visit was the whole complaint.
+    act(() => {
+      root.render(<VendorProfileView initial={FROM_API} />);
+    });
+    expect(container.textContent).toContain("โปรไฟล์ผู้ประกอบการ");
+    expect(container.textContent).not.toContain("ตั้งค่าโปรไฟล์ครั้งแรก");
+    expect(container.querySelector('input[type="search"]')).toBeNull();
+    expect(container.textContent).toContain("แก้ไข");
+  });
+
+  it("opens one section at a time, leaving the others summarised", () => {
+    act(() => {
+      root.render(<VendorProfileView initial={FROM_API} />);
+    });
+    const edit = [...container.querySelectorAll("button")].find((b) => b.textContent === "แก้ไข")!;
+    act(() => edit.click());
+    expect(container.querySelector('input[type="search"]')).not.toBeNull();
+    expect([...container.querySelectorAll("button")].filter((b) => b.textContent === "ปิด")).toHaveLength(1);
+  });
+
+  it("names what would sharpen matching without marking the profile incomplete", () => {
+    act(() => {
+      root.render(<VendorProfileView initial={FROM_API} />);
+    });
+    expect(container.textContent).toContain("สิ่งที่จะช่วยให้จับคู่แม่นขึ้น");
+    expect(container.textContent).toContain("ไม่บังคับ");
+    expect(container.textContent).not.toMatch(/\d+%/);
+  });
+
   it("sends only the vendor's own answers, never the fields the server stamps", async () => {
     // Holding the whole reply in state and posting it back sent taxonomyVersion
     // and updatedAt with it, and the API refused the save outright.
