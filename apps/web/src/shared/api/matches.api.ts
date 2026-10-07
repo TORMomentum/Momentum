@@ -40,9 +40,14 @@ export async function fetchOwnMatches(): Promise<OwnMatches | null | undefined> 
     const response = await apiRequest("/api/v1/me/matches", {}, sessionId);
     // An expired session is a signed-out visitor, not a failure.
     if (response.status === 401) return undefined;
-    if (!response.ok) return null;
+    if (!response.ok) {
+      // The panel only says "could not load"; the cause belongs in the log.
+      console.error("own_matches_failed", { status: response.status, body: (await response.text()).slice(0, 300) });
+      return null;
+    }
     return (await response.json()) as OwnMatches;
-  } catch {
+  } catch (error) {
+    console.error("own_matches_failed", { reason: String(error) });
     return null;
   }
 }
