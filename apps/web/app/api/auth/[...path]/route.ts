@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiRequest } from "../../../../src/shared/api/api-client";
+import { STAFF_COOKIE_NAME } from "../../../../src/shared/lib/staff-session";
 
 /**
  * The browser's half of a session. The cookie is set and read only here: the
@@ -69,6 +70,11 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
       path: "/",
       expires: new Date(value.expiresAt),
     });
+    // Signing in as an account is a new identity, and it must not inherit the
+    // staff pass a previous visit left in this browser — otherwise a vendor
+    // signing in on a reviewer's machine walks straight into the staff area.
+    // Staff mode is entered again, deliberately, at /admin/login.
+    output.cookies.set(STAFF_COOKIE_NAME, "", { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production", expires: new Date(0) });
     return output;
   }
 
