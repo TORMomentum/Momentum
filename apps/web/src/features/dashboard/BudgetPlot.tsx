@@ -12,6 +12,9 @@ function confidenceLabel(confidence: number | null): string {
   return confidence === null ? "ไม่ระบุ" : `${Math.round(confidence * PERCENT)}%`;
 }
 
+/** Columns past which category names are angled rather than wrapped under their column. */
+const CROWDED_COLUMNS = 6;
+
 /** A round axis ceiling — 1, 2 or 5 × 10ⁿ — at or above the largest value. */
 function niceCeiling(value: number): number {
   if (value <= MINIMUM_DOMAIN) return MINIMUM_DOMAIN;
@@ -64,13 +67,16 @@ export function BudgetPlot({
   const months = [...new Set(points.map((point) => point.month))].sort();
   const axis = category ? months : categories;
   const columnWidth = PERCENT / axis.length;
+  // Past a handful of columns a Thai category name no longer fits under its own column, wraps into
+  // its neighbours and down into the note below. Then each name goes on one angled line instead.
+  const crowded = axis.length > CROWDED_COLUMNS;
   const centreOf = (value: string) => columnWidth * (axis.indexOf(value) + 0.5);
   const heightOf = (budget: number) => Math.min(PERCENT, (budget / maximum) * PERCENT);
 
   const firstFlag = points.find((point) => point.verdict.kind === "anomaly");
 
   return (
-    <div className={styles.plot} aria-label="กราฟงบประมาณ TOR">
+    <div className={`${styles.plot} ${crowded ? styles.plotCrowded : ""}`} aria-label="กราฟงบประมาณ TOR">
       <span className={styles.axis} style={{ top: -6 }}>{formatBudgetShort(maximum)}</span>
       <span className={styles.axis} style={{ top: "calc(50% - 6px)" }}>{formatBudgetShort(maximum / 2)}</span>
       <span className={styles.axis} style={{ bottom: -6 }}>฿0</span>
@@ -127,8 +133,9 @@ export function BudgetPlot({
       {axis.map((value) => (
         <span
           key={value}
-          className={styles.plotCategory}
-          style={{ left: `${centreOf(value)}%`, maxWidth: `${columnWidth}%` }}
+          className={`${styles.plotCategory} ${crowded ? styles.plotCategoryAngled : ""}`}
+          style={crowded ? { left: `${centreOf(value)}%` } : { left: `${centreOf(value)}%`, maxWidth: `${columnWidth}%` }}
+          title={thaiDigitsToArabic(value)}
         >
           {thaiDigitsToArabic(value)}
         </span>

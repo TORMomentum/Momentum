@@ -4,6 +4,11 @@ import { LandingView } from "../../src/views/LandingView";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+// Figures come from a live API call (FR-E-1), so this page cannot be prerendered once at
+// build time — a Cloud Run image built without API_BASE_URL would otherwise bake in
+// whatever the build-time fetch returned (TOR-140), permanently, until the next build.
+export const dynamic = "force-dynamic";
+
 /**
  * The public homepage. Its headline figures come from the dashboard API, so
  * the homepage and the dashboard always show the same corpus. A failed load

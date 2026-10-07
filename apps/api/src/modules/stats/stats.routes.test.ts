@@ -73,7 +73,19 @@ describe("public dashboard route", () => {
       flagged: { count: null }, trend: [{ month: "2026-01", torCount: 1, budgetSum: 100 }],
       byAgency: [{ agency: "Agency A", torCount: 1, budgetSum: 100 }],
       meta: { lastIntakeAt: "2026-01-01T00:00:00.000Z", statsComputedAt: old.toISOString(), stale: true, corpusSize: 2 },
-      checklist: null,
+      // FR-F-4: the one plotted TOR states no qualifications, and its ฿100 budget is below the range
+      // the anomaly rule compares, so C1 and C4 fail and C5 cannot be evaluated.
+      checklist: {
+        tors: 1,
+        byCheck: [
+          { id: "C1", failed: 1, notEvaluated: 0 },
+          { id: "C2", failed: 0, notEvaluated: 1 },
+          { id: "C3", failed: 0, notEvaluated: 1 },
+          { id: "C4", failed: 1, notEvaluated: 0 },
+          { id: "C5", failed: 0, notEvaluated: 1 },
+        ],
+        flagged: [],
+      },
     });
     expect(response.body.points).toHaveLength(1);
     expect(response.body.points[0]).toMatchObject({ category: "roads", month: "2026-01", budget: 100, verdict: { kind: "not-evaluated" }, confidence: 0.6, verified: true, modelVersion: null });

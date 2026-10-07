@@ -31,10 +31,14 @@ npm run build                 # all workspaces
 local emulator, `gcs-storage-sa.json`. Ask the team for these files; never commit them.
 
 ```bash
-docker compose up mongo gcs   # just the datastores, for `npm run dev` against them
+docker compose up             # web · api · worker · mongo · gcs (fake-gcs-server emulator)
 ```
 
-⚠️ `docker compose build web api` does not currently work — the Dockerfiles `COPY` each app's own `package.json` in isolation, so `npm install` inside the image never links the `@tor-radar/shared` workspace package or picks up root-hoisted devDependencies (workspace-aware Dockerfiles are Slice-1 Task 15). `npm run dev` against the two datastores above is the reliable local setup.
+The `web` and `api` Dockerfiles install from the workspace root, so `@tor-radar/shared` resolves
+inside the image the same way it does locally (TOR-140). `web`'s image prerenders `/` and
+`/methodology` at build time; without `API_BASE_URL` set as a build arg, those two pages bake in
+their no-data fallback rather than live figures — worth fixing before either page ships behind
+Cloud Run.
 
 Node 22 or newer. CI runs lint, test, and build on every pull request
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).

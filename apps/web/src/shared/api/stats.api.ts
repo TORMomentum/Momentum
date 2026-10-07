@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { ChecklistSummary } from "@tor-radar/shared";
 import type { DashboardFilters } from "../lib/dashboard-filters";
 
 export interface DashboardVerdict {
@@ -23,7 +24,8 @@ export interface DashboardPayload {
   bounds: Array<{ category: string; month: string; n: number; q1: number | null; q3: number | null; lowBound: number | null; highBound: number | null; eligible: boolean }>;
   rule: { method: "IQR" | "ZSCORE"; iqrMultiplier: number; zScoreLimit: number; peerMinN: number; windowMonths: number; cohortTimezone: string };
   meta: { lastIntakeAt: string | null; statsComputedAt: string | null; stale: boolean; corpusSize: number };
-  checklist: null;
+  /** FR-F-4: failed checks over the plotted TORs; null from an API that predates the checklist. */
+  checklist: ChecklistSummary | null;
 }
 
 export class StatsApiUnavailable extends Error {}

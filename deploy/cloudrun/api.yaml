@@ -1,0 +1,76 @@
+# TOR-140. Request-driven: scales to zero when idle, like a normal web service.
+#
+# Deployed with `gcloud run services replace` after envsubst fills the ${...}
+# placeholders (see .github/workflows/deploy.yml) — nothing GCP-specific is
+# hard-coded here (NFR-S7). `--no-allow-unauthenticated` and the
+# `roles/run.invoker` grant for named reviewers are IAM, not expressible in
+# this file; both are gcloud commands in docs/gcp-setup.md §7.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: tor-radar-api
+  labels:
+    app: tor-radar
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+    spec:
+      containers:
+        - image: ${AR_IMAGE_API}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: API_PORT
+              value: "8080"
+            - name: GCS_BUCKET
+              value: ${GCS_BUCKET}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: ${PROJECT_ID}
+            - name: GCS_CREDENTIALS
+              value: /secrets/gcs-sa/key.json
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /secrets/vertex-sa/key.json
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-url
+                  key: latest
+            - name: INTAKE_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: intake-api-keys
+                  key: latest
+            - name: ADMIN_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: admin-api-keys
+                  key: latest
+          volumeMounts:
+            - name: gcs-sa
+              mountPath: /secrets/gcs-sa
+              readOnly: true
+            - name: vertex-sa
+              mountPath: /secrets/vertex-sa
+              readOnly: true
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: gcs-sa
+          secret:
+            secretName: gcs-storage-sa
+            items:
+              - key: latest
+                path: key.json
+        - name: vertex-sa
+          secret:
+            secretName: vertex-sa
+            items:
+              - key: latest
+                path: key.json

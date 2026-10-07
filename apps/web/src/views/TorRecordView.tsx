@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
@@ -21,7 +22,7 @@ import {
  * extracted (NFR-F7) — in Arabic numerals, as the data client delivers it — each
  * unconfirmed one is marked, and the provenance line names the model that
  * produced them (NFR-F6). What the ported mockup shows but
- * nothing computes yet — match score, checklist, status history — is left out
+ * nothing computes yet — match score, status history — is left out
  * rather than faked.
  */
 
@@ -231,6 +232,8 @@ export function TorRecordView({
             </div>
           </div>
         )}
+
+        {tor.checklist && <ChecklistPanel checklist={tor.checklist} />}
 
         <div className={styles.provenance}>
           {tor.provenance && (

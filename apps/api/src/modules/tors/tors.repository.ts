@@ -78,6 +78,7 @@ export interface TorFacets {
 export interface PublicTorRecord {
   id: string;
   fields: Partial<TorFields>;
+  cohort: CohortKey | null;
   announcedAt: Date | null;
   sourceUrl: string | null;
   /** The source system's project the TOR belongs to, when it was collected from one. */
@@ -391,6 +392,7 @@ export class TorsRepository {
       {
         projection: {
           fields: 1,
+          cohort: 1,
           announcedAt: 1,
           sourceUrl: 1,
           sourceProject: 1,
@@ -408,6 +410,7 @@ export class TorsRepository {
     return {
       id: doc._id.toString(),
       fields: doc.fields ?? {},
+      cohort: doc.cohort ?? null,
       announcedAt: doc.announcedAt ?? null,
       sourceUrl: doc.sourceUrl ?? null,
       sourceProject: doc.sourceProject ?? null,
