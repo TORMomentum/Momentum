@@ -163,14 +163,20 @@ and enable each of these three, one at a time:
 
 Six secrets the Cloud Run services read at request time; none of them belong in
 `.env.example` because they're deployment-only. **Secret Manager → Create secret**, once
-per row:
+per row. **The name must match the first column exactly, including case** —
+`deploy/cloudrun/*.yaml` looks up each secret by this literal name, and Secret Manager
+answers a name that doesn't exist with the same "Permission denied" error as a real
+permissions problem, so a typo'd case reads as an IAM misconfiguration (found the hard
+way: `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET` got created upper-case against the lower-
+case names the YAML expected — the fix was changing the YAML to match what already
+existed, not recreating the secrets):
 
 | Secret name | Secret value |
 | :--- | :--- |
 | `mongo-url` | the real `mongodb+srv://...` connection string, pasted into **Secret value** |
 | `intake-api-keys` | your comma-separated intake keys, pasted in |
-| `admin-api-keys` | your comma-separated admin keys, pasted in |
-| `staff-access-secret` | the staff login passphrase, pasted in |
+| `ADMIN_API_KEYS` | your comma-separated admin keys, pasted in |
+| `STAFF_ACCESS_SECRET` | the staff login passphrase, pasted in |
 | `gcs-storage-sa` | switch **Secret value** to **Upload file** → pick `secrets/gcs-storage-sa.json` |
 | `vertex-sa` | **Upload file** → pick `secrets/gcp-sa.json` |
 
@@ -184,7 +190,7 @@ Leave replication at **Automatic** for all six, and **Create secret** each time.
 3. New principals: `<project-number>-compute@developer.gserviceaccount.com`
 4. Role: **Secret Manager Secret Accessor** → **Save**
 5. Repeat for all six — `api` and `worker` read all six; `web` only ever reads
-   `admin-api-keys` and `staff-access-secret`, but granting access on the rest doesn't
+   `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET`, but granting access on the rest doesn't
    hurt, since nothing reads a secret it was never configured to ask for.
 
 ### 7.4 GitHub repository configuration (TOR-142)

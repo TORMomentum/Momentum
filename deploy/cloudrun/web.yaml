@@ -27,12 +27,12 @@ spec:
             - name: ADMIN_API_KEYS
               valueFrom:
                 secretKeyRef:
-                  name: admin-api-keys
+                  name: ADMIN_API_KEYS
                   key: latest
             - name: STAFF_ACCESS_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: staff-access-secret
+                  name: STAFF_ACCESS_SECRET
                   key: latest
           resources:
             limits:
