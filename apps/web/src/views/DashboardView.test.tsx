@@ -99,6 +99,30 @@ describe("DashboardView states", () => {
     expect(panel?.querySelector('a[href="/methodology"]')).not.toBeNull();
   });
 
+  it("lists the ten agencies with the largest budgets, keeps a picked one, and expands to all", async () => {
+    const byAgency = Array.from({ length: 12 }, (_, i) => ({ agency: `หน่วยงาน ${i + 1}`, torCount: 1, budgetSum: (i + 1) * 1000 }));
+    // The bar's first label span holds the agency's name alone.
+    const names = () => [...container.querySelectorAll("button[aria-pressed]")]
+      .map((b) => b.querySelector("span > span")?.textContent ?? "")
+      .filter((t) => t.startsWith("หน่วยงาน "));
+
+    await render(dashboard({ byAgency }));
+    expect(names()).toHaveLength(10);
+    expect(names()[0]).toBe("หน่วยงาน 12");
+    expect(names()).not.toContain("หน่วยงาน 1");
+
+    const more = [...container.querySelectorAll("button")].find((b) => b.textContent === "ดูทั้งหมด (12 หน่วยงาน)");
+    await act(async () => more?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(names()).toHaveLength(12);
+
+    // Collapsed again, an agency picked below the cut still shows.
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => root.render(<DashboardView dashboard={dashboard({ byAgency })} filters={{ agency: "หน่วยงาน 1" }} />));
+    expect(names()).toHaveLength(11);
+    expect(names()).toContain("หน่วยงาน 1");
+  });
+
   it("shows no checklist panel when the API sends none", async () => {
     await render(dashboard());
     expect(container.querySelector('[aria-labelledby="dashboard-checklist-title"]')).toBeNull();

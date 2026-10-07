@@ -33,6 +33,8 @@ const STATE_LABELS: Record<TorState, string> = {
  */
 const UNKNOWN_AGENCY = "ไม่ระบุหน่วยงาน";
 const UNKNOWN_MONTH = "ไม่ระบุเดือน";
+/** Agencies listed before "ดูทั้งหมด": the national corpus names dozens, most with a single TOR. */
+const AGENCIES_SHOWN = 10;
 
 function formatBudget(value: number): string {
   return `฿${value.toLocaleString("en-US")}`;
@@ -55,6 +57,7 @@ export function DashboardView({
   const router = useRouter();
   const pathname = usePathname();
   const [openDrop, setOpenDrop] = useState<string | null>(null);
+  const [allAgencies, setAllAgencies] = useState(false);
 
   function updateFilters(change: Partial<DashboardFilters>) {
     const next = { ...filters, ...change };
@@ -85,8 +88,13 @@ export function DashboardView({
   const anyFilter = Object.values(filters).some((value) => value !== undefined);
   // Unknown sorts first by string order, and a row with no name reads as a
   // fault when it leads the chart. It belongs at the end, with the others.
+  // Largest budget first, so the short list holds the agencies that carry the money.
   const agencies = [...dashboard.byAgency].sort((left, right) =>
-    left.agency === right.agency ? 0 : !left.agency ? 1 : !right.agency ? -1 : 0);
+    !left.agency !== !right.agency ? (!left.agency ? 1 : -1) : right.budgetSum - left.budgetSum || left.agency.localeCompare(right.agency));
+  // The picked agency stays listed even when it ranks below the cut, so the filter is never hidden.
+  const shownAgencies = allAgencies
+    ? agencies
+    : agencies.filter((row, index) => index < AGENCIES_SHOWN || (row.agency || UNKNOWN) === filters.agency);
   // The widest bar is the scale, so one agency's share is readable against the
   // others rather than against an arbitrary ceiling.
   const widestBudget = agencies.reduce((widest, row) => Math.max(widest, row.budgetSum), 0);
@@ -188,14 +196,14 @@ export function DashboardView({
               : <span className={styles.panelHint}>คลิกแท่งเพื่อกรอง</span>}
           </div>
           <div className={styles.bars}>
-            {/* Every agency stays on screen when one is picked; the rest fade.
+            {/* The listed agencies stay on screen when one is picked; the rest fade.
                 That is what makes the selected bar readable AS a comparison —
                 dropping the other rows would leave a one-bar chart.
 
                 Clicking writes the same `agency` filter the dropdown writes, so
                 the two controls cannot disagree and the choice survives a
                 reload or a shared link. */}
-            {agencies.map((row, index) => {
+            {shownAgencies.map((row, index) => {
               // An unreadable agency is still a row a reader may want to see on
               // its own, so it carries the sentinel rather than no value at all.
               const value = row.agency || UNKNOWN;
@@ -227,6 +235,11 @@ export function DashboardView({
               );
             })}
           </div>
+          {agencies.length > AGENCIES_SHOWN && (
+            <button type="button" className={`${styles.panelClear} ${styles.barsMore}`} onClick={() => setAllAgencies(!allAgencies)} aria-expanded={allAgencies}>
+              {allAgencies ? `แสดงเฉพาะ ${AGENCIES_SHOWN} อันดับแรก` : `ดูทั้งหมด (${agencies.length.toLocaleString("th-TH")} หน่วยงาน)`}
+            </button>
+          )}
 
             <div className={`${styles.panelHead} ${styles.panelHeadStacked}`}><h2 className={styles.panelTitle}>แนวโน้มรายเดือน</h2>{filters.month
               ? <button type="button" className={styles.panelClear} onClick={() => updateFilters({ month: undefined })}>ล้างตัวกรองเดือน</button>
