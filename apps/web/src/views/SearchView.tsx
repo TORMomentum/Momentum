@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AppliedFilters, type AppliedFilter } from "../features/search/AppliedFilters";
+import { FacetList } from "../features/search/FacetList";
+import { FilterSection } from "../features/search/FilterSection";
 import styles from "../features/search/search.module.css";
 import {
   EMPTY_FILTERS,
@@ -19,6 +22,7 @@ import {
   daysUntil,
   deadlineParts,
   formatBaht,
+  formatBudgetShort,
   formatThaiDate,
   formatThaiDateTime,
   thaiDigitsToArabic,
@@ -112,13 +116,6 @@ export function SearchView({
   const router = useRouter();
   const { signedIn, ready } = useViewer();
   const [pending, startTransition] = useTransition();
-  const [allAgencies, setAllAgencies] = useState(false);
-  // An agency already filtering the list must stay on screen even when it falls
-  // outside the shown few, or the reader cannot see what is narrowing their
-  // results, let alone switch it off.
-  const visibleAgencies = allAgencies
-    ? facets.agencies
-    : facets.agencies.filter((agency, index) => index < AGENCY_LIMIT || filters.agencies.includes(agency.value));
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
   const lastCommittedQuery = useRef(filters.q);
@@ -239,6 +236,20 @@ export function SearchView({
     filters.open && "ยังเปิดรับ",
   ].filter(Boolean);
 
+  const dateLabel = (iso: string) => formatThaiDate(`${iso}T00:00:00Z`) || iso;
+  const applied: AppliedFilter[] = [
+    ...(filters.q ? [{ key: "q", label: `“${thaiDigitsToArabic(filters.q)}”`, onRemove: () => { setDraftQuery(""); commitQuery(""); } }] : []),
+    ...(filters.state ? [{ key: "state", label: STATE_LABELS[filters.state], onRemove: () => update({ state: null }) }] : []),
+    ...filters.categories.map((value) => ({ key: `c:${value}`, label: thaiDigitsToArabic(value), onRemove: () => update({ categories: toggle(filters.categories, value) }) })),
+    ...filters.agencies.map((value) => ({ key: `a:${value}`, label: thaiDigitsToArabic(value), onRemove: () => update({ agencies: toggle(filters.agencies, value) }) })),
+    ...(filters.minBudget !== null || filters.maxBudget !== null
+      ? [{ key: "budget", label: `งบ ${formatBudgetShort(filters.minBudget ?? floor)} – ${formatBudgetShort(filters.maxBudget ?? ceiling)}`, onRemove: () => update({ minBudget: null, maxBudget: null }) }]
+      : []),
+    ...(filters.deadlineFrom || filters.deadlineTo
+      ? [{ key: "deadline", label: `ยื่นภายใน ${filters.deadlineFrom ? dateLabel(filters.deadlineFrom) : "…"} – ${filters.deadlineTo ? dateLabel(filters.deadlineTo) : "…"}`, onRemove: () => update({ deadlineFrom: null, deadlineTo: null }) }]
+      : []),
+  ];
+
   return (
     <main className={styles.searchPage}>
       <div className={styles.sidebar}>
@@ -249,36 +260,42 @@ export function SearchView({
           </button>
         </div>
 
-        <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>สถานะ</div>
+        <FilterSection title="สถานะ" active={filters.state ? 1 : 0}>
           {/* The same five states the dashboard counts, so a reader who clicked
-              a chip there finds the same words here. "open" was two options
-              before, which could not say "waiting for its invitation to bid". */}
-          <div className={styles.toggleList}>
-            <button
-              type="button"
-              className={`${styles.toggleItem} ${!filters.state ? styles.toggleItemOn : ""}`}
-              onClick={() => update({ state: null })}
-              aria-pressed={!filters.state}
-            >
-              {!filters.state ? "◉" : "○"} ทั้งหมด
-            </button>
-            {SEARCH_STATES.map((state) => (
-              <button
-                type="button"
-                key={state}
-                className={`${styles.toggleItem} ${filters.state === state ? styles.toggleItemOn : ""}`}
-                onClick={() => update({ state })}
-                aria-pressed={filters.state === state}
-              >
-                {filters.state === state ? "◉" : "○"} {STATE_LABELS[state]}
-              </button>
-            ))}
+              a chip there finds the same words here. */}
+          <div className={styles.facetList} role="radiogroup" aria-label="สถานะ">
+            {[null, ...SEARCH_STATES].map((state) => {
+              const on = (filters.state ?? null) === state;
+              return (
+                <button
+                  type="button"
+                  key={state ?? "all"}
+                  role="radio"
+                  aria-checked={on}
+                  className={`${styles.facetRow} ${on ? styles.facetRowOn : ""}`}
+                  onClick={() => update({ state })}
+                >
+                  {on ? "◉" : "○"} {state ? STATE_LABELS[state] : "ทั้งหมด"}
+                </button>
+              );
+            })}
           </div>
-        </div>
+        </FilterSection>
 
-        <div className={styles.filterGroup}>
-          <div className={styles.filterGroupTitle}>กำหนดยื่นข้อเสนอ</div>
+        {budgetFacet && ceiling > floor && (
+          <FilterSection title="งบประมาณ (฿)" active={filters.minBudget !== null || filters.maxBudget !== null ? 1 : 0}>
+            <BudgetRange
+              min={draftBudget.min}
+              max={draftBudget.max}
+              floor={floor}
+              ceiling={ceiling}
+              step={step}
+              onChange={setDraftBudget}
+            />
+          </FilterSection>
+        )}
+
+        <FilterSection title="กำหนดยื่นข้อเสนอ" active={filters.deadlineFrom || filters.deadlineTo ? 1 : 0}>
           <div className={styles.dateRange}>
             <label className={styles.dateField}>
               <span className={styles.dateLabel}>ตั้งแต่</span>
@@ -301,76 +318,34 @@ export function SearchView({
               />
             </label>
           </div>
-        </div>
+        </FilterSection>
+
         {facets.categories.length > 0 && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>หมวดหมู่</div>
-            <div className={styles.pillList}>
-              {facets.categories.map(({ value }) => {
-                const on = filters.categories.includes(value);
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    className={`${styles.pill} ${on ? styles.pillOn : ""}`}
-                    onClick={() => update({ categories: toggle(filters.categories, value) })}
-                    aria-pressed={on}
-                  >
-                    {thaiDigitsToArabic(value)}
-                  </button>
-                );
-              })}
-              {facets.agencies.length > AGENCY_LIMIT && (
-                <button type="button" className={styles.moreAgencies} onClick={() => setAllAgencies(!allAgencies)}>
-                  {allAgencies ? "แสดงน้อยลง" : `ดูทั้งหมด (${facets.agencies.length})`}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {budgetFacet && ceiling > floor && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>งบประมาณ (฿)</div>
-            <BudgetRange
-              min={draftBudget.min}
-              max={draftBudget.max}
-              floor={floor}
-              ceiling={ceiling}
-              step={step}
-              onChange={setDraftBudget}
+          <FilterSection title="หมวดหมู่" active={filters.categories.length}>
+            <FacetList
+              label="หมวดหมู่"
+              items={facets.categories}
+              selected={filters.categories}
+              limit={facets.categories.length}
+              onToggle={(value) => update({ categories: toggle(filters.categories, value) })}
             />
-          </div>
+          </FilterSection>
         )}
 
+        {/* Last, because it is the longest: the short, decisive filters come
+            first. A national corpus has hundreds of agencies, so the busiest
+            few are shown and the rest are found by typing, not scrolling. */}
         {facets.agencies.length > 0 && (
-          <div className={styles.filterGroup}>
-            <div className={styles.filterGroupTitle}>หน่วยงาน</div>
-            {/* The one list with no ceiling: a national corpus has hundreds of
-                agencies, and all of them would push every other filter off the
-                screen. The busiest few are shown, anything already chosen stays
-                visible, and the rest are one click away. */}
-            <div className={styles.toggleList}>
-              {visibleAgencies.map(({ value, count }) => {
-                const on = filters.agencies.includes(value);
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    className={`${styles.toggleItem} ${on ? styles.toggleItemOn : ""}`}
-                    onClick={() => update({ agencies: toggle(filters.agencies, value) })}
-                    aria-pressed={on}
-                  >
-                    {on ? "☑" : "☐"} {thaiDigitsToArabic(value)} <span className={styles.facetCount}>{count}</span>
-                  </button>
-                );
-              })}
-              {facets.agencies.length > AGENCY_LIMIT && (
-                <button type="button" className={styles.moreAgencies} onClick={() => setAllAgencies(!allAgencies)}>
-                  {allAgencies ? "แสดงน้อยลง" : `ดูทั้งหมด (${facets.agencies.length})`}
-                </button>
-              )}
-            </div>
-          </div>
+          <FilterSection title="หน่วยงาน" active={filters.agencies.length}>
+            <FacetList
+              label="หน่วยงาน"
+              items={facets.agencies}
+              selected={filters.agencies}
+              limit={AGENCY_LIMIT}
+              searchPlaceholder={`ค้นหาใน ${facets.agencies.length} หน่วยงาน`}
+              onToggle={(value) => update({ agencies: toggle(filters.agencies, value) })}
+            />
+          </FilterSection>
         )}
 
         <div className={styles.sidebarFoot}>
@@ -404,6 +379,8 @@ export function SearchView({
           />
           {results && <span className={styles.resultCount}>{results.total} ผลลัพธ์</span>}
         </form>
+
+        <AppliedFilters filters={applied} onClearAll={clearFilters} />
 
         {ready && !signedIn && (
           <div className={styles.publicBanner}>
