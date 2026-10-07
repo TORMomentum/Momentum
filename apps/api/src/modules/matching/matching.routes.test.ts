@@ -51,6 +51,47 @@ describe("matching routes", () => {
     expect(await torClassifications(db).countDocuments({})).toBe(1);
   });
 
+  it("keeps a vendor's own kind of work when a catch-all category buries it under newer noise", async () => {
+    // จ้างเหมาบริการ holds twenty-six kinds of work. A software vendor's coarse
+    // set is therefore mostly other people's jobs, and when the cap was filled
+    // by recency alone, a run of newer cleaning and security tenders pushed the
+    // older software ones out before they were ever scored.
+    const cap = 5;
+    const capped = { ...config, matching: { ...config.matching, candidateCap: cap } };
+    const small = express();
+    small.use(express.json());
+    small.use(sessionContext(sessionsRepository));
+    small.use("/api/v1", buildMatchingRouter({ config: capped, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, capped) }));
+    small.use(errorMiddleware);
+
+    const dev = await vendor("software@example.test");
+    await vendorProfiles(db).insertOne({ accountId: dev.accountId, categories: ["it.software"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
+
+    const insert = async (title: string, category: string, ageDays: number) => {
+      const at = new Date(Date.now() - ageDays * 86_400_000);
+      return (await tors(db).insertOne({ contentHash: `${title}-${ageDays}`, storage: { bucket: "test", key: title, contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { title: { raw: title, value: title, confidence: 1, verified: true }, category: { raw: category, value: category, confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: "2027-01-01", value: "2027-01-01", confidence: 1, verified: true } }, announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: at, updatedAt: at })).insertedId.toString();
+    };
+    const software = await insert("จ้างพัฒนาระบบสารสนเทศและเว็บไซต์", "จ้างเหมาบริการ", 30);
+    // The noise has to land in the SAME national category. Security tenders do
+    // not — the national normaliser files them under their own category — so an
+    // earlier version of this test used them and never exercised the cap at all.
+    // Events, catering and transport stay in the catch-all.
+    const noise = ["จ้างเหมาจัดงานนิทรรศการ", "จ้างเหมาบริการอาหารกลางวัน", "จ้างเหมาบริการขนส่งพัสดุ"];
+    for (let i = 0; i < cap * 3; i += 1) await insert(`${noise[i % noise.length]} ${i}`, "จ้างเหมาบริการ", i);
+    // Classify everything, then pin the cache's recency so the software TOR is
+    // unambiguously the OLDEST. Left to the clock, every row is classified in the
+    // same millisecond and the order is luck — an earlier version of this test
+    // passed against the bug for exactly that reason.
+    await new MatchingRepository(db, capped).ensureClassified();
+    await torClassifications(db).updateMany({}, { $set: { updatedAt: new Date() } });
+    await torClassifications(db).updateOne({ torId: software }, { $set: { updatedAt: new Date(Date.now() - 30 * 86_400_000) } });
+
+    const items = (await request(small).get("/api/v1/me/matches").set("x-session-id", dev.sessionId)).body.items;
+
+    expect(items.map((item: { id: string }) => item.id)).toContain(software);
+    expect(items[0].id).toBe(software);
+  });
+
   it("never returns another vendor's category candidates", async () => {
     const road = await vendor("road@example.test"); const computer = await vendor("computer@example.test");
     await vendorProfiles(db).insertMany([

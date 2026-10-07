@@ -298,6 +298,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   await torClassifications(db).createIndex({ "classification.coarse": 1, updatedAt: -1 });
+  // Precise candidates — records with leaf evidence for what a vendor chose —
+  // are read before the coarse ones, so they need their own path.
+  await torClassifications(db).createIndex({ "classification.leaves.id": 1, updatedAt: -1 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

@@ -11,6 +11,18 @@ function coarseCategories(profile: VendorProfileDocument): string[] {
   return [...new Set(WORK_CATEGORY_LEAVES.filter((leaf) => selected.has(leaf.id) || selected.has(leaf.groupId)).flatMap((leaf) => leaf.torCategories))];
 }
 
+/**
+ * The leaves a vendor's choices cover. Choosing a group covers every leaf in it,
+ * because a TOR is classified to leaves, never to groups.
+ */
+function chosenLeafAndGroupIds(profile: VendorProfileDocument): { leaves: string[]; length: number } {
+  const selected = new Set(profile.categories);
+  const leaves = WORK_CATEGORY_LEAVES.filter((leaf) => selected.has(leaf.id) || selected.has(leaf.groupId)).map(
+    (leaf) => leaf.id,
+  );
+  return { leaves, length: leaves.length };
+}
+
 function titleClauses(entries: string[]): Record<string, unknown>[] {
   return entries.flatMap((entry) => {
     const terms = [entry.trim(), ...entry.split(/[\s,;/|]+/u).filter((part) => part.length > 1)].filter(Boolean);
@@ -63,7 +75,33 @@ export class MatchingRepository {
     const freeText = profile.otherCategories ?? [];
     if (categories.length === 0 && freeText.length === 0) return [];
     await this.ensureClassified();
-    const cached = await torClassifications(this.db).find({ "classification.coarse": { $in: categories } }, { sort: { updatedAt: -1 }, limit: this.config.matching.candidateCap }).toArray();
+    // Precise before broad. Some national categories are catch-alls — จ้างเหมาบริการ
+    // holds twenty-six kinds of work — so a vendor's coarse set can be mostly
+    // other people's jobs. Filling the cap by recency alone let that noise push
+    // the vendor's own kind of work out before it was ever scored. Records with
+    // leaf evidence for what the vendor chose are taken first; the coarse-only
+    // ones fill whatever room is left.
+    const chosen = chosenLeafAndGroupIds(profile);
+    const cap = this.config.matching.candidateCap;
+    const precise = chosen.length
+      ? await torClassifications(this.db)
+          .find(
+            { "classification.coarse": { $in: categories }, "classification.leaves.id": { $in: chosen.leaves } },
+            { sort: { updatedAt: -1 }, limit: cap },
+          )
+          .toArray()
+      : [];
+    const preciseIds = precise.map((entry) => entry.torId);
+    const broad =
+      precise.length < cap
+        ? await torClassifications(this.db)
+            .find(
+              { "classification.coarse": { $in: categories }, torId: { $nin: preciseIds } },
+              { sort: { updatedAt: -1 }, limit: cap - precise.length },
+            )
+            .toArray()
+        : [];
+    const cached = [...precise, ...broad];
     // Free text reaches past the taxonomy, so it is still matched against the
     // records themselves rather than against the cache.
     const clauses: Record<string, unknown>[] = [];
