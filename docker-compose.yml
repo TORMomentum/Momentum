@@ -43,6 +43,11 @@ services:
   # The extraction worker: same image, run the poll loop instead of the HTTP
   # server. A separate service so restarting the api never interrupts a job in
   # flight and the worker's failures surface in its own logs.
+  #
+  # Compose still builds this as its own image (momentum-worker, not
+  # momentum-api) despite the shared Dockerfile — `docker compose build api`
+  # alone leaves this one stale. `docker compose build api worker` after any
+  # apps/api change, or `docker compose build` for everything.
   worker:
     build:
       context: .

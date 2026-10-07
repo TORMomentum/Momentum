@@ -34,13 +34,29 @@ interface Profile {
 /** A vendor who has answered nothing yet still has a profile to edit. */
 const EMPTY: Profile = { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null };
 
+/**
+ * The vendor's own answers, and nothing the server owns.
+ *
+ * A reply also carries `taxonomyVersion` and `updatedAt`, which the API stamps.
+ * Holding the whole reply in state and posting it back sent those with it, and
+ * the API — rightly strict about what it accepts — refused the save.
+ */
+function ownedFields(profile: Profile): Profile {
+  return {
+    categories: profile.categories,
+    areas: profile.areas,
+    otherCategories: profile.otherCategories ?? [],
+    budget: profile.budget,
+  };
+}
+
 /** The account's own routes, reached through the handler that holds the cookie. */
 const PROFILE_URL = "/api/auth/me/profile";
 
 export function VendorProfileView({ initial }: { initial: Profile | null }) {
   // Read on the server from the session cookie and handed in, so the vendor's
   // own answers are in the first paint rather than a round trip later.
-  const [profile, setProfile] = useState<Profile>(initial ?? EMPTY);
+  const [profile, setProfile] = useState<Profile>(initial ? ownedFields(initial) : EMPTY);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(
     initial === null ? "ไม่สามารถโหลดโปรไฟล์ได้ในขณะนี้ การแก้ไขจะยังไม่ถูกบันทึก" : null,
@@ -53,23 +69,24 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
       const response = await fetch(PROFILE_URL, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(ownedFields(profile)),
       });
       if (response.ok) {
-        setProfile((await response.json()) as Profile);
+        setProfile(ownedFields((await response.json()) as Profile));
         setMessage("บันทึกโปรไฟล์แล้ว");
         return;
       }
-      // The server states which field it refused and why, in Thai. Showing a
-      // generic failure would leave a vendor guessing at their own data.
+      // The server names the field it refused, in Thai, and saying which one
+      // beats a generic failure that leaves a vendor guessing at their own
+      // data. Anything NOT in Thai is a validator's default — a fault in this
+      // code rather than in what was typed — so it is not put in front of them.
       const body = (await response.json().catch(() => null)) as
-        | { error?: { issues?: Array<{ message: string }>; message?: string } }
+        | { error?: { issues?: Array<{ message: string }> } }
         | null;
-      setMessage(
-        body?.error?.issues?.map((issue) => issue.message).join(" ") ??
-          body?.error?.message ??
-          "ไม่สามารถบันทึกโปรไฟล์ได้",
-      );
+      const stated = (body?.error?.issues ?? [])
+        .map((issue) => issue.message)
+        .filter((message) => /[฀-๿]/.test(message));
+      setMessage(stated.length > 0 ? stated.join(" ") : "ไม่สามารถบันทึกโปรไฟล์ได้");
     } catch {
       setMessage("เชื่อมต่อไม่ได้ในขณะนี้");
     } finally {
