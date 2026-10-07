@@ -65,6 +65,44 @@ describe("DashboardView states", () => {
     expect(container.textContent).toContain("ตัวเลขสถิติอาจยังไม่เป็นปัจจุบัน");
     expect(container.textContent).not.toContain("กำลังคำนวณ");
   });
+
+  it("shows failed checks beside flagged budgets, with the notice and the methodology link (FR-F-4)", async () => {
+    await render(dashboard({
+      checklist: {
+        tors: 12,
+        byCheck: [
+          { id: "C1", label: "งบประมาณระบุไว้", failed: 0, notEvaluated: 0 },
+          { id: "C4", label: "ระบุคุณสมบัติผู้รับจ้าง", failed: 5, notEvaluated: 0 },
+          { id: "C5", label: "งบประมาณอยู่ในช่วงปกติของกลุ่มเปรียบเทียบ", failed: 2, notEvaluated: 3 },
+        ],
+        flagged: [
+          { id: "tor-big", title: "ซื้อเครื่องเอกซเรย์", budget: 90_000_000, failed: [{ id: "C4", label: "ระบุคุณสมบัติผู้รับจ้าง" }] },
+          { id: "tor-small", title: "ปรับปรุงอาคาร", budget: 5_000_000, failed: [] },
+        ],
+      },
+    }));
+
+    const panel = container.querySelector('[aria-labelledby="dashboard-checklist-title"]');
+    expect(panel?.textContent).toContain("จาก TOR 12 ฉบับในกราฟ");
+    const row = [...(panel?.querySelectorAll("tbody tr") ?? [])].find((tr) => tr.textContent?.includes("ระบุคุณสมบัติผู้รับจ้าง"));
+    // Passed is what is left of the 12 once the failures and the unevaluated are taken out.
+    expect([...(row?.querySelectorAll("td") ?? [])].map((td) => td.textContent)).toEqual(["7", "5", "0"]);
+
+    // Each flagged budget is named, links to its TOR, and says which other checks it failed.
+    const items = [...(panel?.querySelectorAll("li") ?? [])];
+    expect(items).toHaveLength(2);
+    expect(items[0]?.querySelector('a[href="/tors/tor-big"]')?.textContent).toBe("ซื้อเครื่องเอกซเรย์");
+    expect(items[0]?.textContent).toContain("ไม่ผ่าน: ระบุคุณสมบัติผู้รับจ้าง");
+    expect(items[1]?.textContent).toContain("ไม่มีข้ออื่นที่ไม่ผ่าน");
+
+    expect(panel?.textContent).toContain("AI-generated specification-quality check — not a legal or corruption judgment");
+    expect(panel?.querySelector('a[href="/methodology"]')).not.toBeNull();
+  });
+
+  it("shows no checklist panel when the API sends none", async () => {
+    await render(dashboard());
+    expect(container.querySelector('[aria-labelledby="dashboard-checklist-title"]')).toBeNull();
+  });
 });
 
 describe("DashboardView state breakdown", () => {

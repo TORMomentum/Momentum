@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateChecklist, type ChecklistInput } from "./checklist.js";
+import { evaluateChecklist, summariseChecklists, type ChecklistInput } from "./checklist.js";
 
 const healthy: ChecklistInput = {
   budget: { value: 1_500_000, verified: true },
@@ -85,5 +85,46 @@ describe("evaluateChecklist", () => {
     });
 
     expect(checklist).toMatchObject({ passed: 1, evaluated: 3 });
+  });
+});
+
+describe("summariseChecklists", () => {
+  const plotted = (id: string, budget: number, checklist: ReturnType<typeof evaluateChecklist>, flagged = false) =>
+    ({ id, title: `TOR ${id}`, budget, checklist, flagged });
+
+  it("counts each check's failures and what it could not evaluate", () => {
+    const summary = summariseChecklists([
+      plotted("a", 1, evaluateChecklist({ ...healthy, qualificationTags: [] })),
+      plotted("b", 2, evaluateChecklist(healthy)),
+    ]);
+
+    expect(summary.tors).toBe(2);
+    expect(summary.byCheck.map(({ id, failed, notEvaluated }) => [id, failed, notEvaluated])).toEqual([
+      ["C1", 0, 0],
+      ["C2", 0, 2],
+      ["C3", 0, 2],
+      ["C4", 1, 0],
+      ["C5", 0, 0],
+    ]);
+    expect(summary.byCheck[0]?.label).toBe(evaluateChecklist(healthy).checks[0]?.label);
+  });
+
+  it("lists every flagged budget, largest first, with the checks it failed besides the flag itself", () => {
+    const anomaly = { kind: "anomaly", side: "high", distance: 2 } as const;
+    const summary = summariseChecklists([
+      plotted("small", 5_000_000, evaluateChecklist({ ...healthy, verdict: anomaly }), true),
+      plotted("large", 90_000_000, evaluateChecklist({ ...healthy, qualificationTags: [], verdict: anomaly }), true),
+      plotted("normal", 1_000_000, evaluateChecklist({ ...healthy, qualificationTags: [] })),
+    ]);
+
+    expect(summary.flagged.map(({ id, failed }) => [id, failed.map((check) => check.id)])).toEqual([
+      ["large", ["C4"]],
+      ["small", []],
+    ]);
+    expect(summary.flagged[0]).toMatchObject({ title: "TOR large", budget: 90_000_000 });
+  });
+
+  it("reports nothing when nothing is plotted", () => {
+    expect(summariseChecklists([])).toEqual({ tors: 0, byCheck: [], flagged: [] });
   });
 });

@@ -5,6 +5,7 @@ import { redactTor } from "../../lib/redact.js";
 import { StatsRepository } from "./stats.repository.js";
 import { eligibilityOf } from "./eligibility.js";
 import { verdictFor } from "./anomaly.rule.js";
+import { evaluateChecklist, summariseChecklists, type PlottedChecklist } from "../checklist/checklist.js";
 import type { PeerBounds } from "./anomaly.rule.js";
 import { parseDashboardFilters, publicTorFilter, UNKNOWN } from "./stats.filters.js";
 import { calendarDate } from "../../lib/calendar-date.js";
@@ -61,6 +62,8 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     // grows with the page rather than with the number of distinct peer groups.
     const bounds = await repository.boundsFor(keys);
     const boundsByKey = new Map(bounds.map((bound) => [`${bound.category}\u0000${bound.month}`, bound]));
+    // FR-F-4: the checklist of every plotted TOR, computed with the same verdict as its point.
+    const checklists: PlottedChecklist[] = [];
     const points = records.flatMap((record) => {
       const budget = record.fields.budget?.value;
       if (!record.cohort || typeof budget !== "number") return [];
@@ -71,6 +74,20 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       const verdict = verdictFor(reason ? { budget, eligible: false, reason } : { budget, eligible: true }, bound, {
         method: deps.config.stats.method, minN: deps.config.stats.peerMinN,
         iqrMultiplier: deps.config.stats.iqrMultiplier, zScoreLimit: deps.config.stats.zScoreLimit,
+      });
+      checklists.push({
+        id: record._id.toString(),
+        // Only the public, redacted fields name a TOR on a public page (FR-B-5).
+        title: publicRecord.fields.title?.value ?? publicRecord.fields.title?.raw ?? null,
+        budget,
+        checklist: evaluateChecklist({
+          budget: { value: budget, verified: record.fields.budget?.verified ?? false },
+          budgetRange: { min: deps.config.budgetMinThb, max: deps.config.budgetMaxThb },
+          qualificationTags: record.fields.qualifications?.tags ?? [],
+          qualificationsVerified: record.fields.qualifications?.verified ?? false,
+          verdict,
+        }),
+        flagged: verdict.kind === "anomaly",
       });
       return [{
         id: record._id.toString(), category: record.cohort.category, month: record.cohort.month, budget, verdict,
@@ -189,7 +206,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       // recalculated are exactly what the banner exists to disclose, and
       // reporting them as current would be the failure it guards against.
       stale: !meta?.statsComputedAt || Date.now() - meta.statsComputedAt.getTime() > deps.config.stats.staleAfterMs, corpusSize },
-      checklist: null,
+      checklist: summariseChecklists(checklists),
     });
   });
   return router;

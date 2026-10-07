@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BudgetPlot } from "../features/dashboard/BudgetPlot";
+import { ChecklistSummaryPanel } from "../features/dashboard/ChecklistSummaryPanel";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { DashboardPayload, TorState } from "../shared/api/stats.api";
@@ -258,6 +259,8 @@ export function DashboardView({
             <div className={styles.panelHead}><h2 className={styles.panelTitle}>งบประมาณตามหมวดหมู่</h2><span className={styles.panelHint}>1 จุด = 1 TOR</span></div>
             <BudgetPlot points={dashboard.points} bounds={dashboard.bounds} category={filters.category} peerMinN={dashboard.rule.peerMinN} />
             <p className={styles.method}>ความผิดปกติทางสถิติใช้กลุ่มเปรียบเทียบตามหมวดหมู่และช่วงเวลา ไม่ใช่ข้อกล่าวหา <Link href="/methodology">ดูระเบียบวิธี</Link></p>
+            {/* FR-F-4: failed checks sit right beside the flagged budgets they are read with. */}
+            {dashboard.checklist && <ChecklistSummaryPanel summary={dashboard.checklist} />}
           </section>
         </div>
       </>}

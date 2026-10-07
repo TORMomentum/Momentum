@@ -1,4 +1,4 @@
-import type { Checklist, ChecklistCheck } from "@tor-radar/shared";
+import type { Checklist, ChecklistCheck, ChecklistSummary } from "@tor-radar/shared";
 import type { AnomalyVerdict } from "../stats/anomaly.rule.js";
 import type { NotEvaluatedReason } from "../stats/eligibility.js";
 
@@ -92,4 +92,43 @@ export function evaluateChecklist(input: ChecklistInput): Checklist {
     evaluated: evaluated.length,
     checks,
   };
+}
+
+/** One plotted TOR's checklist, with what the dashboard needs to name it when its budget is flagged. */
+export interface PlottedChecklist {
+  id: string;
+  title: string | null;
+  budget: number;
+  checklist: Checklist;
+  flagged: boolean;
+}
+
+/**
+ * FR-F-4: per check, how many of the plotted TORs failed it or could not be evaluated on it, and every
+ * flagged budget with the checks it failed. C5 is left out of a flagged TOR's list: failing it is what
+ * the flag already says. Labels come from the results themselves, so the dashboard never states a
+ * check differently from the TOR page.
+ */
+export function summariseChecklists(results: PlottedChecklist[]): ChecklistSummary {
+  const byCheck = new Map<ChecklistCheck["id"], ChecklistSummary["byCheck"][number]>();
+  for (const { checklist } of results) {
+    for (const check of checklist.checks) {
+      const row = byCheck.get(check.id) ?? { id: check.id, label: check.label, failed: 0, notEvaluated: 0 };
+      if (check.result === "fail") row.failed += 1;
+      else if (check.result === "not-evaluated") row.notEvaluated += 1;
+      byCheck.set(check.id, row);
+    }
+  }
+  const flagged = results
+    .filter((result) => result.flagged)
+    .sort((left, right) => right.budget - left.budget || left.id.localeCompare(right.id))
+    .map(({ id, title, budget, checklist }) => ({
+      id,
+      title,
+      budget,
+      failed: checklist.checks
+        .filter((check) => check.result === "fail" && check.id !== "C5")
+        .map((check) => ({ id: check.id, label: check.label })),
+    }));
+  return { tors: results.length, byCheck: [...byCheck.values()], flagged };
 }
