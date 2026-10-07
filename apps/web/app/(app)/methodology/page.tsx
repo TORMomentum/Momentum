@@ -1,6 +1,10 @@
 import { fetchDashboard, StatsApiUnavailable } from "../../../src/shared/api/stats.api";
 import styles from "./methodology.module.css";
 
+// The active rule's numbers come from a live API call, so this page cannot be
+// prerendered once at build time — see the homepage for why (TOR-140).
+export const dynamic = "force-dynamic";
+
 export default async function MethodologyPage() {
   try {
     const { rule } = await fetchDashboard();

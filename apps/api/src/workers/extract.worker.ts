@@ -11,6 +11,7 @@ import { HistoryRepository } from "../modules/history/history.repository.js";
 import { ExtractionRepository } from "../modules/extraction/extraction.repository.js";
 import { ExtractionService } from "../modules/extraction/extraction.service.js";
 import { reconcileOrphanedRecords } from "./reconcile.js";
+import { startHealthServer } from "./health-server.js";
 import { StatsRepository } from "../modules/stats/stats.repository.js";
 
 /**
@@ -171,7 +172,9 @@ if (isEntry) {
   // the repository .env; in a container it comes from Compose and there is no
   // file to read.
   loadEnvFile();
-  startWorker(loadConfig(process.env)).catch((error: Error) => {
+  const config = loadConfig(process.env);
+  startHealthServer(config.apiPort);
+  startWorker(config).catch((error: Error) => {
     console.error(JSON.stringify({ event: "worker_crashed", message: error.message }));
     process.exit(1);
   });

@@ -112,3 +112,126 @@ TOR-19 access verified.
 Gemini on Vertex runs in `us-central1` (also `asia-southeast1` if latency matters
 later — not for an offline benchmark). Document AI is multi-region only: `us` or `eu`.
 Keeping both in the US is the simplest choice for Phase 1.
+
+## 7. Cloud Run deployment (TOR-137–142)
+
+The code side — the three `deploy/cloudrun/*.yaml` service definitions and
+`.github/workflows/deploy.yml` — is already in the repo (TOR-140, TOR-142). Everything
+below is console-only: no `gcloud` needed, same as §1–§6.
+
+### 7.1 Enable APIs (TOR-138)
+
+Same project as Vertex AI / GCS. **APIs & Services → Enable APIs & Services**, search for
+and enable each of these three, one at a time:
+
+- **Cloud Run Admin API**
+- **Artifact Registry API**
+- **Secret Manager API**
+
+### 7.2 Artifact Registry repo + deploy service account (TOR-139)
+
+**Create the repo:**
+
+1. Console → search bar → **Artifact Registry** → **Repositories** → **Create repository**
+2. Name: `tor-radar`
+3. Format: **Docker**
+4. Mode: **Standard**
+5. Location type: **Region** → pick one (e.g. `asia-southeast1` — note it down, it's
+   `$REGION` for everything after this)
+6. Leave encryption at the default (Google-managed) → **Create**
+
+**Create the deploy service account:**
+
+1. **IAM & Admin → Service Accounts → Create service account**
+2. Name: `tor-radar-deploy` → **Create and continue**
+3. On the "Grant this service account access to project" step, add these three roles —
+   **Add another role** for each:
+   - **Artifact Registry Writer**
+   - **Cloud Run Admin**
+   - **Service Account User**
+4. **Continue** → skip the next optional step → **Done**
+
+**Download its key** (this is what becomes the GitHub secret in §7.4):
+
+1. Click into `tor-radar-deploy@...` in the service account list
+2. **Keys** tab → **Add key** → **Create new key** → **JSON** → **Create**
+3. A `.json` file downloads automatically. This file goes into a **GitHub secret**
+   (§7.4), never into `secrets/` in this repo and never committed — it's a deploy
+   credential, not a local-dev one.
+
+### 7.3 Secret Manager (TOR-141)
+
+Six secrets the Cloud Run services read at request time; none of them belong in
+`.env.example` because they're deployment-only. **Secret Manager → Create secret**, once
+per row:
+
+| Secret name | Secret value |
+| :--- | :--- |
+| `mongo-url` | the real `mongodb+srv://...` connection string, pasted into **Secret value** |
+| `intake-api-keys` | your comma-separated intake keys, pasted in |
+| `admin-api-keys` | your comma-separated admin keys, pasted in |
+| `staff-access-secret` | the staff login passphrase, pasted in |
+| `gcs-storage-sa` | switch **Secret value** to **Upload file** → pick `secrets/gcs-storage-sa.json` |
+| `vertex-sa` | **Upload file** → pick `secrets/gcp-sa.json` |
+
+Leave replication at **Automatic** for all six, and **Create secret** each time.
+
+**Grant access to each**, so the running service can actually read it:
+
+1. First find your project's **number** (not its id) — Console home page, the "Project
+   info" card, or **IAM & Admin → Settings**
+2. Open each of the six secrets → **Permissions** tab → **Grant access**
+3. New principals: `<project-number>-compute@developer.gserviceaccount.com`
+4. Role: **Secret Manager Secret Accessor** → **Save**
+5. Repeat for all six — `api` and `worker` read all six; `web` only ever reads
+   `admin-api-keys` and `staff-access-secret`, but granting access on the rest doesn't
+   hurt, since nothing reads a secret it was never configured to ask for.
+
+### 7.4 GitHub repository configuration (TOR-142)
+
+Repo → **Settings → Secrets and variables → Actions**.
+
+**Variables** tab (plain values, not secret):
+
+| Name | Value |
+| :--- | :--- |
+| `GCP_PROJECT_ID` | the project id you noted in §1 |
+| `GCP_REGION` | the region you picked for the Artifact Registry repo in §7.2 |
+| `GCP_AR_REPO` | `tor-radar` (the repo name from §7.2) |
+| `GCS_BUCKET` | the originals bucket name |
+
+**Secrets** tab:
+
+| Name | Value |
+| :--- | :--- |
+| `GCP_DEPLOY_SA_KEY` | the full JSON key downloaded in §7.2, pasted as-is |
+
+### 7.5 First deploy
+
+Actions tab → **Deploy to Cloud Run** → **Run workflow**, type `deploy` to confirm. It
+builds and pushes both images, then deploys api, worker, and web in that order (web needs
+api's URL for `API_BASE_URL`, so api goes first — `.github/workflows/deploy.yml`).
+
+Every service deploys with `--no-allow-unauthenticated` — nothing is public yet (that
+switch is a later sprint's decision). After the first deploy, grant the reviewers who need
+to see it:
+
+1. **Cloud Run** → click into `tor-radar-web` (repeat for `tor-radar-api` if a reviewer
+   needs the API directly)
+2. **Permissions** tab (or **Security** tab, depending on console version) → **Add
+   principal**
+3. New principal: the reviewer's Google account email
+4. Role: **Cloud Run Invoker** → **Save**
+
+This binding persists across redeploys — it's a one-time step per reviewer, not part of
+the workflow.
+
+### What goes where
+
+| | Lives in | Committed |
+| :--- | :--- | :--- |
+| Cloud Run service shape (scaling, ports, env var *names*) | `deploy/cloudrun/*.yaml` | yes |
+| Project id, region, repo name, bucket name | GitHub Actions **variables** | no (set per-repo) |
+| The deploy service account's key | GitHub Actions **secrets** | never |
+| Mongo URL, API keys, staff passphrase, the two SA key files | GCP **Secret Manager** | never |
+| Who can call the deployed services | Cloud Run IAM (`run.invoker`) | n/a |
