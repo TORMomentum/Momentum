@@ -572,6 +572,13 @@
 
 .torsPager { display: flex; justify-content: space-between; margin-top: 18px; font-size: 13px; }
 
+/* ---------- one vendor account ---------- */
+.vendorActions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+
+.vendorActions .adminSecondaryBtn { flex: none; padding: 8px 16px; }
+
+.vendorAuditTitle { margin: 34px 0 10px; font: 600 15px var(--display); }
+
 /* A taken-down record says so above everything else, with the way back beside it. */
 .restrictedBanner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 4px; font-size: 12.5px; color: var(--danger); }
 

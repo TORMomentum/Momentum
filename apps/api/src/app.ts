@@ -14,6 +14,9 @@ import { HistoryRepository } from "./modules/history/history.repository.js";
 import { AdminRepository } from "./modules/admin/admin.repository.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { buildAdminRouter } from "./modules/admin/admin.routes.js";
+import { buildAdminAccountsRouter } from "./modules/admin/admin-accounts.routes.js";
+import { AdminAccountsRepository } from "./modules/admin/admin-accounts.repository.js";
+import { AdminAccountsService } from "./modules/admin/admin-accounts.service.js";
 import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
@@ -52,8 +55,11 @@ export function buildApp(config: Config, db: Db): Express {
 
   // Read-only view of the BMA eGP source system (docs/DATA-SOURCES.md).
   app.use("/sources", sourcesRouter);
+  const accountsRepository = new AccountsRepository(db, sessionsRepository);
+  const tokensRepository = new AccountTokensRepository(db);
+  const profileRepository = new ProfileRepository(db);
   const accountsRouter = buildAccountsRouter({
-    config, accounts: new AccountsRepository(db, sessionsRepository), tokens: new AccountTokensRepository(db),
+    config, accounts: accountsRepository, tokens: tokensRepository,
     sessions: sessionsRepository, mailer,
   });
   // Mounted twice on purpose. The browser reaches the signed-in account's own
@@ -61,7 +67,7 @@ export function buildApp(config: Config, db: Db): Express {
   // /auth; everything else addresses the versioned API. Mounting the profile
   // under only one of them made the profile screen ask for a path that did not
   // exist, which no API-level test could see.
-  const profileRouter = buildProfileRouter({ config, profiles: new ProfileRepository(db) });
+  const profileRouter = buildProfileRouter({ config, profiles: profileRepository });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);
@@ -121,6 +127,25 @@ export function buildApp(config: Config, db: Db): Express {
       storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
+    }),
+  );
+
+  app.use(
+    `${API_PREFIX}/admin`,
+    buildAdminAccountsRouter({
+      service: new AdminAccountsService({
+        repo: new AdminAccountsRepository(db),
+        accounts: accountsRepository,
+        profiles: profileRepository,
+        sessions: sessionsRepository,
+        tokens: tokensRepository,
+        mailer,
+        appOrigin: config.appOrigin,
+        verifyTokenTtlMs: config.verifyTokenTtlMs,
+        resetTokenTtlMs: config.resetTokenTtlMs,
+      }),
+      adminKeys: config.adminApiKeys,
+      pageSize: config.adminQueuePageSize,
     }),
   );
 
