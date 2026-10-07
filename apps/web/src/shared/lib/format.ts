@@ -135,6 +135,29 @@ export function formatDeadline(value: string | null | undefined, raw: string): s
 }
 
 /** The same deadline as a date and a time window, for layouts that set them on separate lines. */
+/**
+ * Whole days from today in Bangkok to a deadline's `YYYY-MM-DD` — 0 on the day
+ * itself, negative once it has passed — or null without a normalised date.
+ * "Today" is Bangkok's, the same day the API uses to decide "open".
+ */
+export function daysUntil(value: string | null | undefined, now: Date = new Date()): number | null {
+  const day = value?.slice(0, 10);
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const deadline = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(deadline)) return null;
+  const today = bangkokParts(now);
+  return Math.round((deadline - Date.UTC(today.year, today.month - 1, today.day)) / 86_400_000);
+}
+
+/** A deadline this many days away or fewer is shown as closing soon, on search and detail alike. */
+export const DEADLINE_SOON_DAYS = 3;
+
+/** "ปิดรับวันนี้" · "เหลืออีก 5 วัน"; nothing once the deadline has passed. */
+export function daysLeftLabel(days: number | null): string | null {
+  if (days === null || days < 0) return null;
+  return days === 0 ? "ปิดรับวันนี้" : `เหลืออีก ${days} วัน`;
+}
+
 export function deadlineParts(
   value: string | null | undefined,
   raw: string,

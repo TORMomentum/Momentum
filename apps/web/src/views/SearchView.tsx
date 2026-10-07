@@ -14,6 +14,9 @@ import {
 } from "../features/search/search.params";
 import type { TorFacets, TorListItem, TorSearchResult } from "../shared/api/tors.api";
 import {
+  DEADLINE_SOON_DAYS,
+  daysLeftLabel,
+  daysUntil,
   deadlineParts,
   formatBaht,
   formatThaiDate,
@@ -486,6 +489,18 @@ export function SearchView({
                         );
                       })()}
                     </span>
+                    {row.open &&
+                      (() => {
+                        const days = daysUntil(row.deadline.value);
+                        const label = daysLeftLabel(days);
+                        if (!label) return null;
+                        const soon = days !== null && days <= DEADLINE_SOON_DAYS;
+                        return (
+                          <span className={`${styles.resultDaysLeft} ${soon ? styles.resultDaysLeftSoon : ""}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
                   </div>
                   {signedIn && (
                     <div className={styles.resultActions}>
