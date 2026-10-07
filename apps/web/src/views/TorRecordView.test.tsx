@@ -12,6 +12,7 @@ function tor(overrides: Partial<TorDetail> = {}): TorDetail {
     id: "tor-1",
     fields: { title: { raw: "ซื้อเครื่องเอกซเรย์", value: "ซื้อเครื่องเอกซเรย์", confidence: 1, verified: true } },
     announcedAt: null,
+    budgetYear: null,
     sourceUrl: null,
     provenance: null,
     confidenceLevel: "high",
