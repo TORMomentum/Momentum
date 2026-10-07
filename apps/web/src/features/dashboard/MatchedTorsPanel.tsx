@@ -1,14 +1,11 @@
 import { matchPercent } from "@tor-radar/shared";
 import Link from "next/link";
 import type { MatchRow, OwnMatches } from "../../shared/api/matches.api";
-import { DEADLINE_SOON_DAYS, daysLeftLabel, daysUntil, formatBaht } from "../../shared/lib/format";
+import { DEADLINE_SOON_DAYS, daysLeftLabel, daysUntil, formatBaht, thaiDigitsToArabic } from "../../shared/lib/format";
 import styles from "./matched-tors.module.css";
 
 /** Enough to act on at a glance; the rest are a search away. */
 const SHOWN = 5;
-
-/** Each match carries several reasons; two say why without crowding the row. */
-const REASONS_SHOWN = 2;
 
 /** The reason that says what kind of work it is — the one a vendor checks first. */
 function isWorkReason(code: string): boolean {
@@ -56,13 +53,14 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
                 <Link href={`/tors/${row.id}`} className={styles.rowTitle}>
                   {row.title || "ไม่พบชื่อโครงการในเอกสาร"}
                 </Link>
-                <ul className={styles.reasons}>
-                  {row.reasons.slice(0, REASONS_SHOWN).map((reason) => (
-                    <li key={reason.code} className={isWorkReason(reason.code) ? styles.reasonWork : undefined}>
-                      {reason.th}
-                    </li>
-                  ))}
-                </ul>
+                <div className={styles.agency}>
+                  {row.agency ? thaiDigitsToArabic(row.agency) : "ไม่ระบุหน่วยงาน"}
+                  {row.unverified && <span> · ยังไม่ยืนยันการสกัด</span>}
+                </div>
+                {/* One reason, the one that differs card to card: what kind of
+                    work it is. The budget reason read the same on nearly every
+                    card, and the budget itself is already on the right. */}
+                <WorkReason row={row} />
               </div>
               <RowSide row={row} />
             </li>
@@ -94,4 +92,9 @@ function RowSide({ row }: { row: MatchRow }) {
       )}
     </div>
   );
+}
+
+function WorkReason({ row }: { row: MatchRow }) {
+  const reason = row.reasons.find((item) => isWorkReason(item.code));
+  return reason ? <div className={styles.reasonWork}>{reason.th}</div> : null;
 }

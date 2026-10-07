@@ -45,7 +45,10 @@ describe("MatchedTorsPanel", () => {
     expect(container.textContent).toContain("TOR ที่ตรงกับคุณ");
     expect(container.textContent).toContain("72%");
     expect(container.textContent).toContain("ตรงกับหมวดหมู่งานที่คุณเลือก");
-    // Two reasons say why; a third would crowd the row.
+    expect(container.textContent).toContain("กรุงเทพมหานคร");
+    // One reason — the kind of work. The budget reason reads the same on
+    // nearly every card and the budget is already beside it.
+    expect(container.textContent).not.toContain("งบประมาณอยู่ในช่วงที่คุณระบุ");
     expect(container.textContent).not.toContain("เหตุผลที่สาม");
     expect(container.querySelector('a[href="/tors/a"]')).not.toBeNull();
   });
@@ -54,9 +57,7 @@ describe("MatchedTorsPanel", () => {
     act(() => root.render(<MatchedTorsPanel matches={{ items: [match("a", 0.72)], reason: null }} />));
     expect(container.textContent).toContain("1,000,000");
     expect(container.textContent).toMatch(/เหลืออีก \d+ วัน/);
-    // Only the kind-of-work reason is highlighted; budget stays a supporting line.
-    const highlighted = [...container.querySelectorAll("li li")].filter((li) => li.className);
-    expect(highlighted.map((li) => li.textContent)).toEqual(["ตรงกับหมวดหมู่งานที่คุณเลือก"]);
+
   });
 
   it("shows at most five and says how many more there are", () => {
