@@ -13,6 +13,8 @@ import { apiRequest } from "./api-client";
 export interface VendorProfile {
   categories: string[];
   areas: string[];
+  /** Work the taxonomy has no node for. Stored, but not matched against. */
+  otherCategories: string[];
   budget: { minThb: number; maxThb: number } | null;
   taxonomyVersion: string;
   updatedAt: string | null;

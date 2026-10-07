@@ -11,6 +11,15 @@ const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => prov
 
 const profileSchema = z.object({
   categories: z.array(z.string()).max(100).refine((ids) => ids.every((id) => taxonomyIds.has(id)), "มีหมวดหมู่งานที่ไม่อยู่ในรายการ"),
+  /**
+   * Work a vendor does that the taxonomy has no node for. Stored as the vendor
+   * wrote it and NOT used for matching — free text is the thing the taxonomy
+   * exists to replace, and scoring against it would reintroduce exactly the
+   * problem that put a procurement method in the category field. It is kept
+   * because it is the only evidence of what the vocabulary is missing, and the
+   * screen says plainly that it does not match yet.
+   */
+  otherCategories: z.array(z.string().trim().min(1).max(80)).max(10).optional().default([]),
   areas: z.array(z.string()).min(1).max(78).refine((ids) => ids.every((id) => areaIds.has(id)), "มีพื้นที่ให้บริการที่ไม่อยู่ในรายการ"),
   budget: z.object({ minThb: z.number().finite().nonnegative(), maxThb: z.number().finite().nonnegative() }).nullable()
     .refine((value) => value === null || value.minThb <= value.maxThb, "งบประมาณต่ำสุดต้องไม่เกินงบประมาณสูงสุด"),
@@ -25,6 +34,7 @@ const profileSchema = z.object({
 function profileResponse(profile: {
   categories: string[];
   areas: string[];
+  otherCategories?: string[];
   budget: { minThb: number; maxThb: number } | null;
   taxonomyVersion: string;
   updatedAt: Date | null;
@@ -32,6 +42,7 @@ function profileResponse(profile: {
   return {
     categories: profile.categories,
     areas: profile.areas,
+    otherCategories: profile.otherCategories ?? [],
     budget: profile.budget,
     taxonomyVersion: profile.taxonomyVersion,
     updatedAt: profile.updatedAt ? profile.updatedAt.toISOString() : null,
@@ -44,7 +55,7 @@ function profileResponse(profile: {
  * that says "no preference stated" rather than "no answer".
  */
 function emptyProfile() {
-  return { categories: [], areas: [WHOLE_COUNTRY_AREA], budget: null, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null };
+  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null };
 }
 
 export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository }): Router {
@@ -59,7 +70,7 @@ export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepo
     const input = profileSchema.parse(req.body);
     // Deduplication keeps a replace semantically stable and prevents needless score work.
     const profile = await deps.profiles.replace(req.auth.account._id.toString(), {
-      categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], budget: input.budget, taxonomyVersion: TAXONOMY_VERSION,
+      categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], otherCategories: [...new Set(input.otherCategories)], budget: input.budget, taxonomyVersion: TAXONOMY_VERSION,
     });
     res.json(profileResponse(profile));
   });

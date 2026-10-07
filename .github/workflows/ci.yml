@@ -41,5 +41,9 @@ jobs:
           echo "mongo/gcs did not become ready" >&2
           docker compose logs mongo gcs
           exit 1
-      - run: npm test
+      # Build BEFORE testing. packages/ ships compiled output, and the apps
+      # import that, not its source — so a suite run first passes against a
+      # source tree the running app never sees. The work taxonomy was edited
+      # and the app kept serving the previous one exactly this way.
       - run: npm run build
+      - run: npm test

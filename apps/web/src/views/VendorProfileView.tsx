@@ -26,11 +26,13 @@ import styles from "../features/profile/profile.module.css";
 interface Profile {
   categories: string[];
   areas: string[];
+  /** Work the taxonomy has no node for. Kept, but not matched against. */
+  otherCategories: string[];
   budget: { minThb: number; maxThb: number } | null;
 }
 
 /** A vendor who has answered nothing yet still has a profile to edit. */
-const EMPTY: Profile = { categories: [], areas: [WHOLE_COUNTRY_AREA], budget: null };
+const EMPTY: Profile = { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null };
 
 /** The account's own routes, reached through the handler that holds the cookie. */
 const PROFILE_URL = "/api/auth/me/profile";
@@ -99,7 +101,9 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
         <p className={styles.profileSub}>เลือกได้ทั้งกลุ่มงานหรือเฉพาะงานย่อย</p>
         <TaxonomyPicker
           value={profile.categories}
+          other={profile.otherCategories}
           onChange={(categories) => setProfile((current) => ({ ...current, categories }))}
+          onOtherChange={(otherCategories) => setProfile((current) => ({ ...current, otherCategories }))}
         />
       </section>
 

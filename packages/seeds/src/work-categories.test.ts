@@ -71,6 +71,8 @@ describe("the work taxonomy", () => {
   });
 
   it("carries a version, so a match made under an older vocabulary can be explained", () => {
-    expect(TAXONOMY_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // A date, with an optional letter when the vocabulary changes twice in one
+    // day — which it did the day it was first seeded.
+    expect(TAXONOMY_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}[a-z]?$/);
   });
 });

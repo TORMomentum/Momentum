@@ -31,6 +31,30 @@ describe("profile routes", () => {
   it("stores a replacement and returns it", async () => { const id = await sessionFor("one@example.test"); await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send(payload); const response = await request(app).get("/api/v1/me/profile").set("x-session-id", id); expect(response.body).toMatchObject(payload); expect(response.body.categories[0]).toBe("construction.road"); });
   it("rejects invalid categories, areas, and inverted budgets without writing", async () => { const id = await sessionFor("one@example.test"); for (const bad of [{ ...payload, categories: ["งานถนน"] }, { ...payload, areas: ["not-a-province"] }, { ...payload, budget: { minThb: 21, maxThb: 20 } }]) expect((await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send(bad)).status).toBe(400); expect(await vendorProfiles(db).countDocuments({})).toBe(0); });
   it("keeps profiles isolated and replaces rather than appends", async () => { const mine = await sessionFor("one@example.test"); const other = await sessionFor("two@example.test"); await write(request(app).put("/api/v1/me/profile")).set("x-session-id", mine).send(payload); await write(request(app).put("/api/v1/me/profile")).set("x-session-id", mine).send({ ...payload, categories: ["it.software"] }); expect((await request(app).get("/api/v1/me/profile").set("x-session-id", other)).body.categories).toEqual([]); expect((await request(app).get("/api/v1/me/profile").set("x-session-id", mine)).body.categories).toEqual(["it.software"]); });
+  it("keeps work the taxonomy has no word for, apart from the work it does", async () => {
+    // Free text is what the taxonomy replaces, so it must not land in the field
+    // matching reads. It is kept because it is the only record of what the
+    // vocabulary is missing.
+    const id = await sessionFor("one@example.test");
+    const response = await write(request(app).put("/api/v1/me/profile"))
+      .set("x-session-id", id)
+      .send({ ...payload, otherCategories: ["ติดตั้งระบบเสียงในหอประชุม", "ติดตั้งระบบเสียงในหอประชุม"] });
+
+    expect(response.status).toBe(200);
+    expect(response.body.otherCategories).toEqual(["ติดตั้งระบบเสียงในหอประชุม"]);
+    expect(response.body.categories).not.toContain("ติดตั้งระบบเสียงในหอประชุม");
+
+    const stored = await vendorProfiles(db).findOne({});
+    expect(stored?.categories).not.toContain("ติดตั้งระบบเสียงในหอประชุม");
+  });
+
+  it("defaults the free-text list to empty rather than demanding it", async () => {
+    const id = await sessionFor("one@example.test");
+    const response = await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send(payload);
+    expect(response.status).toBe(200);
+    expect(response.body.otherCategories).toEqual([]);
+  });
+
   it("gives a read and a write the same shape, and never the database's own id", async () => {
     // These had drifted: a read returned the raw Mongo document and a write a
     // constructed object, so a client saw two different profiles depending on

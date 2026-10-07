@@ -185,6 +185,14 @@ export interface VendorProfileDocument {
   accountId: string;
   categories: string[];
   areas: string[];
+  /**
+   * Work the taxonomy has no node for, as the vendor wrote it. Deliberately
+   * separate from `categories`: these are NOT matched against, because free
+   * text is what the taxonomy exists to replace. They are the record of what
+   * the vocabulary is missing. Optional, so profiles written before the field
+   * existed still read.
+   */
+  otherCategories?: string[];
   budget: { minThb: number; maxThb: number } | null;
   taxonomyVersion: string;
   updatedAt: Date;
