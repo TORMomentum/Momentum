@@ -3,6 +3,7 @@ import type { ConfidenceLevel, ExtractedField, Provenance, SourceProject, TorFie
 import { torPeerStats, tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
+import { stateFilter } from "../../lib/tor-state.js";
 
 export interface PublicTorDocumentRecord {
   storage: { key: string; contentType: string; bytes: number };
@@ -12,6 +13,8 @@ export interface PublicTorDocumentRecord {
 
 /** A filter the repository can run: the service has already decided what "today" is. */
 export interface SearchCriteria extends Omit<SearchFilter, "open"> {
+  /** Required when `state` is set: the five states depend on today's date. */
+  today?: string;
   /** Set when only open TORs are wanted: deadlines before this `YYYY-MM-DD` have passed. */
   openOn?: string;
   /**
@@ -33,7 +36,11 @@ export interface TorListItem {
   agency: { raw: string; value: string | null; verified: boolean };
   category: { raw: string; value: string | null; verified: boolean };
   budget: { raw: string; value: number | null; verified: boolean };
-  deadline: { raw: string; value: string | null; verified: boolean };
+  /**
+   * `fromDocument` is carried into the list, not only the detail page: a row
+   * showing a date the TOR itself does not state would imply the TOR states it.
+   */
+  deadline: { raw: string; value: string | null; verified: boolean; fromDocument?: string };
   torStatus: { value: string | null; verified: boolean };
 }
 
@@ -125,7 +132,11 @@ function dayAfter(isoDate: string): Date {
 }
 
 function view<T>(field: ExtractedField<T> | undefined) {
-  return { raw: field?.raw ?? "", value: field?.value ?? null, verified: field?.verified ?? false };
+  return {
+    raw: field?.raw ?? "", value: field?.value ?? null, verified: field?.verified ?? false,
+    // Which document a value was read from, when it was not this record's own.
+    ...(field?.fromDocument ? { fromDocument: field.fromDocument } : {}),
+  };
 }
 
 /**
@@ -156,6 +167,11 @@ function buildFilter(criteria: SearchCriteria): Filter<TorDocument> {
   }
   if (criteria.status) {
     clauses.push({ "fields.torStatus.value": criteria.status });
+  }
+  // The same five states the dashboard counts, as a predicate from the one file
+  // that defines them, so the list and the counts cannot disagree.
+  if (criteria.state && criteria.today) {
+    clauses.push(stateFilter(criteria.state, criteria.today) as Filter<TorDocument>);
   }
   if (criteria.openOn) {
     clauses.push({ "fields.torStatus.value": "announced" });

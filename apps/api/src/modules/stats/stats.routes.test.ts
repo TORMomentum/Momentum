@@ -45,7 +45,7 @@ beforeEach(async () => {
 afterAll(async () => { await disconnect(); });
 
 describe("public dashboard route", () => {
-  it("uses rollups for ordinary filters, but computes a budget filter from TORs", async () => {
+  it("derives every figure from the records, so a budget filter and a plain read agree", async () => {
     await tors(db).insertMany([record(), record({ fields: { ...record().fields, budget: { raw: "300", value: 300, confidence: 1, verified: false } } })] as never);
     await torRollups(db).insertOne({ agency: "Agency A", category: "roads", month: "2026-01", torCount: 2, budgetSum: 400, unverifiedBudgetCount: 1, flaggedCount: 0, computedAt: new Date() });
 
@@ -91,5 +91,137 @@ describe("GET /api/v1/stats/dashboard freshness", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.meta).toMatchObject({ statsComputedAt: null, stale: true });
+  });
+});
+
+describe("the agency breakdown under an agency filter", () => {
+  it("still lists every agency, so the control that sets the filter can also clear or change it", async () => {
+    // Filtered by the agency already chosen, the breakdown would collapse to one
+    // row: a one-bar chart comparing nothing, and a dropdown whose only option
+    // is the agency already picked.
+    await tors(db).insertMany([
+      record(),
+      record({ fields: { ...record().fields, agency: { raw: "Agency B", value: "Agency B", confidence: 1, verified: true } } }),
+    ] as never);
+    await torRollups(db).insertMany([
+      { agency: "Agency A", category: "roads", month: "2026-01", torCount: 1, budgetSum: 100, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+      { agency: "Agency B", category: "roads", month: "2026-01", torCount: 1, budgetSum: 900, unverifiedBudgetCount: 0, flaggedCount: 0, computedAt: new Date() },
+    ]);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A");
+
+    expect(response.status).toBe(200);
+    expect(response.body.byAgency.map((row: { agency: string }) => row.agency)).toEqual(["Agency A", "Agency B"]);
+    // The figures themselves still honour the filter, and so does the count of
+    // agencies being looked at — a different question from which are on offer.
+    expect(response.body.totals).toMatchObject({ torCount: 1, budgetSum: 100, agencyCount: 1 });
+  });
+
+  it("applies the other filters to the breakdown, so it compares within what is on screen", async () => {
+    // Agency C shares the category, Agency B does not. Both halves matter: C
+    // proves the agency filter is NOT applied to the breakdown, and B proves the
+    // category filter still is. Without C this passes even if the agency filter
+    // were left in place.
+    await tors(db).insertMany([
+      record({ fields: { ...record().fields, agency: { raw: "Agency A", value: "Agency A", confidence: 1, verified: true }, category: { raw: "roads", value: "roads", confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true } }, cohort: { category: "roads", month: "2026-01" } }),
+      record({ fields: { ...record().fields, agency: { raw: "Agency C", value: "Agency C", confidence: 1, verified: true }, category: { raw: "roads", value: "roads", confidence: 1, verified: true }, budget: { raw: "500", value: 500, confidence: 1, verified: true } }, cohort: { category: "roads", month: "2026-01" } }),
+      record({ fields: { ...record().fields, agency: { raw: "Agency B", value: "Agency B", confidence: 1, verified: true }, category: { raw: "cleaning", value: "cleaning", confidence: 1, verified: true }, budget: { raw: "900", value: 900, confidence: 1, verified: true } }, cohort: { category: "cleaning", month: "2026-01" } }),
+    ] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A&category=roads");
+
+    expect(response.body.byAgency.map((row: { agency: string }) => row.agency)).toEqual(["Agency A", "Agency C"]);
+    expect(response.body.totals).toMatchObject({ torCount: 1, budgetSum: 100, agencyCount: 1 });
+  });
+
+  it("keeps a chosen agency listed even when the other filters leave it with nothing", async () => {
+    // Otherwise its bar and its dropdown entry both disappear while the filter
+    // stays in the URL: the screen looks unfiltered, shows no results, and
+    // offers no way back out.
+    await tors(db).insertOne(record({ fields: { ...record().fields, agency: { raw: "Agency B", value: "Agency B", confidence: 1, verified: true }, category: { raw: "cleaning", value: "cleaning", confidence: 1, verified: true }, budget: { raw: "900", value: 900, confidence: 1, verified: true } }, cohort: { category: "cleaning", month: "2026-01" } }) as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=Agency%20A&category=cleaning");
+
+    expect(response.body.byAgency).toEqual([
+      { agency: "Agency A", torCount: 0, budgetSum: 0 },
+      { agency: "Agency B", torCount: 1, budgetSum: 900 },
+    ]);
+    expect(response.body.totals).toMatchObject({ torCount: 0, agencyCount: 0 });
+  });
+});
+
+describe("the state breakdown", () => {
+  it("counts the five states a reader acts on, not the raw extracted status", async () => {
+    const base = record().fields;
+    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const past = "2020-01-01";
+    await tors(db).insertMany([
+      // Open: announced, deadline still ahead.
+      record({ fields: { ...base, deadline: { raw: future, value: future, confidence: 1, verified: true } } }),
+      // Announced but its invitation to bid is not out, so there is no deadline
+      // to act on — not the same thing as open.
+      record({ fields: { ...base, deadline: { raw: "", value: null, confidence: 1, verified: true } } }),
+      // Announced, but the deadline has passed: closed however it is labelled.
+      record({ fields: { ...base, deadline: { raw: past, value: past, confidence: 1, verified: true } } }),
+      record({ fields: { ...base, torStatus: { raw: "awarded", value: "awarded", confidence: 1, verified: true } } }),
+      record({ fields: { ...base, torStatus: { raw: "cancelled", value: "cancelled", confidence: 1, verified: true } } }),
+    ] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard");
+
+    expect(response.status).toBe(200);
+    const counts = Object.fromEntries(
+      response.body.byState.map((row: { state: string; torCount: number }) => [row.state, row.torCount]),
+    );
+    expect(counts).toEqual({ open: 1, "awaiting-invitation": 1, closed: 1, awarded: 1, cancelled: 1 });
+    // Every state carries its own budget, and together they account for the headline total.
+    const summed = response.body.byState.reduce((total: number, row: { budgetSum: number }) => total + row.budgetSum, 0);
+    expect(summed).toBe(response.body.totals.budgetSum);
+  });
+});
+
+describe("filtering by state and month", () => {
+  const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  async function seedMixed() {
+    const base = record().fields;
+    await tors(db).insertMany([
+      record({ fields: { ...base, deadline: { raw: future, value: future, confidence: 1, verified: true } } }),
+      record({ fields: { ...base, torStatus: { raw: "cancelled", value: "cancelled", confidence: 1, verified: true } } }),
+      record({ cohort: { category: "roads", month: "2026-02" }, fields: { ...base, deadline: { raw: future, value: future, confidence: 1, verified: true } } }),
+      // No agency and no month: the rows a reader sees as "ไม่ระบุ".
+      record({ cohort: undefined, fields: { ...base, agency: { raw: "", value: null, confidence: 0, verified: false } } }),
+    ] as never);
+  }
+
+  it("narrows the figures to one state while still listing the others", async () => {
+    await seedMixed();
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?state=cancelled");
+
+    expect(response.body.totals.torCount).toBe(1);
+    // The control that set the filter must still offer the way out of it.
+    const states = Object.fromEntries(response.body.byState.map((r: { state: string; torCount: number }) => [r.state, r.torCount]));
+    expect(states.open).toBe(2);
+    expect(states.cancelled).toBe(1);
+  });
+
+  it("narrows to one month while the trend still shows every month", async () => {
+    await seedMixed();
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard?month=2026-02");
+
+    expect(response.body.totals.torCount).toBe(1);
+    expect(response.body.trend.map((r: { month: string }) => r.month).sort()).toEqual(["", "2026-01", "2026-02"]);
+  });
+
+  it("can select the records whose agency or month could not be read", async () => {
+    await seedMixed();
+
+    const byAgency = await request(buildTestApp()).get("/api/v1/stats/dashboard?agency=__unknown__");
+    const byMonth = await request(buildTestApp()).get("/api/v1/stats/dashboard?month=__unknown__");
+
+    expect(byAgency.body.totals.torCount).toBe(1);
+    expect(byMonth.body.totals.torCount).toBe(1);
   });
 });

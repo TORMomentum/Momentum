@@ -309,19 +309,31 @@ Same filters as `GET /api/v1/tors`, minus paging.
                  "eligible": true } ],
   "rule":    { "method": "IQR", "iqrMultiplier": 1.5, "zScoreLimit": 3,
                "peerMinN": 8, "windowMonths": 12, "cohortTimezone": "Asia/Bangkok" },
+  "byState": [ { "state": "open", "torCount": 9, "budgetSum": 153650000 } ],
   "meta":    { "lastIntakeAt": "2026-09-16T21:07:24.665Z", "statsComputedAt": "2026-09-17T03:10:11.000Z",
                "stale": false, "corpusSize": 22 },
   "checklist": null }
 ```
 
-Where each figure comes from, which is the difference between a fast answer and a true one:
+Every figure on this response derives from the records the route already reads
+for `points`, and from nothing else. The totals used to come from the rollup
+cache instead, which put two sources on one screen: when the statistics worker
+fell behind they disagreed in public — 18 TORs above, 19 below. `tor_rollups`
+remains for a future screen that reports aggregates WITHOUT per-record points.
 
-| Field | Source |
-| :--- | :--- |
-| `totals`, `trend`, `byAgency` | Rollup cells (agency × category × month) when only agency, category or month filters are active |
-| the same, with `minBudget`, `maxBudget` or `status` active | Computed from the records instead: a cell holds a sum, not the budgets inside it, so it cannot answer a budget range |
-| `points`, `flagged` | The records, each judged by its cohort's `bounds` |
-| `bounds` | The stored per-cohort statistics the worker keeps fresh |
+Each breakdown ignores the filter its own control sets and honours the rest, so
+the control that set a value still offers the alternatives:
+
+| Breakdown | Ignores | Honours |
+| :--- | :--- | :--- |
+| `byAgency` | `agency` | everything else |
+| `byState` | `state` | everything else |
+| `trend` | `month` | everything else |
+| `totals`, `points`, `flagged` | — | every filter |
+
+A chosen value that the other filters leave empty stays listed at zero rather
+than vanishing. `agency=__unknown__` and `month=__unknown__` select the records
+whose value could not be read.
 
 `totals` count every published, unrestricted record with a numeric budget, **verified or not**, with
 `unverifiedBudgetCount` alongside: excluding unverified extractions would understate what agencies

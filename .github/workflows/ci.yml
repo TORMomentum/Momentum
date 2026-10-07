@@ -14,6 +14,11 @@ jobs:
       GCS_API_ENDPOINT: http://localhost:4443
       INTAKE_API_KEYS: ci-intake-key
       ADMIN_API_KEYS: ci-admin-key
+      # Compose refuses to start without one, deliberately: a session signing key
+      # must never fall back to a default. CI supplies a throwaway value — it
+      # signs nothing that outlives the run.
+      SESSION_SECRET: ci-session-secret-not-used-outside-this-run
+      APP_ORIGIN: http://web:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,5 +41,9 @@ jobs:
           echo "mongo/gcs did not become ready" >&2
           docker compose logs mongo gcs
           exit 1
-      - run: npm test
+      # Build BEFORE testing. packages/ ships compiled output, and the apps
+      # import that, not its source — so a suite run first passes against a
+      # source tree the running app never sees. The work taxonomy was edited
+      # and the app kept serving the previous one exactly this way.
       - run: npm run build
+      - run: npm test

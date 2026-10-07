@@ -147,6 +147,25 @@
 
 .resultDeadlineValue { display: block; font: 600 12px var(--data); color: var(--ink); }
 
+.moreAgencies {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--blue);
+  text-align: left;
+  cursor: pointer;
+}
+
+.moreAgencies:hover { text-decoration: underline; }
+
+.resultDeadlineSource {
+  display: block;
+  font: 9px var(--data);
+  color: var(--ink-62);
+}
+
 .resultDeadlineWindow { display: block; font: 500 11px var(--data); color: var(--ink-65); }
 
 .resultActions { display: flex; gap: 6px; justify-content: flex-end; }

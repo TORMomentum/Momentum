@@ -1,0 +1,25 @@
+"use client";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useState } from "react";
+import { MIN_PASSWORD_LENGTH } from "./LoginView";
+import styles from "../features/auth/auth.module.css";
+function Shell({ title, children }: { title: string; children: React.ReactNode }) { return <main className={styles.split}><div className={styles.formSide}><div className={styles.kicker}>TOR RADAR</div><h1 className={styles.title}>{title}</h1>{children}</div></main>; }
+function post(path: string, body: unknown) { return fetch(`/api/auth/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); }
+/** What the account agreed to, and when — shown so it can be withdrawn. */
+export interface ConsentRecord {
+  noticeVersion: string;
+  agreedAt: string;
+  withdrawnAt?: string;
+}
+
+export function VerifyAccountView() { const token = useSearchParams().get("token"); const [done, setDone] = useState(false); return <Shell title="ยืนยันอีเมล"><p className={styles.sub}>{done ? "ยืนยันอีเมลเรียบร้อยแล้ว" : "กดปุ่มเพื่อยืนยันอีเมลของคุณ"}</p>{!done && <button className={styles.submit} onClick={async () => { if (token && (await post("verify", { token })).ok) setDone(true); }}>ยืนยันอีเมล</button>}<Link className={styles.switchLink} href="/login">เข้าสู่ระบบ</Link></Shell>; }
+export function ForgotPasswordView() { const [email, setEmail] = useState(""); const [done, setDone] = useState(false); return <Shell title="ลืมรหัสผ่าน">{done ? <p className={styles.sub}>หากบัญชีนี้มีอยู่ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว</p> : <form className={styles.form} onSubmit={async (event) => { event.preventDefault(); await post("password/forgot", { email }); setDone(true); }}><input className={styles.input} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /><button className={styles.submit}>ส่งลิงก์</button></form>}</Shell>; }
+export function ResetPasswordView() { const token = useSearchParams().get("token"); const [password, setPassword] = useState(""); const [done, setDone] = useState(false); return <Shell title="ตั้งรหัสผ่านใหม่">{done ? <Link className={styles.switchLink} href="/login">เข้าสู่ระบบ</Link> : <form className={styles.form} onSubmit={async (event) => { event.preventDefault(); if (token && password.length >= MIN_PASSWORD_LENGTH && (await post("password/reset", { token, password })).ok) setDone(true); }}><input className={styles.input} type="password" required value={password} onChange={(event) => setPassword(event.target.value)} /><button className={styles.submit}>บันทึกรหัสผ่านใหม่</button></form>}</Shell>; }
+export function AccountView({ consent: initialConsent }: { consent: ConsentRecord | null }) {
+  const router = useRouter(); const [password, setPassword] = useState(""); const [message, setMessage] = useState<string | null>(null); const [consent, setConsent] = useState<ConsentRecord | null>(initialConsent);
+  async function download() { const response = await fetch("/api/auth/me/export", { cache: "no-store" }); if (!response.ok) { setMessage("ไม่สามารถส่งออกข้อมูลได้"); return; } const blob = await response.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = "tor-radar-account-export.json"; anchor.click(); URL.revokeObjectURL(url); }
+  async function withdraw() { const response = await post("me/consent/withdraw", {}); if (response.ok) { setConsent((current) => current ? { ...current, withdrawnAt: new Date().toISOString() } : current); setMessage("ถอนความยินยอมแล้ว"); } else setMessage("ไม่สามารถถอนความยินยอมได้"); }
+  async function remove(event: FormEvent) { event.preventDefault(); const response = await fetch("/api/auth/me", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ currentPassword: password }) }); if (response.ok) { router.replace("/"); router.refresh(); } else setMessage("รหัสผ่านไม่ถูกต้อง หรือไม่สามารถลบบัญชีได้"); }
+  return <Shell title="ข้อมูลบัญชีและความเป็นส่วนตัว"><div className={styles.form}><button className={styles.submit} onClick={download}>ดาวน์โหลดข้อมูลของฉัน</button>{consent && <section><p className={styles.sub}>ให้ความยินยอมเมื่อ {new Date(consent.agreedAt).toLocaleDateString("th-TH")} ตามประกาศฉบับ {consent.noticeVersion}</p>{consent.withdrawnAt ? <p className={styles.sub}>ถอนความยินยอมแล้ว</p> : <><p className={styles.sub}>การถอนความยินยอมจะหยุดการประมวลผลเพื่อการจับคู่และการแจ้งเตือนเท่านั้น หากต้องการลบข้อมูลส่วนที่เหลือ ให้ลบบัญชีด้านล่าง</p><button type="button" className={styles.submit} onClick={withdraw}>ถอนความยินยอม</button></>}</section>}<form className={styles.form} onSubmit={remove}><p className={styles.sub}>การลบบัญชีไม่สามารถย้อนกลับได้</p><input className={styles.input} type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="รหัสผ่านปัจจุบัน" /><button className={styles.submit}>ลบบัญชีของฉัน</button></form>{message && <p className={styles.error}>{message}</p>}</div></Shell>;
+}

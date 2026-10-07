@@ -190,6 +190,14 @@ export function AccountControls() {
               โปรไฟล์และทักษะ
             </Link>
             <Link
+              href="/account"
+              role="menuitem"
+              className={styles.menuItem}
+              onClick={() => setMenuOpen(false)}
+            >
+              บัญชีและความเป็นส่วนตัว
+            </Link>
+            <Link
               href="/profile#notif-settings"
               role="menuitem"
               className={styles.menuItem}

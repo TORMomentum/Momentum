@@ -102,7 +102,187 @@
   color: var(--ink);
 }
 
-.skillCount { margin-top: 12px; font: 10px var(--data); color: rgba(18, 35, 60, 0.55); }
+/* -------------------------------------------------------------------------
+   Choosing work and places.
+
+   Everything here used to be the same pill — a group's name, a specific kind of
+   work, a region, and the control that expands one. Thirty-odd identical
+   rounded buttons with no heading among them, so nothing told a reader where
+   one group ended and the next began. Hierarchy is carried by TYPE now: a group
+   is a heading, the work inside it is a pill, and a control that reveals more
+   is quieter than either.
+   ------------------------------------------------------------------------- */
+
+.pickerSummary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: var(--rule);
+}
+
+.pickerCount { font: 600 12px var(--data); color: var(--ink); }
+
+.pickerHint { font: 11px var(--data); color: var(--ink-55); }
+
+/* Sixty-odd kinds of work need narrowing before they need scrolling. */
+.pickerFilter {
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 9px 12px;
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font: 12.5px var(--body);
+  color: var(--ink);
+}
+
+.pickerFilter:focus {
+  border-color: var(--blue);
+  outline: 2px solid var(--blue-ring);
+  outline-offset: 1px;
+}
+
+.pickerEmpty { margin: 0 0 8px; font: 12px var(--body); color: var(--ink-65); }
+
+/* Separated by a rule, because what the vocabulary cannot express is a
+   different kind of answer from what it can. */
+.otherSection {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: var(--rule);
+}
+
+/* Dashed, so it never reads as a selected taxonomy node: it does not match. */
+.otherPill {
+  border-style: dashed;
+  border-color: var(--ink-28);
+  background: var(--ink-02);
+  color: var(--ink-65);
+}
+
+.taxonomyGroup { margin-top: 20px; }
+
+.taxonomyGroup:first-of-type { margin-top: 0; }
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+/* A group's name reads as a label, not as something to press. */
+.groupName {
+  margin: 0;
+  font: 600 10px var(--data);
+  letter-spacing: var(--label-tracking);
+  text-transform: none;
+  color: var(--ink-55);
+}
+
+/* "All of this group" is a real choice, so it stays pressable — but it is a
+   text action beside the heading rather than a pill competing with the work. */
+.groupAll {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: 600 10px var(--data);
+  letter-spacing: var(--label-tracking);
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.groupAll:hover { text-decoration: underline; }
+
+.groupAllOn { color: var(--paper); }
+
+.groupChosen {
+  margin-left: auto;
+  font: 10px var(--data);
+  color: var(--ink-55);
+}
+
+.areaGrid { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* The whole country is the default answer, so it is stated once, on its own,
+   above the regions rather than inside the same row as them. */
+.areaPrimary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  font: 600 13px var(--body);
+  color: var(--ink-70);
+  text-align: left;
+  cursor: pointer;
+}
+
+.areaPrimaryOn {
+  border-color: var(--blue);
+  background: var(--blue-wash);
+  color: var(--blue);
+}
+
+.regionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: var(--rule);
+}
+
+.regionRow:last-of-type { border-bottom: var(--rule); }
+
+.regionName { font: 600 12.5px var(--body); color: var(--ink-70); }
+
+.regionChosen { font: 10px var(--data); color: var(--ink-55); }
+
+/* Quieter than a pill: it reveals choices, it is not one. */
+.regionExpand {
+  margin-left: auto;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: 600 10px var(--data);
+  letter-spacing: var(--label-tracking);
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.regionExpand:hover { text-decoration: underline; }
+
+.regionProvinces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 4px 0 12px;
+}
+
+.skillCount { margin-top: 14px; font: 10px var(--data); color: var(--ink-55); }
+
+/* The save control follows thirty-odd choices, so it stays in reach instead of
+   waiting at the bottom of them. */
+.saveRow {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 14px 0;
+  border-top: var(--rule);
+  background: var(--paper);
+}
+
+.profileMessage { font-size: 12px; color: var(--ink-65); }
 
 /* One fact left in this row since past projects were dropped, so it spans. */
 

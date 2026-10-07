@@ -9,12 +9,18 @@
  * API validates strictly behind this.
  */
 
+/** The five states the dashboard's chips use; the API defines them. */
+export const SEARCH_STATES = ["open", "awaiting-invitation", "closed", "awarded", "cancelled"] as const;
+export type SearchState = (typeof SEARCH_STATES)[number];
+
 export interface SearchFilters {
   q: string;
   agencies: string[];
   categories: string[];
   /** Still accepting bids — decided by the API. */
   open: boolean;
+  /** One of the five states, or null for every state. */
+  state: SearchState | null;
   minBudget: number | null;
   maxBudget: number | null;
   /** `YYYY-MM-DD`, inclusive. */
@@ -30,6 +36,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   agencies: [],
   categories: [],
   open: false,
+  state: null,
   minBudget: null,
   maxBudget: null,
   deadlineFrom: null,
@@ -77,6 +84,7 @@ export function parseSearchParams(params: RawSearchParams): SearchFilters {
     agencies: list(params.agency),
     categories: list(params.category),
     open: first(params.open) === "true",
+    state: (SEARCH_STATES as readonly string[]).includes(first(params.state) ?? "") ? (first(params.state) as SearchState) : null,
     minBudget: amount(params.minBudget),
     maxBudget: amount(params.maxBudget),
     deadlineFrom: date(params.deadlineFrom),
@@ -96,6 +104,7 @@ export function toSearchQuery(filters: SearchFilters): string {
   if (filters.maxBudget !== null) params.set("maxBudget", String(filters.maxBudget));
   if (filters.minBudget !== null) params.set("minBudget", String(filters.minBudget));
   if (filters.open) params.set("open", "true");
+  if (filters.state) params.set("state", filters.state);
   const q = text(filters.q);
   if (q) params.set("q", q);
   // Last, so a page change never reorders the filters before it.

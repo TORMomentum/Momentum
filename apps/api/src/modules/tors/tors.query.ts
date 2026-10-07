@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 import type { SearchConfig } from "../../core/config.js";
 import { BadRequestError } from "../../core/errors.js";
+import { TOR_STATES, type TorState } from "../../lib/tor-state.js";
 
 export const TOR_STATUSES = ["announced", "closed", "awarded", "cancelled"] as const;
 export type TorStatusValue = (typeof TOR_STATUSES)[number];
@@ -12,6 +13,12 @@ export interface SearchFilter {
   agencies: string[];
   categories: string[];
   status?: TorStatusValue;
+  /**
+   * The state a reader acts on, which the dashboard's chips also set. Richer
+   * than `status`: it folds in whether the deadline has passed and whether the
+   * invitation to bid is out at all.
+   */
+  state?: TorState;
   /** Still accepting bids: announced, and the deadline has not passed (spec §1 decision 4). */
   open: boolean;
   minBudget?: number;
@@ -87,6 +94,7 @@ export function buildSearchQuerySchema(config: SearchConfig) {
     agency: values.optional(),
     category: values.optional(),
     status: z.enum(TOR_STATUSES).optional(),
+    state: z.enum(TOR_STATES as unknown as [TorState, ...TorState[]]).optional(),
     open: z.enum(["true"]).optional(),
     minBudget: baht.optional(),
     maxBudget: baht.optional(),
@@ -113,6 +121,7 @@ export function parseSearchQuery(query: unknown, config: SearchConfig): SearchRe
       agencies: parsed.agency ?? [],
       categories: parsed.category ?? [],
       status: parsed.status,
+      state: parsed.state,
       open: parsed.open === "true",
       minBudget: parsed.minBudget,
       maxBudget: parsed.maxBudget,

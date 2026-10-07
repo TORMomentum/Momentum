@@ -19,6 +19,8 @@ export interface ListField<T> {
   raw: string;
   value: T | null;
   verified: boolean;
+  /** Set when the value was read from another document — a TOR's deadline from its invitation to bid. */
+  fromDocument?: string;
 }
 
 export type TorStatusValue = "announced" | "closed" | "awarded" | "cancelled";
@@ -41,6 +43,12 @@ export interface TorListItem {
   budget: ListField<number>;
   deadline: ListField<string>;
   torStatus: { value: TorStatusValue | null; verified: boolean };
+  /**
+   * How well this TOR fits the signed-in vendor's profile, 0..1. Absent for a
+   * signed-out visitor and for a vendor with no profile yet, which is why it is
+   * optional rather than zero: no profile is not a bad match.
+   */
+  matchScore?: number;
 }
 
 export interface TorSearchResult {
@@ -91,6 +99,8 @@ export interface TorDetail {
     >
   >;
   announcedAt: string | null;
+  /** ปีงบประมาณ in the Buddhist era, derived from the announcement date. */
+  budgetYear: number | null;
   sourceUrl: string | null;
   /** The TOR's project page on the source system; absent from an API older than this field. */
   sourceProject?: { system: string; projectNumber: string | null; url: string } | null;

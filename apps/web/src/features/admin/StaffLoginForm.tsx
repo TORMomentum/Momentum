@@ -32,7 +32,7 @@ export function StaffLoginForm() {
     markViewerSignedIn({
       email: "staff",
       name: "เจ้าหน้าที่",
-      role: "ผู้ดูแลระบบ",
+      role: "admin",
     });
     router.replace("/admin");
   }, [markViewerSignedIn, router, state.accepted]);

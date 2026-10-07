@@ -1,6 +1,20 @@
 import { z } from "zod";
 
 /**
+ * A `.env` file says "not set" by writing `KEY=`, which arrives as an empty
+ * string rather than as an absent variable. Without this, every optional
+ * setting would reject the very template the repository ships: `SMTP_URL=` in
+ * `.env.example` stopped the API booting at all. Blank means absent, once,
+ * for every optional value.
+ */
+function blankAsAbsent<T extends z.ZodTypeAny>(inner: T) {
+  return z.preprocess((value) => {
+    if (typeof value === "string" && value.trim() === "") return undefined;
+    return value;
+  }, inner.optional());
+}
+
+/**
  * Every threshold and tunable in the system (NFR-S7). Nothing below may appear
  * as a literal anywhere else in the codebase.
  */
@@ -9,17 +23,22 @@ const schema = z.object({
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
+  // Outbound mail. Production must configure SMTP_URL (mailer.factory.ts).
+  SMTP_URL: blankAsAbsent(z.string().url()),
+  MAIL_FROM: z.string().min(1).default("TOR Radar <noreply@tor-radar.example>"),
+  MAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+
   // Storage — Google Cloud Storage (spec §6)
   GCS_BUCKET: z.string().min(1),
   /** Set only for fake-gcs-server. Unset in deployment. */
-  GCS_API_ENDPOINT: z.url().optional(),
+  GCS_API_ENDPOINT: blankAsAbsent(z.url()),
   /**
    * The DEDICATED storage service account's key file. Deliberately not
    * GOOGLE_APPLICATION_CREDENTIALS: that is Vertex AI's identity, and the Google
    * client would silently adopt it if this were left to application-default
    * credentials — giving one compromised key both powers.
    */
-  GCS_CREDENTIALS: z.string().min(1).optional(),
+  GCS_CREDENTIALS: blankAsAbsent(z.string().min(1)),
   STORAGE_TIMEOUT_API_MS: z.coerce.number().int().positive().default(10_000),
   STORAGE_TIMEOUT_WORKER_MS: z.coerce.number().int().positive().default(60_000),
 
@@ -31,6 +50,22 @@ const schema = z.object({
   INTAKE_RATE_LIMIT: z.coerce.number().int().positive().default(60),
   INTAKE_API_KEYS: z.string().min(1),
   ADMIN_API_KEYS: z.string().min(1),
+
+  // Accounts and sessions (accounts and sessions design §5).
+  SESSION_SECRET: z.string().min(32),
+  APP_ORIGIN: z.url().refine((value) => new URL(value).origin === value, {
+    message: "APP_ORIGIN must be an origin without a path",
+  }),
+  SESSION_LIFETIME_MS: z.coerce.number().int().positive().default(604_800_000),
+  ARGON2_MEMORY_KIB: z.coerce.number().int().positive().default(19_456),
+  ARGON2_ITERATIONS: z.coerce.number().int().positive().default(2),
+  ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
+  AUTH_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(60),
+  AUTH_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().positive().default(10),
+  VERIFY_TOKEN_TTL_MS: z.coerce.number().int().positive().default(86_400_000),
+  RESET_TOKEN_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
+  CONSENT_NOTICE_VERSION: z.string().min(1).default("2026-10-06"),
+  CONSENT_NOTICE_HASH: z.string().min(1).default("notice-not-published"),
 
   // Outbound fetch, URL intake route
   FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
@@ -49,8 +84,8 @@ const schema = z.object({
   // and in tests that use a fake Ai; vertex.ai.ts checks it when actually called.
   GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
   VERTEX_LOCATION: z.string().min(1).default("global"),
-  GOOGLE_CLOUD_PROJECT: z.string().min(1).optional(),
-  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
+  GOOGLE_CLOUD_PROJECT: blankAsAbsent(z.string().min(1)),
+  GOOGLE_APPLICATION_CREDENTIALS: blankAsAbsent(z.string().min(1)),
   EXTRACT_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   // Confidence thresholds — measured, not chosen (O1 closed; docs/corpus/BENCHMARK.md).
@@ -108,6 +143,12 @@ const schema = z.object({
 
 export interface Config {
   mongoUrl: string;
+  nodeEnv: "development" | "test" | "production";
+  mail: {
+    smtpUrl?: string;
+    from: string;
+    timeoutMs: number;
+  };
   gcs: {
     bucket: string;
     apiEndpoint?: string;
@@ -123,6 +164,22 @@ export interface Config {
   intakeRateLimit: number;
   intakeApiKeys: string[];
   adminApiKeys: string[];
+  session: {
+    secret: string;
+    lifetimeMs: number;
+  };
+  /** The browser origin allowed to make state-changing account requests. */
+  appOrigin: string;
+  argon2: {
+    memoryKiB: number;
+    iterations: number;
+    parallelism: number;
+  };
+  authRateLimitPerIp: number;
+  authRateLimitPerEmail: number;
+  verifyTokenTtlMs: number;
+  resetTokenTtlMs: number;
+  consentNotice: { version: string; hash: string };
   fetchTimeoutMs: number;
   fetchMaxRedirects: number;
   fetchMaxBytes: number;
@@ -187,6 +244,12 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
   const parsed = schema.parse(env);
   return {
     mongoUrl: parsed.MONGO_URL,
+    nodeEnv: parsed.NODE_ENV,
+    mail: {
+      smtpUrl: parsed.SMTP_URL,
+      from: parsed.MAIL_FROM,
+      timeoutMs: parsed.MAIL_TIMEOUT_MS,
+    },
     gcs: {
       bucket: parsed.GCS_BUCKET,
       apiEndpoint: parsed.GCS_API_ENDPOINT,
@@ -202,6 +265,21 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     intakeRateLimit: parsed.INTAKE_RATE_LIMIT,
     intakeApiKeys: parsed.INTAKE_API_KEYS.split(",").map((value) => value.trim()).filter(Boolean),
     adminApiKeys: parsed.ADMIN_API_KEYS.split(",").map((value) => value.trim()).filter(Boolean),
+    session: {
+      secret: parsed.SESSION_SECRET,
+      lifetimeMs: parsed.SESSION_LIFETIME_MS,
+    },
+    appOrigin: parsed.APP_ORIGIN,
+    argon2: {
+      memoryKiB: parsed.ARGON2_MEMORY_KIB,
+      iterations: parsed.ARGON2_ITERATIONS,
+      parallelism: parsed.ARGON2_PARALLELISM,
+    },
+    authRateLimitPerIp: parsed.AUTH_RATE_LIMIT_PER_IP,
+    authRateLimitPerEmail: parsed.AUTH_RATE_LIMIT_PER_EMAIL,
+    verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,
+    resetTokenTtlMs: parsed.RESET_TOKEN_TTL_MS,
+    consentNotice: { version: parsed.CONSENT_NOTICE_VERSION, hash: parsed.CONSENT_NOTICE_HASH },
     fetchTimeoutMs: parsed.FETCH_TIMEOUT_MS,
     fetchMaxRedirects: parsed.FETCH_MAX_REDIRECTS,
     fetchMaxBytes: parsed.FETCH_MAX_BYTES,
