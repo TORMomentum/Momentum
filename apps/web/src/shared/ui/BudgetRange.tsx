@@ -3,15 +3,17 @@
 import { useId, useState } from "react";
 import styles from "./budget-range.module.css";
 import { formatBudgetShort } from "../../data/tor-samples";
+import { thaiDigitsToArabic } from "../lib/format";
 
 /**
  * Two-handle budget slider, ported from the Search screen of
  * mockups/TOR Radar App.dc.html (its `minBudget`/`maxBudget` pair, the gooey
  * handles included).
  *
- * The vendor profile states its budget interest with it (FR-D-2). The Search
- * screen still carries its own copy of this markup and reads the same
- * stylesheet; folding that copy in here is a separate change.
+ * Shared by the vendor profile (FR-D-2), the search filters and the admin
+ * vendor screen. The two amounts can be TYPED as well as dragged: landing a
+ * handle on an exact figure like ฿5,000,000 by dragging is fiddly, and a typed
+ * value is what a vendor actually has in mind.
  */
 export function BudgetRange({
   min,
@@ -49,8 +51,33 @@ export function BudgetRange({
   const minHole = hoverMin ? 13 : 0;
   const maxHole = hoverMax ? 13 : 0;
 
+  const clamp = (value: number) => Math.min(Math.max(value, floor), ceiling);
+
   return (
     <>
+      <div className={styles.amounts}>
+        <AmountBox
+          value={min}
+          label={minLabel}
+          // A minimum typed above the maximum carries the maximum up with it,
+          // rather than refusing the entry or quietly swapping the two.
+          onCommit={(next) => {
+            const value = clamp(next);
+            onChange({ min: value, max: Math.max(max, value) });
+          }}
+        />
+        <span className={styles.amountDash} aria-hidden="true">
+          —
+        </span>
+        <AmountBox
+          value={max}
+          label={maxLabel}
+          onCommit={(next) => {
+            const value = clamp(next);
+            onChange({ min: Math.min(min, value), max: value });
+          }}
+        />
+      </div>
       <div className={styles.sliderWrap}>
         <svg width="0" height="0" style={{ position: "absolute" }}>
           <defs>
@@ -117,11 +144,71 @@ export function BudgetRange({
       </div>
       <div className={styles.sliderLabels}>
         <span>{formatBudgetShort(floor)}</span>
-        <span className={styles.sliderLabelActive}>
-          {formatBudgetShort(min)} — {formatBudgetShort(max)}
-        </span>
         <span>{formatBudgetShort(ceiling)}</span>
       </div>
     </>
+  );
+}
+
+/** Thai or Arabic digits, with or without separators, as people type money. */
+export function parseBaht(text: string): number | null {
+  const digits = thaiDigitsToArabic(text).replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  const value = Number(digits);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+const BAHT = new Intl.NumberFormat("th-TH");
+
+/**
+ * One typed amount. Kept as a draft while being typed and committed on Enter
+ * or on leaving the box — committing every keystroke would drag the slider
+ * through ฿5, ฿50, ฿500… on the way to ฿5,000,000 and fight the person typing.
+ * An unreadable entry snaps back to the current value rather than to zero.
+ */
+function AmountBox({
+  value,
+  label,
+  onCommit,
+}: {
+  value: number;
+  label: string;
+  onCommit: (next: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  function commit() {
+    if (draft === null) return;
+    const parsed = parseBaht(draft);
+    setDraft(null);
+    if (parsed !== null && parsed !== value) onCommit(parsed);
+  }
+
+  return (
+    <label className={styles.amountBox}>
+      <span className={styles.amountCurrency} aria-hidden="true">
+        ฿
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        className={styles.amountInput}
+        aria-label={label}
+        value={draft ?? BAHT.format(value)}
+        onFocus={(event) => {
+          setDraft(String(value));
+          event.target.select();
+        }}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          }
+          if (event.key === "Escape") setDraft(null);
+        }}
+      />
+    </label>
   );
 }
