@@ -9,6 +9,8 @@ const config = loadConfig({
   ADMIN_API_KEYS: "admin-key",
   GCS_BUCKET: "tor-raw",
   GCS_API_ENDPOINT: "http://gcs:4443",
+  SESSION_SECRET: "test-session-secret-0123456789abcdef",
+  APP_ORIGIN: "http://localhost:3000",
 });
 
 const verified = (value: unknown) => ({ raw: String(value), value, confidence: 0.99, verified: true });
