@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useViewer } from "../shared/lib/viewer";
 import { WHOLE_COUNTRY_AREA } from "@tor-radar/seeds";
 import {
   BUDGET_PREFERENCE_MAX,
@@ -76,6 +77,7 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
   // No work chosen means the profile has never been filled in, and there is
   // exactly one thing to do.
   const [settingUp, setSettingUp] = useState((initial?.categories.length ?? 0) === 0);
+  const { account } = useViewer();
   const [editing, setEditing] = useState<Section | null>(null);
 
   async function save() {
@@ -198,23 +200,24 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
     );
   }
 
-  function section(key: Section, title: string, values: string[], picker: React.ReactNode) {
+  /** A label, what it is set to, and the way in to change it. */
+  function settingRow(
+    key: Section,
+    title: string,
+    note: string,
+    values: string[],
+    picker: React.ReactNode,
+  ) {
     const open = editing === key;
+    const empty = values.length === 0;
     return (
-      <section className={styles.profileCard}>
-        <div className={styles.profileFactHead}>
-          <h2 className={styles.profileFactTitle}>{title}</h2>
-          <button
-            type="button"
-            className={styles.factEdit}
-            aria-expanded={open}
-            onClick={() => setEditing(open ? null : key)}
-          >
-            {open ? "ปิด" : "แก้ไข"}
-          </button>
+      <div className={styles.settingRow} key={key}>
+        <div className={styles.settingLabel}>
+          {title}
+          <span className={styles.settingNote}>{note}</span>
         </div>
-        {open ? (
-          picker
+        {empty ? (
+          <p className={styles.summaryEmpty}>ยังไม่ได้เลือก</p>
         ) : (
           <div className={styles.summaryRow}>
             {values.map((value) => (
@@ -224,38 +227,72 @@ export function VendorProfileView({ initial }: { initial: Profile | null }) {
             ))}
           </div>
         )}
-      </section>
+        <button
+          type="button"
+          className={styles.factEdit}
+          aria-expanded={open}
+          onClick={() => setEditing(open ? null : key)}
+        >
+          {open ? "ปิด" : "แก้ไข"}
+        </button>
+        {open && <div className={styles.settingEditor}>{picker}</div>}
+      </div>
     );
   }
 
   return (
     <main className={styles.profilePage}>
-      <header className={styles.profileHead}>
-        <div>
-          <h1 className={styles.profileName}>โปรไฟล์ผู้ประกอบการ</h1>
-          <p className={styles.profileSub}>ข้อมูลนี้ถูกใช้จับคู่ TOR ให้คุณ แก้ไขได้ทุกเมื่อ</p>
+      <div className={styles.identity}>
+        <div className={styles.identityAvatar} aria-hidden="true">
+          {(account?.name ?? "?").slice(0, 1).toUpperCase()}
         </div>
-      </header>
+        <div>
+          <h1 className={styles.profileName}>{account?.name ?? "โปรไฟล์ผู้ประกอบการ"}</h1>
+          {account && <div className={styles.identityEmail}>{account.email}</div>}
+        </div>
+      </div>
 
-      {section("categories", "หมวดหมู่งาน", describeCategories(profile.categories), categoryPicker)}
-      {section("areas", "พื้นที่ให้บริการ", describeAreas(profile.areas), areaPicker)}
-      {section("budget", "ช่วงงบประมาณที่สนใจ", [describeBudget(profile.budget)], budgetPicker)}
-
-      {profile.otherCategories.length > 0 && (
-        <section className={styles.profileCard}>
-          <h2 className={styles.profileFactTitle}>อื่นๆ ที่คุณระบุเอง</h2>
-          <p className={styles.pickerHint}>
-            ยังไม่ถูกใช้ในการจับคู่ แต่เราเก็บไว้เพื่อเพิ่มประเภทงานให้ครอบคลุมขึ้น
-          </p>
-          <div className={styles.summaryRow}>
-            {profile.otherCategories.map((word) => (
-              <span className={`${styles.summaryChip} ${styles.otherPill}`} key={word}>
-                {word}
-              </span>
-            ))}
+      <section className={styles.profileCard}>
+        <h2 className={styles.profileFactTitle}>ข้อมูลที่ใช้จับคู่ TOR</h2>
+        <p className={styles.profileSub}>แก้ไขได้ทุกเมื่อ มีผลกับการจับคู่ครั้งถัดไป</p>
+        {settingRow(
+          "categories",
+          "หมวดหมู่งาน",
+          "งานที่คุณรับทำ",
+          describeCategories(profile.categories),
+          categoryPicker,
+        )}
+        {settingRow(
+          "areas",
+          "พื้นที่ให้บริการ",
+          "พื้นที่ที่คุณรับงาน ไม่ใช่ที่ตั้งหน่วยงาน",
+          describeAreas(profile.areas),
+          areaPicker,
+        )}
+        {settingRow(
+          "budget",
+          "ช่วงงบประมาณ",
+          "เป็นความต้องการ ไม่ใช่เงื่อนไขตัดสิทธิ์",
+          profile.budget ? [describeBudget(profile.budget)] : [],
+          budgetPicker,
+        )}
+        {profile.otherCategories.length > 0 && (
+          <div className={styles.settingRow}>
+            <div className={styles.settingLabel}>
+              อื่นๆ ที่คุณระบุเอง
+              <span className={styles.settingNote}>ยังไม่ถูกใช้ในการจับคู่</span>
+            </div>
+            <div className={styles.summaryRow}>
+              {profile.otherCategories.map((word) => (
+                <span className={`${styles.summaryChip} ${styles.otherPill}`} key={word}>
+                  {word}
+                </span>
+              ))}
+            </div>
+            <span />
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* Listed, never nagged: neither is required to receive alerts (§7.1), so
           nothing here is marked missing or incomplete. The prompt that asks for

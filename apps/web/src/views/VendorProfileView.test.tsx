@@ -6,7 +6,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
+import { ViewerProvider } from "../shared/lib/viewer";
 import { VendorProfileView } from "./VendorProfileView";
+
+/** The screen reads the signed-in account for its header, as it does in the app. */
+const ACCOUNT = { email: "vendor@example.test", name: "ผู้ขาย", role: "vendor" as const };
+
+function mount(initial: typeof FROM_API | null) {
+  act(() => {
+    root.render(
+      <ViewerProvider initialAccount={ACCOUNT}>
+        <VendorProfileView initial={initial} />
+      </ViewerProvider>,
+    );
+  });
+}
 
 let container: HTMLDivElement;
 let root: Root;
@@ -43,9 +57,7 @@ const FROM_API = {
 
 describe("VendorProfileView", () => {
   it("leads with the pickers when nothing has been answered yet", () => {
-    act(() => {
-      root.render(<VendorProfileView initial={{ ...FROM_API, categories: [] }} />);
-    });
+    mount({ ...FROM_API, categories: [] });
     expect(container.textContent).toContain("ตั้งค่าโปรไฟล์ครั้งแรก");
     expect(container.textContent).toContain("บันทึกและเริ่มใช้งาน");
     // The full taxonomy is on screen, which is the one thing to do.
@@ -55,19 +67,17 @@ describe("VendorProfileView", () => {
   it("leads with the answers once they exist, not with the choices again", () => {
     // A vendor coming back is owed their own words. Showing the sixty-five
     // choices every visit was the whole complaint.
-    act(() => {
-      root.render(<VendorProfileView initial={FROM_API} />);
-    });
-    expect(container.textContent).toContain("โปรไฟล์ผู้ประกอบการ");
+    mount(FROM_API);
+    expect(container.textContent).toContain(ACCOUNT.name);
+    expect(container.textContent).toContain(ACCOUNT.email);
+    expect(container.textContent).toContain("ข้อมูลที่ใช้จับคู่ TOR");
     expect(container.textContent).not.toContain("ตั้งค่าโปรไฟล์ครั้งแรก");
     expect(container.querySelector('input[type="search"]')).toBeNull();
     expect(container.textContent).toContain("แก้ไข");
   });
 
   it("opens one section at a time, leaving the others summarised", () => {
-    act(() => {
-      root.render(<VendorProfileView initial={FROM_API} />);
-    });
+    mount(FROM_API);
     const edit = [...container.querySelectorAll("button")].find((b) => b.textContent === "แก้ไข")!;
     act(() => edit.click());
     expect(container.querySelector('input[type="search"]')).not.toBeNull();
@@ -75,9 +85,7 @@ describe("VendorProfileView", () => {
   });
 
   it("names what would sharpen matching without marking the profile incomplete", () => {
-    act(() => {
-      root.render(<VendorProfileView initial={FROM_API} />);
-    });
+    mount(FROM_API);
     expect(container.textContent).toContain("สิ่งที่จะช่วยให้จับคู่แม่นขึ้น");
     expect(container.textContent).toContain("ไม่บังคับ");
     expect(container.textContent).not.toMatch(/\d+%/);
@@ -89,9 +97,7 @@ describe("VendorProfileView", () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => FROM_API });
     vi.stubGlobal("fetch", fetchMock);
 
-    act(() => {
-      root.render(<VendorProfileView initial={FROM_API} />);
-    });
+    mount(FROM_API);
     await act(async () => {
       saveButton().click();
     });
@@ -109,9 +115,7 @@ describe("VendorProfileView", () => {
       }),
     );
 
-    act(() => {
-      root.render(<VendorProfileView initial={FROM_API} />);
-    });
+    mount(FROM_API);
     await act(async () => {
       saveButton().click();
     });
@@ -129,9 +133,7 @@ describe("VendorProfileView", () => {
       }),
     );
 
-    act(() => {
-      root.render(<VendorProfileView initial={FROM_API} />);
-    });
+    mount(FROM_API);
     await act(async () => {
       saveButton().click();
     });
