@@ -6,11 +6,21 @@ import { streamDocument } from "../../lib/stream-document.js";
 import type { Storage } from "../../ports/storage.port.js";
 import { parseSearchQuery } from "./tors.query.js";
 import type { TorsService } from "./tors.service.js";
+import type { Config } from "../../core/config.js";
+import { UnauthorizedError } from "../../core/errors.js";
+import { ProfileRepository } from "../profile/profile.repository.js";
+import { MatchingRepository } from "../matching/matching.repository.js";
+import { scoresForAccount } from "../matching/matching.scores.js";
+import { ObjectId } from "mongodb";
+import { matchPercent } from "@tor-radar/shared";
 
 export interface TorsRouterDeps {
   service: TorsService;
   storage: Storage;
   search: SearchConfig;
+  config: Config;
+  profiles: ProfileRepository;
+  matching: MatchingRepository;
 }
 
 /** Public TOR reads. Authentication middleware must not be mounted here. */
@@ -21,7 +31,20 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
   // answers with 400 — never an operator reaching the database. Each row carries
   // its statistical-anomaly verdict (dashboard spec §6.2).
   router.get("/", async (req, res) => {
-    res.json(await deps.service.search(parseSearchQuery(req.query, deps.search)));
+    const search = parseSearchQuery(req.query, deps.search);
+    if (!search.filter.minMatch) {
+      res.json(await deps.service.search(search));
+      return;
+    }
+    // This remains a public route; only the optional vendor-match filter needs identity.
+    if (!req.auth) throw new UnauthorizedError();
+    const scores = await scoresForAccount(deps, req.auth.account._id.toString());
+    const matchIds = Object.entries(scores)
+      // Compared as the rounded percentage the badge shows: a TOR labelled
+      // "70%" must not vanish under a 70% filter because it scored 0.695.
+      .filter(([, score]) => matchPercent(score) >= search.filter.minMatch!)
+      .map(([id]) => new ObjectId(id));
+    res.json(await deps.service.search(search, matchIds));
   });
 
   // Declared before "/:id", which would otherwise claim it.

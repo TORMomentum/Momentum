@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   fetchTorFacets,
   searchQueryMaxChars,
+  searchOwnTors,
   searchTors,
   type TorFacets,
   type TorSearchResult,
@@ -36,7 +37,7 @@ export default async function SearchPage({
   // Parallel: the options and the results do not depend on each other.
   const [facets, results] = await Promise.allSettled([
     fetchTorFacets(),
-    searchTors(toSearchQuery(filters)),
+    filters.minMatch === null ? searchTors(toSearchQuery(filters)) : searchOwnTors(toSearchQuery(filters)),
   ]);
   const [savedIds, matchScores] =
     results.status === "fulfilled"

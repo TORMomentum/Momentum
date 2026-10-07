@@ -14,6 +14,11 @@ import { SessionsRepository } from "../accounts/sessions.js";
 import { ProfileRepository } from "../profile/profile.repository.js";
 import { MatchingRepository } from "./matching.repository.js";
 import { buildMatchingRouter } from "./matching.routes.js";
+import { matchPercent } from "@tor-radar/shared";
+import type { Storage } from "../../ports/storage.port.js";
+import { TorsRepository } from "../tors/tors.repository.js";
+import { buildTorsRouter } from "../tors/tors.routes.js";
+import { TorsService } from "../tors/tors.service.js";
 
 const config = loadConfig(process.env);
 let db: Db; let app: express.Express; let sessionsRepository: SessionsRepository;
@@ -121,5 +126,67 @@ describe("matching routes", () => {
     await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], otherCategories: ["คอมพิวเตอร์"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
     const id = await seed("จัดซื้อคอมพิวเตอร์", 100);
     expect((await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId)).body.items.map((item: { id: string }) => item.id)).toContain(id);
+  });
+});
+
+describe("search filtered by match score", () => {
+  // Search and the score badge share one score function; this mounts both so the
+  // filter is checked against the very numbers the badge shows.
+  function searchApp() {
+    const result = express();
+    result.use(express.json());
+    result.use(sessionContext(sessionsRepository));
+    const deps = { config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config) };
+    result.use("/api/v1", buildMatchingRouter(deps));
+    result.use("/api/v1/tors", buildTorsRouter({ service: new TorsService({ repo: new TorsRepository(db), config }), storage: {} as Storage, search: config.search, ...deps }));
+    result.use(errorMiddleware);
+    return result;
+  }
+
+  async function roadVendorWithTwoMatches() {
+    const current = await vendor("filter@example.test");
+    await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], areas: ["thailand"], budget: { minThb: 100, maxThb: 200 }, taxonomyVersion: "test", updatedAt: new Date() });
+    const best = await seed("ปรับปรุงผิวจราจร ก", 150);
+    const lower = await seed("ปรับปรุงผิวจราจร ข", 500);
+    const unrelated = await seed("จัดซื้อคอมพิวเตอร์", 150);
+    return { current, best, lower, unrelated };
+  }
+
+  it("keeps only TORs scoring at least the threshold, and the total says so", async () => {
+    const app = searchApp();
+    const { current, best, lower } = await roadVendorWithTwoMatches();
+    const scores = (await request(app).get("/api/v1/me/matches/scores").set("x-session-id", current.sessionId)).body.scores;
+    const [high, low] = [matchPercent(scores[best]), matchPercent(scores[lower])];
+    expect(high).toBeGreaterThan(low);
+
+    const above = await request(app).get(`/api/v1/tors?minMatch=${low + 1}`).set("x-session-id", current.sessionId);
+    expect(above.status).toBe(200);
+    expect(above.body.items.map((item: { id: string }) => item.id)).toEqual([best]);
+    expect(above.body.total).toBe(1);
+
+    // Inclusive, at the percentage the badge shows.
+    const atLow = await request(app).get(`/api/v1/tors?minMatch=${low}`).set("x-session-id", current.sessionId);
+    expect(atLow.body.items.map((item: { id: string }) => item.id).sort()).toEqual([best, lower].sort());
+  });
+
+  it("refuses the filter without a session instead of quietly returning everything", async () => {
+    await roadVendorWithTwoMatches();
+    expect((await request(searchApp()).get("/api/v1/tors?minMatch=50")).status).toBe(401);
+  });
+
+  it("rejects a threshold outside whole percentages 1-100", async () => {
+    const app = searchApp();
+    const { current } = await roadVendorWithTwoMatches();
+    for (const bad of ["0", "101", "7.5", "abc"]) {
+      expect((await request(app).get(`/api/v1/tors?minMatch=${bad}`).set("x-session-id", current.sessionId)).status).toBe(400);
+    }
+  });
+
+  it("leaves search untouched when no threshold is asked for, signed in or not", async () => {
+    const app = searchApp();
+    const { current, best, lower, unrelated } = await roadVendorWithTwoMatches();
+    const all = [best, lower, unrelated].sort();
+    expect((await request(app).get("/api/v1/tors")).body.items.map((item: { id: string }) => item.id).sort()).toEqual(all);
+    expect((await request(app).get("/api/v1/tors").set("x-session-id", current.sessionId)).body.items.map((item: { id: string }) => item.id).sort()).toEqual(all);
   });
 });

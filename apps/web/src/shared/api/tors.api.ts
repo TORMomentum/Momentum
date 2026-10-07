@@ -1,8 +1,9 @@
 import "server-only";
 
 import type { Checklist } from "@tor-radar/shared";
+import { cookies } from "next/headers";
 import { withArabicDigits } from "../lib/format";
-import { getJson } from "./api-client";
+import { apiRequest, getJson } from "./api-client";
 
 /**
  * Public TOR data access (rendering spec §4). Server-side only, and it sends no
@@ -128,6 +129,16 @@ export function searchQueryMaxChars(): number {
 /** `query` is already canonical (features/search/search.params.ts). Not cached: §6.1. */
 export async function searchTors(query: string): Promise<TorSearchResult> {
   return withArabicDigits(await getJson<TorSearchResult>(`/tors${query ? `?${query}` : ""}`));
+}
+
+/** The personal threshold stays server-side: stale signed-out links show an empty result. */
+export async function searchOwnTors(query: string): Promise<TorSearchResult> {
+  const sessionId = (await cookies()).get("tor-radar-session")?.value;
+  if (!sessionId) return { items: [], total: 0, nextCursor: null, coverage: { lastUpdatedAt: null } };
+  const response = await apiRequest(`/api/v1/tors${query ? `?${query}` : ""}`, {}, sessionId);
+  if (response.status === 401) return { items: [], total: 0, nextCursor: null, coverage: { lastUpdatedAt: null } };
+  if (!response.ok) throw new Error(`GET /tors returned ${response.status}`);
+  return withArabicDigits((await response.json()) as TorSearchResult);
 }
 
 export async function fetchTorFacets(): Promise<TorFacets> {

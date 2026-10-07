@@ -14,6 +14,7 @@ import type { CohortKey } from "../stats/cohort.js";
 import { eligibilityOf } from "../stats/eligibility.js";
 import { encodeCursor, type SearchRequest } from "./tors.query.js";
 import type { TorsRepository } from "./tors.repository.js";
+import type { ObjectId } from "mongodb";
 
 export interface TorsServiceDeps {
   repo: TorsRepository;
@@ -63,14 +64,14 @@ type VerdictRow = {
 export class TorsService {
   constructor(private readonly deps: TorsServiceDeps) {}
 
-  async search(request: SearchRequest) {
+  async search(request: SearchRequest, matchIds?: ObjectId[]) {
     const { config } = this.deps;
-    const { open, ...filter } = request.filter;
+    const { open, minMatch: _minMatch, ...filter } = request.filter;
     const today = calendarDate(this.deps.now?.() ?? new Date(), config.search.timeZone);
 
     const page = await this.deps.repo.search(
       // A vendor's first question is what they can still bid on, so those lead.
-      { ...filter, openOn: open ? today : undefined, closingFirstOn: today, today },
+      { ...filter, matchIds, openOn: open ? today : undefined, closingFirstOn: today, today },
       request.pageSize,
       request.cursor,
     );

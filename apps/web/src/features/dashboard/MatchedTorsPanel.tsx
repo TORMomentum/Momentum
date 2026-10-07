@@ -1,3 +1,4 @@
+import { matchPercent } from "@tor-radar/shared";
 import Link from "next/link";
 import type { OwnMatches } from "../../shared/api/matches.api";
 import styles from "./matched-tors.module.css";
@@ -42,8 +43,8 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
         <ol className={styles.list}>
           {rows.map((row) => (
             <li key={row.id} className={styles.row}>
-              <span className={styles.score} aria-label={`ความเกี่ยวข้อง ${Math.round(row.score * 100)}%`}>
-                {Math.round(row.score * 100)}%
+              <span className={styles.score} aria-label={`ความเกี่ยวข้อง ${matchPercent(row.score)}%`}>
+                {matchPercent(row.score)}%
               </span>
               <div className={styles.body}>
                 <Link href={`/tors/${row.id}`} className={styles.rowTitle}>

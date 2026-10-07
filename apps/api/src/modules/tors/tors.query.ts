@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
+import { MATCH_THRESHOLD } from "@tor-radar/shared";
 import type { SearchConfig } from "../../core/config.js";
 import { BadRequestError } from "../../core/errors.js";
 import { TOR_STATES, type TorState } from "../../lib/tor-state.js";
@@ -29,6 +30,8 @@ export interface SearchFilter {
   /** Inclusive `YYYY-MM-DD` bounds on `announcedAt` — the agency's date, never ingestion time. */
   from?: string;
   to?: string;
+  /** Vendor-only: keep TORs this vendor matches at least this whole percentage. */
+  minMatch?: number;
 }
 
 /**
@@ -105,6 +108,7 @@ export function buildSearchQuerySchema(config: SearchConfig) {
     deadlineTo: isoDate.optional(),
     from: isoDate.optional(),
     to: isoDate.optional(),
+    minMatch: z.coerce.number().int().min(MATCH_THRESHOLD.min).max(MATCH_THRESHOLD.max).optional(),
     cursor: z.string().max(200).optional(),
     pageSize: z
       .string()
@@ -132,6 +136,7 @@ export function parseSearchQuery(query: unknown, config: SearchConfig): SearchRe
       deadlineTo: parsed.deadlineTo,
       from: parsed.from,
       to: parsed.to,
+      minMatch: parsed.minMatch,
     },
     cursor: parsed.cursor ? decodeCursor(parsed.cursor) : null,
     pageSize: parsed.pageSize ?? config.pageSize,

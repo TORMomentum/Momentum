@@ -163,6 +163,9 @@ export function buildApp(config: Config, db: Db): Express {
       service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
       search: config.search,
+      config,
+      profiles: profileRepository,
+      matching: new MatchingRepository(db, config),
     }),
   );
 

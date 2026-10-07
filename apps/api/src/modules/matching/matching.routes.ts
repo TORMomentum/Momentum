@@ -5,6 +5,7 @@ import { UnauthorizedError } from "../../core/errors.js";
 import { ProfileRepository } from "../profile/profile.repository.js";
 import { scoreMatch } from "./match-scorer.js";
 import { MatchingRepository } from "./matching.repository.js";
+import { scoresForAccount } from "./matching.scores.js";
 
 const querySchema = z.object({ page: z.coerce.number().int().nonnegative().default(0) }).strict();
 
@@ -38,18 +39,7 @@ export function buildMatchingRouter(deps: { config: Config; profiles: ProfileRep
    */
   router.get("/me/matches/scores", async (req, res) => {
     if (!req.auth) throw new UnauthorizedError();
-    const profile = await deps.profiles.findByAccountId(req.auth.account._id.toString());
-    if (!profile) {
-      res.json({ scores: {} });
-      return;
-    }
-    const today = new Date().toLocaleDateString("en-CA", { timeZone: deps.config.search.timeZone });
-    const scores: Record<string, number> = {};
-    for (const { record, classification } of await deps.matching.candidatesFor(profile)) {
-      const scored = scoreMatch(profile, record, classification, deps.config, today);
-      if (scored.excluded === null) scores[record._id.toString()] = scored.score;
-    }
-    res.json({ scores });
+    res.json({ scores: await scoresForAccount(deps, req.auth.account._id.toString()) });
   });
 
   return router;

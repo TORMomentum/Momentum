@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MATCH_THRESHOLD, matchPercent } from "@tor-radar/shared";
+import { MatchThreshold } from "../features/search/MatchThreshold";
 import styles from "../features/search/search.module.css";
 import {
   EMPTY_FILTERS,
@@ -77,7 +79,7 @@ function statusBadgeFor(row: TorListItem): Badge {
 function markerBadgesFor(row: TorListItem): Badge[] {
   const markers: Badge[] = [];
   if (typeof row.matchScore === "number") {
-    markers.push({ label: `ตรงกับคุณ ${Math.round(row.matchScore * 100)}%`, className: styles.badgeMatch });
+    markers.push({ label: `ตรงกับคุณ ${matchPercent(row.matchScore)}%`, className: styles.badgeMatch });
   }
   if (row.unverified) {
     markers.push({ label: "⚠ ยังไม่ยืนยันการสกัด", className: styles.badgeUnverified });
@@ -107,7 +109,8 @@ export function SearchView({
   savedIds: string[];
 }) {
   const router = useRouter();
-  const { signedIn, ready } = useViewer();
+  const { signedIn, ready, account } = useViewer();
+  const vendorSignedIn = signedIn && account?.role === "vendor";
   const [pending, startTransition] = useTransition();
   const [allAgencies, setAllAgencies] = useState(false);
   // An agency already filtering the list must stay on screen even when it falls
@@ -150,6 +153,18 @@ export function SearchView({
     }
   }, [committedMin, committedMax]);
 
+  const committedMatch = filters.minMatch ?? MATCH_THRESHOLD.off;
+  const [draftMatch, setDraftMatch] = useState(committedMatch);
+  const lastCommittedMatch = useRef(committedMatch);
+
+  useEffect(() => {
+    // As with the budget: only an outside change (clear all, Back) moves it.
+    if (lastCommittedMatch.current !== committedMatch) {
+      lastCommittedMatch.current = committedMatch;
+      setDraftMatch(committedMatch);
+    }
+  }, [committedMatch]);
+
   /**
    * Pushed, not replaced: every call is a committed choice — a click, Enter, a
    * slider come to rest — so Back undoes the last filter instead of leaving
@@ -186,6 +201,16 @@ export function SearchView({
     // that scheduled it, which are the ones this change applies to.
   }, [draftBudget]);
 
+  useEffect(() => {
+    if (draftMatch === lastCommittedMatch.current) return;
+    const timer = setTimeout(() => {
+      lastCommittedMatch.current = draftMatch;
+      update({ minMatch: draftMatch === MATCH_THRESHOLD.off ? null : draftMatch });
+    }, BUDGET_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+    // Re-armed on the draft alone, as the budget slider is.
+  }, [draftMatch]);
+
   function commitQuery(value: string) {
     const q = value.normalize("NFC").trim();
     if (q === lastCommittedQuery.current) return;
@@ -203,6 +228,8 @@ export function SearchView({
     lastCommittedQuery.current = "";
     lastCommittedBudget.current = { min: floor, max: ceiling };
     setDraftBudget({ min: floor, max: ceiling });
+    lastCommittedMatch.current = MATCH_THRESHOLD.off;
+    setDraftMatch(MATCH_THRESHOLD.off);
     setDraftQuery("");
     navigate(EMPTY_FILTERS);
   }
@@ -245,6 +272,15 @@ export function SearchView({
             ล้างทั้งหมด
           </button>
         </div>
+
+        {vendorSignedIn && (
+          <div className={styles.filterGroup}>
+            <div className={styles.filterGroupTitle}>ตรงกับคุณ</div>
+            {/* In the URL, so paging stays an API query rather than a filter
+                over one page in the browser. */}
+            <MatchThreshold value={draftMatch} onChange={setDraftMatch} />
+          </div>
+        )}
 
         <div className={styles.filterGroup}>
           <div className={styles.filterGroupTitle}>สถานะ</div>

@@ -13,6 +13,8 @@ export interface PublicTorDocumentRecord {
 
 /** A filter the repository can run: the service has already decided what "today" is. */
 export interface SearchCriteria extends Omit<SearchFilter, "open"> {
+  /** Match IDs were computed by the matching module before this database boundary. */
+  matchIds?: ObjectId[];
   /** Required when `state` is set: the five states depend on today's date. */
   today?: string;
   /** Set when only open TORs are wanted: deadlines before this `YYYY-MM-DD` have passed. */
@@ -208,6 +210,10 @@ function buildFilter(criteria: SearchCriteria): Filter<TorDocument> {
     if (criteria.from) range.$gte = new Date(`${criteria.from}T00:00:00Z`);
     if (criteria.to) range.$lt = dayAfter(criteria.to);
     clauses.push({ announcedAt: range });
+  }
+  if (criteria.matchIds) {
+    // The match engine decides IDs; the repository alone adds them to Mongo.
+    clauses.push({ _id: { $in: criteria.matchIds } });
   }
 
   return { $and: clauses };

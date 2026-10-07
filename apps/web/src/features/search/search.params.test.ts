@@ -35,6 +35,7 @@ describe("search URL canonicalisation", () => {
       maxBudget: 6_000_000,
       deadlineFrom: "2026-09-01",
       deadlineTo: "2026-09-30",
+      minMatch: 70,
       cursor: "eyJhIjpudWxsfQ",
     };
 
@@ -53,6 +54,10 @@ describe("search URL canonicalisation", () => {
     expect(filters.deadlineFrom).toBeNull();
     expect(filters.deadlineTo).toBeNull();
     expect(filters.cursor).toBeNull();
+    expect(parseSearchParams({ minMatch: "0" }).minMatch).toBeNull();
+    expect(parseSearchParams({ minMatch: "101" }).minMatch).toBeNull();
+    expect(parseSearchParams({ minMatch: "7.5" }).minMatch).toBeNull();
+    expect(parseSearchParams({ minMatch: "63" }).minMatch).toBe(63);
   });
 
   it("does not count the page position as a filter", () => {
