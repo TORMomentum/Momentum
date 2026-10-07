@@ -6,7 +6,7 @@ import { useState } from "react";
 import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { ChecklistSummaryPanel } from "../features/dashboard/ChecklistSummaryPanel";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
-import { MatchedTorsPanel } from "../features/dashboard/MatchedTorsPanel";
+import { MatchesPanel } from "../features/dashboard/MatchesPanel";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { OwnMatches } from "../shared/api/matches.api";
 import type { DashboardPayload, TorState } from "../shared/api/stats.api";
@@ -149,9 +149,7 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* Signed out (undefined) or unreadable (null): no panel; the public
-          figures below stand on their own. */}
-      {matches && <MatchedTorsPanel matches={matches} />}
+      {matches !== undefined && <MatchesPanel matches={matches} />}
 
       {/* States the fact, and does not claim work is under way. The banner only
           knows the figures are old; whether anything is recalculating them is
