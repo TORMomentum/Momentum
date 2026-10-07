@@ -168,6 +168,10 @@
 
 .resultDeadlineWindow { display: block; font: 500 11px var(--data); color: var(--ink-65); }
 
+.resultDaysLeft { display: block; margin-top: 2px; font: 600 11px var(--body); color: var(--verified); }
+
+.resultDaysLeftSoon { color: var(--danger); }
+
 .resultActions { display: flex; gap: 6px; justify-content: flex-end; }
 
 .actionBtn {

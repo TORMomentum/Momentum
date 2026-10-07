@@ -259,6 +259,10 @@
 
 .deadlineWindow { font: 600 13px var(--data); color: var(--ink); margin: 2px 0 6px; }
 
+.daysLeft { font: 600 13px var(--body); color: var(--verified); margin: 2px 0 6px; }
+
+.daysLeftSoon { color: var(--danger); }
+
 @keyframes detailSkeleton {
   from { opacity: 0.45; }
   to { opacity: 0.9; }
