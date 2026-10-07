@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import type { OwnMatches } from "../shared/api/matches.api";
+import { MatchedTorsPanel } from "../features/dashboard/MatchedTorsPanel";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BudgetPlot } from "../features/dashboard/BudgetPlot";
@@ -49,10 +51,13 @@ export function DashboardView({
   dashboard,
   filters,
   error = false,
+  matches = null,
 }: {
   dashboard?: DashboardPayload;
   filters: DashboardFilters;
   error?: boolean;
+  /** The signed-in vendor's matches; null for a signed-out visitor. */
+  matches?: OwnMatches | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -124,6 +129,8 @@ export function DashboardView({
             : " — ยังไม่เคยคำนวณ"}
         </p>
       )}
+
+      {matches && <MatchedTorsPanel matches={matches} />}
 
       <div className={styles.filters}>
         <FilterDrop

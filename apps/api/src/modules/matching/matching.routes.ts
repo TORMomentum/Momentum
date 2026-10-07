@@ -30,5 +30,27 @@ export function buildMatchingRouter(deps: { config: Config; profiles: ProfileRep
     const start = page * deps.config.matching.pageSize;
     res.json({ items: scored.slice(start, start + deps.config.matching.pageSize), reason: null });
   });
+  /**
+   * Every current match's score, by TOR id, for marking a page of search
+   * results. Search shows twenty rows of the whole corpus, not the vendor's
+   * matches in order, so it needs to look scores up rather than page through
+   * them. Bounded by the candidate cap, so it stays small.
+   */
+  router.get("/me/matches/scores", async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    const profile = await deps.profiles.findByAccountId(req.auth.account._id.toString());
+    if (!profile) {
+      res.json({ scores: {} });
+      return;
+    }
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: deps.config.search.timeZone });
+    const scores: Record<string, number> = {};
+    for (const { record, classification } of await deps.matching.candidatesFor(profile)) {
+      const scored = scoreMatch(profile, record, classification, deps.config, today);
+      if (scored.excluded === null) scores[record._id.toString()] = scored.score;
+    }
+    res.json({ scores });
+  });
+
   return router;
 }
