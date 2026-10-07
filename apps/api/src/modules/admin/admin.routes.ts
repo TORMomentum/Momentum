@@ -24,6 +24,7 @@ export interface AdminRouterDeps {
 const queueQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(200).optional(),
   reason: z.string().min(1).max(64).optional(),
+  view: z.enum(["confidence", "fields"]).optional(),
 });
 
 const reviewFieldNames = [
@@ -71,8 +72,8 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
   router.use(requireKey(deps.adminKeys, "admin"));
 
   router.get("/queue", async (req, res) => {
-    const { limit, reason } = queueQuerySchema.parse(req.query);
-    res.json(await deps.service.queue(limit ?? deps.queuePageSize, reason));
+    const { limit, reason, view } = queueQuerySchema.parse(req.query);
+    res.json(await deps.service.queue(limit ?? deps.queuePageSize, reason, view));
   });
 
   router.get("/overview", async (_req, res) => {

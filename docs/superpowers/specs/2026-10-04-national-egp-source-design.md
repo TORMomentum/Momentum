@@ -38,6 +38,23 @@
 | 10 | Unpacking | An in-repo ZIP reader (no dependency) with caps: entry count, per-entry size, total size, deflate output limited to the declared size, CRC checked. Stored and deflate only; ZIP64 and encrypted entries are refused |
 | 11 | Fetching | Through `safeFetchDocument`, so the scheme, address, redirect, size and timeout rules of spec §5.6 apply to every request |
 
+## 2a. Amendment 2026-10-06: the announcement list is the default way in
+
+The feed application (`EPROCRssFeedWeb`) stopped answering on 2026-10-05 — from this network and,
+tested, from an unrelated overseas one — while the rest of the site stayed up. e-GP's public
+announcement list (`procsearch.sch`, FPRO9965) is served by the site's main application and lists the
+newest announcements of one type nationally, with project number, agency, title, date and budget.
+Its default list and paging need no captcha; only its custom search does, and that is not used.
+
+| # | Decision | Answer |
+|---|---|---|
+| 12 | How projects are found | **The draft-TOR list (type 1) by default**, so a TOR is collected as soon as it is published. `--from invitation` reads the invitation list (type 2); `--from feed` keeps the RSS path |
+| 13 | What a draft-list row imports | **The TOR only.** That package's announcement is the draft; the invitation, and so the deadline, arrives from the invitation list later and links onto the same TOR record, which the identical TOR file dedupes onto |
+| 14 | Source values from the list | Title, project number, **agency and budget** (the feed stated neither), and the row's date as that document's `announcedAt` |
+| 15 | Which file is the TOR | A name starting with TOR first — including e-GP's own TOR form, `tor_<project>_<uuid>.pdf` (digital text) — then a name containing TOR as a word, then the lowest `Attach_TOR_n` (often drawings or annexes), then the one agency-uploaded PDF that is not a standard e-GP file. Two such PDFs are not guessed between |
+
+Paging past the newest 50 rows is not implemented yet.
+
 ## 3. Out of scope, and still open
 
 - **Price documents** (`pB0`, `pB1` from `infoDocPriceestZipHis`). They add line-item reference prices and the allocated budget, but need a new supporting `documentType` and redaction of the committee and price-source names. They stay in the archived package until then.

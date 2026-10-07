@@ -93,6 +93,39 @@ function serviceWith(overrides: Partial<typeof limits> = {}) {
   return { ...parts, service };
 }
 
+describe("IntakeService.submit annexes", () => {
+  const annex = Buffer.from("%PDF-1.7 annex body");
+
+  it("stores each annex as an original and records it on the new document", async () => {
+    const { service, objects, inserted } = serviceWith();
+
+    await service.submit(pdf, { ...source, annexes: [{ bytes: annex, filename: "Attach_TOR_2.pdf" }] });
+
+    expect(objects.size).toBe(2);
+    const context = inserted[0].context as { annexes?: Array<{ filename?: string; contentType: string }> };
+    expect(context.annexes).toEqual([expect.objectContaining({ filename: "Attach_TOR_2.pdf", contentType: "application/pdf" })]);
+  });
+
+  it("leaves out an annex that is not an accepted type, without refusing the document", async () => {
+    const { service, inserted } = serviceWith();
+
+    const result = await service.submit(pdf, { ...source, annexes: [{ bytes: Buffer.from("PK\u0003\u0004 zip"), filename: "boq.xlsx" }] });
+
+    expect(result.duplicate).toBe(false);
+    expect((inserted[0].context as { annexes?: unknown } | undefined)?.annexes).toBeUndefined();
+  });
+
+  it("attaches annexes to a document it already holds", async () => {
+    const { service, attached } = serviceWith();
+    await service.submit(pdf, source);
+
+    const again = await service.submit(pdf, { ...source, annexes: [{ bytes: annex, filename: "Attach_TOR_2.pdf" }] });
+
+    expect(again.duplicate).toBe(true);
+    expect((attached[0].context as { annexes?: unknown[] }).annexes).toHaveLength(1);
+  });
+});
+
 describe("IntakeService.submit", () => {
   it("stores, records, and queues a new document", async () => {
     const { service, enqueued, objects } = serviceWith();

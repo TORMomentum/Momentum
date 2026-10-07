@@ -1,3 +1,4 @@
+import { isTorCategory } from "@tor-radar/shared";
 import type { ConfidenceLevel, ExtractedField, TorFields } from "@tor-radar/shared";
 import type { RawExtraction, RawField } from "../../ports/ai.port.js";
 import { mapQualifications } from "./extraction.taxonomy.js";
@@ -54,8 +55,10 @@ function structurallyOk(name: keyof TorFields, raw: RawExtraction, ctx: GradingC
   switch (name) {
     case "agency":
     case "title":
-    case "category":
       return raw[name].value !== null && String(raw[name].value).trim() !== "";
+    case "category":
+      // Only a category on the closed list can be verified (packages/shared/src/categories.ts).
+      return isTorCategory(raw.category.value);
     case "budget": {
       const v = raw.budget.value;
       return v !== null && v >= ctx.budgetMinThb && v <= ctx.budgetMaxThb && ctx.hasTextLayer;
@@ -69,6 +72,12 @@ function structurallyOk(name: keyof TorFields, raw: RawExtraction, ctx: GradingC
       return raw.status.value !== null;
     case "scopeSummary":
       return (raw.scopeSummary.value ?? "").trim().length >= SCOPE_MIN_CHARS;
+    case "scopeLocation":
+      return ["in_documents", "in_annex_not_provided", "none"].includes(String(raw.scopeLocation?.value));
+    case "scopeItems": {
+      const count = raw.scopeItems?.value;
+      return typeof count === "number" && Number.isInteger(count) && count >= 0;
+    }
     case "qualifications":
       // FR-B-4: usable only if at least one qualification maps to a taxonomy tag.
       return mapQualifications(raw.qualifications.value).length >= 1;
@@ -90,6 +99,8 @@ const RAW_TO_TOR: Record<keyof TorFields, RawKey> = {
   budget: "budget",
   category: "category",
   scopeSummary: "scopeSummary",
+  scopeItems: "scopeItems",
+  scopeLocation: "scopeLocation",
   qualifications: "qualifications",
   deadline: "deadline",
   contact: "contact",
@@ -99,8 +110,8 @@ const RAW_TO_TOR: Record<keyof TorFields, RawKey> = {
 };
 
 /** The RawField for a TorFields key, typed loosely (its own T is not needed here). */
-function rawFor(raw: RawExtraction, name: keyof TorFields): RawField<unknown> {
-  return raw[RAW_TO_TOR[name]] as RawField<unknown>;
+function rawFor(raw: RawExtraction, name: keyof TorFields): RawField<unknown> | undefined {
+  return raw[RAW_TO_TOR[name]] as RawField<unknown> | undefined;
 }
 
 function buildField<T>(rf: RawField<T>, verified: boolean, extra: Partial<ExtractedField<T>> = {}): ExtractedField<T> {
@@ -138,7 +149,7 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
 
   const verifiedOf = (name: keyof TorFields): boolean => {
     if (isKnown(name)) return true;
-    const conf = rawFor(raw, name).confidence;
+    const conf = rawFor(raw, name)?.confidence ?? 0;
     return structOk[name] && conf >= ctx.tHigh;
   };
 
@@ -148,6 +159,8 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
     budget: buildField(raw.budget, verifiedOf("budget"), { currency: "THB" }),
     category: buildField(raw.category, verifiedOf("category")),
     scopeSummary: buildField(raw.scopeSummary, verifiedOf("scopeSummary")),
+    ...(raw.scopeItems ? { scopeItems: buildField(raw.scopeItems, verifiedOf("scopeItems")) } : {}),
+    ...(raw.scopeLocation ? { scopeLocation: buildField(raw.scopeLocation, verifiedOf("scopeLocation")) } : {}),
     qualifications: buildField(raw.qualifications, verifiedOf("qualifications"), {
       tags: mapQualifications(raw.qualifications.value),
     }),
@@ -168,7 +181,7 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
 
   for (const c of CRITICAL) {
     const rf = rawFor(raw, c);
-    if (rf.value === null || rf.confidence < ctx.tLow) sanity.push(`${c}-missing`);
+    if (!rf || rf.value === null || rf.confidence < ctx.tLow) sanity.push(`${c}-missing`);
   }
   if (raw.budget.value !== null && (raw.budget.value < ctx.budgetMinThb || raw.budget.value > ctx.budgetMaxThb)) {
     sanity.push("budget-implausible");
@@ -194,7 +207,9 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
   for (const name of Object.keys(RAW_TO_TOR) as (keyof TorFields)[]) {
     // Copy-through is a model failure; a value the source stated is not one.
     if (isKnown(name)) continue;
-    const r = rawFor(raw, name).raw.trim();
+    // The scope count quotes a heading, which may rightly repeat another field's wording.
+    if (name === "scopeItems" || name === "scopeLocation") continue;
+    const r = rawFor(raw, name)?.raw.trim() ?? "";
     if (r) rawCounts.set(r, (rawCounts.get(r) ?? 0) + 1);
   }
   if ([...rawCounts.values()].some((n) => n >= 3)) sanity.push("copy-through");

@@ -34,6 +34,20 @@
 
 .adminMeta { font: 10px var(--data); color: var(--ink-65); letter-spacing: 0.06em; }
 
+/* The two review lists: low-confidence records, and fields awaiting a person. */
+.adminTabs { display: flex; gap: 4px; }
+
+.adminTab {
+  padding: 5px 10px;
+  border: 1px solid var(--ink-18);
+  border-radius: 999px;
+  font: 600 11px var(--body);
+  color: var(--ink-70);
+  white-space: nowrap;
+}
+
+.adminTabOn { border-color: var(--blue); background: var(--blue-wash); color: var(--blue); }
+
 .adminExitLink { margin-left: auto; white-space: nowrap; font: 11px var(--data); color: var(--blue); }
 
 /* All three column widths are named here. The queue seam, expanded grid and
@@ -128,6 +142,21 @@
 }
 
 .adminDocViewer { flex: 1; min-height: 0; padding: 18px; }
+
+/* TOR | ประกาศเชิญชวน — which original the viewer shows. */
+.adminDocSwitch { display: flex; gap: 4px; }
+
+.adminDocSwitchItem {
+  padding: 3px 10px;
+  border: 1px solid var(--ink-18);
+  border-radius: 999px;
+  background: transparent;
+  font: 600 11px var(--body);
+  color: var(--ink-70);
+  cursor: pointer;
+}
+
+.adminDocSwitchOn { border-color: var(--blue); background: var(--blue-wash); color: var(--blue); }
 
 /* No min-height: the frame takes the pane it is given. A floor here is what
    made the whole page grow a scrollbar instead of the viewer scrolling. */

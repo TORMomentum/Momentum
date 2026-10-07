@@ -1,5 +1,5 @@
 import { MongoClient, type Collection, type Db } from "mongodb";
-import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
+import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
 
@@ -24,6 +24,8 @@ export interface TorDocument {
   documentType?: DocumentType;
   /** The source project this document belongs to — what links a TOR to its invitation. */
   sourceProject?: SourceProject;
+  /** The TOR's other files, stored as originals and read together with it (checklist C3). */
+  annexes?: StoredAnnex[];
   sourceUrl: string | null;
   confidenceLevel?: ConfidenceLevel;
   unverified: boolean;

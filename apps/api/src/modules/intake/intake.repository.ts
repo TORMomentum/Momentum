@@ -38,6 +38,7 @@ function contextFields(context: SourceContext | undefined): Partial<TorDocument>
     fields.announcedAt = context.announcedAt;
     fields.announcedAtOrigin = "source";
   }
+  if (context.annexes && context.annexes.length > 0) fields.annexes = context.annexes;
   return fields;
 }
 

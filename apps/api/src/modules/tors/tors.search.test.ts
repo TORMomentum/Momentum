@@ -347,6 +347,47 @@ describe("GET /tors — what can still be bid on comes first", () => {
     ]);
   });
 
+  it("lists unverified records after every verified one, even one closing sooner", async () => {
+    // NOW is 2026-09-16: the unverified TOR closes first, but is not yet confirmed.
+    const unverifiedClosingFirst = await seed({ deadline: "2026-09-17", confidenceLevel: "medium" });
+    const verifiedClosing = await seed({ deadline: "2026-09-25" });
+    const verifiedOther = await seed({ deadline: "2026-09-01" });
+    const unverifiedOther = await seed({ deadline: null, confidenceLevel: "low" });
+
+    const body = await search("pageSize=10");
+
+    const order = body.items.map((item) => item.id);
+    expect(order.slice(0, 2)).toEqual([verifiedClosing, verifiedOther]);
+    expect(order.slice(2).sort()).toEqual([unverifiedClosingFirst, unverifiedOther].sort());
+    // Listed, not hidden: confidence controls marking, not visibility.
+    expect(body.total).toBe(4);
+  });
+
+  it("walks all three segments by cursor, every record exactly once", async () => {
+    const seeded: string[] = [];
+    for (let i = 0; i < 3; i += 1) seeded.push(await seed({ deadline: `2026-09-2${i}` }));
+    for (let i = 0; i < 3; i += 1) seeded.push(await seed({ announcedAt: `2026-08-1${i}`, deadline: "2026-09-01" }));
+    for (let i = 0; i < 3; i += 1) seeded.push(await seed({ announcedAt: `2026-08-2${i}`, confidenceLevel: "medium" }));
+    seeded.push(await seed({ announcedAt: null, confidenceLevel: "low" }));
+
+    const walked: string[] = [];
+    let cursor: string | null = null;
+    let pages = 0;
+    do {
+      const response = await request(buildTestApp()).get(`/api/v1/tors?pageSize=2${cursor ? `&cursor=${cursor}` : ""}`);
+      expect(response.status).toBe(200);
+      walked.push(...response.body.items.map((item: { id: string }) => item.id));
+      cursor = response.body.nextCursor;
+      pages += 1;
+    } while (cursor && pages < 10);
+
+    expect(pages).toBe(5);
+    expect([...walked].sort()).toEqual([...seeded].sort());
+    expect(new Set(walked).size).toBe(walked.length);
+    // The four unverified records come last.
+    expect(walked.slice(6).sort()).toEqual(seeded.slice(6).sort());
+  });
+
   it("walks both segments by cursor, every record exactly once, across the boundary", async () => {
     const seeded: string[] = [];
     for (let i = 0; i < 5; i += 1) seeded.push(await seed({ deadline: `2026-09-${20 + (i % 2)}` }));

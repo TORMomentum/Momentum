@@ -2,10 +2,14 @@
 // through here, so the upstream's quirks — a Windows-874 feed, ZIP packages, its response envelope —
 // stay in one file. Every request goes through safeFetchDocument (spec §5.6).
 import { safeFetchDocument } from "../../lib/safe-fetch.js";
+import { parseAnnouncementList, type ListItem } from "./announcements.js";
 import {
   FEED_URL,
   MAX_ATTEMPTS,
   PROJECT_SEARCH_URL,
+  LIST_TYPES,
+  SITE_BASE,
+  type ListKind,
   MAX_PACKAGE_BYTES,
   REQUEST_TIMEOUT_MS,
   RETRY_DELAY_MS,
@@ -164,4 +168,19 @@ export function buildProjectSearchUrl(projectId: string): string {
 
 export async function downloadPackage(fileId: string): Promise<Buffer> {
   return getBytes(packageUrl(fileId), MAX_PACKAGE_BYTES);
+}
+
+/**
+ * The newest announcements of one kind on e-GP's public list — draft TORs or invitations to bid —
+ * up to the 50 the list's first page holds. The page is TIS-620; windows-874 is its superset.
+ */
+export async function fetchAnnouncementList(kind: ListKind): Promise<ListItem[]> {
+  const url = new URL("/egp2procmainWeb/procsearch.sch", SITE_BASE);
+  url.searchParams.set("homeflag", "A");
+  url.searchParams.set("proc_id", "FPRO9965");
+  url.searchParams.set("servlet", "FPRO9965Servlet");
+  url.searchParams.set("methodId", "");
+  url.searchParams.set("announceType", LIST_TYPES[kind]);
+  const bytes = await getBytes(url.toString(), JSON_MAX_BYTES * 5);
+  return parseAnnouncementList(new TextDecoder("windows-874").decode(bytes));
 }

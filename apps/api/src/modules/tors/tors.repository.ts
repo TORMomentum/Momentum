@@ -223,6 +223,11 @@ function closingOn(today: string): Filter<TorDocument> {
   return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
 }
 
+/** The first two segments hold only records whose critical fields are verified (SRS §4.2.1). */
+const VERIFIED: Filter<TorDocument> = { unverified: { $ne: true } };
+/** The last segment: records marked "unverified extraction" — listed, after everything confirmed. */
+const UNVERIFIED: Filter<TorDocument> = { unverified: true };
+
 /** Resumes after `cursor` in `(deadline asc, _id asc)`. */
 function afterClosing(cursor: Extract<SearchCursor, { segment: "closing" }>): Filter<TorDocument> {
   return {
@@ -237,7 +242,7 @@ function afterClosing(cursor: Extract<SearchCursor, { segment: "closing" }>): Fi
  * Resumes after `cursor` in `(announcedAt desc, _id desc)`. A missing
  * `announcedAt` sorts below every date, so undated records form the tail.
  */
-function afterCursor(cursor: Extract<SearchCursor, { segment: "rest" }>): Filter<TorDocument> {
+function afterCursor(cursor: Extract<SearchCursor, { segment: "rest" | "unverified" }>): Filter<TorDocument> {
   if (cursor.announcedAt === null) {
     return { announcedAt: null, _id: { $lt: cursor.id } };
   }
@@ -251,10 +256,10 @@ function afterCursor(cursor: Extract<SearchCursor, { segment: "rest" }>): Filter
 }
 
 /** The position just after `doc`, in whichever segment it was read from. */
-function cursorAt(doc: WithId<TorDocument>, closing: boolean): SearchCursor {
-  return closing
+function cursorAt(doc: WithId<TorDocument>, segment: SearchCursor["segment"]): SearchCursor {
+  return segment === "closing"
     ? { segment: "closing", deadline: String(doc.fields?.deadline?.value), id: doc._id }
-    : { segment: "rest", announcedAt: doc.announcedAt ?? null, id: doc._id };
+    : { segment, announcedAt: doc.announcedAt ?? null, id: doc._id };
 }
 
 /** The only public-TOR code that touches MongoDB. */
@@ -273,10 +278,10 @@ export class TorsRepository {
     const wanted = pageSize + 1;
 
     const [closingDocs, total, latest] = await Promise.all([
-      closing && cursor?.segment !== "rest"
+      closing && (cursor === null || cursor.segment === "closing")
         ? tors(this.db)
             .find(
-              { $and: [filter, closing, ...(cursor?.segment === "closing" ? [afterClosing(cursor)] : [])] },
+              { $and: [filter, VERIFIED, closing, ...(cursor?.segment === "closing" ? [afterClosing(cursor)] : [])] },
               { sort: { "fields.deadline.value": 1, _id: 1 }, limit: wanted, projection: LIST_PROJECTION },
             )
             .toArray()
@@ -286,12 +291,13 @@ export class TorsRepository {
     ]);
 
     const restDocs =
-      closingDocs.length < wanted
+      closingDocs.length < wanted && cursor?.segment !== "unverified"
         ? await tors(this.db)
             .find(
               {
                 $and: [
                   filter,
+                  VERIFIED,
                   ...(closing ? [{ $nor: [closing] }] : []),
                   ...(cursor?.segment === "rest" ? [afterCursor(cursor)] : []),
                 ],
@@ -301,7 +307,21 @@ export class TorsRepository {
             .toArray()
         : [];
 
-    const docs = [...closingDocs, ...restDocs];
+    const unverifiedDocs =
+      closingDocs.length + restDocs.length < wanted
+        ? await tors(this.db)
+            .find(
+              { $and: [filter, UNVERIFIED, ...(cursor?.segment === "unverified" ? [afterCursor(cursor)] : [])] },
+              {
+                sort: { announcedAt: -1, _id: -1 },
+                limit: wanted - closingDocs.length - restDocs.length,
+                projection: LIST_PROJECTION,
+              },
+            )
+            .toArray()
+        : [];
+
+    const docs = [...closingDocs, ...restDocs, ...unverifiedDocs];
     const page = docs.slice(0, pageSize);
     const last = page.at(-1);
 
@@ -328,7 +348,10 @@ export class TorsRepository {
         restricted: doc.access?.restricted ?? true,
         state: doc.pipeline?.state ?? "",
       })),
-      next: docs.length > pageSize && last ? cursorAt(last, closingDocs.includes(last)) : null,
+      next:
+        docs.length > pageSize && last
+          ? cursorAt(last, closingDocs.includes(last) ? "closing" : restDocs.includes(last) ? "rest" : "unverified")
+          : null,
       total,
       lastUpdatedAt: latest?.createdAt ?? null,
     };
