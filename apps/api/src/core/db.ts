@@ -2,6 +2,7 @@ import { MongoClient, type Collection, type Db } from "mongodb";
 import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
+import type { TorClassification } from "../modules/matching/tor-classifier.js";
 
 export interface TorDocument {
   contentHash: string;
@@ -211,6 +212,14 @@ export interface VendorProfileDocument {
   updatedAt: Date;
 }
 
+/** Cached derived data; source TOR documents remain immutable after extraction. */
+export interface TorClassificationDocument {
+  torId: string;
+  classification: TorClassification;
+  mapperVersion: string;
+  updatedAt: Date;
+}
+
 let client: MongoClient | null = null;
 
 export async function connect(mongoUrl: string): Promise<Db> {
@@ -272,6 +281,10 @@ export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
 }
 
+export function torClassifications(db: Db): Collection<TorClassificationDocument> {
+  return db.collection<TorClassificationDocument>("tor_classifications");
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -283,6 +296,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
   await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
+  await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
+  await torClassifications(db).createIndex({ "classification.coarse": 1, updatedAt: -1 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

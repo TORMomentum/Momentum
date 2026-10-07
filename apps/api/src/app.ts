@@ -27,6 +27,8 @@ import { ProfileRepository } from "./modules/profile/profile.repository.js";
 import { buildProfileRouter } from "./modules/profile/profile.routes.js";
 import { BookmarksRepository } from "./modules/bookmarks/bookmarks.repository.js";
 import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
+import { MatchingRepository } from "./modules/matching/matching.repository.js";
+import { buildMatchingRouter } from "./modules/matching/matching.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -65,10 +67,12 @@ export function buildApp(config: Config, db: Db): Express {
   // exist, which no API-level test could see.
   const profileRouter = buildProfileRouter({ config, profiles: new ProfileRepository(db) });
   const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db) });
+  const matchingRouter = buildMatchingRouter({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config) });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);
     app.use(prefix, bookmarksRouter);
+    app.use(prefix, matchingRouter);
   }
 
   const service = new IntakeService(
