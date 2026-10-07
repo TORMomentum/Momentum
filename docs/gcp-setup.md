@@ -235,9 +235,11 @@ That last step exists because `gcloud run services replace` only ever applies
 YAML — it's a separate setting on the service resource, which every `replace` above silently
 drops. Left alone, every deploy would quietly turn `web` back into IAM-only and lock out
 anyone without an explicit `run.invoker` grant (found live: a deploy re-opened exactly this
-gap minutes after IAP had been enabled and verified working). The workflow re-enables it and
-re-grants the IAP service agent's own invoker binding every run — both calls are idempotent,
-safe to repeat against a service that's already correctly configured.
+gap minutes after IAP had been enabled and verified working). `gcloud run services update
+--iap` re-enables it and sets up the IAP service agent's own invoker binding in the same call
+(no separate `add-iam-policy-binding` needed — confirmed live by its own "Setting IAP service
+agent ... done" output); idempotent, safe to repeat against a service that's already
+correctly configured.
 
 IAP itself — the OAuth brand/consent screen, and who's allowed in (currently `domain:ku.th`)
 — is a one-time, per-project setup done once by hand in **Cloud Run → tor-radar-web →
