@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ChecklistSummary } from "@tor-radar/shared";
 import type { DashboardFilters } from "../lib/dashboard-filters";
+import { identityToken } from "./api-client";
 
 export interface DashboardVerdict {
   kind: "anomaly" | "normal" | "not-evaluated";
@@ -42,9 +43,17 @@ export async function fetchDashboard(filters: DashboardFilters = {}): Promise<Da
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) if (value !== undefined) query.set(key, String(value));
   const suffix = query.size ? `?${query}` : "";
-  const response = await fetch(`${apiBaseUrl()}/api/v1/stats/dashboard${suffix}`, { cache: "no-store" }).catch((error: unknown) => {
-    throw new StatsApiUnavailable(String(error));
-  });
+  const base = apiBaseUrl();
+  const response = await identityToken(base)
+    .then((token) =>
+      fetch(`${base}/api/v1/stats/dashboard${suffix}`, {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }),
+    )
+    .catch((error: unknown) => {
+      throw new StatsApiUnavailable(String(error));
+    });
   if (!response.ok) throw new StatsApiFailed(`GET /stats/dashboard → ${response.status}`);
   return response.json() as Promise<DashboardPayload>;
 }

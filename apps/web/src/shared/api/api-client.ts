@@ -24,11 +24,36 @@ function apiBaseUrl(): string {
   return value;
 }
 
+/**
+ * api stays IAM-restricted even once web sits behind IAP for end users — a
+ * plain fetch() carries no proof of identity, so Cloud Run's own ingress
+ * check would 403 it regardless of IAM bindings. K_SERVICE is a Cloud Run
+ * signal, never set locally, so Compose keeps calling api with no header at
+ * all, exactly as before.
+ *
+ * ponytail: refetched per request rather than cached against its ~1h expiry
+ * — the metadata server call is local to the instance, and traffic here is
+ * tens of concurrent users (NFR-S4), not enough to make that cost real.
+ */
+export async function identityToken(audience: string): Promise<string | null> {
+  if (!process.env.K_SERVICE) return null;
+  const url = `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}`;
+  const response = await fetch(url, { headers: { "Metadata-Flavor": "Google" } });
+  if (!response.ok) throw new ApiUnavailable(`identity token request returned ${response.status}`);
+  return response.text();
+}
+
 export async function apiRequest(path: string, init: RequestInit = {}, sessionId?: string): Promise<Response> {
   try {
-    return await fetch(`${apiBaseUrl()}${path}`, {
+    const base = apiBaseUrl();
+    const token = await identityToken(base);
+    return await fetch(`${base}${path}`, {
       ...init, cache: "no-store", signal: AbortSignal.timeout(timeoutMs()),
-      headers: { ...(init.headers ?? {}), ...(sessionId ? { "x-session-id": sessionId } : {}) },
+      headers: {
+        ...(init.headers ?? {}),
+        ...(sessionId ? { "x-session-id": sessionId } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
   } catch (error) {
     throw new ApiUnavailable(`${init.method ?? "GET"} ${path} failed: ${(error as Error).message}`);

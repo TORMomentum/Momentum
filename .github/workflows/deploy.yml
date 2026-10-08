@@ -56,6 +56,11 @@ jobs:
         run: |
           API_SERVICE_URL="https://placeholder.invalid"
           export API_SERVICE_URL
+          # web's own APP_ORIGIN (app/api/auth/[...path]/route.ts's same-origin check)
+          # isn't known until this pass creates the service — the third pass below
+          # redeploys with the real value once it exists.
+          APP_ORIGIN="https://placeholder.invalid"
+          export APP_ORIGIN
           envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
           gcloud run services replace /tmp/web.yaml --region "$REGION"
 
@@ -74,5 +79,21 @@ jobs:
         run: |
           API_SERVICE_URL=$(gcloud run services describe tor-radar-api --region "$REGION" --format='value(status.url)')
           export API_SERVICE_URL
+          # web's URL is stable across revisions once the first pass creates it, so
+          # this is the real value from here on, not another placeholder.
+          APP_ORIGIN=$(gcloud run services describe tor-radar-web --region "$REGION" --format='value(status.url)')
+          export APP_ORIGIN
           envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
           gcloud run services replace /tmp/web.yaml --region "$REGION"
+
+      # `services replace` only ever applies deploy/cloudrun/web.yaml's own spec, and IAP
+      # enablement isn't expressible in that Knative YAML — it's a separate setting on the
+      # service resource. Every replace above therefore silently drops it, so it has to be
+      # reasserted after each deploy, not configured once by hand. --iap sets up the IAP
+      # service agent's own invoker binding itself (confirmed live: "Setting IAP service
+      # agent ... done" in its own output) — no separate add-iam-policy-binding call needed,
+      # and that extra call only cost a dependency on an API this project never enabled
+      # (cloudresourcemanager.googleapis.com, to look up the project number). Idempotent:
+      # safe to repeat against a service that's already IAP-enabled.
+      - name: Re-assert IAP on web (services replace doesn't carry it)
+        run: gcloud run services update tor-radar-web --region "$REGION" --iap

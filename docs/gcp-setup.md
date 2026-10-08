@@ -223,24 +223,29 @@ Repo → **Settings → Secrets and variables → Actions**.
 
 Actions tab → **Deploy to Cloud Run** → **Run workflow**, type `deploy` to confirm. It
 builds and pushes both images, then deploys in three passes because `web` and `api` each
-need the other's URL: `web` first with a placeholder `API_BASE_URL` (just to make the
-service exist and get a real URL), then `api` and `worker` with `APP_ORIGIN` set to that
-URL, then `web` again with the real `API_BASE_URL` now that `api` exists
+need the other's URL: `web` first with placeholder `API_BASE_URL`/`APP_ORIGIN` values (just
+to make the service exist and get a real URL), then `api` and `worker` with `APP_ORIGIN` set
+to that URL, then `web` again with the real `API_BASE_URL` now that `api` exists and its own
+real `APP_ORIGIN` (`app/api/auth/[...path]/route.ts` needs it too, for the same-origin check
+on register/login), then re-asserts Identity-Aware Proxy on `web`
 (`.github/workflows/deploy.yml`).
 
-Every service deploys with `--no-allow-unauthenticated` — nothing is public yet (that
-switch is a later sprint's decision). After the first deploy, grant the reviewers who need
-to see it:
+That last step exists because `gcloud run services replace` only ever applies
+`deploy/cloudrun/web.yaml`'s own spec, and IAP enablement isn't expressible in that Knative
+YAML — it's a separate setting on the service resource, which every `replace` above silently
+drops. Left alone, every deploy would quietly turn `web` back into IAM-only and lock out
+anyone without an explicit `run.invoker` grant (found live: a deploy re-opened exactly this
+gap minutes after IAP had been enabled and verified working). `gcloud run services update
+--iap` re-enables it and sets up the IAP service agent's own invoker binding in the same call
+(no separate `add-iam-policy-binding` needed — confirmed live by its own "Setting IAP service
+agent ... done" output); idempotent, safe to repeat against a service that's already
+correctly configured.
 
-1. **Cloud Run** → click into `tor-radar-web` (repeat for `tor-radar-api` if a reviewer
-   needs the API directly)
-2. **Permissions** tab (or **Security** tab, depending on console version) → **Add
-   principal**
-3. New principal: the reviewer's Google account email
-4. Role: **Cloud Run Invoker** → **Save**
-
-This binding persists across redeploys — it's a one-time step per reviewer, not part of
-the workflow.
+IAP itself — the OAuth brand/consent screen, and who's allowed in (currently `domain:ku.th`)
+— is a one-time, per-project setup done once by hand in **Cloud Run → tor-radar-web →
+Security tab**, not part of this workflow; redeploys only need to keep the toggle on, not
+recreate it. `tor-radar-api` stays IAM-only, reached by `web` through the identity-token path
+in `apps/web/src/shared/api/api-client.ts`, not by a browser directly.
 
 ### What goes where
 

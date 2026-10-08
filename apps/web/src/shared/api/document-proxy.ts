@@ -1,5 +1,7 @@
 import "server-only";
 
+import { identityToken } from "./api-client";
+
 /** Headers the browser may see from the API's document response (spec §5.3). */
 const FORWARDED = [
   "content-type",
@@ -30,11 +32,14 @@ export async function proxyDocument(
   extraHeaders: Record<string, string> = {},
 ): Promise<Response> {
   const incoming = new URL(request.url);
-  const target = `${apiBaseUrl()}/api/v1${apiPath}${incoming.search}`;
+  const base = apiBaseUrl();
+  const target = `${base}/api/v1${apiPath}${incoming.search}`;
+  const token = await identityToken(base);
 
   const upstream = await fetch(target, {
     method: request.method,
     headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...extraHeaders,
       ...(request.headers.get("range") ? { range: request.headers.get("range") as string } : {}),
     },
