@@ -52,7 +52,7 @@ describe("MatchingExtras", () => {
     click("+ เพิ่มผลงาน");
     expect(container.textContent).toContain("ก่อสร้างถนน คสล. หมู่ 5");
 
-    const road = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    const road = [...container.querySelectorAll("button")].find((button) => button.textContent === "ทาง")!;
     act(() => road.click());
     // A ticked branch asks for its class.
     expect(container.querySelector('select[aria-label="ชั้นทะเบียน งานก่อสร้างทาง"]')).not.toBeNull();

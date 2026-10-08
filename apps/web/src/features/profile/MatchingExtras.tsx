@@ -183,24 +183,40 @@ export function MatchingExtras({
         งานนั้นจะยังแสดง แต่คะแนนจะลดลงพร้อมบอกเหตุผล
       </p>
 
-      <div className={styles.branchList} role="group" aria-label="ขึ้นทะเบียนกรมบัญชีกลาง">
+      {/* Pills, like every other choice on this profile. A branch also needs its
+          ชั้น, so each ticked one gets a picker on a line of its own below. */}
+      <p className={styles.subheading}>ขึ้นทะเบียนกรมบัญชีกลาง — งานก่อสร้างสาขา</p>
+      <div className={profile.skillRow} role="group" aria-label="ขึ้นทะเบียนกรมบัญชีกลาง">
         {CGD_BRANCHES.map((branch) => {
-          const held = heldBranch(branch.id);
+          const on = Boolean(heldBranch(branch.id));
           return (
-            <div key={branch.id} className={styles.branchRow}>
-              <label className={styles.branchLabel}>
-                <input type="checkbox" checked={Boolean(held)} onChange={() => toggleBranch(branch.id)} />
-                {branch.th}
-              </label>
-              {held && (
+            <button
+              type="button"
+              key={branch.id}
+              aria-pressed={on}
+              className={`${profile.skillPill} ${on ? profile.skillPillOn : ""}`}
+              onClick={() => toggleBranch(branch.id)}
+            >
+              {branch.th.replace(/^งานก่อสร้าง/, "")}
+            </button>
+          );
+        })}
+      </div>
+      {certs.cgd.length > 0 && (
+        <div className={styles.gradeList}>
+          {certs.cgd.map((entry) => {
+            const name = CGD_BRANCHES.find((branch) => branch.id === entry.branch)?.th ?? entry.branch;
+            return (
+              <label key={entry.branch} className={styles.gradeRow}>
+                <span>{name}</span>
                 <select
                   className={styles.grade}
-                  aria-label={`ชั้นทะเบียน ${branch.th}`}
-                  value={held.grade}
+                  aria-label={`ชั้นทะเบียน ${name}`}
+                  value={entry.grade}
                   onChange={(event) =>
                     change(setCerts, {
                       ...certs,
-                      cgd: certs.cgd.map((entry) => (entry.branch === branch.id ? { ...entry, grade: Number(event.target.value) } : entry)),
+                      cgd: certs.cgd.map((item) => (item.branch === entry.branch ? { ...item, grade: Number(event.target.value) } : item)),
                     })
                   }
                 >
@@ -210,12 +226,13 @@ export function MatchingExtras({
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </label>
+            );
+          })}
+        </div>
+      )}
 
+      <p className={styles.subheading}>การรับรองอื่น</p>
       <div className={profile.skillRow} role="group" aria-label="การรับรองอื่น">
         {CERTIFICATIONS.map((item) => {
           const on = certs.tags.includes(item.id);
