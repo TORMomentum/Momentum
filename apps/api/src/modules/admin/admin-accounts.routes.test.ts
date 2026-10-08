@@ -204,4 +204,24 @@ describe("admin vendor accounts", () => {
     expect(matchSends).toEqual([id]);
     expect(await adminAudit(db).findOne({ accountId: id, action: "match-email-sent" })).toMatchObject({ detail: "3 รายการ" });
   });
+
+  it("reports what vendors typed under อื่นๆ, most common first, counting each vendor once and never naming them", async () => {
+    const profile = (accountId: string, otherCategories: string[], other: string[] = []) =>
+      vendorProfiles(db).insertOne({ accountId, categories: [], areas: ["thailand"], otherCategories, budget: null, certifications: { cgd: [], tags: [], other }, taxonomyVersion: "test", updatedAt: new Date() });
+    await profile("a", ["ติดตั้งระบบเสียง", "CCTV"], ["ใบอนุญาตประกอบกิจการ"]);
+    await profile("b", [" ติดตั้งระบบเสียง ", "cctv", "cctv"]);
+    await profile("c", ["ติดตั้งระบบเสียง"]);
+
+    const { app } = buildTestApp();
+    const response = await request(app).get("/api/v1/admin/reports/other-terms").set(auth);
+
+    expect(response.status).toBe(200);
+    expect(response.body.work).toEqual([
+      { text: "ติดตั้งระบบเสียง", vendors: 3 },
+      { text: expect.stringMatching(/^cctv$/i), vendors: 2 },
+    ]);
+    expect(response.body.certifications).toEqual([{ text: "ใบอนุญาตประกอบกิจการ", vendors: 1 }]);
+    expect(JSON.stringify(response.body)).not.toMatch(/"a"|"b"|"c"|accountId/);
+  });
 });
+

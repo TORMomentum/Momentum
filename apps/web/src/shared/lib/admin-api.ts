@@ -192,6 +192,17 @@ export interface AdminEvent {
   at: string;
 }
 
+export interface AdminOtherTerms {
+  /** Work vendors do that the taxonomy has no node for. */
+  work: Array<{ text: string; vendors: number }>;
+  /** Certifications vendors hold outside the listed ones. */
+  certifications: Array<{ text: string; vendors: number }>;
+}
+
+export function fetchOtherTerms(): Promise<AdminOtherTerms> {
+  return call<AdminOtherTerms>("/admin/reports/other-terms");
+}
+
 export function fetchOverview(): Promise<AdminOverview> {
   return call<AdminOverview>("/admin/overview");
 }

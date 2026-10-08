@@ -29,6 +29,10 @@ export function buildAdminAccountsRouter(deps: AdminAccountsRouterDeps): Router 
 
   router.use(requireKey(deps.adminKeys, "admin"));
 
+  router.get("/reports/other-terms", async (_req, res) => {
+    res.json(await deps.service.otherTermsReport(deps.pageSize));
+  });
+
   router.get("/accounts", async (req, res) => {
     const { q, page } = listSchema.parse(req.query);
     res.json(await deps.service.list(q, page, deps.pageSize));

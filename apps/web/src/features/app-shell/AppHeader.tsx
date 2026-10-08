@@ -24,6 +24,7 @@ const ADMIN_TABS = [
   { href: "/admin/review", label: "คิวตรวจสอบ" },
   { href: "/admin/tors", label: "TOR ทั้งหมด" },
   { href: "/admin/vendors", label: "ผู้ใช้" },
+  { href: "/admin/terms", label: "คำที่ผู้ใช้เพิ่มเอง" },
   { href: "/admin/upload", label: "อัปโหลดเอกสาร" },
   { href: "/admin/log", label: "บันทึกกิจกรรม" },
 ];

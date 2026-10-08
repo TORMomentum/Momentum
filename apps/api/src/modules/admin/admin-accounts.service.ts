@@ -102,4 +102,13 @@ export class AdminAccountsService {
     await this.deps.repo.audit({ accountId, action: "match-email-sent", actor, detail: `${result.sent} รายการ` });
     return result;
   }
+
+  /** The "อื่นๆ" report: what vendors had to type in because no option fitted. */
+  async otherTermsReport(limit: number) {
+    const [work, certifications] = await Promise.all([
+      this.deps.repo.otherTerms("otherCategories", limit),
+      this.deps.repo.otherTerms("certifications.other", limit),
+    ]);
+    return { work, certifications };
+  }
 }
