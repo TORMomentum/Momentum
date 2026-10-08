@@ -19,7 +19,7 @@ import { AdminAccountsService } from "./admin-accounts.service.js";
 
 const config = loadConfig(process.env);
 const adminKey = config.adminApiKeys[0]!;
-const auth = { Authorization: `Bearer ${adminKey}` };
+const auth = { "x-api-key": adminKey };
 
 let db: Db;
 let sent: MailMessage[] = [];

@@ -327,7 +327,7 @@ describe("admin budget correction route", () => {
 });
 
 describe("admin all-TORs list", () => {
-  const list = (query: string) => request(buildTestApp()).get(`/api/v1/admin/tors${query}`).set("Authorization", `Bearer ${adminKey}`);
+  const list = (query: string) => request(buildTestApp()).get(`/api/v1/admin/tors${query}`).set("x-api-key", adminKey);
 
   it("lists every record, published or taken down, newest first, invitations only when asked", async () => {
     const queued = await seedQueued();
@@ -363,7 +363,7 @@ describe("admin takedown and restore", () => {
   it("restores a taken-down TOR to the public, logging both, and keeps the original", async () => {
     const id = await seedFieldsToConfirm();
     const app = buildTestApp();
-    const auth = { Authorization: `Bearer ${adminKey}` };
+    const auth = { "x-api-key": adminKey };
 
     await request(app).post(`/api/v1/admin/tors/${id}/reject`).set(auth).send({ reason: "ไม่ใช่เอกสาร TOR" }).expect(200);
     expect((await request(app).get(`/api/v1/admin/tors/${id}`).set(auth)).body).toMatchObject({ restricted: true, restrictedReason: "ไม่ใช่เอกสาร TOR" });
@@ -379,7 +379,7 @@ describe("admin takedown and restore", () => {
   it("answers 404 for an unknown record", async () => {
     const response = await request(buildTestApp())
       .post(`/api/v1/admin/tors/${new ObjectId().toString()}/restore`)
-      .set("Authorization", `Bearer ${adminKey}`);
+      .set("x-api-key", adminKey);
     expect(response.status).toBe(404);
   });
 });
