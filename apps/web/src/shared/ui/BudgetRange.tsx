@@ -30,6 +30,9 @@ export function BudgetRange({
   unit = "baht",
   tone = "blue",
   stacked = false,
+  single = false,
+  floorLabel,
+  ceilingLabel,
 }: {
   min: number;
   max: number;
@@ -44,6 +47,14 @@ export function BudgetRange({
   tone?: "blue" | "match";
   /** One labelled amount per row, for a column too narrow for a long figure beside another. */
   stacked?: boolean;
+  /**
+   * One handle, for a lower bound alone (a minimum score). `max` stays at the
+   * ceiling and the fill runs from the handle up: "from here and above".
+   */
+  single?: boolean;
+  /** End labels, when the bare figures need saying what they mean. */
+  floorLabel?: string;
+  ceilingLabel?: string;
 }) {
   // The SVG filter is referenced by id, so two sliders on one page must not
   // share one.
@@ -81,7 +92,8 @@ export function BudgetRange({
     if (box.width <= 0) return;
     const ratio = Math.min(Math.max((event.clientX - box.left) / box.width, 0), 1);
     const value = clamp(floor + Math.round((ratio * span) / step) * step);
-    if (value <= min) onChange({ min: value, max });
+    if (single) onChange({ min: value, max: ceiling });
+    else if (value <= min) onChange({ min: value, max });
     else if (value >= max) onChange({ min, max: value });
     else if (value - min <= max - value) onChange({ min: value, max });
     else onChange({ min, max: value });
@@ -89,7 +101,11 @@ export function BudgetRange({
 
   return (
     <div className={`${styles.root} ${tone === "match" ? styles.toneMatch : ""}`}>
-      {stacked ? (
+      {single ? (
+        <div className={`${styles.amounts} ${styles.amountsSingle}`}>
+          <AmountBox value={min} unit={unit} label={minLabel} onCommit={(next) => onChange({ min: clamp(next), max: ceiling })} />
+        </div>
+      ) : stacked ? (
         // A narrow column: one amount per row, labelled as the date range
         // filter beside it is, so a long figure always has the full width.
         <div className={styles.amountsStacked}>
@@ -165,19 +181,23 @@ export function BudgetRange({
             className={styles.sliderBall}
             style={{ left: `${minPct}%`, width: minBall, height: minBall }}
           />
-          <div
-            className={`${styles.sliderBall} ${styles.sliderBallMax}`}
-            style={{ right: `${maxPct}%`, width: maxBall, height: maxBall }}
-          />
+          {!single && (
+            <div
+              className={`${styles.sliderBall} ${styles.sliderBallMax}`}
+              style={{ right: `${maxPct}%`, width: maxBall, height: maxBall }}
+            />
+          )}
         </div>
         <div
           className={styles.sliderHole}
           style={{ left: `${minPct}%`, width: minHole, height: minHole }}
         />
-        <div
-          className={`${styles.sliderHole} ${styles.sliderHoleMax}`}
-          style={{ right: `${maxPct}%`, width: maxHole, height: maxHole }}
-        />
+        {!single && (
+          <div
+            className={`${styles.sliderHole} ${styles.sliderHoleMax}`}
+            style={{ right: `${maxPct}%`, width: maxHole, height: maxHole }}
+          />
+        )}
         <input
           type="range"
           className={`${styles.rangeInput} ${minOnTop ? styles.rangeInputTop : ""}`}
@@ -192,24 +212,26 @@ export function BudgetRange({
           onTouchEnd={() => setHoverMin(false)}
           aria-label={minLabel}
         />
-        <input
-          type="range"
-          className={styles.rangeInput}
-          min={floor}
-          max={ceiling}
-          step={step}
-          value={max}
-          onChange={(e) => onChange({ min, max: Math.max(Number(e.target.value), min) })}
-          onMouseEnter={() => setHoverMax(true)}
-          onMouseLeave={() => setHoverMax(false)}
-          onTouchStart={() => setHoverMax(true)}
-          onTouchEnd={() => setHoverMax(false)}
-          aria-label={maxLabel}
-        />
+        {!single && (
+          <input
+            type="range"
+            className={styles.rangeInput}
+            min={floor}
+            max={ceiling}
+            step={step}
+            value={max}
+            onChange={(e) => onChange({ min, max: Math.max(Number(e.target.value), min) })}
+            onMouseEnter={() => setHoverMax(true)}
+            onMouseLeave={() => setHoverMax(false)}
+            onTouchStart={() => setHoverMax(true)}
+            onTouchEnd={() => setHoverMax(false)}
+            aria-label={maxLabel}
+          />
+        )}
       </div>
       <div className={styles.sliderLabels}>
-        <span>{UNITS[unit].short(floor)}</span>
-        <span>{UNITS[unit].short(ceiling)}</span>
+        <span>{floorLabel ?? UNITS[unit].short(floor)}</span>
+        <span>{ceilingLabel ?? UNITS[unit].short(ceiling)}</span>
       </div>
     </div>
   );

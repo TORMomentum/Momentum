@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { NOTIFY_MIN_MATCH } from "@tor-radar/shared";
 import { randomUUID } from "node:crypto";
 import { CERTIFICATIONS, CGD_BRANCHES, CGD_GRADES, TAXONOMY_VERSION, WHOLE_COUNTRY_AREA, WORK_CATEGORIES, WORK_CATEGORY_LEAVES, PROVINCES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
@@ -32,7 +33,7 @@ export const profileSchema = z.object({
    */
   notify: z.object({
     preset: z.enum(["all", "daily", "high", "off"]),
-    minMatch: z.number().int().min(50).max(95),
+    minMatch: z.number().int().min(NOTIFY_MIN_MATCH.floor).max(NOTIFY_MIN_MATCH.ceiling),
     leadDays: z.number().int().min(1).max(30),
     deadlineReminder: z.boolean(),
     anomalyAlert: z.boolean(),

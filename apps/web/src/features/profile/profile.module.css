@@ -408,7 +408,6 @@
 
 .factActions { display: flex; gap: 8px; }
 
-.matchRangeInput { width: 100%; cursor: pointer; accent-color: var(--blue); }
 
 .trackLabelRow { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
 
@@ -542,29 +541,9 @@
 
 .advancedRowValue { font: 600 11px var(--data); color: var(--blue); }
 
-.advancedSliderLabels { display: flex; justify-content: space-between; font: 10px var(--data); color: var(--ink-65); }
 
 .leadGroupTitle { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
 
-.leadGroup {
-  display: flex;
-  border: 1px solid rgba(18, 35, 60, 0.35);
-  border-radius: 6px;
-  overflow: hidden;
-  width: fit-content;
-}
-
-.leadOption {
-  white-space: nowrap;
-  font: 600 11.5px var(--body);
-  padding: 8px 15px;
-  cursor: pointer;
-  background: transparent;
-  color: rgba(18, 35, 60, 0.75);
-  border: 0;
-}
-
-.leadOptionOn { background: var(--blue); color: var(--paper); }
 
 .extraGroupTitle { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
 

@@ -142,4 +142,31 @@ describe("BudgetRange typed amounts", () => {
       expect(onChange).toHaveBeenLastCalledWith({ min: 20_100_000, max: 50_000_000 });
     });
   });
+
+  describe("single handle", () => {
+    function renderSingle(min: number, onChange = vi.fn()) {
+      act(() => root.render(<BudgetRange single unit="percent" min={min} max={95} floor={50} ceiling={95} step={5} onChange={onChange} />));
+      return onChange;
+    }
+
+    it("has one handle and one box, and keeps the top end at the ceiling", () => {
+      const onChange = renderSingle(70);
+      expect(container.querySelectorAll('input[type="range"]').length).toBe(1);
+      expect(boxes().map((box) => box.value)).toEqual(["70"]);
+      type(boxes()[0]!, "85");
+      press(boxes()[0]!, "Enter");
+      expect(onChange).toHaveBeenCalledWith({ min: 85, max: 95 });
+    });
+
+    it("moves its one handle wherever the track is pressed", () => {
+      const onChange = renderSingle(70);
+      const track = container.querySelector<HTMLDivElement>('input[type="range"]')!.parentElement!;
+      track.getBoundingClientRect = () => ({ left: 0, width: 900, top: 0, height: 28, right: 900, bottom: 28, x: 0, y: 0, toJSON: () => ({}) });
+      act(() => {
+        // jsdom has no PointerEvent; React reads clientX either way.
+        track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 900 }));
+      });
+      expect(onChange).toHaveBeenCalledWith({ min: 95, max: 95 });
+    });
+  });
 });

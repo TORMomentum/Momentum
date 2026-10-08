@@ -12,3 +12,9 @@ export const MATCH_RANGE = { floor: 0, ceiling: 100, step: 5 } as const;
 export function matchPercent(score: number): number {
   return Math.round(score * 100);
 }
+
+/**
+ * The email setting "only matches scoring at least N%". Read by the API's
+ * profile schema, the default profile and the slider, so the three agree.
+ */
+export const NOTIFY_MIN_MATCH = { floor: 50, ceiling: 95, step: 5 } as const;

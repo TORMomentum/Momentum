@@ -151,6 +151,9 @@
 
 .amountDash { color: var(--ink-55); }
 
+/* One amount: sized to its figure, not stretched across the row. */
+.amountsSingle .amountBox { flex: 0 1 12ch; }
+
 /* Label column shared with the search date range, so the two filters align. */
 .amountsStacked {
   display: grid;

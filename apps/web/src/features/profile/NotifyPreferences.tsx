@@ -1,4 +1,6 @@
 "use client";
+import { NOTIFY_MIN_MATCH } from "@tor-radar/shared";
+import { BudgetRange } from "../../shared/ui/BudgetRange";
 
 import { useState } from "react";
 import styles from "./profile.module.css";
@@ -110,25 +112,27 @@ export function NotifyPreferences({
               <span className={styles.advancedRowTitle}>คะแนนจับคู่ขั้นต่ำ</span>
               <span className={styles.advancedRowValue}>{value.minMatch}%</span>
             </div>
-            <input
-              type="range"
-              className={styles.matchRangeInput}
-              min={50}
-              max={95}
-              step={5}
-              value={value.minMatch}
-              onChange={(event) => set({ minMatch: Number(event.target.value) })}
-              aria-label="คะแนนจับคู่ขั้นต่ำ"
+            {/* The same slider as budget and the search match filter, one handle:
+                the fill runs from the threshold up, "this and better". */}
+            <BudgetRange
+              single
+              unit="percent"
+              tone="match"
+              min={value.minMatch}
+              max={NOTIFY_MIN_MATCH.ceiling}
+              floor={NOTIFY_MIN_MATCH.floor}
+              ceiling={NOTIFY_MIN_MATCH.ceiling}
+              step={NOTIFY_MIN_MATCH.step}
+              onChange={({ min }) => set({ minMatch: min })}
+              minLabel="คะแนนจับคู่ขั้นต่ำ"
+              floorLabel={`${NOTIFY_MIN_MATCH.floor}% (กว้าง)`}
+              ceilingLabel={`${NOTIFY_MIN_MATCH.ceiling}% (เฉพาะที่ตรงมาก)`}
             />
-            <div className={styles.advancedSliderLabels}>
-              <span>50% (กว้าง)</span>
-              <span>95% (เฉพาะที่ตรงมาก)</span>
-            </div>
           </div>
 
           <div>
             <div className={styles.leadGroupTitle}>เตือนก่อนกำหนดยื่นข้อเสนอ</div>
-            <div className={styles.leadGroup}>
+            <div className={styles.skillRow} role="group" aria-label="เตือนก่อนกำหนดยื่นข้อเสนอ">
               {LEAD_OPTIONS.map((days) => (
                 <button
                   type="button"
