@@ -125,10 +125,17 @@ export class AdminApiFailed extends Error {
   }
 }
 
+/**
+ * The API's refusal, if it is one written for a person. A schema rejection
+ * carries its reasons in `issues`; only Thai text is shown — that is wording
+ * someone chose — while a validator's English default falls back to the
+ * screen's own generic message.
+ */
 function refusalOf(body: string): string | undefined {
+  const thai = (value: unknown): value is string => typeof value === "string" && /\p{Script=Thai}/u.test(value);
   try {
-    const message = (JSON.parse(body) as { error?: { message?: unknown } }).error?.message;
-    return typeof message === "string" ? message : undefined;
+    const error = (JSON.parse(body) as { error?: { message?: unknown; issues?: Array<{ message?: unknown }> } }).error;
+    return [...(error?.issues ?? []).map((issue) => issue.message), error?.message].find(thai);
   } catch {
     return undefined;
   }
@@ -342,6 +349,13 @@ export function enableAccount(id: string): Promise<unknown> {
 
 export function sendVerificationEmail(id: string): Promise<unknown> {
   return call(`/admin/accounts/${encodeURIComponent(id)}/verification-email`, { method: "POST" });
+}
+
+export type AdminBulkAction = "reextract" | "reject" | "restore";
+export type AdminBulkResult = { done: string[]; failed: Array<{ id: string; reason: string }> };
+
+export function bulkTors(action: AdminBulkAction, ids: string[], reason?: string): Promise<AdminBulkResult> {
+  return call("/admin/tors/bulk", { method: "POST", body: JSON.stringify({ action, ids, ...(reason ? { reason } : {}) }) });
 }
 
 export function sendMatchEmail(id: string): Promise<{ sent: number }> {

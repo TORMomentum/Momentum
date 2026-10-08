@@ -4,7 +4,9 @@ import type { IntakeResponse } from "@tor-radar/shared";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../../shared/lib/staff-session";
 import {
+  AdminApiFailed,
   approve as approveRecord,
+  bulkTors,
   fetchEvents,
   reextract as reextractRecord,
   reject as rejectRecord,
@@ -12,6 +14,8 @@ import {
   saveEdits,
   setFieldVerification,
   uploadDocument,
+  type AdminBulkAction,
+  type AdminBulkResult,
   type FieldEdit,
 } from "../../shared/lib/admin-api";
 
@@ -159,3 +163,26 @@ export async function restoreRecordAction(id: string): Promise<void> {
   revalidatePath("/admin/tors");
   revalidatePath(`/admin/tors/${id}`);
 }
+
+/**
+ * One action over the TORs selected on "TOR ทั้งหมด". Returns rather than
+ * throws, so the API's own Thai refusal reaches the screen in production.
+ */
+export async function bulkTorsAction(
+  action: AdminBulkAction,
+  ids: string[],
+  reason?: string,
+): Promise<{ ok: true; result: AdminBulkResult } | { ok: false; reason: string }> {
+  await requireStaff();
+  try {
+    const result = await bulkTors(action, ids, reason);
+    revalidatePath("/admin/tors");
+    revalidatePath(REVIEW_PATH);
+    return { ok: true, result };
+  } catch (error) {
+    if (error instanceof AdminApiFailed && error.reason) return { ok: false, reason: error.reason };
+    console.error("[admin/tors] bulk action failed", error);
+    return { ok: false, reason: "ทำรายการไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
+}
+

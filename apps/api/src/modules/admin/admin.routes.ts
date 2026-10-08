@@ -15,6 +15,8 @@ export interface AdminRouterDeps {
   adminKeys: string[];
   /** How many queue rows one request may return. */
   queuePageSize: number;
+  /** How many TORs one bulk action may touch. */
+  bulkMax: number;
 }
 
 /**
@@ -131,6 +133,19 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
     const { edits } = editsBodySchema.parse(req.body ?? {});
     await deps.service.approve(req.params.id, edits, actorOf(req));
     res.json({ id: req.params.id, unverified: false });
+  });
+
+  // One action over many TORs. Each goes through the same service call as the
+  // single-TOR routes, so every one keeps its own history and audit entry; a
+  // TOR that cannot take the action is reported, not allowed to stop the rest.
+  const bulkSchema = z.object({
+    action: z.enum(["reextract", "reject", "restore"]),
+    ids: z.array(z.string().regex(/^[0-9a-f]{24}$/i)).min(1, "ยังไม่ได้เลือกรายการ").max(deps.bulkMax, `เลือกได้ไม่เกิน ${deps.bulkMax} รายการต่อครั้ง`),
+    reason: z.string().trim().min(3).max(300).optional(),
+  }).strict().refine((body) => body.action !== "reject" || body.reason, { message: "ต้องระบุเหตุผลในการถอดจากหน้าสาธารณะ", path: ["reason"] });
+  router.post("/tors/bulk", async (req, res) => {
+    const { action, ids, reason } = bulkSchema.parse(req.body);
+    res.json(await deps.service.bulk(action, [...new Set(ids)], reason, actorOf(req)));
   });
 
   router.post("/tors/:id/reextract", async (req, res) => {

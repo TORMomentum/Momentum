@@ -87,6 +87,7 @@ function buildTestApp() {
       storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
+      bulkMax: config.adminBulkMax,
     }),
   );
   app.use(errorMiddleware);
@@ -383,3 +384,45 @@ describe("admin takedown and restore", () => {
     expect(response.status).toBe(404);
   });
 });
+
+describe("admin bulk actions", () => {
+  const auth = { "x-api-key": adminKey };
+  const bulk = (body: object) => request(buildTestApp()).post("/api/v1/admin/tors/bulk").set(auth).send(body);
+
+  it("takes many TORs down at once, each with its own history, and reports one it could not find", async () => {
+    const [a, b] = [await seedFieldsToConfirm(), await seedFieldsToConfirm()];
+    const unknown = new ObjectId().toString();
+
+    const response = await bulk({ action: "reject", ids: [a, b, unknown], reason: "ซ้ำกับประกาศอื่น" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.done.sort()).toEqual([a, b].sort());
+    expect(response.body.failed.map((item: { id: string }) => item.id)).toEqual([unknown]);
+    for (const id of [a, b]) {
+      expect((await tors(db).findOne({ _id: new ObjectId(id) }))?.access).toMatchObject({ restricted: true, reason: "ซ้ำกับประกาศอื่น" });
+      expect((await torEvents(db).find({ torId: id }).toArray()).map((event) => event.to)).toEqual(["restricted"]);
+    }
+  });
+
+  it("restores many at once", async () => {
+    const [a, b] = [await seedFieldsToConfirm(), await seedFieldsToConfirm()];
+    await bulk({ action: "reject", ids: [a, b], reason: "ทดสอบการถอด" }).expect(200);
+    const response = await bulk({ action: "restore", ids: [a, b] });
+    expect(response.body).toEqual({ done: [a, b], failed: [] });
+    expect((await tors(db).findOne({ _id: new ObjectId(a) }))?.access).toEqual({ restricted: false });
+  });
+
+  it("will not take anything down without a reason", async () => {
+    const id = await seedFieldsToConfirm();
+    expect((await bulk({ action: "reject", ids: [id] })).status).toBe(400);
+    expect((await tors(db).findOne({ _id: new ObjectId(id) }))?.access.restricted).toBe(false);
+  });
+
+  it("refuses more than the configured maximum, an unknown action and a malformed id", async () => {
+    const tooMany = Array.from({ length: config.adminBulkMax + 1 }, () => new ObjectId().toString());
+    expect((await bulk({ action: "restore", ids: tooMany })).status).toBe(400);
+    expect((await bulk({ action: "delete", ids: [new ObjectId().toString()] })).status).toBe(400);
+    expect((await bulk({ action: "restore", ids: [{ $ne: null }] })).status).toBe(400);
+  });
+});
+

@@ -136,6 +136,7 @@ export function buildApp(config: Config, db: Db): Express {
       storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
+      bulkMax: config.adminBulkMax,
     }),
   );
 

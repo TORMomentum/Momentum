@@ -6,6 +6,8 @@ import { expect, it, vi } from "vitest";
 import { AdminTorsView } from "./AdminTorsView";
 
 vi.mock("next/link", () => ({ default: "a" }));
+// The table calls server actions; their staff check is server-only.
+vi.mock("../features/admin/admin.actions", () => ({ bulkTorsAction: vi.fn() }));
 
 it("links all-TOR rows to their management page", async () => {
   const container = document.createElement("div");

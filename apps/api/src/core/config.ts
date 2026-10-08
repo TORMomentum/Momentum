@@ -139,6 +139,9 @@ const schema = z.object({
 
   /** How many review-queue rows one request returns (FR-G-1). */
   ADMIN_QUEUE_PAGE_SIZE: z.coerce.number().int().positive().max(200).default(25),
+  // Most TORs one bulk action may touch. Each is a separate audited change, run
+  // in turn, so a slip of the select-all stays bounded and the request stays short.
+  ADMIN_BULK_MAX: z.coerce.number().int().positive().max(500).default(100),
 
   // Public search (FR-E-3, NFR-F2). Ceilings bound what one request can ask the database for.
   SEARCH_PAGE_SIZE: z.coerce.number().int().positive().default(20),
@@ -297,6 +300,7 @@ export interface Config {
     timezone: string;
   };
   adminQueuePageSize: number;
+  adminBulkMax: number;
   search: SearchConfig;
   matching: {
     candidateCap: number; classifyBatch: number; pageSize: number; classifierTitleScore: number; classifierScopeScore: number;
@@ -416,6 +420,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       timezone: parsed.COHORT_TIMEZONE,
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
+    adminBulkMax: parsed.ADMIN_BULK_MAX,
     search: {
       pageSize: parsed.SEARCH_PAGE_SIZE,
       maxPageSize: parsed.SEARCH_MAX_PAGE_SIZE,

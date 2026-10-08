@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminTorsTable } from "../features/admin/AdminTorsTable";
 import styles from "../features/admin/admin.module.css";
 import type { AdminTorKind, AdminTorPage, AdminTorRow, AdminTorStatus } from "../shared/lib/admin-api";
 
@@ -25,6 +26,17 @@ function statusOf(row: AdminTorRow): { label: string; tone: string } {
     return { label: "กำลังสกัด", tone: styles.torsStatusMuted ?? "" };
   if (row.unverified) return { label: "ยังไม่ยืนยันการสกัด", tone: styles.torsStatusMuted ?? "" };
   return { label: "เผยแพร่อยู่", tone: styles.torsStatusPublic ?? "" };
+}
+
+/** The list's filters, carried into a record page so "back" returns to the same list. */
+function linkSuffix(query: { q?: string; status: AdminTorStatus; kind: AdminTorKind; page: number }): string {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.status !== "all") params.set("status", query.status);
+  if (query.kind !== "tor") params.set("kind", query.kind);
+  if (query.page > 1) params.set("page", String(query.page));
+  const search = params.toString();
+  return search ? `?${search}` : "";
 }
 
 function pageHref(query: { q?: string; status: AdminTorStatus; kind: AdminTorKind }, page: number): string {
@@ -103,52 +115,18 @@ export function AdminTorsView({
       )}
 
       {result && result.rows.length > 0 && (
-        <table className={styles.logTable}>
-          <thead>
-            <tr>
-              <th>ชื่อโครงการ</th>
-              <th>หน่วยงาน</th>
-              <th>เลขที่โครงการ</th>
-              <th>สถานะ</th>
-              <th>เข้าระบบ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.rows.map((row) => {
-              const status = statusOf(row);
-              return (
-                <tr key={row.id}>
-                  <td>
-                    <Link
-                      href={`/admin/tors/${row.id}${(() => {
-                        const params = new URLSearchParams();
-                        if (query.q) params.set("q", query.q);
-                        if (query.status !== "all") params.set("status", query.status);
-                        if (query.kind !== "tor") params.set("kind", query.kind);
-                        if (query.page > 1) params.set("page", String(query.page));
-                        const search = params.toString();
-                        return search ? `?${search}` : "";
-                      })()}`}
-                    >
-                      {row.title || "ยังไม่มีชื่อ — ยังไม่ได้สกัด"}
-                    </Link>
-                    {row.documentType === "invitation" && (
-                      <span className={styles.torsKind}>ประกาศเชิญชวน</span>
-                    )}
-                  </td>
-                  <td>{row.agency || "—"}</td>
-                  <td className={styles.logWhen}>{row.projectNumber ?? "—"}</td>
-                  <td>
-                    <span className={`${styles.torsStatus} ${status.tone}`}>{status.label}</span>
-                  </td>
-                  <td className={styles.logWhen}>
-                    {new Date(row.createdAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <AdminTorsTable
+          linkSuffix={linkSuffix(query)}
+          rows={result.rows.map((row) => ({
+            id: row.id,
+            title: row.title,
+            invitation: row.documentType === "invitation",
+            agency: row.agency,
+            projectNumber: row.projectNumber,
+            status: statusOf(row),
+            createdAt: row.createdAt,
+          }))}
+        />
       )}
 
       {result && pages > 1 && (

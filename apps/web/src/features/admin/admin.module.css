@@ -1087,3 +1087,33 @@
 .uploadRecentName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
 
 .uploadRecentState { flex: none; font: 600 10.5px var(--data); color: var(--ink-62); }
+
+/* ---- All-TORs selection and bulk actions ---- */
+
+/* Stays in view while the list scrolls: it is what acts on the ticks below. */
+.bulkBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.bulkBar .adminSecondaryBtn { flex: none; }
+
+.bulkCount { margin-right: auto; font: 600 12.5px var(--body); color: var(--blue); }
+
+.bulkClear { border: 0; background: none; padding: 0 4px; font-size: 12px; color: var(--ink-55); cursor: pointer; }
+
+.bulkClear:hover { color: var(--ink); }
+
+.selectCell { width: 1%; padding-right: 0; }
+
+.rowSelected { background: var(--blue-ring); }
