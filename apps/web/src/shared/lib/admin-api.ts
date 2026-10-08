@@ -58,7 +58,7 @@ export interface ReviewRecord extends QueueEntry {
   documentType?: "tor" | "invitation";
 }
 
-export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "failed";
+export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "stuck" | "failed";
 export type AdminTorKind = "tor" | "invitation" | "all";
 
 export interface AdminTorRow {
@@ -177,6 +177,8 @@ export interface AdminOverview {
   failed: number;
   corrections: number;
   stored: number;
+  /** Queued or extracting, untouched longer than a worker should take. */
+  stuck: number;
 }
 
 export interface AdminEvent {

@@ -1117,3 +1117,8 @@
 .selectCell { width: 1%; padding-right: 0; }
 
 .rowSelected { background: var(--blue-ring); }
+
+/* An overview card that opens its records: same card, plainly clickable. */
+a.overviewCard { color: inherit; text-decoration: none; transition: border-color 0.15s ease; }
+
+a.overviewCard:hover { border-color: var(--blue); }

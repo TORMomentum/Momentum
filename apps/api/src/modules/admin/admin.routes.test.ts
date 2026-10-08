@@ -78,7 +78,7 @@ function buildTestApp() {
     "/api/v1/admin",
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db, config.budgetMaxThb),
+        repo: new AdminRepository(db, config.budgetMaxThb, config.adminStuckAfterMs),
         history: new HistoryRepository(db),
         queue,
         tLow: config.tLow,
@@ -423,6 +423,30 @@ describe("admin bulk actions", () => {
     expect((await bulk({ action: "restore", ids: tooMany })).status).toBe(400);
     expect((await bulk({ action: "delete", ids: [new ObjectId().toString()] })).status).toBe(400);
     expect((await bulk({ action: "restore", ids: [{ $ne: null }] })).status).toBe(400);
+  });
+});
+
+describe("admin pipeline health", () => {
+  const auth = { "x-api-key": adminKey };
+
+  it("counts a TOR left queued or extracting too long as stuck, and lists exactly those", async () => {
+    const inPipeline = async (state: string, updatedAt: Date) =>
+      (await tors(db).insertOne({
+        contentHash: new ObjectId().toHexString(), storage: recordStorage, sourceRefs: [], pipeline: { state, attempts: 1 }, fields: {},
+        announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null,
+        createdAt: updatedAt, updatedAt,
+      } as never)).insertedId.toString();
+    // Untouched for longer than the threshold; the other was just queued.
+    const stuck = await inPipeline("extracting", new Date(Date.now() - config.adminStuckAfterMs - 60_000));
+    const fresh = await inPipeline("queued", new Date());
+
+    const overview = await request(buildTestApp()).get("/api/v1/admin/overview").set(auth);
+    expect(overview.body.stuck).toBe(1);
+
+    const listed = await request(buildTestApp()).get("/api/v1/admin/tors?status=stuck&kind=all").set(auth);
+    expect(listed.status).toBe(200);
+    expect(listed.body.rows.map((row: { id: string }) => row.id)).toEqual([stuck]);
+    expect(listed.body.rows.map((row: { id: string }) => row.id)).not.toContain(fresh);
   });
 });
 

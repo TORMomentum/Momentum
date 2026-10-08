@@ -45,7 +45,9 @@ export default async function AdminOverviewPage() {
 
       {overview && (
         <div className={styles.overviewGrid}>
-          <div className={`${styles.overviewCard} ${overview.needsReview > 0 ? styles.overviewCardAction : ""}`}>
+          {/* Every count opens the records behind it: a number you cannot click
+              into is a number you cannot act on. */}
+          <Link href="/admin/review" className={`${styles.overviewCard} ${overview.needsReview > 0 ? styles.overviewCardAction : ""}`}>
             <div className={styles.overviewCardKey}>รอตรวจสอบ</div>
             <div
               className={`${styles.overviewCardValue} ${overview.needsReview > 0 ? styles.overviewCardActionValue : ""}`}
@@ -53,25 +55,31 @@ export default async function AdminOverviewPage() {
               {overview.needsReview}
             </div>
             <div className={styles.overviewCardNote}>ความเชื่อมั่นต่ำกว่าเกณฑ์ หรือไม่ผ่านการตรวจ</div>
-          </div>
+          </Link>
 
-          <div className={styles.overviewCard}>
+          <Link href="/admin/tors?status=unverified" className={styles.overviewCard}>
             <div className={styles.overviewCardKey}>ยังไม่ยืนยัน · ไม่เข้าคิว</div>
             <div className={styles.overviewCardValue}>{overview.unverifiedNotQueued}</div>
             <div className={styles.overviewCardNote}>เผยแพร่พร้อมป้ายกำกับ ไม่ต้องรอคนตรวจ</div>
-          </div>
+          </Link>
 
-          <div className={styles.overviewCard}>
+          <Link href="/admin/tors?status=public" className={styles.overviewCard}>
             <div className={styles.overviewCardKey}>เผยแพร่แล้ว</div>
             <div className={styles.overviewCardValue}>{overview.published}</div>
             <div className={styles.overviewCardNote}>จากทั้งหมด {overview.stored} ฉบับที่นำเข้า</div>
-          </div>
+          </Link>
 
-          <div className={styles.overviewCard}>
+          <Link href="/admin/tors?status=stuck" className={`${styles.overviewCard} ${overview.stuck > 0 ? styles.overviewCardAction : ""}`}>
+            <div className={styles.overviewCardKey}>ค้างในการสกัด</div>
+            <div className={`${styles.overviewCardValue} ${overview.stuck > 0 ? styles.overviewCardActionValue : ""}`}>{overview.stuck}</div>
+            <div className={styles.overviewCardNote}>อยู่ในคิวหรือกำลังสกัดนานเกินกว่าที่ควร · เลือกแล้วสั่งสกัดใหม่ได้</div>
+          </Link>
+
+          <Link href="/admin/tors?status=failed" className={styles.overviewCard}>
             <div className={styles.overviewCardKey}>สกัดไม่สำเร็จ</div>
             <div className={styles.overviewCardValue}>{overview.failed}</div>
             <div className={styles.overviewCardNote}>ต้นฉบับยังเก็บไว้ครบ · สั่งสกัดใหม่ได้</div>
-          </div>
+          </Link>
 
           <div className={styles.overviewCard}>
             <div className={styles.overviewCardKey}>การแก้ไขที่บันทึกไว้</div>

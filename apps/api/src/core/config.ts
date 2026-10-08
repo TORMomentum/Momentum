@@ -39,6 +39,9 @@ function flag(defaultValue: boolean) {
   }, z.boolean().default(defaultValue));
 }
 
+/** How many expired job locks make a still-running TOR "stuck" (ADMIN_STUCK_AFTER_MS default). */
+const STUCK_LOCK_MULTIPLE = 5;
+
 const schema = z.object({
   MONGO_URL: z.string().min(1),
 
@@ -97,6 +100,10 @@ const schema = z.object({
   JOB_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   JOB_BACKOFF_MS: z.coerce.number().int().positive().default(30_000),
   JOB_LOCK_MS: z.coerce.number().int().positive().default(120_000),
+  // When a TOR still queued or extracting counts as stuck on the admin
+  // overview. Unset: STUCK_LOCK_MULTIPLE job locks, i.e. a lease that has
+  // expired several times over with no worker finishing it.
+  ADMIN_STUCK_AFTER_MS: blankAsAbsent(z.coerce.number().int().positive()),
   JOB_POLL_MS: z.coerce.number().int().positive().default(2_000),
   RECONCILE_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   RECONCILE_MIN_AGE_MS: z.coerce.number().int().positive().default(120_000),
@@ -301,6 +308,7 @@ export interface Config {
   };
   adminQueuePageSize: number;
   adminBulkMax: number;
+  adminStuckAfterMs: number;
   search: SearchConfig;
   matching: {
     candidateCap: number; classifyBatch: number; pageSize: number; classifierTitleScore: number; classifierScopeScore: number;
@@ -421,6 +429,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
     adminBulkMax: parsed.ADMIN_BULK_MAX,
+    adminStuckAfterMs: parsed.ADMIN_STUCK_AFTER_MS ?? parsed.JOB_LOCK_MS * STUCK_LOCK_MULTIPLE,
     search: {
       pageSize: parsed.SEARCH_PAGE_SIZE,
       maxPageSize: parsed.SEARCH_MAX_PAGE_SIZE,

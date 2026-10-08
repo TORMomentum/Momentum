@@ -34,7 +34,7 @@ export interface ReviewRecord extends QueueEntry {
 }
 
 /** Which records the all-TORs list shows. */
-export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "failed";
+export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "stuck" | "failed";
 
 export interface AdminTorQuery {
   /** Words in the title or agency, or a project number. */
@@ -79,6 +79,8 @@ export interface AdminOverview {
   failed: number;
   corrections: number;
   stored: number;
+  /** Queued or extracting, untouched longer than a worker should take. */
+  stuck: number;
 }
 
 export interface AdminEvent {
@@ -115,7 +117,14 @@ export class AdminRepository {
   constructor(
     private readonly db: Db,
     private readonly budgetMaxThb: number,
+    /** A record still queued or extracting, untouched this long, is stuck. */
+    private readonly stuckAfterMs: number = Number.POSITIVE_INFINITY,
   ) {}
+
+  /** Still in the pipeline, and nothing has touched it for longer than a worker should take. */
+  private stuckFilter() {
+    return { "pipeline.state": { $in: ["queued", "extracting"] }, updatedAt: { $lt: new Date(Date.now() - this.stuckAfterMs) } };
+  }
 
   /**
    * Oldest first, so a record cannot starve behind a steady arrival of newer
@@ -242,6 +251,7 @@ export class AdminRepository {
       unverified: { "pipeline.state": "published", unverified: true, "access.restricted": { $ne: true } },
       processing: { "pipeline.state": { $in: ["queued", "extracting"] } },
       failed: { "pipeline.state": "failed" },
+      stuck: this.stuckFilter(),
     };
     if (query.status !== "all") and.push(status[query.status]);
     const q = query.q?.trim();
@@ -431,7 +441,7 @@ export class AdminRepository {
 
   /** The numbers the admin landing page reports. One round trip, not five. */
   async overview(): Promise<AdminOverview> {
-    const [needsReview, unverifiedNotQueued, published, failed, correctionsMade, stored] =
+    const [needsReview, unverifiedNotQueued, published, failed, correctionsMade, stored, stuck] =
       await Promise.all([
         tors(this.db).countDocuments({
           confidenceLevel: "low",
@@ -444,9 +454,10 @@ export class AdminRepository {
         tors(this.db).countDocuments({ "pipeline.state": "failed" }),
         corrections(this.db).countDocuments(),
         tors(this.db).countDocuments(),
+        tors(this.db).countDocuments(this.stuckFilter()),
       ]);
 
-    return { needsReview, unverifiedNotQueued, published, failed, corrections: correctionsMade, stored };
+    return { needsReview, unverifiedNotQueued, published, failed, corrections: correctionsMade, stored, stuck };
   }
 
   /**

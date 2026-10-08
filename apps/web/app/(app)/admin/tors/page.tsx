@@ -11,7 +11,7 @@ import { isStaff } from "../../../../src/shared/lib/staff-session";
 
 export const dynamic = "force-dynamic";
 
-const STATUSES: AdminTorStatus[] = ["all", "public", "restricted", "unverified", "processing", "failed"];
+const STATUSES: AdminTorStatus[] = ["all", "public", "restricted", "unverified", "processing", "stuck", "failed"];
 const KINDS: AdminTorKind[] = ["tor", "invitation", "all"];
 
 /**

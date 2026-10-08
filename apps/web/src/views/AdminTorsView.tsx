@@ -9,6 +9,7 @@ const STATUS_OPTIONS: Array<{ value: AdminTorStatus; label: string }> = [
   { value: "unverified", label: "ยังไม่ยืนยันการสกัด" },
   { value: "restricted", label: "ถอดจากหน้าสาธารณะ" },
   { value: "processing", label: "กำลังสกัด" },
+  { value: "stuck", label: "ค้างในการสกัด" },
   { value: "failed", label: "สกัดไม่สำเร็จ" },
 ];
 

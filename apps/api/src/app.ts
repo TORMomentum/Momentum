@@ -122,7 +122,7 @@ export function buildApp(config: Config, db: Db): Express {
     `${API_PREFIX}/admin`,
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db, config.budgetMaxThb),
+        repo: new AdminRepository(db, config.budgetMaxThb, config.adminStuckAfterMs),
         history: new HistoryRepository(db),
         queue,
         tLow: config.tLow,

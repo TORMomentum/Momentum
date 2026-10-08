@@ -59,7 +59,7 @@ const rejectSchema = z.object({ reason: z.string().min(3).max(300) });
 /** The all-TORs list: primitives only, like every other admin filter. */
 const torsQuerySchema = z.object({
   q: z.string().max(200).optional(),
-  status: z.enum(["all", "public", "restricted", "unverified", "processing", "failed"]).default("all"),
+  status: z.enum(["all", "public", "restricted", "unverified", "processing", "stuck", "failed"]).default("all"),
   kind: z.enum(["tor", "invitation", "all"]).default("tor"),
   page: z.coerce.number().int().positive().max(10_000).default(1),
 });
