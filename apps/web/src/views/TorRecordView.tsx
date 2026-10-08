@@ -281,7 +281,7 @@ export function TorRecordView({
 
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
-          <BookmarkButton torId={tor.id} initial={bookmarked} />
+          <BookmarkButton torId={tor.id} initial={bookmarked} className={styles.sideBookmark} />
           <OriginalPreview {...previewProps} className={styles.openDocBtn}>
             เปิดเอกสารต้นฉบับ
           </OriginalPreview>
