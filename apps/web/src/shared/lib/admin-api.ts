@@ -192,6 +192,41 @@ export interface AdminEvent {
   at: string;
 }
 
+export type MatchLabel = "relevant" | "not-relevant" | "unsure";
+
+export interface MatchWorksheetItem {
+  torId: string;
+  title: string;
+  agency: string;
+  score: number;
+  /** Whether the vendor's email threshold would have sent it. */
+  matched: boolean;
+  reasons: string[];
+  label: MatchLabel | null;
+}
+
+export interface MatchQualityFigures {
+  labelled: number;
+  vendors: number;
+  precision: number | null;
+  precisionOf: number;
+  recall: number | null;
+  recallOf: number;
+  unsureRate: number | null;
+}
+
+export function fetchMatchWorksheet(accountId: string): Promise<{ items: MatchWorksheetItem[] }> {
+  return call(`/admin/accounts/${encodeURIComponent(accountId)}/labels`);
+}
+
+export function saveMatchLabel(accountId: string, torId: string, label: MatchLabel): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(accountId)}/labels/${encodeURIComponent(torId)}`, { method: "PUT", body: JSON.stringify({ label }) });
+}
+
+export function fetchMatchQuality(): Promise<MatchQualityFigures> {
+  return call("/admin/match-quality");
+}
+
 export interface AdminOtherTerms {
   /** Work vendors do that the taxonomy has no node for. */
   work: Array<{ text: string; vendors: number }>;

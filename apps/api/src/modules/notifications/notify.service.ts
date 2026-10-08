@@ -14,6 +14,15 @@ import { BadRequestError } from "../../core/errors.js";
 type Pending = { tor: WithId<TorDocument>; score: number; reasons: string[]; reason: "match" | "deadline-reminder" };
 export type NotifyRunResult = { leased: boolean; vendors: number; claimed: number; sent: number; dryRun: boolean };
 
+/**
+ * The score (as a percentage) a TOR must reach to be emailed to this vendor:
+ * their own bar, and "high" never below the configured floor. Exported so the
+ * labelling benchmark judges exactly what email would have sent.
+ */
+export function emailThreshold(notify: { preset: string; minMatch: number }, config: Config): number {
+  return notify.preset === "high" ? Math.max(notify.minMatch, config.notifications.highMinMatch) : notify.minMatch;
+}
+
 function dateAtBangkokNoon(value: string): Date { return new Date(`${value}T12:00:00+07:00`); }
 
 function dailyPeriod(now: Date, timezone: string, boundary: string): string {
@@ -71,9 +80,8 @@ export class NotifyService {
     } finally { await this.repository.releaseLease(owner); }
   }
 
-  /** The vendor's own bar: "high" never drops below the configured floor. */
   private thresholdFor(notify: NonNullable<EligibleVendor["profile"]["notify"]>): number {
-    return notify.preset === "high" ? Math.max(notify.minMatch, this.config.notifications.highMinMatch) : notify.minMatch;
+    return emailThreshold(notify, this.config);
   }
 
   /** Open TORs this vendor matches at or above `threshold`. Shared by both senders, so they cannot disagree. */

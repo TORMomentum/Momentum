@@ -199,6 +199,10 @@ const schema = z.object({
   // inferred from the title, and a wrong guess must not hide a TOR outright.
   MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
   PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
+  // The labelling screen: a vendor's top matches (precision) and a sample of
+  // their category's TORs that did not make the cut (recall).
+  LABEL_MATCHED_SHOWN: z.coerce.number().int().positive().default(10),
+  LABEL_UNMATCHED_SHOWN: z.coerce.number().int().positive().default(10),
   // An admin's "send this vendor their matches now": the email lists at most
   // this many, best first, so it stays readable.
   NOTIFY_MANUAL_MAX_TORS: z.coerce.number().int().positive().default(10),
@@ -317,7 +321,7 @@ export interface Config {
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
     experienceWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
-    manualEmailMaxTors: number;
+    manualEmailMaxTors: number; labelMatchedShown: number; labelUnmatchedShown: number;
   };
   notifications: {
     dispatchEnabled: boolean;
@@ -451,6 +455,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
       registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
       manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
+      labelMatchedShown: parsed.LABEL_MATCHED_SHOWN, labelUnmatchedShown: parsed.LABEL_UNMATCHED_SHOWN,
     },
     notifications: {
       dispatchEnabled: parsed.NOTIFY_DISPATCH_ENABLED,

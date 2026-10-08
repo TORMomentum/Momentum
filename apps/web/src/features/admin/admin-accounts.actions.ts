@@ -7,7 +7,9 @@ import {
   enableAccount,
   saveAccountProfile,
   AdminApiFailed,
+  saveMatchLabel,
   sendMatchEmail,
+  type MatchLabel,
   sendPasswordReset,
   sendVerificationEmail,
   setAccountRole,
@@ -84,3 +86,18 @@ export async function sendMatchEmailAction(id: string): Promise<{ ok: true; sent
     return { ok: false, reason: "ส่งไม่สำเร็จ — ลองใหม่อีกครั้ง" };
   }
 }
+
+/** One judgement for the match-quality benchmark (design §7.8). */
+export async function saveMatchLabelAction(accountId: string, torId: string, label: MatchLabel): Promise<{ ok: true } | { ok: false; reason: string }> {
+  await requireStaff();
+  try {
+    await saveMatchLabel(accountId, torId, label);
+    revalidatePath(`/admin/vendors/${accountId}/labels`);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AdminApiFailed && error.reason) return { ok: false, reason: error.reason };
+    console.error("[admin/labels] save failed", error);
+    return { ok: false, reason: "บันทึกไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
+}
+

@@ -18,6 +18,9 @@ import { buildAdminAccountsRouter } from "./modules/admin/admin-accounts.routes.
 import { AdminAccountsRepository } from "./modules/admin/admin-accounts.repository.js";
 import { AdminAccountsService } from "./modules/admin/admin-accounts.service.js";
 import { NotifyService } from "./modules/notifications/notify.service.js";
+import { MatchLabelsRepository } from "./modules/match-quality/match-labels.repository.js";
+import { buildMatchQualityRouter } from "./modules/match-quality/match-quality.routes.js";
+import { MatchQualityService } from "./modules/match-quality/match-quality.service.js";
 import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
@@ -157,6 +160,20 @@ export function buildApp(config: Config, db: Db): Express {
       }),
       adminKeys: config.adminApiKeys,
       pageSize: config.adminQueuePageSize,
+    }),
+  );
+
+  // The match-quality benchmark (design §7.8): labels and the figures from them.
+  app.use(
+    `${API_PREFIX}/admin`,
+    buildMatchQualityRouter({
+      service: new MatchQualityService({
+        config,
+        profiles: profileRepository,
+        matching: new MatchingRepository(db, config),
+        labels: new MatchLabelsRepository(db),
+      }),
+      adminKeys: config.adminApiKeys,
     }),
   );
 

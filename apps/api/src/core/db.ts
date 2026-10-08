@@ -280,6 +280,24 @@ export interface NotificationLeaseDocument {
 }
 
 /** Cached derived data; source TOR documents remain immutable after extraction. */
+/**
+ * One person's judgement of one vendor–TOR pair: the labelled benchmark design
+ * §7.8 requires before match emails ship. The score and whether the system
+ * counted it a match are frozen at labelling time, so the figures describe
+ * what the vendor would actually have been sent.
+ */
+export interface MatchLabelDocument {
+  accountId: string;
+  torId: string;
+  label: "relevant" | "not-relevant" | "unsure";
+  /** Score in [0, 1] when labelled. */
+  score: number;
+  /** Whether that score met the vendor's own email threshold then. */
+  matched: boolean;
+  labelledBy: string;
+  labelledAt: Date;
+}
+
 export interface TorClassificationDocument {
   torId: string;
   classification: TorClassification;
@@ -356,6 +374,10 @@ export function torClassifications(db: Db): Collection<TorClassificationDocument
   return db.collection<TorClassificationDocument>("tor_classifications");
 }
 
+export function matchLabels(db: Db): Collection<MatchLabelDocument> {
+  return db.collection<MatchLabelDocument>("match_labels");
+}
+
 export function notifications(db: Db): Collection<NotificationDocument> {
   return db.collection<NotificationDocument>("notifications");
 }
@@ -380,6 +402,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
   await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
+  // One judgement per pair; relabelling replaces it.
+  await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
   await torClassifications(db).createIndex({ "classification.coarse": 1, updatedAt: -1 });
   // Precise candidates — records with leaf evidence for what a vendor chose —
   // are read before the coarse ones, so they need their own path.

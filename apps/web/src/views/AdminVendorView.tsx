@@ -114,6 +114,9 @@ export function AdminVendorView({ opened }: { opened: AdminAccountOpen }) {
             ส่งอีเมล TOR ที่ตรงกันตอนนี้
           </button>
         )}
+        <Link href={`/admin/vendors/${account.id}/labels`} className={styles.adminSecondaryBtn}>
+          ตรวจคุณภาพการจับคู่
+        </Link>
         <button type="button" className={styles.adminSecondaryBtn} disabled={pending} onClick={() => setConfirming("role")}>
           {nextRole === "admin" ? "ให้สิทธิ์ผู้ดูแล" : "เปลี่ยนเป็นผู้ประกอบการ"}
         </button>
