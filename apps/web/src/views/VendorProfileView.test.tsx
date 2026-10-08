@@ -12,7 +12,7 @@ import { VendorProfileView } from "./VendorProfileView";
 /** The screen reads the signed-in account for its header, as it does in the app. */
 const ACCOUNT = { email: "vendor@example.test", name: "ผู้ขาย", role: "vendor" as const };
 
-function mount(initial: typeof FROM_API | null) {
+function mount(initial: (typeof FROM_API & { updatedBy?: "vendor" | "admin" }) | null) {
   act(() => {
     root.render(
       <ViewerProvider initialAccount={ACCOUNT}>
@@ -57,6 +57,16 @@ const FROM_API = {
 };
 
 describe("VendorProfileView", () => {
+  it("tells the vendor when an admin last changed their answers", () => {
+    mount({ ...FROM_API, updatedBy: "admin" });
+    expect(container.querySelector('[role="note"]')?.textContent).toContain("ผู้ดูแลระบบแก้ไขข้อมูลส่วนนี้");
+  });
+
+  it("says nothing about admins when the vendor made the last change", () => {
+    mount({ ...FROM_API, updatedBy: "vendor" });
+    expect(container.querySelector('[role="note"]')).toBeNull();
+  });
+
   it("leads with the pickers when nothing has been answered yet", () => {
     mount({ ...FROM_API, categories: [] });
     expect(container.textContent).toContain("ตั้งค่าโปรไฟล์ครั้งแรก");

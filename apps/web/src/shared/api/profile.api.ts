@@ -19,6 +19,8 @@ export interface VendorProfile {
   notify: { preset: "all" | "daily" | "high" | "off"; minMatch: number; leadDays: number; deadlineReminder: boolean; anomalyAlert: boolean };
   taxonomyVersion: string;
   updatedAt: string | null;
+  /** Who made the last change; an admin's is shown to the vendor. */
+  updatedBy?: "vendor" | "admin";
   /** Saved on their own by the "help matching" section, never by the main form. */
   pastProjects: PastProject[];
   /** null until the vendor first saves the section: "not stated", not "holds nothing". */

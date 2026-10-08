@@ -22,6 +22,7 @@ import {
   describeBudget,
   describeCategories,
 } from "../features/profile/profile-summary";
+import { formatThaiDateTime } from "../shared/lib/format";
 import styles from "../features/profile/profile.module.css";
 
 /**
@@ -77,7 +78,12 @@ function ownedFields(profile: Profile): Profile {
 }
 
 /** What the page reads: the form's fields plus the section the form does not own. */
-type ProfileWithExtras = Profile & { pastProjects?: PastProject[]; certifications?: VendorCertifications | null };
+type ProfileWithExtras = Profile & {
+  pastProjects?: PastProject[];
+  certifications?: VendorCertifications | null;
+  updatedAt?: string | null;
+  updatedBy?: "vendor" | "admin";
+};
 
 export function VendorProfileView({ initial, bookmarks = null }: { initial: ProfileWithExtras | null; bookmarks?: BookmarkRow[] | null }) {
   const [profile, setProfile] = useState<Profile>(initial ? ownedFields(initial) : EMPTY);
@@ -90,6 +96,9 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
   // exactly one thing to do.
   const [settingUp, setSettingUp] = useState((initial?.categories.length ?? 0) === 0);
   const { account } = useViewer();
+  // A staff edit is never passed off as the vendor's own (admin design §2):
+  // the vendor is told, until they save a change of their own.
+  const [adminEditedAt, setAdminEditedAt] = useState(initial?.updatedBy === "admin" ? (initial.updatedAt ?? null) : null);
   const router = useRouter();
   const [editing, setEditing] = useState<Section | null>(null);
 
@@ -104,6 +113,7 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
       });
       if (response.ok) {
         setProfile(ownedFields((await response.json()) as Profile));
+        setAdminEditedAt(null);
         setMessage("บันทึกโปรไฟล์แล้ว");
         // The questions have been answered; from here the screen is for seeing
         // and correcting them.
@@ -294,6 +304,11 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
       <section className={styles.profileCard}>
         <h2 className={styles.profileFactTitle}>ข้อมูลที่ใช้จับคู่ TOR</h2>
         <p className={styles.profileSub}>แก้ไขได้ทุกเมื่อ มีผลกับการจับคู่ครั้งถัดไป</p>
+        {adminEditedAt && (
+          <p className={styles.adminEditedNote} role="note">
+            ผู้ดูแลระบบแก้ไขข้อมูลส่วนนี้เมื่อ {formatThaiDateTime(adminEditedAt)} — หากไม่ถูกต้อง แก้ไขได้ด้านล่าง
+          </p>
+        )}
         {settingRow(
           "categories",
           "หมวดหมู่งาน",

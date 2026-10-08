@@ -595,3 +595,13 @@
 .switchKnobOn { left: 19px; }
 
 .advancedFoot { font: 10px var(--data); color: rgba(18, 35, 60, 0.55); line-height: 1.7; }
+
+/* Told, not hidden: a staff edit to a vendor's own answers. */
+.adminEditedNote {
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--blue);
+  background: var(--blue-ring);
+  font-size: 12px;
+  color: var(--ink);
+}
