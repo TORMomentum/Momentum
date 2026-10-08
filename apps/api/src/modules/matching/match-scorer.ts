@@ -1,6 +1,7 @@
 import { CGD_BRANCHES, WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
 import type { TorDocument, VendorProfileDocument } from "../../core/db.js";
+import { certificationName, certificationsMentioned, qualificationText } from "./certifications.js";
 import { cgdBranchOf } from "./registration.js";
 import { classifyTor, type TorClassification } from "./tor-classifier.js";
 
@@ -72,6 +73,30 @@ function experienceSignal(profile: VendorProfileDocument, classification: TorCla
     : { score: 0, reason: null };
 }
 
+/**
+ * The certifications a TOR names against what the vendor holds. Null — out of
+ * the score — unless the TOR names one and the vendor has stated what they
+ * hold. Worded "A หรือ B", holding either is enough; otherwise the score is
+ * the share held. A vendor's own free-text certification counts as held when
+ * the TOR uses their words.
+ */
+function qualificationSignal(profile: VendorProfileDocument, record: TorDocument) {
+  if (!profile.certifications) return null;
+  const text = qualificationText(record);
+  const mentioned = certificationsMentioned(text);
+  const ownWords = profile.certifications.other.filter((entry) => entry.trim().length > 1 && text.includes(entry.trim()));
+  if (mentioned.length === 0 && ownWords.length === 0) return null;
+  const held = mentioned.filter((id) => profile.certifications!.tags.includes(id));
+  const missing = mentioned.filter((id) => !held.includes(id));
+  const heldNames = [...held.map(certificationName), ...ownWords];
+  const either = /หรือ/.test(text) && heldNames.length > 0;
+  const score = either || missing.length === 0 ? 1 : held.length / mentioned.length;
+  const reason = missing.length > 0 && !either
+    ? { code: "qualification-missing", th: `TOR นี้ระบุ ${missing.map(certificationName).join(", ")} ซึ่งคุณยังไม่ได้ระบุ` }
+    : { code: "qualification-held", th: `คุณมี ${heldNames.join(", ")} ที่ TOR นี้ระบุ` };
+  return { score, reason };
+}
+
 const branchName = new Map<string, string>(CGD_BRANCHES.map((branch) => [branch.id, branch.th]));
 
 /**
@@ -102,6 +127,8 @@ export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, 
   const signals = [{ weight: config.matching.categoryWeight, signal: relevance }, { weight: config.matching.budgetWeight, signal: budget }];
   const experience = experienceSignal(profile, classification, config);
   if (experience) signals.push({ weight: config.matching.experienceWeight, signal: experience });
+  const qualification = qualificationSignal(profile, record);
+  if (qualification) signals.push({ weight: config.matching.qualificationWeight, signal: qualification });
   // Work location is not extracted yet. This switch prevents an agency address
   // ever becoming a proxy for it; turn it on with the future extracted field.
   if (config.matching.areaSignalEnabled) { /* location signal belongs here once extracted */ }

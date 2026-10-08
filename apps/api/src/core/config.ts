@@ -194,6 +194,11 @@ const schema = z.object({
   // the labelled benchmark (design §7.8); it only enters a score when the
   // vendor has listed at least one project, so leaving it blank costs nothing.
   MATCH_EXPERIENCE_WEIGHT: z.coerce.number().positive().default(0.3),
+  // Certifications a TOR names (ISO, มอก., SME, กว./กส.). Enters a score only
+  // when the TOR names one and the vendor has stated what they hold; a signal,
+  // not a filter, because "ISO 9001 และ/หรือ ISO 14001" and product standards
+  // (มอก.) make a strict rule hide TORs a vendor can bid on.
+  MATCH_QUALIFICATION_WEIGHT: z.coerce.number().positive().default(0.3),
   // หนังสือ ว642: a construction project at or above this value must be bid by
   // a contractor registered with กรมบัญชีกลาง in that branch.
   CGD_REGISTRATION_MIN_BUDGET_THB: z.coerce.number().nonnegative().default(5_000_000),
@@ -324,7 +329,7 @@ export interface Config {
     categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
-    experienceWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
+    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
     manualEmailMaxTors: number; labelMatchedShown: number; labelUnmatchedShown: number;
   };
   notifications: {
@@ -457,7 +462,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       budgetNeutralScore: parsed.MATCH_BUDGET_NEUTRAL_SCORE, budgetInsideScore: parsed.MATCH_BUDGET_INSIDE_SCORE,
       budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
-      experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
+      experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, qualificationWeight: parsed.MATCH_QUALIFICATION_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
       registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
       manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
       labelMatchedShown: parsed.LABEL_MATCHED_SHOWN, labelUnmatchedShown: parsed.LABEL_UNMATCHED_SHOWN,

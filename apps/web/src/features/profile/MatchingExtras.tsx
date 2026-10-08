@@ -202,6 +202,9 @@ export function MatchingExtras({
       </div>
 
       <p className={styles.subheading}>การรับรองอื่น</p>
+      <p className={profile.pickerHint}>
+        TOR ที่ระบุใบรับรองที่คุณมีจะได้คะแนนเพิ่ม ส่วนที่คุณยังไม่มีจะได้คะแนนลดลงพร้อมบอกเหตุผล — ไม่ซ่อนงาน
+      </p>
       <div className={profile.skillRow} role="group" aria-label="การรับรองอื่น">
         {CERTIFICATIONS.map((item) => {
           const on = certs.tags.includes(item.id);

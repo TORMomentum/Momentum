@@ -111,4 +111,40 @@ describe("match scorer", () => {
       expect(scoreMatch(holdsNone, tor({ fields: { ...tor().fields, title: { raw: "ก่อสร้างถนน", value: "ก่อสร้างถนน", confidence: 1, verified: true } } }), classification, config, "2026-01-01").reasons.map((reason) => reason.code)).not.toContain("registration-missing");
     });
   });
+
+  describe("certifications a TOR names", () => {
+    const withQualifications = (...lines: string[]) => tor({ fields: { ...tor().fields, qualifications: { raw: lines.join(" "), value: lines, confidence: 1, verified: true } } });
+    const holding = (tags: string[], other: string[] = []) => ({ ...profile(), certifications: { cgd: [], tags, other } });
+    const codes = (result: { reasons: Array<{ code: string }> }) => result.reasons.map((reason) => reason.code);
+
+    it("lifts a vendor who holds what the TOR names above one who does not, and says which", () => {
+      const named = withQualifications("ต้องได้รับการรับรองมาตรฐาน ISO 9001");
+      const held = scoreMatch(holding(["iso-9001"]), named, classification, config, "2026-01-01");
+      const missing = scoreMatch(holding([]), named, classification, config, "2026-01-01");
+      expect(held.score).toBeGreaterThan(missing.score);
+      expect(held.reasons.find((r) => r.code === "qualification-held")?.th).toContain("ISO 9001");
+      expect(missing.reasons.find((r) => r.code === "qualification-missing")?.th).toContain("ISO 9001");
+    });
+
+    it("counts either one as enough when the TOR says หรือ", () => {
+      const either = withQualifications("ได้รับการรับรองมาตรฐาน ISO 9001 และ/หรือ ISO 14001");
+      const one = scoreMatch(holding(["iso-14001"]), either, classification, config, "2026-01-01");
+      const both = scoreMatch(holding(["iso-9001", "iso-14001"]), either, classification, config, "2026-01-01");
+      expect(one.score).toBeCloseTo(both.score);
+      expect(codes(one)).toContain("qualification-held");
+    });
+
+    it("counts a vendor's own free-text certification when the TOR uses their words", () => {
+      const named = withQualifications("ต้องมีใบอนุญาตประกอบกิจการโรงงาน");
+      expect(codes(scoreMatch(holding([], ["ใบอนุญาตประกอบกิจการโรงงาน"]), named, classification, config, "2026-01-01"))).toContain("qualification-held");
+    });
+
+    it("stays out of the score until the vendor has stated what they hold, and when the TOR names nothing", () => {
+      const named = withQualifications("ต้องได้รับการรับรองมาตรฐาน ISO 9001");
+      const plain = scoreMatch(profile(), tor(), classification, config, "2026-01-01");
+      expect(scoreMatch(profile(), named, classification, config, "2026-01-01").score).toBeCloseTo(plain.score);
+      expect(scoreMatch(holding([]), tor(), classification, config, "2026-01-01").score).toBeCloseTo(plain.score);
+    });
+  });
 });
+
