@@ -57,7 +57,7 @@ export function profileExtrasSchema(config: Config) {
       valueThb: z.number().finite().nonnegative().nullable(),
     }).strict()).max(config.matching.pastProjectsMax),
     certifications: z.object({
-      cgd: z.array(z.object({ branch: z.enum(branchIds), grade: z.number().int().refine((grade) => (CGD_GRADES as readonly number[]).includes(grade), "ชั้นไม่ถูกต้อง") }).strict()).max(CGD_BRANCHES.length),
+      cgd: z.array(z.object({ branch: z.enum(branchIds), grade: z.number().int().refine((grade) => (CGD_GRADES as readonly number[]).includes(grade), "ชั้นไม่ถูกต้อง").optional() }).strict()).max(CGD_BRANCHES.length),
       tags: z.array(z.enum(certificationIds)).max(CERTIFICATIONS.length),
       other: z.array(z.string().trim().min(1).max(80)).max(10),
     }).strict(),

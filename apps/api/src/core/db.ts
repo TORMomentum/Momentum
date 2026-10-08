@@ -252,7 +252,8 @@ export interface PastProject {
 }
 
 export interface VendorCertifications {
-  cgd: Array<{ branch: string; grade: number }>;
+  /** grade (ชั้น 1-5) is optional and not asked yet: matching does not use it. */
+  cgd: Array<{ branch: string; grade?: number }>;
   tags: string[];
   other: string[];
 }

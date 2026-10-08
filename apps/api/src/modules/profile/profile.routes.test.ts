@@ -118,6 +118,13 @@ describe("profile routes", () => {
       expect(response.body.certifications.cgd).toEqual([{ branch: "road", grade: 3 }]);
     });
 
+    it("takes a branch without its class, which the screen does not ask for", async () => {
+      const id = await sessionFor("one@example.test");
+      const response = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...extras, certifications: { ...extras.certifications, cgd: [{ branch: "irrigation" }] } });
+      expect(response.status).toBe(200);
+      expect(response.body.certifications.cgd).toEqual([{ branch: "irrigation" }]);
+    });
+
     it("says 'not stated' until the section is saved, rather than 'holds nothing'", async () => {
       const id = await sessionFor("one@example.test");
       expect((await request(app).get("/api/v1/me/profile").set("x-session-id", id)).body.certifications).toBeNull();

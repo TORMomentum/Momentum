@@ -1,6 +1,6 @@
 "use client";
 
-import { CERTIFICATIONS, CGD_BRANCHES, CGD_GRADES } from "@tor-radar/seeds";
+import { CERTIFICATIONS, CGD_BRANCHES } from "@tor-radar/seeds";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PastProject, VendorCertifications } from "../../shared/api/profile.api";
@@ -10,9 +10,6 @@ import profile from "./profile.module.css";
 import styles from "./matching-extras.module.css";
 
 const EXTRAS_URL = "/api/auth/me/profile/extras";
-
-/** The grade a branch starts on when ticked: the smallest class, the commonest. */
-const DEFAULT_GRADE = CGD_GRADES[CGD_GRADES.length - 1];
 
 const NONE_STATED: VendorCertifications = { cgd: [], tags: [], other: [] };
 
@@ -66,7 +63,7 @@ export function MatchingExtras({
   function toggleBranch(branch: string) {
     change(setCerts, {
       ...certs,
-      cgd: heldBranch(branch) ? certs.cgd.filter((entry) => entry.branch !== branch) : [...certs.cgd, { branch, grade: DEFAULT_GRADE }],
+      cgd: heldBranch(branch) ? certs.cgd.filter((entry) => entry.branch !== branch) : [...certs.cgd, { branch }],
     });
   }
 
@@ -183,8 +180,9 @@ export function MatchingExtras({
         งานนั้นจะยังแสดง แต่คะแนนจะลดลงพร้อมบอกเหตุผล
       </p>
 
-      {/* Pills, like every other choice on this profile. A branch also needs its
-          ชั้น, so each ticked one gets a picker on a line of its own below. */}
+      {/* Pills, like every other choice on this profile. The registration class
+          (ชั้น 1-5) is not asked: matching does not use it yet, and a question
+          that changes nothing is friction. */}
       <p className={styles.subheading}>ขึ้นทะเบียนกรมบัญชีกลาง — งานก่อสร้างสาขา</p>
       <div className={profile.skillRow} role="group" aria-label="ขึ้นทะเบียนกรมบัญชีกลาง">
         {CGD_BRANCHES.map((branch) => {
@@ -202,35 +200,6 @@ export function MatchingExtras({
           );
         })}
       </div>
-      {certs.cgd.length > 0 && (
-        <div className={styles.gradeList}>
-          {certs.cgd.map((entry) => {
-            const name = CGD_BRANCHES.find((branch) => branch.id === entry.branch)?.th ?? entry.branch;
-            return (
-              <label key={entry.branch} className={styles.gradeRow}>
-                <span>{name}</span>
-                <select
-                  className={styles.grade}
-                  aria-label={`ชั้นทะเบียน ${name}`}
-                  value={entry.grade}
-                  onChange={(event) =>
-                    change(setCerts, {
-                      ...certs,
-                      cgd: certs.cgd.map((item) => (item.branch === entry.branch ? { ...item, grade: Number(event.target.value) } : item)),
-                    })
-                  }
-                >
-                  {CGD_GRADES.map((grade) => (
-                    <option key={grade} value={grade}>
-                      ชั้น {grade}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            );
-          })}
-        </div>
-      )}
 
       <p className={styles.subheading}>การรับรองอื่น</p>
       <div className={profile.skillRow} role="group" aria-label="การรับรองอื่น">

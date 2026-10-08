@@ -54,10 +54,10 @@ describe("MatchingExtras", () => {
 
     const road = [...container.querySelectorAll("button")].find((button) => button.textContent === "ทาง")!;
     act(() => road.click());
-    // A ticked branch asks for its class.
-    expect(container.querySelector('select[aria-label="ชั้นทะเบียน งานก่อสร้างทาง"]')).not.toBeNull();
+    // No class is asked: matching does not use it.
+    expect(container.querySelector("select")).toBeNull();
 
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ pastProjects: [{ id: "p1", title: "ก่อสร้างถนน คสล. หมู่ 5", year: 2567, valueThb: 4_800_000 }], certifications: { cgd: [{ branch: "road", grade: 5 }], tags: [], other: [] } }), { status: 200 }));
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ pastProjects: [{ id: "p1", title: "ก่อสร้างถนน คสล. หมู่ 5", year: 2567, valueThb: 4_800_000 }], certifications: { cgd: [{ branch: "road" }], tags: [], other: [] } }), { status: 200 }));
     await act(async () => click("บันทึกผลงานและใบอนุญาต"));
 
     const [url, init] = fetchMock.mock.calls[0]!;
@@ -65,7 +65,7 @@ describe("MatchingExtras", () => {
     expect(JSON.parse(init.body)).toEqual({
       // No id on a row added here: the server assigns it.
       pastProjects: [{ title: "ก่อสร้างถนน คสล. หมู่ 5", year: 2567, valueThb: 4_800_000 }],
-      certifications: { cgd: [{ branch: "road", grade: 5 }], tags: [], other: [] },
+      certifications: { cgd: [{ branch: "road" }], tags: [], other: [] },
     });
     expect(container.textContent).toContain("บันทึกแล้ว");
   });
