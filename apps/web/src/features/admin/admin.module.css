@@ -406,7 +406,7 @@
   text-align: center;
   font: 500 11.5px var(--body);
   border: 1px solid var(--ink-28);
-  padding: 8px 0;
+  padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
   background: transparent;

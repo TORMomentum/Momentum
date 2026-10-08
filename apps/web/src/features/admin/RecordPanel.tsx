@@ -290,17 +290,19 @@ export function RecordPanel({
               </button>
             </>
           )}
+          {/* The primary action takes a row of its own, as approve does in
+              review mode; inside the row it squeezed the two beside it. */}
+          {mode === "manage" && (
+            <button
+              type="button"
+              className={styles.adminApproveBtn}
+              disabled={pending || pendingEdits.length === 0}
+              onClick={() => setConfirmation("save")}
+            >
+              บันทึกการแก้ไข
+            </button>
+          )}
           <div className={styles.adminActions}>
-            {mode === "manage" && (
-              <button
-                type="button"
-                className={styles.adminApproveBtn}
-                disabled={pending || pendingEdits.length === 0}
-                onClick={() => setConfirmation("save")}
-              >
-                บันทึกการแก้ไข
-              </button>
-            )}
             <button
               type="button"
               className={styles.adminSecondaryBtn}
