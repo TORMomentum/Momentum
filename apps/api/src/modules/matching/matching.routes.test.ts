@@ -1,6 +1,6 @@
 import "../../test/env.js";
 import express from "express";
-import type { Db } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../../core/config.js";
@@ -133,6 +133,8 @@ describe("matching routes", () => {
     await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
     const open = await seed("ปรับปรุงผิวจราจร เปิด", 100);
     const field = (value: string) => ({ raw: value, value, confidence: 1, verified: true });
+    // A real agency, so a projection that dropped the field would show here.
+    await tors(db).updateOne({ _id: new ObjectId(open) }, { $set: { "fields.agency": field("กรมทางหลวงชนบท") } });
     const base = { title: field("ปรับปรุงผิวจราจร"), category: field("งานก่อสร้าง-ทาง สะพาน"), budget: { raw: "100", value: 100, confidence: 1, verified: true } };
     await seed("ปรับปรุงผิวจราจร ปิด", 100, { fields: { ...base, deadline: field("2020-01-01"), torStatus: field("announced") } });
     await seed("ปรับปรุงผิวจราจร ผู้ชนะ", 100, { fields: { ...base, deadline: field("2027-01-01"), torStatus: field("awarded") } });
@@ -145,7 +147,7 @@ describe("matching routes", () => {
 
     expect(items.map((item: { id: string }) => item.id)).toEqual([open]);
     expect(items[0]).toMatchObject({ budget: { raw: "100", value: 100, verified: true }, deadline: { value: "2027-01-01", verified: true }, unverified: false });
-    expect(items[0]).toHaveProperty("agency");
+    expect(items[0].agency).toBe("กรมทางหลวงชนบท");
   });
 });
 

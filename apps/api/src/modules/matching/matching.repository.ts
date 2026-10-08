@@ -6,6 +6,32 @@ import { CURRENT_MAPPER_VERSION, classifyTor, type TorClassification } from "./t
 
 export type ClassifiedCandidate = { record: WithId<TorDocument>; classification: TorClassification };
 
+/**
+ * The parts of a TOR matching reads: the classifier (title, category, scope,
+ * qualifications), the scorer (budget, deadline, access), the biddable check
+ * (state, status, type, duplicate) and the match row (agency, unverified).
+ *
+ * Whole documents carry status history, source references, contacts and the
+ * rest — about 5.5KB each — and fetching 200 of them from the hosted cluster
+ * took ~2s per request, enough to push a match-filtered search past the web's
+ * API timeout. A field added to any of those readers must be added here.
+ */
+const MATCH_PROJECTION = {
+  pipeline: 1,
+  access: 1,
+  documentType: 1,
+  duplicateOf: 1,
+  unverified: 1,
+  "fields.title": 1,
+  "fields.agency": 1,
+  "fields.category": 1,
+  "fields.budget": 1,
+  "fields.deadline": 1,
+  "fields.torStatus": 1,
+  "fields.scopeSummary": 1,
+  "fields.qualifications": 1,
+} as const;
+
 function coarseCategories(profile: VendorProfileDocument): string[] {
   const selected = new Set(profile.categories);
   return [...new Set(WORK_CATEGORY_LEAVES.filter((leaf) => selected.has(leaf.id) || selected.has(leaf.groupId)).flatMap((leaf) => leaf.torCategories))];
@@ -56,6 +82,15 @@ export class MatchingRepository {
    * The classifier normalises from the raw text, so this covers both.
    */
   async ensureClassified(): Promise<number> {
+    // The common case is "nothing new", and it runs on every match request.
+    // torId is unique in the cache and TORs are never deleted (originals are
+    // immutable), so equal counts mean every TOR has a current classification
+    // — two counts, in parallel, instead of listing every id each time.
+    const [total, classified] = await Promise.all([
+      tors(this.db).countDocuments({}),
+      torClassifications(this.db).countDocuments({ mapperVersion: CURRENT_MAPPER_VERSION }),
+    ]);
+    if (classified >= total) return 0;
     const current = await torClassifications(this.db)
       .find({ mapperVersion: CURRENT_MAPPER_VERSION }, { projection: { torId: 1 } })
       .toArray();
@@ -64,7 +99,7 @@ export class MatchingRepository {
       .filter(ObjectId.isValid)
       .map((id) => new ObjectId(id));
     const pending = await tors(this.db)
-      .find({ _id: { $nin: done } }, { limit: this.config.matching.classifyBatch })
+      .find({ _id: { $nin: done } }, { limit: this.config.matching.classifyBatch, projection: MATCH_PROJECTION })
       .toArray();
     for (const record of pending) await this.classifyAndStore(record);
     return pending.length;
@@ -83,33 +118,33 @@ export class MatchingRepository {
     // ones fill whatever room is left.
     const chosen = chosenLeafAndGroupIds(profile);
     const cap = this.config.matching.candidateCap;
-    const precise = chosen.length
-      ? await torClassifications(this.db)
-          .find(
-            { "classification.coarse": { $in: categories }, "classification.leaves.id": { $in: chosen.leaves } },
-            { sort: { updatedAt: -1 }, limit: cap },
-          )
-          .toArray()
-      : [];
-    const preciseIds = precise.map((entry) => entry.torId);
-    const broad =
-      precise.length < cap
-        ? await torClassifications(this.db)
+    // Both read at once — one round trip to a hosted cluster instead of two.
+    // The broad read takes a full cap, so after dropping what precise already
+    // holds there is still enough to fill the room precise left.
+    const [precise, broadAll] = await Promise.all([
+      chosen.length
+        ? torClassifications(this.db)
             .find(
-              { "classification.coarse": { $in: categories }, torId: { $nin: preciseIds } },
-              { sort: { updatedAt: -1 }, limit: cap - precise.length },
+              { "classification.coarse": { $in: categories }, "classification.leaves.id": { $in: chosen.leaves } },
+              { sort: { updatedAt: -1 }, limit: cap },
             )
             .toArray()
-        : [];
+        : Promise.resolve([]),
+      torClassifications(this.db)
+        .find({ "classification.coarse": { $in: categories } }, { sort: { updatedAt: -1 }, limit: cap })
+        .toArray(),
+    ]);
+    const preciseIds = new Set(precise.map((entry) => entry.torId));
+    const broad = broadAll.filter((entry) => !preciseIds.has(entry.torId)).slice(0, cap - precise.length);
     const cached = [...precise, ...broad];
     // Free text reaches past the taxonomy, so it is still matched against the
     // records themselves rather than against the cache.
     const clauses: Record<string, unknown>[] = [];
     clauses.push(...titleClauses(freeText));
-    const direct = clauses.length ? await tors(this.db).find({ $or: clauses }, { sort: { updatedAt: -1 }, limit: this.config.matching.candidateCap }).toArray() : [];
+    const direct = clauses.length ? await tors(this.db).find({ $or: clauses }, { sort: { updatedAt: -1 }, limit: this.config.matching.candidateCap, projection: MATCH_PROJECTION }).toArray() : [];
     const ids = new Set(cached.map((entry) => entry.torId));
     const records = new Map<string, WithId<TorDocument>>(direct.map((record) => [record._id.toString(), record]));
-    const cachedRecords = await tors(this.db).find({ _id: { $in: [...ids].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }).toArray();
+    const cachedRecords = await tors(this.db).find({ _id: { $in: [...ids].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }, { projection: MATCH_PROJECTION }).toArray();
     for (const record of cachedRecords) records.set(record._id.toString(), record);
     const cacheById = new Map(cached.map((entry) => [entry.torId, entry]));
     const candidates: ClassifiedCandidate[] = [];
