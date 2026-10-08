@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
+vi.mock("../api/api-client", () => ({ apiRequest: vi.fn() }));
+
+import { apiRequest } from "../api/api-client";
 
 import {
   requireStaff,
@@ -108,5 +111,32 @@ describe("requireStaff", () => {
     await signIn("correct horse battery staple");
 
     await expect(requireStaff()).resolves.toBeUndefined();
+  });
+
+  it("refuses a valid pass while a vendor account is signed in", async () => {
+    await signIn("correct horse battery staple");
+    cookieJar.set("tor-radar-session", { name: "tor-radar-session", value: "vendor-session" });
+    vi.mocked(apiRequest).mockResolvedValue(Response.json({ role: "vendor" }));
+
+    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
+    expect(apiRequest).toHaveBeenCalledWith("/api/v1/me", {}, "vendor-session");
+  });
+
+  it("accepts a valid pass while an admin account is signed in", async () => {
+    await signIn("correct horse battery staple");
+    cookieJar.set("tor-radar-session", { name: "tor-radar-session", value: "admin-session" });
+    vi.mocked(apiRequest).mockResolvedValue(Response.json({ role: "admin" }));
+
+    await expect(requireStaff()).resolves.toBeUndefined();
+  });
+
+  it("treats an expired account session as no account, and fails closed when the role cannot be read", async () => {
+    await signIn("correct horse battery staple");
+    cookieJar.set("tor-radar-session", { name: "tor-radar-session", value: "old-session" });
+    vi.mocked(apiRequest).mockResolvedValue(new Response(null, { status: 401 }));
+    await expect(requireStaff()).resolves.toBeUndefined();
+
+    vi.mocked(apiRequest).mockResolvedValue(new Response(null, { status: 503 }));
+    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
   });
 });

@@ -1,6 +1,6 @@
 import { TOR_CATEGORIES, isTorCategory } from "@tor-radar/shared";
 import type { Queue } from "../../ports/queue.port.js";
-import { BadRequestError } from "../../core/errors.js";
+import { BadRequestError, AppError } from "../../core/errors.js";
 import { extensionFor } from "../../lib/content-disposition.js";
 import { parseBudget } from "../../lib/parse-budget.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
@@ -9,6 +9,8 @@ import { cohortFor, type CohortKey } from "../stats/cohort.js";
 import { windowKeysFor } from "../stats/stats.repository.js";
 import type {
   AdminRepository,
+  AdminTorPage,
+  AdminTorQuery,
   FieldEdit,
   QueueEntry,
   ReviewFieldName,
@@ -114,6 +116,15 @@ export class AdminService {
     };
   }
 
+  /** Every record, searchable — the queue shows only what a model graded low. */
+  listAllIds(query: Pick<AdminTorQuery, "kind" | "status" | "q">, limit: number) {
+    return this.deps.repo.listAllIds(query, limit);
+  }
+
+  async listAll(query: AdminTorQuery): Promise<AdminTorPage> {
+    return this.deps.repo.listAll(query);
+  }
+
   async overview() {
     return this.deps.repo.overview();
   }
@@ -215,6 +226,22 @@ export class AdminService {
     await this.markCohorts(before);
   }
 
+  /**
+   * Lifts a takedown. The record keeps `unverified` as the takedown left it, so it returns marked
+   * "unverified extraction" until a reviewer approves it again.
+   */
+  async restore(torId: string, actor: string): Promise<void> {
+    const after = await this.deps.repo.restore(torId);
+    await this.deps.history.record(torId, {
+      from: "restricted",
+      to: "published",
+      actor,
+      source: "admin",
+      reason: "takedown lifted",
+    });
+    await this.markCohorts(after);
+  }
+
   private async markCohorts(...records: Array<{ cohort?: CohortKey }>): Promise<void> {
     if (!this.deps.stats) return;
     await this.deps.stats.markCohortsDirty(records.flatMap((record) => (
@@ -232,5 +259,34 @@ export class AdminService {
       createdAt: record.createdAt,
     }, this.deps.stats.timezone);
     await this.deps.repo.setCohort(torId, derived?.cohort, derived?.cohortDateSource);
+  }
+
+  /**
+   * One action over many TORs, in turn. Each is the same call the single-TOR
+   * route makes, so history and audit are written per TOR exactly as before.
+   * A TOR that refuses (already taken down, not restricted, unknown) is listed
+   * with the reason rather than aborting the rest.
+   */
+  async bulk(
+    action: "reextract" | "reject" | "restore",
+    ids: string[],
+    reason: string | undefined,
+    actor: string,
+  ): Promise<{ done: string[]; failed: Array<{ id: string; reason: string }> }> {
+    const done: string[] = [];
+    const failed: Array<{ id: string; reason: string }> = [];
+    for (const id of ids) {
+      try {
+        if (action === "reextract") await this.reextract(id, actor);
+        else if (action === "restore") await this.restore(id, actor);
+        else await this.reject(id, reason ?? "", actor);
+        done.push(id);
+      } catch (error) {
+        // An AppError is a refusal worded for a person; anything else is ours.
+        if (!(error instanceof AppError)) console.error(JSON.stringify({ event: "admin_bulk_item_failed", action, id, error: String(error) }));
+        failed.push({ id, reason: error instanceof AppError ? error.message : "ทำรายการไม่สำเร็จ" });
+      }
+    }
+    return { done, failed };
   }
 }

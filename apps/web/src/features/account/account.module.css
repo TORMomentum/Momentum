@@ -1,0 +1,100 @@
+/*
+ * Account and privacy.
+ *
+ * This screen was built from the sign-in form's styles, so downloading your
+ * data, withdrawing consent and DELETING YOUR ACCOUNT were three identical
+ * primary buttons. An action that cannot be undone must not look like an
+ * action that can.
+ */
+
+.page { max-width: 760px; margin: 0 auto; padding: 38px 36px 70px; }
+
+.head { margin-bottom: 28px; }
+
+.title { margin: 0 0 6px; font: 700 26px var(--display); }
+
+.sub { margin: 0; font-size: 13px; color: var(--ink-65); line-height: 1.8; }
+
+.card {
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius-card);
+  padding: 24px 26px;
+  margin-bottom: 18px;
+  background: var(--panel);
+}
+
+/* Deleting an account is not the same kind of thing as the two above it. */
+.cardDanger {
+  border-color: rgba(190, 32, 38, 0.35);
+  background: var(--danger-wash);
+}
+
+.cardTitle { margin: 0 0 6px; font: 600 14px var(--body); }
+
+.cardBody { margin: 0 0 16px; font-size: 12.5px; color: var(--ink-70); line-height: 1.9; }
+
+.cardBody:last-child { margin-bottom: 0; }
+
+/* A fact about the account, not a sentence buried in a paragraph. */
+.factRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--ink-12);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.factLabel { font: 10px var(--data); color: var(--ink-55); letter-spacing: var(--label-tracking); }
+
+.factValue { font: 600 12.5px var(--data); color: var(--ink); }
+
+.fact { display: flex; flex-direction: column; gap: 3px; }
+
+.action {
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  padding: 9px 18px;
+  background: var(--paper);
+  color: var(--blue);
+  font: 600 13px var(--body);
+  cursor: pointer;
+}
+
+.action:hover { background: var(--blue-wash); }
+
+.actionDanger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--paper);
+}
+
+.actionDanger:hover { background: #a31b20; }
+
+.withdrawn {
+  display: inline-block;
+  border: 1px solid var(--ink-20);
+  border-radius: 99px;
+  padding: 4px 12px;
+  font: 11px var(--data);
+  color: var(--ink-62);
+}
+
+.deleteForm { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.input {
+  flex: 1 1 220px;
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  background: var(--paper);
+  font: 13px var(--body);
+}
+
+.input:focus { border-color: var(--danger); outline: 2px solid rgba(190, 32, 38, 0.15); }
+
+.message { margin: 16px 0 0; font-size: 12.5px; color: var(--ink-70); }
+
+.messageBad { color: var(--danger); }

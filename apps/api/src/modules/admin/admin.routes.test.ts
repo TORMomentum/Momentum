@@ -78,7 +78,7 @@ function buildTestApp() {
     "/api/v1/admin",
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db, config.budgetMaxThb),
+        repo: new AdminRepository(db, config.budgetMaxThb, config.adminStuckAfterMs),
         history: new HistoryRepository(db),
         queue,
         tLow: config.tLow,
@@ -87,6 +87,8 @@ function buildTestApp() {
       storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
+      bulkMax: config.adminBulkMax,
+      selectAllMax: config.adminSelectAllMax,
     }),
   );
   app.use(errorMiddleware);
@@ -325,3 +327,141 @@ describe("admin budget correction route", () => {
     expect(typeof stored?.fields.budget?.value).toBe("number");
   });
 });
+
+describe("admin all-TORs list", () => {
+  const list = (query: string) => request(buildTestApp()).get(`/api/v1/admin/tors${query}`).set("x-api-key", adminKey);
+
+  it("lists every record, published or taken down, newest first, invitations only when asked", async () => {
+    const queued = await seedQueued();
+    const settled = await seedFieldsToConfirm({ createdAt: new Date(Date.now() + 1000) });
+    const takenDown = await seedFieldsToConfirm({ access: { restricted: true, reason: "ไม่ใช่ TOR" }, createdAt: new Date(Date.now() + 2000) });
+    await seedFieldsToConfirm({ documentType: "invitation" });
+
+    const all = await list("");
+    expect(all.status).toBe(200);
+    expect(all.body.total).toBe(3);
+    expect(all.body.rows.map((row: { id: string }) => row.id)).toEqual([takenDown, settled, queued]);
+    expect(all.body.rows[0]).toMatchObject({ restricted: true, documentType: "tor", state: "published" });
+
+    expect((await list("?status=restricted")).body.rows.map((row: { id: string }) => row.id)).toEqual([takenDown]);
+    expect((await list("?kind=invitation")).body.total).toBe(1);
+  });
+
+  it("searches title and agency as literal text, so a regex character matches itself", async () => {
+    await seedQueued();
+    await seedFieldsToConfirm();
+
+    expect((await list(`?q=${encodeURIComponent("สำนักการแพทย์")}`)).body.total).toBe(1);
+    expect((await list(`?q=${encodeURIComponent(".*")}`)).body.total).toBe(0);
+  });
+
+  it("refuses an unknown status, and requires the admin key", async () => {
+    expect((await list("?status=everything")).status).toBe(400);
+    expect((await request(buildTestApp()).get("/api/v1/admin/tors")).status).toBe(401);
+  });
+});
+
+describe("admin takedown and restore", () => {
+  it("restores a taken-down TOR to the public, logging both, and keeps the original", async () => {
+    const id = await seedFieldsToConfirm();
+    const app = buildTestApp();
+    const auth = { "x-api-key": adminKey };
+
+    await request(app).post(`/api/v1/admin/tors/${id}/reject`).set(auth).send({ reason: "ไม่ใช่เอกสาร TOR" }).expect(200);
+    expect((await request(app).get(`/api/v1/admin/tors/${id}`).set(auth)).body).toMatchObject({ restricted: true, restrictedReason: "ไม่ใช่เอกสาร TOR" });
+
+    const restored = await request(app).post(`/api/v1/admin/tors/${id}/restore`).set(auth);
+    expect(restored.status).toBe(200);
+    const record = await tors(db).findOne({ _id: new ObjectId(id) });
+    expect(record?.access).toEqual({ restricted: false });
+    expect(record?.storage.key).toBe(recordStorage.key);
+    expect((await torEvents(db).find({ torId: id }).sort({ at: 1, _id: 1 }).toArray()).map((event) => event.to)).toEqual(["restricted", "published"]);
+  });
+
+  it("answers 404 for an unknown record", async () => {
+    const response = await request(buildTestApp())
+      .post(`/api/v1/admin/tors/${new ObjectId().toString()}/restore`)
+      .set("x-api-key", adminKey);
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("admin bulk actions", () => {
+  const auth = { "x-api-key": adminKey };
+  const bulk = (body: object) => request(buildTestApp()).post("/api/v1/admin/tors/bulk").set(auth).send(body);
+
+  it("takes many TORs down at once, each with its own history, and reports one it could not find", async () => {
+    const [a, b] = [await seedFieldsToConfirm(), await seedFieldsToConfirm()];
+    const unknown = new ObjectId().toString();
+
+    const response = await bulk({ action: "reject", ids: [a, b, unknown], reason: "ซ้ำกับประกาศอื่น" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.done.sort()).toEqual([a, b].sort());
+    expect(response.body.failed.map((item: { id: string }) => item.id)).toEqual([unknown]);
+    for (const id of [a, b]) {
+      expect((await tors(db).findOne({ _id: new ObjectId(id) }))?.access).toMatchObject({ restricted: true, reason: "ซ้ำกับประกาศอื่น" });
+      expect((await torEvents(db).find({ torId: id }).toArray()).map((event) => event.to)).toEqual(["restricted"]);
+    }
+  });
+
+  it("restores many at once", async () => {
+    const [a, b] = [await seedFieldsToConfirm(), await seedFieldsToConfirm()];
+    await bulk({ action: "reject", ids: [a, b], reason: "ทดสอบการถอด" }).expect(200);
+    const response = await bulk({ action: "restore", ids: [a, b] });
+    expect(response.body).toEqual({ done: [a, b], failed: [] });
+    expect((await tors(db).findOne({ _id: new ObjectId(a) }))?.access).toEqual({ restricted: false });
+  });
+
+  it("will not take anything down without a reason", async () => {
+    const id = await seedFieldsToConfirm();
+    expect((await bulk({ action: "reject", ids: [id] })).status).toBe(400);
+    expect((await tors(db).findOne({ _id: new ObjectId(id) }))?.access.restricted).toBe(false);
+  });
+
+  it("hands back every id matching the list's filters, the same set the list shows, with the chunk size to send them in", async () => {
+    const [a, b] = [await seedFieldsToConfirm(), await seedFieldsToConfirm()];
+    await seedFieldsToConfirm();
+    await bulk({ action: "reject", ids: [a, b], reason: "ทดสอบการเลือกทั้งหมด" }).expect(200);
+
+    const ids = (await request(buildTestApp()).get("/api/v1/admin/tors/ids?status=restricted&kind=all").set(auth)).body;
+    const page = (await request(buildTestApp()).get("/api/v1/admin/tors?status=restricted&kind=all").set(auth)).body;
+
+    expect(ids.ids.sort()).toEqual([a, b].sort());
+    expect(ids.total).toBe(2);
+    expect(ids.chunk).toBe(config.adminBulkMax);
+    expect(ids.ids.sort()).toEqual(page.rows.map((row: { id: string }) => row.id).sort());
+  });
+
+  it("refuses more than the configured maximum, an unknown action and a malformed id", async () => {
+    const tooMany = Array.from({ length: config.adminBulkMax + 1 }, () => new ObjectId().toString());
+    expect((await bulk({ action: "restore", ids: tooMany })).status).toBe(400);
+    expect((await bulk({ action: "delete", ids: [new ObjectId().toString()] })).status).toBe(400);
+    expect((await bulk({ action: "restore", ids: [{ $ne: null }] })).status).toBe(400);
+  });
+});
+
+describe("admin pipeline health", () => {
+  const auth = { "x-api-key": adminKey };
+
+  it("counts a TOR left queued or extracting too long as stuck, and lists exactly those", async () => {
+    const inPipeline = async (state: string, updatedAt: Date) =>
+      (await tors(db).insertOne({
+        contentHash: new ObjectId().toHexString(), storage: recordStorage, sourceRefs: [], pipeline: { state, attempts: 1 }, fields: {},
+        announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null,
+        createdAt: updatedAt, updatedAt,
+      } as never)).insertedId.toString();
+    // Untouched for longer than the threshold; the other was just queued.
+    const stuck = await inPipeline("extracting", new Date(Date.now() - config.adminStuckAfterMs - 60_000));
+    const fresh = await inPipeline("queued", new Date());
+
+    const overview = await request(buildTestApp()).get("/api/v1/admin/overview").set(auth);
+    expect(overview.body.stuck).toBe(1);
+
+    const listed = await request(buildTestApp()).get("/api/v1/admin/tors?status=stuck&kind=all").set(auth);
+    expect(listed.status).toBe(200);
+    expect(listed.body.rows.map((row: { id: string }) => row.id)).toEqual([stuck]);
+    expect(listed.body.rows.map((row: { id: string }) => row.id)).not.toContain(fresh);
+  });
+});
+

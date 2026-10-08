@@ -1,3 +1,5 @@
+import type { TorCategory } from "@tor-radar/shared";
+
 /**
  * The work a vendor can say they do, and the only vocabulary matching uses.
  *
@@ -32,6 +34,8 @@ export interface WorkCategoryLeaf {
   th: string;
   /** Words an announcement uses for this work, for the classifier's evidence. */
   synonyms: string[];
+  /** National e-GP categories under which this work is procured. */
+  torCategories: string[];
 }
 
 export interface WorkCategoryGroup {
@@ -42,7 +46,10 @@ export interface WorkCategoryGroup {
   children: WorkCategoryLeaf[];
 }
 
-export const WORK_CATEGORIES: WorkCategoryGroup[] = [
+type WorkCategoryLeafInput = Omit<WorkCategoryLeaf, "torCategories">;
+type WorkCategoryGroupInput = Omit<WorkCategoryGroup, "children"> & { children: WorkCategoryLeafInput[] };
+
+const WORK_CATEGORY_INPUT: WorkCategoryGroupInput[] = [
   {
     id: "construction",
     th: "งานก่อสร้าง",
@@ -206,6 +213,84 @@ export const WORK_CATEGORIES: WorkCategoryGroup[] = [
 ];
 
 /**
+ * Which national categories a TOR for each kind of work is filed under.
+ *
+ * Written by NAME, never by position. An earlier version read TOR_CATEGORIES by
+ * index, so inserting or reordering a category on the national list would have
+ * silently re-pointed every leaf at the wrong one. Names are checked against the
+ * TorCategory union, so a typo fails to compile and a renamed category fails
+ * the seeds test.
+ *
+ * Construction specialties also point at "งานก่อสร้าง-อื่น ๆ": the national
+ * normaliser files construction there when the text names no building, road or
+ * waterworks — a park, a streetlight run, a fit-out — and a category no leaf
+ * points at is one no vendor can ever be matched to.
+ */
+const OTHER_BUILD: TorCategory = "งานก่อสร้าง-อื่น ๆ";
+const IT_GOODS: TorCategory = "ซื้อคอมพิวเตอร์และอุปกรณ์ไอที";
+const HIRED: TorCategory = "จ้างเหมาบริการ";
+
+const CROSSWALK: Record<string, TorCategory[]> = {
+  "construction.road": ["งานก่อสร้าง-ทาง สะพาน"],
+  "construction.building": ["งานก่อสร้าง-อาคาร"],
+  "construction.renovation": ["งานก่อสร้าง-อาคาร", OTHER_BUILD],
+  "construction.mep": ["งานก่อสร้าง-อาคาร", OTHER_BUILD],
+  "construction.utilities": ["งานก่อสร้าง-ชลประทานและระบบน้ำ"],
+  "construction.irrigation": ["งานก่อสร้าง-ชลประทานและระบบน้ำ"],
+  "construction.streetlight": ["งานก่อสร้าง-ทาง สะพาน", OTHER_BUILD],
+  // A park is not a building; the normaliser files it under "other".
+  "construction.landscape": [OTHER_BUILD],
+
+  "goods.office": ["ซื้อครุภัณฑ์สำนักงานและการศึกษา"],
+  "goods.education": ["ซื้อครุภัณฑ์สำนักงานและการศึกษา"],
+  "goods.computer": [IT_GOODS],
+  "goods.broadcast": [IT_GOODS],
+  "goods.telecom": [IT_GOODS],
+  // Vehicles are rented as often as they are bought.
+  "goods.vehicle": ["ซื้อยานพาหนะ", "เช่า"],
+  "goods.science": ["ซื้อครุภัณฑ์การแพทย์และวิทยาศาสตร์"],
+  "goods.medical": ["ซื้อครุภัณฑ์การแพทย์และวิทยาศาสตร์"],
+
+  // Software and services around it are bought as equipment or hired as a
+  // service, depending on the agency.
+  "it.software": [IT_GOODS, HIRED],
+  "it.data": [IT_GOODS, HIRED],
+  "it.network": [IT_GOODS, HIRED],
+  "it.security": [IT_GOODS, HIRED],
+  "it.gis": [IT_GOODS, HIRED],
+  "it.maintenance": [IT_GOODS, HIRED],
+  "it.digitisation": [IT_GOODS, HIRED],
+  "it.ai": [IT_GOODS, HIRED],
+
+  "services.security": ["จ้างทำความสะอาดและรักษาความปลอดภัย"],
+  "services.cleaning": ["จ้างทำความสะอาดและรักษาความปลอดภัย"],
+  "services.grounds": ["จ้างทำความสะอาดและรักษาความปลอดภัย"],
+  "services.waste": ["จ้างทำความสะอาดและรักษาความปลอดภัย"],
+  "services.pest": ["จ้างทำความสะอาดและรักษาความปลอดภัย"],
+  // เช่ารถ is a rental, which the national list files on its own.
+  "services.logistics": [HIRED, "เช่า"],
+};
+
+/**
+ * Leaves not named above fall back by group: goods to the general goods
+ * category, consulting and design to consulting, everything else to hired
+ * services. Kept as a fallback rather than listed one by one because those
+ * groups each map wholesale; the test fails if any leaf ends with none.
+ */
+function torCategoriesFor(id: string): TorCategory[] {
+  const named = CROSSWALK[id];
+  if (named) return named;
+  if (id.startsWith("goods.")) return ["ซื้อวัสดุและครุภัณฑ์อื่น ๆ"];
+  if (id.startsWith("consulting.") || id.startsWith("design.")) return ["จ้างที่ปรึกษาและออกแบบ"];
+  return [HIRED];
+}
+
+export const WORK_CATEGORIES: WorkCategoryGroup[] = WORK_CATEGORY_INPUT.map((group) => ({
+  ...group,
+  children: group.children.map((leaf) => ({ ...leaf, torCategories: torCategoriesFor(leaf.id) })),
+}));
+
+/**
  * Words that appear in a category field but describe HOW something is bought,
  * not WHAT is being bought. The live corpus holds "ประกวดราคาอิเล็กทรอนิกส์"
  * as a category; classifying it as work would be wrong in a way no score can
@@ -235,4 +320,4 @@ export const WORK_CATEGORY_LEAVES: ReadonlyArray<WorkCategoryLeaf & { groupId: s
  * classification so a match made under an older vocabulary can still be
  * explained, and so a reclassification is reproducible (design §7.5).
  */
-export const TAXONOMY_VERSION = "2026-10-07b";
+export const TAXONOMY_VERSION = "2026-10-07d";

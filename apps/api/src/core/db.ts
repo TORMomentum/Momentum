@@ -2,6 +2,7 @@ import { MongoClient, type Collection, type Db } from "mongodb";
 import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
+import type { TorClassification } from "../modules/matching/tor-classifier.js";
 
 export interface TorDocument {
   contentHash: string;
@@ -156,6 +157,28 @@ export interface AccountDocument {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  /** Set by an admin: the account cannot sign in and every session it had is revoked. */
+  disabledAt?: Date;
+}
+
+/**
+ * What an admin did to a vendor's account (NFR-S2). Reading someone's profile is itself recorded,
+ * because personal data is involved, and so is every change and every email sent on their behalf.
+ */
+export interface AdminAuditDocument {
+  accountId: string;
+  action:
+    | "viewed"
+    | "profile-edited"
+    | "role-changed"
+    | "disabled"
+    | "enabled"
+    | "verification-email-sent"
+    | "password-reset-sent"
+    | "match-email-sent";
+  actor: string;
+  at: Date;
+  detail?: string;
 }
 
 export interface SessionDocument {
@@ -183,6 +206,15 @@ export interface BookmarkDocument {
 }
 
 /** The three explicit preferences used to explain vendor-facing relevance. */
+/** A vendor's stated wish for how often and how closely to be emailed. */
+export interface NotifyPreferences {
+  preset: "all" | "daily" | "high" | "off";
+  minMatch: number;
+  leadDays: number;
+  deadlineReminder: boolean;
+  anomalyAlert: boolean;
+}
+
 export interface VendorProfileDocument {
   accountId: string;
   categories: string[];
@@ -196,7 +228,80 @@ export interface VendorProfileDocument {
    */
   otherCategories?: string[];
   budget: { minThb: number; maxThb: number } | null;
+  /** Optional, so profiles written before the field existed still read. */
+  notify?: NotifyPreferences;
   taxonomyVersion: string;
+  updatedAt: Date;
+  /** Who made the last change. "admin" is shown to the vendor, so a staff edit is never passed off as theirs. */
+  updatedBy?: "vendor" | "admin";
+  /** Work the vendor has done. Optional, and saved on its own, so the main profile form never overwrites it. */
+  pastProjects?: PastProject[];
+  /**
+   * What the vendor holds. Absent until the vendor first saves the section —
+   * "not stated" is different from "holds nothing", and only a stated answer
+   * may lower a score.
+   */
+  certifications?: VendorCertifications;
+}
+
+export interface PastProject {
+  id: string;
+  title: string;
+  /** Buddhist-era year as Thai documents state it, e.g. 2567. */
+  year: number | null;
+  valueThb: number | null;
+}
+
+export interface VendorCertifications {
+  /** grade (ชั้น 1-5) is optional and not asked yet: matching does not use it. */
+  cgd: Array<{ branch: string; grade?: number }>;
+  tags: string[];
+  other: string[];
+}
+
+/** Durable audit/deduplication row for one vendor, TOR and notification reason. */
+export interface NotificationDocument {
+  accountId: string;
+  torId: string;
+  reason: "match" | "deadline-reminder" | "daily-digest";
+  /** A dry-run is deliberately distinct: it must never suppress a later real send. */
+  dryRun: boolean;
+  period?: string;
+  createdAt: Date;
+  sentAt?: Date;
+  messageId?: string;
+}
+
+/** Singleton lease so two worker processes do not dispatch the same batch. */
+export interface NotificationLeaseDocument {
+  _id: "notify-dispatch";
+  owner: string;
+  leaseUntil: Date;
+}
+
+/** Cached derived data; source TOR documents remain immutable after extraction. */
+/**
+ * One person's judgement of one vendor–TOR pair: the labelled benchmark design
+ * §7.8 requires before match emails ship. The score and whether the system
+ * counted it a match are frozen at labelling time, so the figures describe
+ * what the vendor would actually have been sent.
+ */
+export interface MatchLabelDocument {
+  accountId: string;
+  torId: string;
+  label: "relevant" | "not-relevant" | "unsure";
+  /** Score in [0, 1] when labelled. */
+  score: number;
+  /** Whether that score met the vendor's own email threshold then. */
+  matched: boolean;
+  labelledBy: string;
+  labelledAt: Date;
+}
+
+export interface TorClassificationDocument {
+  torId: string;
+  classification: TorClassification;
+  mapperVersion: string;
   updatedAt: Date;
 }
 
@@ -257,8 +362,28 @@ export function bookmarks(db: Db): Collection<BookmarkDocument> {
   return db.collection<BookmarkDocument>("bookmarks");
 }
 
+export function adminAudit(db: Db): Collection<AdminAuditDocument> {
+  return db.collection<AdminAuditDocument>("admin_audit");
+}
+
 export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
+}
+
+export function torClassifications(db: Db): Collection<TorClassificationDocument> {
+  return db.collection<TorClassificationDocument>("tor_classifications");
+}
+
+export function matchLabels(db: Db): Collection<MatchLabelDocument> {
+  return db.collection<MatchLabelDocument>("match_labels");
+}
+
+export function notifications(db: Db): Collection<NotificationDocument> {
+  return db.collection<NotificationDocument>("notifications");
+}
+
+export function notificationLeases(db: Db): Collection<NotificationLeaseDocument> {
+  return db.collection<NotificationLeaseDocument>("notification_leases");
 }
 
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
@@ -272,6 +397,18 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
   await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
+  // dryRun participates in the key so benchmark-safe previews cannot suppress
+  // the eventual live email. `reason` distinguishes a match from its reminder.
+  await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
+  await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
+  await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
+  // One judgement per pair; relabelling replaces it.
+  await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
+  await torClassifications(db).createIndex({ "classification.coarse": 1, updatedAt: -1 });
+  // Precise candidates — records with leaf evidence for what a vendor chose —
+  // are read before the coarse ones, so they need their own path.
+  await torClassifications(db).createIndex({ "classification.leaves.id": 1, updatedAt: -1 });
+  await adminAudit(db).createIndex({ accountId: 1, at: -1 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index

@@ -157,6 +157,77 @@
 
 .pickerEmpty { margin: 0 0 8px; font: 12px var(--body); color: var(--ink-65); }
 
+/* -------------------------------------------------------------------------
+   A profile that has been answered.
+
+   What the vendor said, in their own words, rather than the sixty-five choices
+   they already worked through. Read-only on purpose: each section opens its own
+   picker, so changing one answer never puts the whole form back on screen.
+   ------------------------------------------------------------------------- */
+
+/* One card, one row per setting: a label, its current value, and the way in to
+   change it. Three cards holding one chip each read as three empty boxes, and
+   settings are list management rather than a gallery. */
+.settingRow {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  gap: 18px;
+  align-items: start;
+  padding: 16px 0;
+  border-top: var(--rule);
+}
+
+.settingRow:first-of-type { border-top: 0; padding-top: 4px; }
+
+.settingLabel { font: 600 13px var(--body); color: var(--ink); padding-top: 3px; }
+
+.settingNote { display: block; margin-top: 3px; font: 11px var(--data); color: var(--ink-55); }
+
+/* The editor replaces the value in place, so the row it belongs to is obvious. */
+.settingEditor { grid-column: 1 / -1; padding-top: 4px; }
+
+.summaryRow { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.summaryEmpty { font: 12.5px var(--body); color: var(--ink-55); padding-top: 4px; }
+
+/* Who is signed in, which the screen before this one dropped entirely. */
+.identity { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+
+.identityAvatar {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--avatar);
+  color: var(--paper);
+  display: grid;
+  place-items: center;
+  font: 700 22px var(--display);
+}
+
+.identityEmail { font: 11.5px var(--data); color: var(--ink-62); margin-top: 2px; }
+
+.summaryChip {
+  border: 1px solid var(--ink-18);
+  border-radius: 99px;
+  padding: 5px 12px;
+  background: var(--paper);
+  font: 12.5px var(--body);
+  color: var(--ink-70);
+}
+
+/* Offered, not demanded: nothing here is required to receive alerts, so it is
+   styled as information rather than as an unfinished task. */
+.laterList {
+  margin: 12px 0 10px;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.9;
+  color: var(--ink-70);
+}
+
+.laterList strong { color: var(--ink); font-weight: 600; }
+
 /* Separated by a rule, because what the vocabulary cannot express is a
    different kind of answer from what it can. */
 .otherSection {
@@ -337,7 +408,6 @@
 
 .factActions { display: flex; gap: 8px; }
 
-.matchRangeInput { width: 100%; cursor: pointer; accent-color: var(--blue); }
 
 .trackLabelRow { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
 
@@ -355,6 +425,9 @@
 }
 
 .trackRow:hover { background: rgba(29, 99, 216, 0.05); }
+
+.savedTorLink { color: inherit; text-decoration: none; flex: 1; min-width: 0; }
+.savedTorLink:hover .trackTitle { color: var(--blue); }
 
 .trackTitle { font-size: 13.5px; font-weight: 600; }
 
@@ -423,9 +496,9 @@
   box-shadow: inset 0 0 0 2px var(--paper);
 }
 
-.presetTitle { font-size: 13px; font-weight: 600; }
+.presetTitle { display: block; font-size: 13px; font-weight: 600; }
 
-.presetDesc { font-size: 11.5px; color: var(--ink-65); margin-top: 2px; }
+.presetDesc { display: block; font-size: 11.5px; color: var(--ink-65); margin-top: 2px; }
 
 .advancedToggle {
   margin-top: 16px;
@@ -468,29 +541,9 @@
 
 .advancedRowValue { font: 600 11px var(--data); color: var(--blue); }
 
-.advancedSliderLabels { display: flex; justify-content: space-between; font: 10px var(--data); color: var(--ink-65); }
 
 .leadGroupTitle { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
 
-.leadGroup {
-  display: flex;
-  border: 1px solid rgba(18, 35, 60, 0.35);
-  border-radius: 6px;
-  overflow: hidden;
-  width: fit-content;
-}
-
-.leadOption {
-  white-space: nowrap;
-  font: 600 11.5px var(--body);
-  padding: 8px 15px;
-  cursor: pointer;
-  background: transparent;
-  color: rgba(18, 35, 60, 0.75);
-  border: 0;
-}
-
-.leadOptionOn { background: var(--blue); color: var(--paper); }
 
 .extraGroupTitle { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
 
@@ -511,9 +564,9 @@
   color: inherit;
 }
 
-.extraLabel { font-size: 12.5px; }
+.extraLabel { display: block; font-size: 12.5px; }
 
-.extraNote { font-size: 11px; color: rgba(18, 35, 60, 0.6); }
+.extraNote { display: block; font-size: 11px; color: rgba(18, 35, 60, 0.6); }
 
 .switchTrack {
   flex: none;
@@ -542,3 +595,13 @@
 .switchKnobOn { left: 19px; }
 
 .advancedFoot { font: 10px var(--data); color: rgba(18, 35, 60, 0.55); line-height: 1.7; }
+
+/* Told, not hidden: a staff edit to a vendor's own answers. */
+.adminEditedNote {
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--blue);
+  background: var(--blue-ring);
+  font-size: 12px;
+  color: var(--ink);
+}

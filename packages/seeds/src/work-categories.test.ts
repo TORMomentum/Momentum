@@ -5,8 +5,15 @@ import {
   WORK_CATEGORIES,
   WORK_CATEGORY_LEAVES,
 } from "./work-categories.js";
+import { TOR_CATEGORIES } from "@tor-radar/shared";
 
 describe("the work taxonomy", () => {
+  it("crosswalks every leaf to one or more closed national TOR categories", () => {
+    for (const leaf of WORK_CATEGORY_LEAVES) {
+      expect(leaf.torCategories.length).toBeGreaterThan(0);
+      for (const category of leaf.torCategories) expect(TOR_CATEGORIES).toContain(category);
+    }
+  });
   it("gives every group and leaf an id that is unique across the whole tree", () => {
     const ids = [...WORK_CATEGORIES.map((g) => g.id), ...WORK_CATEGORY_LEAVES.map((l) => l.id)];
     expect(new Set(ids).size).toBe(ids.length);
@@ -25,7 +32,7 @@ describe("the work taxonomy", () => {
     for (const group of WORK_CATEGORIES) {
       expect(group.children.length).toBeGreaterThan(0);
       for (const leaf of group.children) {
-        expect(Object.keys(leaf)).toEqual(expect.arrayContaining(["id", "th", "synonyms"]));
+        expect(Object.keys(leaf)).toEqual(expect.arrayContaining(["id", "th", "synonyms", "torCategories"]));
         expect((leaf as { children?: unknown }).children).toBeUndefined();
       }
     }
@@ -68,6 +75,14 @@ describe("the work taxonomy", () => {
     expect(NOT_A_CATEGORY).toContain("ประกวดราคาอิเล็กทรอนิกส์");
     const leafWords = new Set(WORK_CATEGORY_LEAVES.flatMap((l) => [l.th, ...l.synonyms]));
     for (const method of NOT_A_CATEGORY) expect(leafWords.has(method)).toBe(false);
+  });
+
+  it("leaves no national category without a kind of work pointing at it", () => {
+    // A category nothing maps to is one no vendor can ever be matched to. The
+    // first crosswalk left "งานก่อสร้าง-อื่น ๆ" and "เช่า" like that, so every
+    // TOR the normaliser filed there was invisible to everyone.
+    const reached = new Set(WORK_CATEGORY_LEAVES.flatMap((leaf) => leaf.torCategories));
+    for (const category of TOR_CATEGORIES) expect(reached.has(category)).toBe(true);
   });
 
   it("carries a version, so a match made under an older vocabulary can be explained", () => {

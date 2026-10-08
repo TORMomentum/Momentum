@@ -16,8 +16,30 @@ export interface VendorProfile {
   /** Work the taxonomy has no node for. Stored, but not matched against. */
   otherCategories: string[];
   budget: { minThb: number; maxThb: number } | null;
+  notify: { preset: "all" | "daily" | "high" | "off"; minMatch: number; leadDays: number; deadlineReminder: boolean; anomalyAlert: boolean };
   taxonomyVersion: string;
   updatedAt: string | null;
+  /** Who made the last change; an admin's is shown to the vendor. */
+  updatedBy?: "vendor" | "admin";
+  /** Saved on their own by the "help matching" section, never by the main form. */
+  pastProjects: PastProject[];
+  /** null until the vendor first saves the section: "not stated", not "holds nothing". */
+  certifications: VendorCertifications | null;
+}
+
+export interface PastProject {
+  id: string;
+  title: string;
+  /** Buddhist-era year. */
+  year: number | null;
+  valueThb: number | null;
+}
+
+export interface VendorCertifications {
+  /** grade (ชั้น 1-5) is optional and not asked yet: matching does not use it. */
+  cgd: Array<{ branch: string; grade?: number }>;
+  tags: string[];
+  other: string[];
 }
 
 export async function fetchOwnProfile(): Promise<VendorProfile | null> {

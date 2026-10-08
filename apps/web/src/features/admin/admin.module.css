@@ -65,6 +65,21 @@
   grid-template-columns: var(--queue-width) var(--document-width) var(--fields-width);
 }
 
+/* The all-TORs management page shares the record workbench without a review queue. */
+.adminRecordBody {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(420px, 1.15fr) minmax(390px, 0.85fr);
+}
+
+.adminRecordNotFound {
+  padding: 36px;
+  font: 14px var(--body);
+}
+
 .adminQueueList { min-width: 0; overflow-y: auto; border-right: var(--rule); padding: 18px 0; }
 
 .adminQueueItem {
@@ -391,7 +406,7 @@
   text-align: center;
   font: 500 11.5px var(--body);
   border: 1px solid var(--ink-28);
-  padding: 8px 0;
+  padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
   background: transparent;
@@ -546,6 +561,48 @@
 .logActor { font: 11px var(--data); color: var(--ink-70); }
 .logReason { color: var(--ink-70); }
 .logEmpty { padding: 40px 0; color: var(--ink-62); font-size: 13px; }
+
+/* ---------- all TORs: search every record, open any in the review screen ---------- */
+.torsFilters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+
+.torsFilters .adminSecondaryBtn { flex: none; padding: 8px 18px; }
+
+.torsSearch { flex: 1 1 320px; min-width: 0; font: 13px var(--body); padding: 8px 12px; border: 1px solid var(--ink-28); border-radius: 4px; }
+
+.torsSelect { font: 12.5px var(--body); padding: 8px 10px; border: 1px solid var(--ink-28); border-radius: 4px; background: var(--paper, #fff); }
+
+.torsCount { margin: 0 0 10px; font: 11px var(--data); color: var(--ink-62); }
+
+.torsKind { margin-left: 8px; font: 10px var(--data); color: var(--ink-62); }
+
+.torsStatus { font: 600 11px var(--body); white-space: nowrap; }
+
+.torsStatusPublic { color: var(--verified); }
+
+.torsStatusRestricted { color: var(--danger); }
+
+.torsStatusFailed { color: var(--anomaly); }
+
+.torsStatusMuted { color: var(--ink-62); }
+
+.torsPager { display: flex; justify-content: space-between; margin-top: 18px; font-size: 13px; }
+
+/* ---------- one vendor account ---------- */
+.vendorActions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+
+.vendorActions .adminSecondaryBtn { flex: none; padding: 8px 16px; }
+
+.vendorAuditTitle { margin: 34px 0 10px; font: 600 15px var(--display); }
+
+/* A taken-down record says so above everything else, with the way back beside it. */
+.restrictedBanner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 4px; font-size: 12.5px; color: var(--danger); }
+
+.restrictedBanner .adminSecondaryBtn { flex: none; padding: 6px 14px; color: var(--ink); }
+
+@media (max-width: 720px) {
+  .logPage { padding: 24px 16px 48px; }
+  .logTable { display: block; overflow-x: auto; }
+}
 
 /* ---------- queue search and triage ---------- */
 .queueTools {
@@ -1030,3 +1087,92 @@
 .uploadRecentName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
 
 .uploadRecentState { flex: none; font: 600 10.5px var(--data); color: var(--ink-62); }
+
+/* ---- All-TORs selection and bulk actions ---- */
+
+/* Stays in view while the list scrolls: it is what acts on the ticks below. */
+.bulkBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.bulkBar .adminSecondaryBtn { flex: none; }
+
+.bulkCount { margin-right: auto; font: 600 12.5px var(--body); color: var(--blue); }
+
+.bulkClear { border: 0; background: none; padding: 0 4px; font-size: 12px; color: var(--ink-55); cursor: pointer; }
+
+.bulkClear:hover { color: var(--ink); }
+
+.selectCell { width: 1%; padding-right: 0; }
+
+.rowSelected { background: var(--blue-ring); }
+
+/* An overview card that opens its records: same card, plainly clickable. */
+a.overviewCard { color: inherit; text-decoration: none; transition: border-color 0.15s ease; }
+
+a.overviewCard:hover { border-color: var(--blue); }
+
+/* ---- "คำที่ผู้ใช้เพิ่มเอง" report ---- */
+.termsSection { margin-bottom: 34px; }
+
+.termsTitle { margin: 0 0 10px; font: 600 15px var(--display); }
+
+.termsCount { width: 1%; white-space: nowrap; text-align: right; font-family: var(--data); }
+
+/* ---- Match-quality labelling ---- */
+.labelList { margin: 0; padding: 0; list-style: none; }
+
+.labelRow { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--ink-12); }
+
+.labelScore {
+  flex: none;
+  min-width: 46px;
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  background: var(--match);
+  color: var(--paper);
+  font: 600 12px var(--data);
+  text-align: center;
+}
+
+.labelBody { flex: 1; min-width: 0; }
+
+.labelTitle { font: 600 13px var(--body); color: var(--ink); overflow-wrap: anywhere; }
+
+.labelMeta { margin-top: 3px; font-size: 11.5px; color: var(--ink-65); overflow-wrap: anywhere; }
+
+.labelChoices { flex: none; display: flex; gap: 6px; }
+
+.labelChoice {
+  padding: 5px 10px;
+  border: 1px solid var(--ink-20);
+  border-radius: 99px;
+  background: var(--paper);
+  font-size: 12px;
+  color: var(--ink-65);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.labelChoice:hover { border-color: var(--blue); color: var(--blue); }
+
+.labelChoiceOn { border-color: var(--blue); background: var(--blue); color: var(--paper); }
+
+.labelChoiceOn:hover { color: var(--paper); }
+
+.selectAllNote { margin: -4px 0 10px; font-size: 12.5px; color: var(--ink-65); }
+
+.selectAllLink { border: 0; padding: 0; background: none; font: 600 12.5px var(--body); color: var(--blue); cursor: pointer; }
+
+.selectAllLink:hover { text-decoration: underline; }

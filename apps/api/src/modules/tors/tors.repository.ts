@@ -13,6 +13,8 @@ export interface PublicTorDocumentRecord {
 
 /** A filter the repository can run: the service has already decided what "today" is. */
 export interface SearchCriteria extends Omit<SearchFilter, "open"> {
+  /** Match IDs were computed by the matching module before this database boundary. */
+  matchIds?: ObjectId[];
   /** Required when `state` is set: the five states depend on today's date. */
   today?: string;
   /** Set when only open TORs are wanted: deadlines before this `YYYY-MM-DD` have passed. */
@@ -89,6 +91,15 @@ export interface PublicTorRecord {
   contentHash: string;
   contentType: string;
   createdAt: Date;
+}
+
+export interface BookmarkTorRow {
+  id: string;
+  title: string;
+  agency: string;
+  deadline: string | null;
+  budget: number | null;
+  open: boolean;
 }
 
 /**
@@ -199,6 +210,10 @@ function buildFilter(criteria: SearchCriteria): Filter<TorDocument> {
     if (criteria.from) range.$gte = new Date(`${criteria.from}T00:00:00Z`);
     if (criteria.to) range.$lt = dayAfter(criteria.to);
     clauses.push({ announcedAt: range });
+  }
+  if (criteria.matchIds) {
+    // The match engine decides IDs; the repository alone adds them to Mongo.
+    clauses.push({ _id: { $in: criteria.matchIds } });
   }
 
   return { $and: clauses };
@@ -435,6 +450,31 @@ export class TorsRepository {
       contentType: doc.storage.contentType,
       createdAt: doc.createdAt,
     };
+  }
+
+  /** Exists independently of public visibility: a later takedown does not turn an owned pointer invalid. */
+  async exists(id: string): Promise<boolean> {
+    if (!ObjectId.isValid(id)) return false;
+    return (await tors(this.db).countDocuments({ _id: new ObjectId(id) }, { limit: 1 })) > 0;
+  }
+
+  /** Minimal public projection for a vendor's saved-TOR rows. */
+  async bookmarkRows(ids: string[]): Promise<BookmarkTorRow[]> {
+    const objectIds = ids.filter(ObjectId.isValid).map((id) => new ObjectId(id));
+    if (objectIds.length === 0) return [];
+    const today = new Date().toISOString().slice(0, 10);
+    const docs = await tors(this.db).find(
+      { $and: [{ _id: { $in: objectIds } }, VISIBLE] },
+      { projection: { fields: 1 } },
+    ).toArray();
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      title: doc.fields?.title?.raw ?? "",
+      agency: doc.fields?.agency?.raw ?? "",
+      deadline: typeof doc.fields?.deadline?.value === "string" ? doc.fields.deadline.value : null,
+      budget: typeof doc.fields?.budget?.value === "number" ? doc.fields.budget.value : null,
+      open: doc.fields?.torStatus?.value === "announced" && (typeof doc.fields?.deadline?.value !== "string" || doc.fields.deadline.value >= today),
+    }));
   }
 
   async loadDocument(id: string): Promise<PublicTorDocumentRecord | null> {

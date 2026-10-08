@@ -171,6 +171,33 @@ portfolio material as profile contents, and `FR-C-1`, which scores
 qualifications.** The SRS is amended to say when each is collected; the
 requirement that they are held and scored is unchanged.
 
+### 7.1.1 The profile screen has two states, and they are not the same screen
+
+Revision 2 said what is asked and when, and left a gap: it never said that the
+screen changes once the answers exist. Built from §7.1 alone, the profile is a
+setup form that stays a setup form — a vendor who has already answered is shown
+the same sixty-five choices every time they open it, with no way to see what
+they said without reading the highlighting.
+
+**Setting up.** A profile with no work categories chosen has never been filled
+in. It leads with the pickers, because there is exactly one thing to do.
+
+**Afterwards.** A profile that has been answered leads with the answers: what
+work, which areas, what budget, each stated plainly with its own way in to
+change it. The pickers are still there, one section at a time, behind the
+section they belong to.
+
+This is what progressive profiling means in practice. The first visit asks the
+minimum that makes matching work; every visit after it is a place to see and
+correct what was said, and to be offered the next thing worth adding.
+
+**What is offered next is listed, not nagged.** Certifications and past projects
+are named as things that would sharpen matching, with the effect each has stated
+honestly — and nothing is marked incomplete for their absence, because §7.1 says
+neither is ever required to receive alerts. The contextual prompt ("เพิ่ม
+ใบอนุญาตนี้ เพื่อไม่ให้ได้รับแจ้งเตือนที่ไม่ตรง") needs matching to know the
+moment, so it arrives with matching rather than being faked as a standing banner.
+
 ### 7.2 A company-size band is NOT collected
 
 Proposed on the strength of TenderKG's "staffing range", and rejected on review.

@@ -17,7 +17,12 @@ const INITIAL_STAFF_SIGN_IN_STATE: StaffSignInState = {
 
 export function StaffLoginForm() {
   const router = useRouter();
-  const { signIn: markViewerSignedIn } = useViewer();
+  const { signIn: markViewerSignedIn, signOut, account } = useViewer();
+  // While a non-admin account is signed in, the staff pass is refused on
+  // purpose (a pass left in a browser must not lift a vendor into the staff
+  // area). The form would accept the code and the guard would bounce straight
+  // back here, which looked broken; say why and offer the way out instead.
+  const blockedBy = account && account.role !== "admin" ? account.email : null;
   const [state, formAction, pending] = useActionState(
     signInAction,
     INITIAL_STAFF_SIGN_IN_STATE,
@@ -46,31 +51,43 @@ export function StaffLoginForm() {
           กรอกรหัสสำหรับเจ้าหน้าที่เพื่อเปิดคิวตรวจสอบและบันทึกกิจกรรม
         </p>
 
-        <form action={formAction} className={styles.form}>
-          <div>
-            <label className={styles.label} htmlFor="staff-secret">
-              รหัสสำหรับเจ้าหน้าที่
-            </label>
-            <input
-              id="staff-secret"
-              name="secret"
-              type="password"
-              className={styles.input}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          {state.error && (
-            <div className={styles.error} role="alert">
-              {state.error}
+        {blockedBy ? (
+          <div className={styles.form}>
+            <div className={styles.notice} role="status">
+              ตอนนี้เข้าสู่ระบบอยู่ด้วยบัญชี <strong>{blockedBy}</strong> ซึ่งไม่ใช่บัญชีผู้ดูแล —
+              รหัสเจ้าหน้าที่ใช้ไม่ได้ขณะเข้าสู่ระบบด้วยบัญชีนี้
             </div>
-          )}
+            <button className={styles.submit} type="button" onClick={signOut}>
+              ออกจากระบบ แล้วใช้รหัสเจ้าหน้าที่
+            </button>
+          </div>
+        ) : (
+          <form action={formAction} className={styles.form}>
+            <div>
+              <label className={styles.label} htmlFor="staff-secret">
+                รหัสสำหรับเจ้าหน้าที่
+              </label>
+              <input
+                id="staff-secret"
+                name="secret"
+                type="password"
+                className={styles.input}
+                autoComplete="current-password"
+                required
+              />
+            </div>
 
-          <button className={styles.submit} type="submit" disabled={pending}>
-            {pending ? "กำลังตรวจสอบ…" : "เข้าสู่ส่วนผู้ดูแลระบบ"}
-          </button>
-        </form>
+            {state.error && (
+              <div className={styles.error} role="alert">
+                {state.error}
+              </div>
+            )}
+
+            <button className={styles.submit} type="submit" disabled={pending}>
+              {pending ? "กำลังตรวจสอบ…" : "เข้าสู่ส่วนผู้ดูแลระบบ"}
+            </button>
+          </form>
+        )}
 
         <Link className={styles.publicLink} href="/dashboard">
           ← กลับหน้าสาธารณะ

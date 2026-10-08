@@ -22,6 +22,7 @@
   --blue-dark: #1746a0;
   --blue-wash: rgba(29, 99, 216, 0.06);   /* a control that is holding a filter */
   --blue-ring: rgba(29, 99, 216, 0.12);   /* focus/open ring around one */
+  --filter-label-width: 44px; /* "ตั้งแต่ / ถึง" column of the search range filters */
   --anomaly: #b45309;       /* statistical anomaly — never "suspicious" (NFR-F5) */
   --anomaly-wash: rgba(180, 83, 9, 0.06); /* pending human confirmation */
   --verified: #0e7a5f;      /* a check that passed */
@@ -34,6 +35,7 @@
   --navy-soft: rgba(232, 238, 247, 0.78);
   --navy-accent: #7fb0f0;
   --match: #2b6e5a;         /* match-score badge, signed-in avatar */
+  --match-ring: rgba(43, 110, 90, 0.14);  /* focus ring in the match tone; mirrors --match */
   --star: #e8930c;          /* "worked on something like this" marker */
   --danger: #be2026;        /* destructive/reject action hover (admin review queue) */
   --danger-wash: rgba(190, 32, 38, 0.06); /* a message reporting failure */
