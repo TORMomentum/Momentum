@@ -115,8 +115,12 @@ export function SearchView({
   savedIds: string[];
 }) {
   const router = useRouter();
-  const { signedIn, ready, account } = useViewer();
-  const vendorSignedIn = signedIn && account?.role === "vendor";
+  const { signedIn, ready } = useViewer();
+  // Any signed-in account with a profile has matches — the API scores from
+  // the profile, not the role, and the dashboard shows them to the same
+  // people. Gating on role alone hid the filter from an admin testing their
+  // own profile while the dashboard beside it listed their matches.
+  const matchFilterShown = signedIn;
   const [pending, startTransition] = useTransition();
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
@@ -319,7 +323,7 @@ export function SearchView({
           </div>
         </FilterSection>
 
-        {vendorSignedIn && (
+        {matchFilterShown && (
           <FilterSection title="ตรงกับคุณ" active={filters.minMatch !== null || filters.maxMatch !== null ? 1 : 0}>
             {/* In the URL, so paging stays an API query rather than a filter
                 over one page in the browser. */}

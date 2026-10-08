@@ -64,6 +64,11 @@ describe("SearchView match filter", () => {
     expect(matchBox()).not.toBeNull();
   });
 
+  it("is offered to any signed-in account, not only one with the vendor role", () => {
+    render({ email: "a@example.test", name: "ผู้ดูแล", role: "admin" });
+    expect(matchBox()).not.toBeNull();
+  });
+
   it("is not offered to a signed-out visitor, even from a stale link carrying a threshold", () => {
     render(null, 70);
     expect(matchBox()).toBeNull();
