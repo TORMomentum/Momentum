@@ -70,6 +70,23 @@ export function BudgetRange({
   // left past min), in the left half it is max.
   const minOnTop = min >= floor + span / 2;
 
+  /**
+   * A press on the track, not on a handle, moves the nearer handle there —
+   * what every slider does. The range inputs only take presses on their
+   * thumbs (so two can overlap), which left the track itself dead.
+   */
+  function jumpTo(event: React.PointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).tagName === "INPUT") return;
+    const box = event.currentTarget.getBoundingClientRect();
+    if (box.width <= 0) return;
+    const ratio = Math.min(Math.max((event.clientX - box.left) / box.width, 0), 1);
+    const value = clamp(floor + Math.round((ratio * span) / step) * step);
+    if (value <= min) onChange({ min: value, max });
+    else if (value >= max) onChange({ min, max: value });
+    else if (value - min <= max - value) onChange({ min: value, max });
+    else onChange({ min, max: value });
+  }
+
   return (
     <div className={`${styles.root} ${tone === "match" ? styles.toneMatch : ""}`}>
       {stacked ? (
@@ -126,7 +143,7 @@ export function BudgetRange({
           />
         </div>
       )}
-      <div className={styles.sliderWrap}>
+      <div className={styles.sliderWrap} onPointerDown={jumpTo}>
         <svg width="0" height="0" style={{ position: "absolute" }}>
           <defs>
             <filter id={gooId}>

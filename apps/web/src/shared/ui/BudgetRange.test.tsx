@@ -110,4 +110,36 @@ describe("BudgetRange typed amounts", () => {
     expect(minRange!.className).not.toMatch(/rangeInputTop/);
     expect(maxRange!.className).not.toMatch(/rangeInputTop/);
   });
+
+  describe("pressing the track", () => {
+    // jsdom has no layout: give the track a known 1000px box at x = 0.
+    function pressTrackAt(x: number) {
+      const track = container.querySelector<HTMLDivElement>('input[type="range"]')!.parentElement!;
+      track.getBoundingClientRect = () => ({ left: 0, width: 1000, top: 0, height: 28, right: 1000, bottom: 28, x: 0, y: 0, toJSON: () => ({}) });
+      act(() => {
+        // jsdom has no PointerEvent; React reads clientX either way.
+        track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: x }));
+      });
+    }
+
+    it("moves the max handle when pressed beyond it", () => {
+      const onChange = render(10_000_000, 50_000_000);
+      pressTrackAt(800);
+      expect(onChange).toHaveBeenCalledWith({ min: 10_000_000, max: 80_000_000 });
+    });
+
+    it("moves the min handle when pressed before it", () => {
+      const onChange = render(10_000_000, 50_000_000);
+      pressTrackAt(50);
+      expect(onChange).toHaveBeenCalledWith({ min: 5_000_000, max: 50_000_000 });
+    });
+
+    it("moves whichever handle is nearer when pressed between them, snapped to the step", () => {
+      const onChange = render(10_000_000, 50_000_000);
+      pressTrackAt(421);
+      expect(onChange).toHaveBeenCalledWith({ min: 10_000_000, max: 42_100_000 });
+      pressTrackAt(201);
+      expect(onChange).toHaveBeenLastCalledWith({ min: 20_100_000, max: 50_000_000 });
+    });
+  });
 });
