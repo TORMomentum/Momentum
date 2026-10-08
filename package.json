@@ -16,7 +16,8 @@
     "check:vertex": "node tools/check_vertex.mjs",
     "spike:extract": "node tools/extract_spike.mjs",
     "score:extract": "node tools/score_extraction.mjs",
-    "build:packages": "npm run build -w @tor-radar/shared && npm run build -w @tor-radar/seeds"
+    "build:packages": "npm run build -w @tor-radar/shared && npm run build -w @tor-radar/seeds",
+    "prepare": "npm run build:packages"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
