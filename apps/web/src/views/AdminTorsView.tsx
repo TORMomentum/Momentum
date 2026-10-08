@@ -118,6 +118,8 @@ export function AdminTorsView({
       {result && result.rows.length > 0 && (
         <AdminTorsTable
           linkSuffix={linkSuffix(query)}
+          query={{ ...(query.q ? { q: query.q } : {}), status: query.status, kind: query.kind }}
+          total={result.total}
           rows={result.rows.map((row) => ({
             id: row.id,
             title: row.title,

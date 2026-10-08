@@ -241,7 +241,8 @@ export class AdminRepository {
    * model graded low, so a published record that turns out wrong could not be reached before.
    * Newest first; a page at a time.
    */
-  async listAll(query: AdminTorQuery): Promise<AdminTorPage> {
+  /** The all-TORs filter, built once for both the page and "select everything matching". */
+  private allTorsFilter(query: Pick<AdminTorQuery, "kind" | "status" | "q">): Filter<TorDocument> {
     const and: Filter<TorDocument>[] = [];
     if (query.kind === "tor") and.push({ documentType: { $ne: "invitation" } });
     if (query.kind === "invitation") and.push({ documentType: "invitation" });
@@ -268,7 +269,24 @@ export class AdminRepository {
         ],
       });
     }
-    const filter: Filter<TorDocument> = and.length > 0 ? { $and: and } : {};
+    return and.length > 0 ? { $and: and } : {};
+  }
+
+  /**
+   * Every id matching the list's filters, newest first, up to `limit` — what
+   * "select everything matching" acts on. `total` says whether all of them fit.
+   */
+  async listAllIds(query: Pick<AdminTorQuery, "kind" | "status" | "q">, limit: number): Promise<{ ids: string[]; total: number }> {
+    const filter = this.allTorsFilter(query);
+    const [docs, total] = await Promise.all([
+      tors(this.db).find(filter, { sort: { createdAt: -1, _id: -1 }, limit, projection: { _id: 1 } }).toArray(),
+      tors(this.db).countDocuments(filter),
+    ]);
+    return { ids: docs.map((doc) => doc._id.toString()), total };
+  }
+
+  async listAll(query: AdminTorQuery): Promise<AdminTorPage> {
+    const filter = this.allTorsFilter(query);
     const [docs, total] = await Promise.all([
       tors(this.db)
         .find(filter, {

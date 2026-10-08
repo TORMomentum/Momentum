@@ -140,6 +140,7 @@ export function buildApp(config: Config, db: Db): Express {
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
       bulkMax: config.adminBulkMax,
+      selectAllMax: config.adminSelectAllMax,
     }),
   );
 

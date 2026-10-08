@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import type { AdminBulkAction } from "../../shared/lib/admin-api";
+import type { AdminBulkAction, AdminTorKind, AdminTorStatus } from "../../shared/lib/admin-api";
 import { AdminConfirmDialog } from "./admin-confirm-dialog";
-import { bulkTorsAction } from "./admin.actions";
+import { bulkTorsAction, selectAllTorsAction } from "./admin.actions";
 import styles from "./admin.module.css";
 
 export interface AdminTorsTableRow {
@@ -46,7 +46,21 @@ const ACTIONS: Record<AdminBulkAction, { button: string; title: string; body: st
  * on all of them at once. Each TOR still goes through the same audited change
  * as its own page; any the API refuses are listed with the reason.
  */
-export function AdminTorsTable({ rows, linkSuffix }: { rows: AdminTorsTableRow[]; linkSuffix: string }) {
+export function AdminTorsTable({
+  rows,
+  linkSuffix,
+  query,
+  total,
+}: {
+  rows: AdminTorsTableRow[];
+  linkSuffix: string;
+  /** The list's current filters, for "select everything matching". */
+  query: { q?: string; status: AdminTorStatus; kind: AdminTorKind };
+  /** How many TORs match those filters, across every page. */
+  total: number;
+}) {
+  // How many ids one bulk request may carry; the API states it with the ids.
+  const [chunk, setChunk] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState<AdminBulkAction | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -61,18 +75,39 @@ export function AdminTorsTable({ rows, linkSuffix }: { rows: AdminTorsTableRow[]
       return next;
     });
 
-  async function run(action: AdminBulkAction, reason?: string) {
-    const ids = [...selected];
-    const outcome = await bulkTorsAction(action, ids, reason);
+  async function selectAllMatching() {
+    setMessage(null);
+    const outcome = await selectAllTorsAction(query);
     if (!outcome.ok) {
       setMessage(outcome.reason);
       return;
     }
-    const { done, failed } = outcome.result;
+    setChunk(outcome.chunk);
+    setSelected(new Set(outcome.ids));
+    if (outcome.ids.length < outcome.total) setMessage(`เลือกได้ครั้งละไม่เกิน ${outcome.ids.length} รายการ — เลือกไว้ ${outcome.ids.length} รายการล่าสุด`);
+  }
+
+  async function run(action: AdminBulkAction, reason?: string) {
+    const ids = [...selected];
+    // Sent a chunk at a time — the API's per-request cap — with progress, so
+    // hundreds of TORs neither hit the cap nor sit behind one long request.
+    const size = chunk ?? ids.length;
+    const done: string[] = [];
+    const failed: Array<{ id: string; reason: string }> = [];
+    for (let start = 0; start < ids.length; start += size) {
+      if (ids.length > size) setMessage(`กำลังดำเนินการ ${Math.min(start + size, ids.length)} / ${ids.length} รายการ…`);
+      const outcome = await bulkTorsAction(action, ids.slice(start, start + size), reason);
+      if (!outcome.ok) {
+        failed.push(...ids.slice(start).map((id) => ({ id, reason: outcome.reason })));
+        break;
+      }
+      done.push(...outcome.result.done);
+      failed.push(...outcome.result.failed);
+    }
     setMessage(
       failed.length === 0
         ? `✓ ${ACTIONS[action].confirm}แล้ว ${done.length} รายการ`
-        : `✓ ${ACTIONS[action].confirm}แล้ว ${done.length} รายการ · ไม่สำเร็จ ${failed.length} รายการ: ${failed.map((item) => item.reason).join(" · ")}`,
+        : `✓ ${ACTIONS[action].confirm}แล้ว ${done.length} รายการ · ไม่สำเร็จ ${failed.length} รายการ: ${[...new Set(failed.map((item) => item.reason))].join(" · ")}`,
     );
     // What failed stays selected, so it can be looked at or tried again.
     setSelected(new Set(failed.map((item) => item.id)));
@@ -98,6 +133,14 @@ export function AdminTorsTable({ rows, linkSuffix }: { rows: AdminTorsTableRow[]
             ล้างที่เลือก
           </button>
         </div>
+      )}
+      {allOnPage && total > rows.length && selected.size < total && (
+        <p className={styles.selectAllNote}>
+          เลือกครบ {rows.length} รายการในหน้านี้แล้ว ·{" "}
+          <button type="button" className={styles.selectAllLink} onClick={() => void selectAllMatching()} disabled={pending}>
+            เลือกทั้งหมด {total.toLocaleString("th-TH")} รายการที่ตรงกับตัวกรอง
+          </button>
+        </p>
       )}
       {message && <div className={styles.adminToast} role="status">{message}</div>}
 

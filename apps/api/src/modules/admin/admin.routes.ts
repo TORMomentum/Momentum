@@ -17,6 +17,8 @@ export interface AdminRouterDeps {
   queuePageSize: number;
   /** How many TORs one bulk action may touch. */
   bulkMax: number;
+  /** How many ids "select everything matching" may return. */
+  selectAllMax: number;
 }
 
 /**
@@ -98,6 +100,15 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
   router.get("/tors", async (req, res) => {
     const { q, status, kind, page } = torsQuerySchema.parse(req.query);
     res.json(await deps.service.listAll({ ...(q ? { q } : {}), status, kind, page, pageSize: deps.queuePageSize }));
+  });
+
+  // "Select everything matching": the ids behind the list's current filters,
+  // and the per-request size the screen should send them in. Declared before
+  // "/tors/:id", which would otherwise claim it.
+  router.get("/tors/ids", async (req, res) => {
+    const { q, status, kind } = torsQuerySchema.parse(req.query);
+    const { ids, total } = await deps.service.listAllIds({ ...(q ? { q } : {}), status, kind }, deps.selectAllMax);
+    res.json({ ids, total, chunk: deps.bulkMax });
   });
 
   router.get("/tors/:id", async (req, res) => {

@@ -402,6 +402,12 @@ export function sendVerificationEmail(id: string): Promise<unknown> {
 export type AdminBulkAction = "reextract" | "reject" | "restore";
 export type AdminBulkResult = { done: string[]; failed: Array<{ id: string; reason: string }> };
 
+/** Every id matching the list's filters, and how many to send per bulk request. */
+export function fetchTorIds(query: { q?: string; status: AdminTorStatus; kind: AdminTorKind }): Promise<{ ids: string[]; total: number; chunk: number }> {
+  const params = new URLSearchParams({ status: query.status, kind: query.kind, ...(query.q ? { q: query.q } : {}) });
+  return call(`/admin/tors/ids?${params.toString()}`);
+}
+
 export function bulkTors(action: AdminBulkAction, ids: string[], reason?: string): Promise<AdminBulkResult> {
   return call("/admin/tors/bulk", { method: "POST", body: JSON.stringify({ action, ids, ...(reason ? { reason } : {}) }) });
 }

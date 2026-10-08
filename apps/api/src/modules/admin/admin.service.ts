@@ -117,6 +117,10 @@ export class AdminService {
   }
 
   /** Every record, searchable — the queue shows only what a model graded low. */
+  listAllIds(query: Pick<AdminTorQuery, "kind" | "status" | "q">, limit: number) {
+    return this.deps.repo.listAllIds(query, limit);
+  }
+
   async listAll(query: AdminTorQuery): Promise<AdminTorPage> {
     return this.deps.repo.listAll(query);
   }

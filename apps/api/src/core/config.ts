@@ -149,6 +149,9 @@ const schema = z.object({
   // Most TORs one bulk action may touch. Each is a separate audited change, run
   // in turn, so a slip of the select-all stays bounded and the request stays short.
   ADMIN_BULK_MAX: z.coerce.number().int().positive().max(500).default(100),
+  // Most ids "select everything matching" hands back; the screen then sends
+  // them ADMIN_BULK_MAX at a time.
+  ADMIN_SELECT_ALL_MAX: z.coerce.number().int().positive().default(2000),
 
   // Public search (FR-E-3, NFR-F2). Ceilings bound what one request can ask the database for.
   SEARCH_PAGE_SIZE: z.coerce.number().int().positive().default(20),
@@ -312,6 +315,7 @@ export interface Config {
   };
   adminQueuePageSize: number;
   adminBulkMax: number;
+  adminSelectAllMax: number;
   adminStuckAfterMs: number;
   search: SearchConfig;
   matching: {
@@ -433,6 +437,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
     adminBulkMax: parsed.ADMIN_BULK_MAX,
+    adminSelectAllMax: parsed.ADMIN_SELECT_ALL_MAX,
     adminStuckAfterMs: parsed.ADMIN_STUCK_AFTER_MS ?? parsed.JOB_LOCK_MS * STUCK_LOCK_MULTIPLE,
     search: {
       pageSize: parsed.SEARCH_PAGE_SIZE,

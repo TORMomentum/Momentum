@@ -8,6 +8,7 @@ import {
   approve as approveRecord,
   bulkTors,
   fetchEvents,
+  fetchTorIds,
   reextract as reextractRecord,
   reject as rejectRecord,
   restore as restoreRecord,
@@ -15,6 +16,8 @@ import {
   setFieldVerification,
   uploadDocument,
   type AdminBulkAction,
+  type AdminTorKind,
+  type AdminTorStatus,
   type AdminBulkResult,
   type FieldEdit,
 } from "../../shared/lib/admin-api";
@@ -183,6 +186,19 @@ export async function bulkTorsAction(
     if (error instanceof AdminApiFailed && error.reason) return { ok: false, reason: error.reason };
     console.error("[admin/tors] bulk action failed", error);
     return { ok: false, reason: "ทำรายการไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
+}
+
+/** "Select everything matching": the ids behind the list's current filters. */
+export async function selectAllTorsAction(query: { q?: string; status: AdminTorStatus; kind: AdminTorKind }): Promise<
+  { ok: true; ids: string[]; total: number; chunk: number } | { ok: false; reason: string }
+> {
+  await requireStaff();
+  try {
+    return { ok: true, ...(await fetchTorIds(query)) };
+  } catch (error) {
+    console.error("[admin/tors] select all failed", error);
+    return { ok: false, reason: "โหลดรายการทั้งหมดไม่สำเร็จ — ลองใหม่อีกครั้ง" };
   }
 }
 

@@ -88,6 +88,7 @@ function buildTestApp() {
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
       bulkMax: config.adminBulkMax,
+      selectAllMax: config.adminSelectAllMax,
     }),
   );
   app.use(errorMiddleware);
@@ -416,6 +417,20 @@ describe("admin bulk actions", () => {
     const id = await seedFieldsToConfirm();
     expect((await bulk({ action: "reject", ids: [id] })).status).toBe(400);
     expect((await tors(db).findOne({ _id: new ObjectId(id) }))?.access.restricted).toBe(false);
+  });
+
+  it("hands back every id matching the list's filters, the same set the list shows, with the chunk size to send them in", async () => {
+    const [a, b] = [await seedFieldsToConfirm(), await seedFieldsToConfirm()];
+    await seedFieldsToConfirm();
+    await bulk({ action: "reject", ids: [a, b], reason: "ทดสอบการเลือกทั้งหมด" }).expect(200);
+
+    const ids = (await request(buildTestApp()).get("/api/v1/admin/tors/ids?status=restricted&kind=all").set(auth)).body;
+    const page = (await request(buildTestApp()).get("/api/v1/admin/tors?status=restricted&kind=all").set(auth)).body;
+
+    expect(ids.ids.sort()).toEqual([a, b].sort());
+    expect(ids.total).toBe(2);
+    expect(ids.chunk).toBe(config.adminBulkMax);
+    expect(ids.ids.sort()).toEqual(page.rows.map((row: { id: string }) => row.id).sort());
   });
 
   it("refuses more than the configured maximum, an unknown action and a malformed id", async () => {
