@@ -13,8 +13,10 @@ import { BudgetRange } from "../shared/ui/BudgetRange";
 import { NotifyPreferences, type Notify } from "../features/profile/NotifyPreferences";
 import { ServiceAreaPicker } from "../features/profile/ServiceAreaPicker";
 import { TaxonomyPicker } from "../features/profile/TaxonomyPicker";
+import { MatchingExtras } from "../features/profile/MatchingExtras";
 import { SavedTorsSection } from "../features/profile/SavedTorList";
 import type { BookmarkRow } from "../shared/api/bookmarks.api";
+import type { PastProject, VendorCertifications } from "../shared/api/profile.api";
 import {
   describeAreas,
   describeBudget,
@@ -74,7 +76,10 @@ function ownedFields(profile: Profile): Profile {
   };
 }
 
-export function VendorProfileView({ initial, bookmarks = null }: { initial: Profile | null; bookmarks?: BookmarkRow[] | null }) {
+/** What the page reads: the form's fields plus the section the form does not own. */
+type ProfileWithExtras = Profile & { pastProjects?: PastProject[]; certifications?: VendorCertifications | null };
+
+export function VendorProfileView({ initial, bookmarks = null }: { initial: ProfileWithExtras | null; bookmarks?: BookmarkRow[] | null }) {
   const [profile, setProfile] = useState<Profile>(initial ? ownedFields(initial) : EMPTY);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(
@@ -341,25 +346,12 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
 
       <SavedTorsSection initial={bookmarks} />
 
-      {/* Listed, never nagged: neither is required to receive alerts (§7.1), so
-          nothing here is marked missing or incomplete. The prompt that asks for
-          a credential at the moment it would have changed an alert needs
-          matching to know that moment, so it arrives with matching rather than
-          standing here as a permanent banner. */}
-      <section className={`${styles.profileCard} ${styles.profileCardLast}`}>
-        <h2 className={styles.profileFactTitle}>สิ่งที่จะช่วยให้จับคู่แม่นขึ้น</h2>
-        <p className={styles.profileSub}>ไม่บังคับ — ไม่กรอกก็ยังได้รับการแจ้งเตือนตามปกติ</p>
-        <ul className={styles.laterList}>
-          <li>
-            <strong>ใบอนุญาตและการรับรอง</strong> — ใช้คัดงานที่ระบุคุณสมบัติบังคับออก
-            เพื่อไม่ให้ได้รับแจ้งเตือนที่คุณยื่นไม่ได้
-          </li>
-          <li>
-            <strong>ผลงานที่ผ่านมา</strong> — ใช้เพิ่มน้ำหนักให้งานที่คล้ายกับที่คุณเคยทำ
-          </li>
-        </ul>
-        <p className={styles.pickerHint}>ทั้งสองอย่างจะเปิดให้เพิ่มเมื่อระบบจับคู่เริ่มทำงาน</p>
-      </section>
+      {/* Optional, and listed rather than nagged (§7.1): nothing here is marked
+          missing. Saved on its own, so the form above never overwrites it. */}
+      <MatchingExtras
+        initialProjects={initial?.pastProjects ?? []}
+        initialCertifications={initial?.certifications ?? null}
+      />
 
       {saveRow}
     </main>

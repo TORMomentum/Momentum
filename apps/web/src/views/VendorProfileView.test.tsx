@@ -41,7 +41,7 @@ function saveButton(): HTMLButtonElement {
   // The label differs between the two states ("บันทึกและเริ่มใช้งาน" on a first
   // run, "บันทึกการเปลี่ยนแปลง" afterwards); both are the same control.
   return [...container.querySelectorAll("button")].find((button) =>
-    button.textContent?.startsWith("บันทึก"),
+    ["บันทึกและเริ่มใช้งาน", "บันทึกการเปลี่ยนแปลง"].includes(button.textContent?.trim() ?? ""),
   ) as HTMLButtonElement;
 }
 

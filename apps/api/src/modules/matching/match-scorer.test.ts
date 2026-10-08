@@ -61,4 +61,54 @@ describe("match scorer", () => {
   it("returns Thai reasons", () => {
     for (const reason of scoreMatch(profile(), tor(), classification, config, "2026-01-01").reasons) expect(/[ก-๙]/.test(reason.th)).toBe(true);
   });
+
+  describe("past work", () => {
+    const road = () => tor({ fields: { ...tor().fields, title: { raw: "ก่อสร้างถนนคอนกรีตเสริมเหล็ก", value: "ก่อสร้างถนนคอนกรีตเสริมเหล็ก", confidence: 1, verified: true } } });
+    const project = (title: string) => ({ id: title, title, year: 2567, valueThb: null });
+
+    it("lifts a TOR like work the vendor has done above one like work they have not", () => {
+      const done = { ...profile(), pastProjects: [project("ก่อสร้างถนนลาดยาง หมู่ 3")] };
+      const other = { ...profile(), pastProjects: [project("จัดซื้อเครื่องคอมพิวเตอร์")] };
+      const similar = scoreMatch(done, road(), classification, config, "2026-01-01");
+      const unlike = scoreMatch(other, road(), classification, config, "2026-01-01");
+      expect(similar.score).toBeGreaterThan(unlike.score);
+      expect(similar.reasons.map((reason) => reason.code)).toContain("experience");
+    });
+
+    it("costs nothing when no past work is listed", () => {
+      const none = scoreMatch(profile(), road(), classification, config, "2026-01-01");
+      const empty = scoreMatch({ ...profile(), pastProjects: [] }, road(), classification, config, "2026-01-01");
+      expect(empty.score).toBe(none.score);
+    });
+  });
+
+  describe("กรมบัญชีกลาง registration (ว642)", () => {
+    const big = (title: string) => tor({ fields: { ...tor().fields, title: { raw: title, value: title, confidence: 1, verified: true }, budget: { raw: "8000000", value: 8_000_000, confidence: 1, verified: true } } });
+    const wide = { minThb: 0, maxThb: 10_000_000 };
+
+    it("lowers a large road TOR and says why when the vendor holds no road registration", () => {
+      const holdsNone = { ...profile(["construction.road"], wide), certifications: { cgd: [], tags: [], other: [] } };
+      const holdsRoad = { ...profile(["construction.road"], wide), certifications: { cgd: [{ branch: "road", grade: 3 }], tags: [], other: [] } };
+      const missing = scoreMatch(holdsNone, big("ก่อสร้างถนนคอนกรีต"), classification, config, "2026-01-01");
+      const held = scoreMatch(holdsRoad, big("ก่อสร้างถนนคอนกรีต"), classification, config, "2026-01-01");
+      expect(missing.score).toBeCloseTo(held.score * config.matching.registrationMissingFactor);
+      expect(missing.reasons[0]?.code).toBe("registration-missing");
+      expect(held.reasons.map((reason) => reason.code)).toContain("registration-held");
+    });
+
+    it("tells a bridge from a road by the title", () => {
+      const holdsRoad = { ...profile(["construction.road"], wide), certifications: { cgd: [{ branch: "road", grade: 3 }], tags: [], other: [] } };
+      expect(scoreMatch(holdsRoad, big("ก่อสร้างสะพานคอนกรีต"), classification, config, "2026-01-01").reasons[0]?.code).toBe("registration-missing");
+    });
+
+    it("leaves a vendor alone until they have stated what they hold", () => {
+      const unstated = profile(["construction.road"], wide);
+      expect(scoreMatch(unstated, big("ก่อสร้างถนนคอนกรีต"), classification, config, "2026-01-01").reasons.map((reason) => reason.code)).not.toContain("registration-missing");
+    });
+
+    it("does not apply below the ว642 threshold", () => {
+      const holdsNone = { ...profile(), certifications: { cgd: [], tags: [], other: [] } };
+      expect(scoreMatch(holdsNone, tor({ fields: { ...tor().fields, title: { raw: "ก่อสร้างถนน", value: "ก่อสร้างถนน", confidence: 1, verified: true } } }), classification, config, "2026-01-01").reasons.map((reason) => reason.code)).not.toContain("registration-missing");
+    });
+  });
 });

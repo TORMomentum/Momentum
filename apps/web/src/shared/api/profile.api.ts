@@ -19,6 +19,24 @@ export interface VendorProfile {
   notify: { preset: "all" | "daily" | "high" | "off"; minMatch: number; leadDays: number; deadlineReminder: boolean; anomalyAlert: boolean };
   taxonomyVersion: string;
   updatedAt: string | null;
+  /** Saved on their own by the "help matching" section, never by the main form. */
+  pastProjects: PastProject[];
+  /** null until the vendor first saves the section: "not stated", not "holds nothing". */
+  certifications: VendorCertifications | null;
+}
+
+export interface PastProject {
+  id: string;
+  title: string;
+  /** Buddhist-era year. */
+  year: number | null;
+  valueThb: number | null;
+}
+
+export interface VendorCertifications {
+  cgd: Array<{ branch: string; grade: number }>;
+  tags: string[];
+  other: string[];
 }
 
 export async function fetchOwnProfile(): Promise<VendorProfile | null> {

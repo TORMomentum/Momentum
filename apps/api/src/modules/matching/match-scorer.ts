@@ -1,7 +1,8 @@
-import { WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
+import { CGD_BRANCHES, WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
 import type { TorDocument, VendorProfileDocument } from "../../core/db.js";
-import type { TorClassification } from "./tor-classifier.js";
+import { cgdBranchOf } from "./registration.js";
+import { classifyTor, type TorClassification } from "./tor-classifier.js";
 
 export type MatchResult = { score: number; reasons: Array<{ code: string; th: string }>; excluded: null | { code: string; th: string } };
 const leafById = new Map(WORK_CATEGORY_LEAVES.map((leaf) => [leaf.id, leaf]));
@@ -41,6 +42,54 @@ function budgetSignal(profile: VendorProfileDocument, record: TorDocument, confi
   return { score: Math.max(0, config.matching.budgetOutsideMaxScore * (1 - distance / (span * config.matching.budgetDistanceRangeMultiplier))), reason: { code: "budget-outside", th: "งบประมาณอยู่นอกช่วงที่คุณระบุ จึงลดคะแนนความเกี่ยวข้อง" } };
 }
 
+/**
+ * Each past project's kinds of work, classified the way TORs are. Memoised per
+ * profile object: one request scores a couple of hundred candidates against
+ * the same profile, and classifying every project for every candidate would
+ * multiply the classifier's cost by both.
+ */
+const projectLeavesCache = new WeakMap<VendorProfileDocument, Array<{ title: string; leaves: Set<string> }>>();
+function projectLeaves(profile: VendorProfileDocument, config: Config) {
+  let cached = projectLeavesCache.get(profile);
+  if (!cached) {
+    cached = (profile.pastProjects ?? []).map((project) => ({
+      title: project.title,
+      leaves: new Set(classifyTor({ fields: { title: { raw: project.title, value: project.title, confidence: 1, verified: true } } } as Pick<TorDocument, "fields">, config).leaves.map((leaf) => leaf.id)),
+    })).filter((project) => project.leaves.size > 0);
+    projectLeavesCache.set(profile, cached);
+  }
+  return cached;
+}
+
+/** Null when the vendor has listed no classifiable past work: the signal then stays out of the score entirely. */
+function experienceSignal(profile: VendorProfileDocument, classification: TorClassification, config: Config) {
+  const projects = projectLeaves(profile, config);
+  if (projects.length === 0) return null;
+  const torLeaves = classification.leaves.map((leaf) => leaf.id);
+  const similar = projects.find((project) => torLeaves.some((leaf) => project.leaves.has(leaf)));
+  return similar
+    ? { score: 1, reason: { code: "experience", th: `คล้ายกับผลงานที่คุณเคยทำ: ${similar.title}` } }
+    : { score: 0, reason: null };
+}
+
+const branchName = new Map<string, string>(CGD_BRANCHES.map((branch) => [branch.id, branch.th]));
+
+/**
+ * หนังสือ ว642: a construction TOR at or above the threshold needs a กรมบัญชีกลาง
+ * registration in its branch. Applied only once the vendor has stated what
+ * they hold — an empty section means "not told yet", not "holds nothing".
+ */
+function registrationCheck(profile: VendorProfileDocument, record: TorDocument, classification: TorClassification, config: Config) {
+  const budget = record.fields.budget?.value;
+  if (!profile.certifications || typeof budget !== "number" || budget < config.matching.registrationMinBudgetThb) return null;
+  const branch = cgdBranchOf(record, classification);
+  if (!branch) return null;
+  const name = branchName.get(branch) ?? branch;
+  return profile.certifications.cgd.some((held) => held.branch === branch)
+    ? { factor: 1, reason: { code: "registration-held", th: `คุณขึ้นทะเบียนกรมบัญชีกลางสาขา${name} ตามที่งานขนาดนี้กำหนด` } }
+    : { factor: config.matching.registrationMissingFactor, reason: { code: "registration-missing", th: `งานขนาดนี้ต้องขึ้นทะเบียนกรมบัญชีกลางสาขา${name} ซึ่งคุณยังไม่ได้ระบุ` } };
+}
+
 export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, classification: TorClassification, config: Config, today: string): MatchResult {
   const deadline = record.fields.deadline?.value;
   if (typeof deadline === "string" && deadline < today) return { score: 0, reasons: [], excluded: { code: "deadline-passed", th: "ปิดรับข้อเสนอแล้ว" } };
@@ -51,9 +100,17 @@ export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, 
   const relevance = taxonomy.score > 0 ? taxonomy : freeText;
   const budget = budgetSignal(profile, record, config);
   const signals = [{ weight: config.matching.categoryWeight, signal: relevance }, { weight: config.matching.budgetWeight, signal: budget }];
+  const experience = experienceSignal(profile, classification, config);
+  if (experience) signals.push({ weight: config.matching.experienceWeight, signal: experience });
   // Work location is not extracted yet. This switch prevents an agency address
   // ever becoming a proxy for it; turn it on with the future extracted field.
   if (config.matching.areaSignalEnabled) { /* location signal belongs here once extracted */ }
   const totalWeight = signals.reduce((total, item) => total + item.weight, 0);
-  return { score: signals.reduce((total, item) => total + item.weight * item.signal.score, 0) / totalWeight, reasons: signals.flatMap((item) => item.signal.reason ? [item.signal.reason] : []), excluded: null };
+  const weighted = signals.reduce((total, item) => total + item.weight * item.signal.score, 0) / totalWeight;
+  const registration = registrationCheck(profile, record, classification, config);
+  const reasons = signals.flatMap((item) => item.signal.reason ? [item.signal.reason] : []);
+  // A missing registration is the first thing a vendor needs to know, so it leads.
+  if (registration?.factor !== undefined && registration.factor < 1) reasons.unshift(registration.reason);
+  else if (registration) reasons.push(registration.reason);
+  return { score: weighted * (registration?.factor ?? 1), reasons, excluded: null };
 }

@@ -92,4 +92,47 @@ describe("profile routes", () => {
   });
 
   it("exports and removes the profile with account deletion", async () => { const id = await sessionFor("one@example.test"); await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send(payload); const exported = await request(app).get("/api/v1/me/export").set("x-session-id", id); expect(exported.body.profile).toMatchObject(payload); const accountId = (await accounts(db).findOne({ email: "one@example.test" }))!._id.toString(); const deleted = await write(request(app).delete("/api/v1/me")).set("x-session-id", id).send({ currentPassword: "correct-password" }); expect(deleted.status).toBe(200); expect(await vendorProfiles(db).countDocuments({ accountId })).toBe(0); });
+
+  describe("past work and certifications", () => {
+    const extras = {
+      pastProjects: [{ title: "ก่อสร้างถนน คสล. หมู่ 5", year: 2567, valueThb: 4_800_000 }],
+      certifications: { cgd: [{ branch: "road", grade: 3 }], tags: ["iso-9001"], other: [] },
+    };
+
+    it("saves them on their own and gives each project an id", async () => {
+      const id = await sessionFor("one@example.test");
+      const response = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(extras);
+      expect(response.status).toBe(200);
+      expect(response.body.pastProjects[0]).toMatchObject(extras.pastProjects[0]!);
+      expect(response.body.pastProjects[0].id).toEqual(expect.any(String));
+      expect(response.body.certifications).toEqual(extras.certifications);
+    });
+
+    it("is not wiped when the main profile form saves", async () => {
+      // The main form and the admin screen send every field they own; past work
+      // is not one of them, and a replace there must leave it alone.
+      const id = await sessionFor("one@example.test");
+      await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(extras);
+      const response = await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send(payload);
+      expect(response.body.pastProjects).toHaveLength(1);
+      expect(response.body.certifications.cgd).toEqual([{ branch: "road", grade: 3 }]);
+    });
+
+    it("says 'not stated' until the section is saved, rather than 'holds nothing'", async () => {
+      const id = await sessionFor("one@example.test");
+      expect((await request(app).get("/api/v1/me/profile").set("x-session-id", id)).body.certifications).toBeNull();
+    });
+
+    it("rejects unknown branches, grades and certifications without writing", async () => {
+      const id = await sessionFor("one@example.test");
+      for (const bad of [
+        { ...extras, certifications: { ...extras.certifications, cgd: [{ branch: "space", grade: 3 }] } },
+        { ...extras, certifications: { ...extras.certifications, cgd: [{ branch: "road", grade: 9 }] } },
+        { ...extras, certifications: { ...extras.certifications, tags: ["made-up"] } },
+        { ...extras, pastProjects: [{ title: "", year: 2567, valueThb: null }] },
+        { ...extras, pastProjects: Array.from({ length: config.matching.pastProjectsMax + 1 }, (_, i) => ({ title: `งาน ${i}`, year: null, valueThb: null })) },
+      ]) expect((await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(bad)).status).toBe(400);
+      expect(await vendorProfiles(db).countDocuments({})).toBe(0);
+    });
+  });
 });

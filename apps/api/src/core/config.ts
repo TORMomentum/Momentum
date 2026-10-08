@@ -177,6 +177,18 @@ const schema = z.object({
   MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER: z.coerce.number().positive().default(2),
   // Turns on only when extraction supplies a work-location field; agency is never a substitute.
   MATCH_AREA_SIGNAL_ENABLED: flag(false),
+  // Past work a vendor lists. Like every weight above it is uncalibrated until
+  // the labelled benchmark (design §7.8); it only enters a score when the
+  // vendor has listed at least one project, so leaving it blank costs nothing.
+  MATCH_EXPERIENCE_WEIGHT: z.coerce.number().positive().default(0.3),
+  // หนังสือ ว642: a construction project at or above this value must be bid by
+  // a contractor registered with กรมบัญชีกลาง in that branch.
+  CGD_REGISTRATION_MIN_BUDGET_THB: z.coerce.number().nonnegative().default(5_000_000),
+  // What a score is multiplied by when such a TOR needs a registration the
+  // vendor has said they do not hold. A penalty, not a filter: the branch is
+  // inferred from the title, and a wrong guess must not hide a TOR outright.
+  MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
+  PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
 
   // Dispatch remains opt-in until the labelled match-quality benchmark in the
   // profile-and-matching design §7.8 exists.  The worker records dry runs while
@@ -289,6 +301,7 @@ export interface Config {
     categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
+    experienceWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
   };
   notifications: {
     dispatchEnabled: boolean;
@@ -417,6 +430,8 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       budgetNeutralScore: parsed.MATCH_BUDGET_NEUTRAL_SCORE, budgetInsideScore: parsed.MATCH_BUDGET_INSIDE_SCORE,
       budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
+      experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
+      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
     },
     notifications: {
       dispatchEnabled: parsed.NOTIFY_DISPATCH_ENABLED,

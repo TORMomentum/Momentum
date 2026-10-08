@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
-import { TAXONOMY_VERSION, WHOLE_COUNTRY_AREA, WORK_CATEGORIES, WORK_CATEGORY_LEAVES, PROVINCES } from "@tor-radar/seeds";
+import { randomUUID } from "node:crypto";
+import { CERTIFICATIONS, CGD_BRANCHES, CGD_GRADES, TAXONOMY_VERSION, WHOLE_COUNTRY_AREA, WORK_CATEGORIES, WORK_CATEGORY_LEAVES, PROVINCES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
 import { UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { ProfileRepository } from "./profile.repository.js";
-import type { NotifyPreferences } from "../../core/db.js";
+import type { NotifyPreferences, PastProject, VendorCertifications } from "../../core/db.js";
 
 const taxonomyIds = new Set([...WORK_CATEGORIES.map((group) => group.id), ...WORK_CATEGORY_LEAVES.map((leaf) => leaf.id)]);
 const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => province.id)]);
@@ -40,6 +41,28 @@ export const profileSchema = z.object({
   }),
 }).strict();
 
+const branchIds = CGD_BRANCHES.map((branch) => branch.id) as [string, ...string[]];
+const certificationIds = CERTIFICATIONS.map((item) => item.id) as [string, ...string[]];
+
+/** Past work and certifications — the optional section, saved on its own. */
+export function profileExtrasSchema(config: Config) {
+  return z.object({
+    pastProjects: z.array(z.object({
+      // Absent on a row just added; the server gives it one.
+      id: z.string().max(64).optional(),
+      title: z.string().trim().min(1, "กรุณาระบุชื่อผลงาน").max(300),
+      // Buddhist era, as Thai contracts state it.
+      year: z.number().int().min(2400).max(2700).nullable(),
+      valueThb: z.number().finite().nonnegative().nullable(),
+    }).strict()).max(config.matching.pastProjectsMax),
+    certifications: z.object({
+      cgd: z.array(z.object({ branch: z.enum(branchIds), grade: z.number().int().refine((grade) => (CGD_GRADES as readonly number[]).includes(grade), "ชั้นไม่ถูกต้อง") }).strict()).max(CGD_BRANCHES.length),
+      tags: z.array(z.enum(certificationIds)).max(CERTIFICATIONS.length),
+      other: z.array(z.string().trim().min(1).max(80)).max(10),
+    }).strict(),
+  }).strict();
+}
+
 /**
  * What a caller is given, whether the profile was just written or merely read.
  * Both routes go through here so the two can never drift into different shapes,
@@ -64,6 +87,8 @@ export function profileResponse(profile: {
   taxonomyVersion: string;
   updatedAt: Date | null;
   updatedBy?: "vendor" | "admin";
+  pastProjects?: PastProject[];
+  certifications?: VendorCertifications | null;
 }) {
   return {
     categories: profile.categories,
@@ -74,6 +99,9 @@ export function profileResponse(profile: {
     taxonomyVersion: profile.taxonomyVersion,
     updatedAt: profile.updatedAt ? profile.updatedAt.toISOString() : null,
     updatedBy: profile.updatedBy ?? "vendor",
+    pastProjects: profile.pastProjects ?? [],
+    // null = never stated, which matching treats differently from "holds nothing".
+    certifications: profile.certifications ?? null,
   };
 }
 
@@ -83,7 +111,7 @@ export function profileResponse(profile: {
  * that says "no preference stated" rather than "no answer".
  */
 export function emptyProfile() {
-  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null };
+  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null, pastProjects: [], certifications: null };
 }
 
 export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository }): Router {
@@ -100,6 +128,26 @@ export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepo
     const profile = await deps.profiles.replace(req.auth.account._id.toString(), {
       categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], otherCategories: [...new Set(input.otherCategories)], budget: input.budget, notify: input.notify, taxonomyVersion: TAXONOMY_VERSION,
     });
+    res.json(profileResponse(profile));
+  });
+  const extrasSchema = profileExtrasSchema(deps.config);
+  router.put("/me/profile/extras", requireSameOrigin(deps.config.appOrigin), async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    const input = extrasSchema.parse(req.body);
+    const empty = emptyProfile();
+    const profile = await deps.profiles.saveExtras(
+      req.auth.account._id.toString(),
+      {
+        pastProjects: input.pastProjects.map((project) => ({ ...project, id: project.id ?? randomUUID() })),
+        certifications: {
+          // One registration per branch; the last one stated wins.
+          cgd: [...new Map(input.certifications.cgd.map((entry) => [entry.branch, entry])).values()],
+          tags: [...new Set(input.certifications.tags)],
+          other: [...new Set(input.certifications.other)],
+        },
+      },
+      { categories: empty.categories, areas: empty.areas, otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION },
+    );
     res.json(profileResponse(profile));
   });
   return router;

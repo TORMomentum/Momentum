@@ -233,6 +233,28 @@ export interface VendorProfileDocument {
   updatedAt: Date;
   /** Who made the last change. "admin" is shown to the vendor, so a staff edit is never passed off as theirs. */
   updatedBy?: "vendor" | "admin";
+  /** Work the vendor has done. Optional, and saved on its own, so the main profile form never overwrites it. */
+  pastProjects?: PastProject[];
+  /**
+   * What the vendor holds. Absent until the vendor first saves the section —
+   * "not stated" is different from "holds nothing", and only a stated answer
+   * may lower a score.
+   */
+  certifications?: VendorCertifications;
+}
+
+export interface PastProject {
+  id: string;
+  title: string;
+  /** Buddhist-era year as Thai documents state it, e.g. 2567. */
+  year: number | null;
+  valueThb: number | null;
+}
+
+export interface VendorCertifications {
+  cgd: Array<{ branch: string; grade: number }>;
+  tags: string[];
+  other: string[];
 }
 
 /** Durable audit/deduplication row for one vendor, TOR and notification reason. */
