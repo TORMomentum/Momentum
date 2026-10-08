@@ -17,6 +17,7 @@ import { buildAdminRouter } from "./modules/admin/admin.routes.js";
 import { buildAdminAccountsRouter } from "./modules/admin/admin-accounts.routes.js";
 import { AdminAccountsRepository } from "./modules/admin/admin-accounts.repository.js";
 import { AdminAccountsService } from "./modules/admin/admin-accounts.service.js";
+import { NotifyService } from "./modules/notifications/notify.service.js";
 import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
@@ -151,6 +152,7 @@ export function buildApp(config: Config, db: Db): Express {
         appOrigin: config.appOrigin,
         verifyTokenTtlMs: config.verifyTokenTtlMs,
         resetTokenTtlMs: config.resetTokenTtlMs,
+        matchEmails: new NotifyService(db, config, mailer),
       }),
       adminKeys: config.adminApiKeys,
       pageSize: config.adminQueuePageSize,

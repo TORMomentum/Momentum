@@ -8,6 +8,7 @@ import type { AdminAccountOpen } from "../shared/lib/admin-api";
 const actions = vi.hoisted(() => ({
   verify: vi.fn<() => Promise<void>>(),
   reset: vi.fn<() => Promise<void>>(),
+  matchEmail: vi.fn<() => Promise<{ ok: true; sent: number } | { ok: false; reason: string }>>(),
 }));
 
 vi.mock("next/link", () => ({ default: "a" }));
@@ -18,6 +19,7 @@ vi.mock("../features/admin/admin-accounts.actions", () => ({
   enableVendorAction: vi.fn(),
   sendVerificationEmailAction: actions.verify,
   sendPasswordResetAction: actions.reset,
+  sendMatchEmailAction: actions.matchEmail,
 }));
 
 import { AdminVendorView } from "./AdminVendorView";
@@ -66,5 +68,27 @@ describe("AdminVendorView", () => {
     await act(async () => root.render(<AdminVendorView opened={opened({ disabled: true })} />));
     expect(labels(container)).toContain("เปิดใช้บัญชี");
     expect(labels(container)).not.toContain("ระงับบัญชี");
+  });
+
+  it("sends a vendor their matches and says how many went", async () => {
+    actions.matchEmail.mockResolvedValue({ ok: true, sent: 4 });
+    await act(async () => root.render(<AdminVendorView opened={opened()} />));
+    const send = [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === "ส่งอีเมล TOR ที่ตรงกันตอนนี้")!;
+    await act(async () => send.click());
+    expect(actions.matchEmail).toHaveBeenCalledWith("acc-1");
+    expect(container.textContent).toContain("ส่งอีเมล TOR ที่ตรงกัน 4 รายการแล้ว");
+  });
+
+  it("shows the API's own reason when the send is refused", async () => {
+    actions.matchEmail.mockResolvedValue({ ok: false, reason: "ผู้ใช้ปิดการแจ้งเตือนทางอีเมลไว้ — ส่งให้ไม่ได้" });
+    await act(async () => root.render(<AdminVendorView opened={opened()} />));
+    const send = [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === "ส่งอีเมล TOR ที่ตรงกันตอนนี้")!;
+    await act(async () => send.click());
+    expect(container.textContent).toContain("ผู้ใช้ปิดการแจ้งเตือนทางอีเมลไว้");
+  });
+
+  it("does not offer it to an unverified account", async () => {
+    await act(async () => root.render(<AdminVendorView opened={opened({ verified: false })} />));
+    expect(labels(container)).not.toContain("ส่งอีเมล TOR ที่ตรงกันตอนนี้");
   });
 });

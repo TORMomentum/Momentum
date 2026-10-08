@@ -115,7 +115,24 @@ export class AdminRecordNotFound extends Error {}
  * reader. An API path, a status code and a JSON body are not an error message
  * a person can act on, and they do not belong on a Thai-language screen.
  */
-export class AdminApiFailed extends Error {}
+export class AdminApiFailed extends Error {
+  /**
+   * For a 400 only: the API's own refusal, which it writes in Thai for a
+   * person ("ผู้ใช้ปิดการแจ้งเตือนทางอีเมลไว้"). Everything else stays log-only.
+   */
+  constructor(detail: string, readonly reason?: string) {
+    super(detail);
+  }
+}
+
+function refusalOf(body: string): string | undefined {
+  try {
+    const message = (JSON.parse(body) as { error?: { message?: unknown } }).error?.message;
+    return typeof message === "string" ? message : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   // FormData bodies (file uploads) need fetch to set their own multipart
@@ -141,7 +158,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     const body = await response.text();
     const detail = `${init.method ?? "GET"} ${path} → ${response.status}: ${body.slice(0, 300)}`;
     if (response.status === 404) throw new AdminRecordNotFound(detail);
-    throw new AdminApiFailed(detail);
+    throw new AdminApiFailed(detail, response.status === 400 ? refusalOf(body) : undefined);
   }
   return withArabicDigits((await response.json()) as T);
 }
@@ -325,6 +342,10 @@ export function enableAccount(id: string): Promise<unknown> {
 
 export function sendVerificationEmail(id: string): Promise<unknown> {
   return call(`/admin/accounts/${encodeURIComponent(id)}/verification-email`, { method: "POST" });
+}
+
+export function sendMatchEmail(id: string): Promise<{ sent: number }> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/match-email`, { method: "POST" });
 }
 
 export function sendPasswordReset(id: string): Promise<unknown> {

@@ -9,6 +9,7 @@ import { MatchingRepository } from "../matching/matching.repository.js";
 import { renderMatchEmail, type MatchedTor } from "./match-email.template.js";
 import { NotifyRepository, type EligibleVendor } from "./notify.repository.js";
 import { DEFAULT_NOTIFY } from "../profile/profile.routes.js";
+import { BadRequestError } from "../../core/errors.js";
 
 type Pending = { tor: WithId<TorDocument>; score: number; reasons: string[]; reason: "match" | "deadline-reminder" };
 export type NotifyRunResult = { leased: boolean; vendors: number; claimed: number; sent: number; dryRun: boolean };
@@ -70,6 +71,54 @@ export class NotifyService {
     } finally { await this.repository.releaseLease(owner); }
   }
 
+  /** The vendor's own bar: "high" never drops below the configured floor. */
+  private thresholdFor(notify: NonNullable<EligibleVendor["profile"]["notify"]>): number {
+    return notify.preset === "high" ? Math.max(notify.minMatch, this.config.notifications.highMinMatch) : notify.minMatch;
+  }
+
+  /** Open TORs this vendor matches at or above `threshold`. Shared by both senders, so they cannot disagree. */
+  private async currentMatches(vendor: EligibleVendor, threshold: number, today: string): Promise<Pending[]> {
+    const found: Pending[] = [];
+    for (const candidate of await this.matching.candidatesFor(vendor.profile)) {
+      const result = scoreMatch(vendor.profile, candidate.record, candidate.classification, this.config, today);
+      if (result.excluded === null && open(candidate.record, today) && result.score * 100 >= threshold) {
+        found.push({ tor: candidate.record, score: result.score, reasons: result.reasons.map((reason) => reason.th), reason: "match" });
+      }
+    }
+    return found;
+  }
+
+  /**
+   * An admin's "send this vendor their matches now": one email, best first,
+   * capped at manualEmailMaxTors. A person chose to send it, so it does not
+   * wait for NOTIFY_DISPATCH_ENABLED — that switch governs automatic sending.
+   * It still honours what the vendor chose: email off means no email, from an
+   * admin as much as from the worker. It claims nothing, so it never stops
+   * the automatic digest from including the same TORs later.
+   */
+  async sendMatchesNow(accountId: string): Promise<{ sent: number }> {
+    const vendor = await this.repository.eligibleVendor(accountId);
+    if (!vendor) throw new BadRequestError("ส่งได้เฉพาะบัญชีที่ยืนยันอีเมลแล้ว ยังใช้งานอยู่ และตั้งค่าโปรไฟล์แล้ว");
+    const notify = vendor.profile.notify ?? DEFAULT_NOTIFY;
+    if (notify.preset === "off") throw new BadRequestError("ผู้ใช้ปิดการแจ้งเตือนทางอีเมลไว้ — ส่งให้ไม่ได้");
+    const now = this.now();
+    const threshold = this.thresholdFor(notify);
+    const matches = (await this.currentMatches(vendor, threshold, calendarDate(now, this.config.search.timeZone)))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, this.config.matching.manualEmailMaxTors);
+    if (matches.length === 0) return { sent: 0 };
+    const email = renderMatchEmail({
+      vendorName: vendor.account.displayName ?? "",
+      minMatchPercent: threshold,
+      tors: matches.map((item) => emailTor(item.tor, item.score, item.reasons, this.config)),
+      settingsUrl: new URL("/profile", this.config.appOrigin).toString(),
+      unsubscribeUrl: new URL("/profile", this.config.appOrigin).toString(),
+      now,
+    });
+    await this.mailer.send({ to: vendor.account.email, ...email });
+    return { sent: matches.length };
+  }
+
   private async dispatchVendor(vendor: EligibleVendor): Promise<{ claimed: number; sent: number }> {
     const now = this.now(); const today = calendarDate(now, this.config.search.timeZone);
     const accountId = vendor.account._id.toString();
@@ -80,11 +129,8 @@ export class NotifyService {
     const notify = vendor.profile.notify ?? DEFAULT_NOTIFY;
     // "off" is the vendor saying no email of any kind, reminders included.
     if (notify.preset === "off") return { claimed: 0, sent: 0 };
-    const threshold = notify.preset === "high" ? Math.max(notify.minMatch, this.config.notifications.highMinMatch) : notify.minMatch;
-    for (const candidate of await this.matching.candidatesFor(vendor.profile)) {
-      const result = scoreMatch(vendor.profile, candidate.record, candidate.classification, this.config, today);
-      if (result.excluded === null && threshold !== undefined && result.score * 100 >= threshold) pending.push({ tor: candidate.record, score: result.score, reasons: result.reasons.map((reason) => reason.th), reason: "match" });
-    }
+    const threshold = this.thresholdFor(notify);
+    pending.push(...await this.currentMatches(vendor, threshold, today));
     if (notify.deadlineReminder) {
       for (const tor of await this.repository.bookmarkedTors(accountId)) {
         const deadline = tor.fields.deadline?.value;

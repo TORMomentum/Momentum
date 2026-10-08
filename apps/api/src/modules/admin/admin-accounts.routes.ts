@@ -73,6 +73,10 @@ export function buildAdminAccountsRouter(deps: AdminAccountsRouterDeps): Router 
     res.status(202).json({ id: req.params.id, sent: "verification" });
   });
 
+  router.post("/accounts/:id/match-email", async (req, res) => {
+    res.json({ id: req.params.id, ...(await deps.service.sendMatchEmail(req.params.id, actorOf(req))) });
+  });
+
   router.post("/accounts/:id/password-reset", async (req, res) => {
     await deps.service.sendPasswordReset(req.params.id, actorOf(req));
     res.status(202).json({ id: req.params.id, sent: "password-reset" });

@@ -174,7 +174,8 @@ export interface AdminAuditDocument {
     | "disabled"
     | "enabled"
     | "verification-email-sent"
-    | "password-reset-sent";
+    | "password-reset-sent"
+    | "match-email-sent";
   actor: string;
   at: Date;
   detail?: string;

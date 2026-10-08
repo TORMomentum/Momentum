@@ -28,6 +28,25 @@ export class NotifyRepository {
     await notificationLeases(this.db).deleteOne({ _id: "notify-dispatch", owner });
   }
 
+  /**
+   * One account, under the same rules the dispatcher applies to everyone:
+   * verified, not disabled, not deleted, consent not withdrawn. Null otherwise,
+   * so a manual send can never reach someone the automatic one would skip.
+   */
+  async eligibleVendor(accountId: string): Promise<EligibleVendor | null> {
+    if (!ObjectId.isValid(accountId)) return null;
+    const account = await accounts(this.db).findOne({
+      _id: new ObjectId(accountId),
+      emailVerifiedAt: { $exists: true },
+      disabledAt: { $exists: false },
+      deletedAt: { $exists: false },
+      "consent.withdrawnAt": { $exists: false },
+    });
+    if (!account) return null;
+    const profile = await vendorProfiles(this.db).findOne({ accountId });
+    return profile ? { account, profile } : null;
+  }
+
   async eligibleVendors(limit: number): Promise<EligibleVendor[]> {
     const accountRows = await accounts(this.db).find({
       role: "vendor",

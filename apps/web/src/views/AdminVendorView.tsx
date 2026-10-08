@@ -8,6 +8,7 @@ import {
   disableVendorAction,
   enableVendorAction,
   saveVendorProfileAction,
+  sendMatchEmailAction,
   sendPasswordResetAction,
   sendVerificationEmailAction,
   setVendorRoleAction,
@@ -20,6 +21,9 @@ import type { AccountRole, AdminAccountOpen, AdminVendorProfile } from "../share
 import { BUDGET_PREFERENCE_MAX, BUDGET_PREFERENCE_MIN, BUDGET_PREFERENCE_STEP } from "../shared/lib/budget-preference";
 import { BudgetRange } from "../shared/ui/BudgetRange";
 
+/** The API's own Thai refusal, carried to the toast unchanged. */
+class MatchEmailRefused extends Error {}
+
 const AUDIT_LABELS: Record<string, string> = {
   viewed: "เปิดดูบัญชี",
   "profile-edited": "แก้ไขโปรไฟล์",
@@ -28,6 +32,7 @@ const AUDIT_LABELS: Record<string, string> = {
   enabled: "เปิดใช้บัญชี",
   "verification-email-sent": "ส่งอีเมลยืนยัน",
   "password-reset-sent": "ส่งลิงก์ตั้งรหัสผ่านใหม่",
+  "match-email-sent": "ส่งอีเมล TOR ที่ตรงกัน",
 };
 
 const when = (iso: string | null) =>
@@ -54,13 +59,16 @@ export function AdminVendorView({ opened }: { opened: AdminAccountOpen }) {
   const budget = profile.budget ?? { minThb: BUDGET_PREFERENCE_MIN, maxThb: BUDGET_PREFERENCE_MAX };
   const nextRole: AccountRole = account.role === "admin" ? "vendor" : "admin";
 
-  function run(action: () => Promise<void>, done: string): Promise<void> {
+  /** An action may return its own message (the match email says how many it sent). */
+  function run(action: () => Promise<void | string>, done: string): Promise<void> {
     setToast(null);
     const result = (async () => {
       try {
-        await action();
-        setToast(done);
+        const said = await action();
+        setToast(typeof said === "string" ? said : done);
       } catch (error) {
+        // A refusal the API worded for a person is shown as it is.
+        if (error instanceof MatchEmailRefused) { setToast(error.message); return; }
         console.error("[admin/vendors] action failed", error);
         setToast("ทำรายการไม่สำเร็จ — ลองใหม่อีกครั้ง");
       }
@@ -92,6 +100,18 @@ export function AdminVendorView({ opened }: { opened: AdminAccountOpen }) {
           <button type="button" className={styles.adminSecondaryBtn} disabled={pending}
             onClick={() => void run(() => sendPasswordResetAction(account.id), "✓ ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว — ผู้ใช้ตั้งรหัสเองจากลิงก์")}>
             ส่งลิงก์ตั้งรหัสผ่านใหม่
+          </button>
+        )}
+        {account.verified && !account.disabled && (
+          <button type="button" className={styles.adminSecondaryBtn} disabled={pending}
+            onClick={() => void run(async () => {
+              const result = await sendMatchEmailAction(account.id);
+              if (!result.ok) throw new MatchEmailRefused(result.reason);
+              return result.sent === 0
+                ? "ตอนนี้ยังไม่มี TOR ที่เปิดรับและผ่านเกณฑ์ของผู้ใช้ — ไม่ได้ส่งอีเมล"
+                : `✓ ส่งอีเมล TOR ที่ตรงกัน ${result.sent} รายการแล้ว`;
+            }, "")}>
+            ส่งอีเมล TOR ที่ตรงกันตอนนี้
           </button>
         )}
         <button type="button" className={styles.adminSecondaryBtn} disabled={pending} onClick={() => setConfirming("role")}>

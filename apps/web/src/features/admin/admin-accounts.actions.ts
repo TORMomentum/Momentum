@@ -6,6 +6,8 @@ import {
   disableAccount,
   enableAccount,
   saveAccountProfile,
+  AdminApiFailed,
+  sendMatchEmail,
   sendPasswordReset,
   sendVerificationEmail,
   setAccountRole,
@@ -63,4 +65,22 @@ export async function sendPasswordResetAction(id: string): Promise<void> {
   await requireStaff();
   await sendPasswordReset(id);
   refresh(id);
+}
+
+/**
+ * Returns rather than throws: the useful outcomes here are the API's reasons
+ * ("the vendor turned email off"), and a thrown error's message does not
+ * survive the trip to the browser in production.
+ */
+export async function sendMatchEmailAction(id: string): Promise<{ ok: true; sent: number } | { ok: false; reason: string }> {
+  await requireStaff();
+  try {
+    const { sent } = await sendMatchEmail(id);
+    refresh(id);
+    return { ok: true, sent };
+  } catch (error) {
+    if (error instanceof AdminApiFailed && error.reason) return { ok: false, reason: error.reason };
+    console.error("[admin/vendors] match email failed", error);
+    return { ok: false, reason: "ส่งไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
 }

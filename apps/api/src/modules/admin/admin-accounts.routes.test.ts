@@ -25,6 +25,9 @@ let db: Db;
 let sent: MailMessage[] = [];
 const mailer: Mailer = { send: async (message) => { sent.push(message); return { messageId: "test" }; } };
 
+let matchSends: string[] = [];
+const matchEmails = { sendMatchesNow: async (accountId: string) => { matchSends.push(accountId); return { sent: 3 }; } };
+
 function buildTestApp() {
   const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
   const app = express();
@@ -37,6 +40,7 @@ function buildTestApp() {
       sessions: sessionsRepository,
       tokens: new AccountTokensRepository(db),
       mailer,
+      matchEmails,
       appOrigin: "http://app.test",
       verifyTokenTtlMs: 60_000,
       resetTokenTtlMs: 60_000,
@@ -188,5 +192,16 @@ describe("admin vendor accounts", () => {
     const { app } = buildTestApp();
     expect((await request(app).get("/api/v1/admin/accounts")).status).toBe(401);
     expect((await request(app).get(`/api/v1/admin/accounts/${new ObjectId().toString()}`).set(auth)).status).toBe(404);
+  });
+
+  it("sends a vendor their matches on request, and records that an admin did", async () => {
+    matchSends = [];
+    const id = await seedAccount();
+    const { app } = buildTestApp();
+    const response = await request(app).post(`/api/v1/admin/accounts/${id}/match-email`).set(auth);
+    expect(response.status).toBe(200);
+    expect(response.body.sent).toBe(3);
+    expect(matchSends).toEqual([id]);
+    expect(await adminAudit(db).findOne({ accountId: id, action: "match-email-sent" })).toMatchObject({ detail: "3 รายการ" });
   });
 });

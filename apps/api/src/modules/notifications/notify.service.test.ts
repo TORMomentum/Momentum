@@ -98,4 +98,34 @@ describe("NotifyService", () => {
     await service(true).dispatch(); await service(true).dispatch();
     expect(await notifications(db).countDocuments({ reason: "deadline-reminder" })).toBe(1);
   });
+
+  describe("sendMatchesNow (admin-triggered)", () => {
+    it("emails the vendor their open matches even while automatic sending is off, and claims nothing", async () => {
+      const id = await vendor(); await tor(); await tor({ status: "awarded" });
+      const result = await service(false).sendMatchesNow(id);
+      expect(result.sent).toBe(1);
+      expect(deliveries).toHaveLength(1);
+      // The automatic digest must still be free to include it later.
+      expect(await notifications(db).countDocuments()).toBe(0);
+    });
+
+    it("refuses a vendor who turned email off — an admin cannot override that", async () => {
+      const id = await vendor({ preset: "off" }); await tor();
+      await expect(service(false).sendMatchesNow(id)).rejects.toThrow("ปิดการแจ้งเตือน");
+      expect(deliveries).toHaveLength(0);
+    });
+
+    it("refuses an account the automatic sender would skip", async () => {
+      for (const id of await Promise.all([vendor({ verified: false }), vendor({ disabled: true }), vendor({ withdrawn: true })])) {
+        await expect(service(false).sendMatchesNow(id)).rejects.toThrow();
+      }
+      expect(deliveries).toHaveLength(0);
+    });
+
+    it("sends nothing, and says so, when nothing open matches", async () => {
+      const id = await vendor({ minMatch: 95 }); await tor();
+      expect(await service(false).sendMatchesNow(id)).toEqual({ sent: 0 });
+      expect(deliveries).toHaveLength(0);
+    });
+  });
 });

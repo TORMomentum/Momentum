@@ -189,6 +189,9 @@ const schema = z.object({
   // inferred from the title, and a wrong guess must not hide a TOR outright.
   MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
   PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
+  // An admin's "send this vendor their matches now": the email lists at most
+  // this many, best first, so it stays readable.
+  NOTIFY_MANUAL_MAX_TORS: z.coerce.number().int().positive().default(10),
 
   // Dispatch remains opt-in until the labelled match-quality benchmark in the
   // profile-and-matching design §7.8 exists.  The worker records dry runs while
@@ -302,6 +305,7 @@ export interface Config {
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
     experienceWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
+    manualEmailMaxTors: number;
   };
   notifications: {
     dispatchEnabled: boolean;
@@ -432,6 +436,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
       experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
       registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
+      manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
     },
     notifications: {
       dispatchEnabled: parsed.NOTIFY_DISPATCH_ENABLED,

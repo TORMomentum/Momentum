@@ -20,6 +20,8 @@ export interface AdminAccountsDeps {
   appOrigin: string;
   verifyTokenTtlMs: number;
   resetTokenTtlMs: number;
+  /** The notification module's manual send; a port-shaped slice so this service does not own email matching. */
+  matchEmails: { sendMatchesNow(accountId: string): Promise<{ sent: number }> };
 }
 
 /** How many audit entries the account screen shows. */
@@ -91,5 +93,13 @@ export class AdminAccountsService {
     const token = await this.deps.tokens.create(accountId, "reset", this.deps.resetTokenTtlMs);
     await this.deps.mailer.send(passwordResetEmail(account.email, tokenUrl(this.deps.appOrigin, "/reset-password", token)));
     await this.deps.repo.audit({ accountId, action: "password-reset-sent", actor });
+  }
+
+  /** Sends the vendor their current open matches now, and records that an admin did. */
+  async sendMatchEmail(accountId: string, actor: string): Promise<{ sent: number }> {
+    await this.deps.repo.load(accountId);
+    const result = await this.deps.matchEmails.sendMatchesNow(accountId);
+    await this.deps.repo.audit({ accountId, action: "match-email-sent", actor, detail: `${result.sent} รายการ` });
+    return result;
   }
 }
