@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addressFrom,
+  daysLeftLabel,
+  daysUntil,
   formatBudgetShort,
   formatDeadline,
   formatThaiMonth,
@@ -36,6 +38,25 @@ describe("deadline formatting", () => {
   it("formats nothing without a normalised date", () => {
     expect(formatDeadline(null, raw)).toBeNull();
     expect(formatDeadline("not a date", raw)).toBeNull();
+  });
+});
+
+describe("days left until a deadline", () => {
+  // 23:30 on 7 Oct in UTC is already 8 Oct in Bangkok.
+  const lateUtc = new Date("2026-10-07T23:30:00Z");
+
+  it("counts from today in Bangkok, not the host's day", () => {
+    expect(daysUntil("2026-10-08", lateUtc)).toBe(0);
+    expect(daysUntil("2026-10-15T16:00:00", lateUtc)).toBe(7);
+    expect(daysUntil("2026-10-07", lateUtc)).toBe(-1);
+    expect(daysUntil(null, lateUtc)).toBeNull();
+  });
+
+  it("says today, counts the days left, and says nothing once passed", () => {
+    expect(daysLeftLabel(0)).toBe("ปิดรับวันนี้");
+    expect(daysLeftLabel(5)).toBe("เหลืออีก 5 วัน");
+    expect(daysLeftLabel(-1)).toBeNull();
+    expect(daysLeftLabel(null)).toBeNull();
   });
 });
 

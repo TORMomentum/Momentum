@@ -6,6 +6,9 @@ import labels from "../shared/ui/labels.module.css";
 import type { TorDetail, TorDetailField } from "../shared/api/tors.api";
 import {
   addressFrom,
+  DEADLINE_SOON_DAYS,
+  daysLeftLabel,
+  daysUntil,
   deadlineParts,
   formatBaht,
   formatThaiDate,
@@ -63,6 +66,9 @@ export function TorRecordView({
     ? deadlineParts(typeof deadline.value === "string" ? deadline.value : null, deadline.raw)
     : null;
   const status = typeof fields.torStatus?.value === "string" ? fields.torStatus.value : null;
+  // Counted only while the TOR is open: announced, as the API's own rule for "open" has it.
+  const daysLeft = status === "announced" ? daysUntil(typeof deadline?.value === "string" ? deadline.value : null) : null;
+  const daysLeftText = daysLeftLabel(daysLeft);
   const qualifications = Array.isArray(fields.qualifications?.value)
     ? (fields.qualifications.value as unknown[]).filter((item): item is string => typeof item === "string")
     : [];
@@ -135,6 +141,13 @@ export function TorRecordView({
               )}
             </div>
             {deadlineText?.window && <div className={styles.deadlineWindow}>เวลา {deadlineText.window}</div>}
+            {daysLeftText && (
+              <div
+                className={`${styles.daysLeft} ${daysLeft !== null && daysLeft <= DEADLINE_SOON_DAYS ? styles.daysLeftSoon : ""}`}
+              >
+                {daysLeftText}
+              </div>
+            )}
             <div className={styles.factNote}>
               {deadlineText && deadline?.raw && (
                 <span className={styles.asWritten}>ตามเอกสาร: {deadline.raw}</span>
