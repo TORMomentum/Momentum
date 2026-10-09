@@ -8,6 +8,7 @@ import {
   fetchEvents,
   reextract as reextractRecord,
   reject as rejectRecord,
+  restore as restoreRecord,
   saveEdits,
   setFieldVerification,
   uploadDocument,
@@ -145,4 +146,12 @@ export async function fetchRecentUploadsAction(): Promise<RecentUpload[]> {
   }
 
   return uploads.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5);
+}
+
+/** Lifts a takedown: the record is public again, and the event log keeps both steps. */
+export async function restoreRecordAction(id: string): Promise<void> {
+  await requireStaff();
+  await restoreRecord(id);
+  revalidatePath(REVIEW_PATH);
+  revalidatePath("/admin/tors");
 }

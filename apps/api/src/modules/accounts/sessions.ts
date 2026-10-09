@@ -26,7 +26,8 @@ export class SessionsRepository {
     if (!session || !ObjectId.isValid(session.accountId)) return null;
 
     const account = await accounts(this.db).findOne({ _id: new ObjectId(session.accountId) });
-    if (!account || account.deletedAt) return null;
+    // A disabled account is signed out everywhere at once, whatever sessions survived.
+    if (!account || account.deletedAt || account.disabledAt) return null;
     return { account, role: account.role };
   }
 

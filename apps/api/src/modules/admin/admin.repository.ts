@@ -26,6 +26,50 @@ export interface ReviewRecord extends QueueEntry {
   sourceUrl: string | null;
   contentHash: string;
   filename?: string;
+  /** Where the record is in the pipeline, and whether the public can see it. */
+  state: string;
+  restricted: boolean;
+  restrictedReason?: string;
+  documentType: "tor" | "invitation";
+}
+
+/** Which records the all-TORs list shows. */
+export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "failed";
+
+export interface AdminTorQuery {
+  /** Words in the title or agency, or a project number. */
+  q?: string;
+  status: AdminTorStatus;
+  /** "tor" leaves out invitations to bid, which are supporting documents. */
+  kind: "tor" | "invitation" | "all";
+  page: number;
+  pageSize: number;
+}
+
+/** One row of the all-TORs list. */
+export interface AdminTorRow {
+  id: string;
+  title: string;
+  agency: string;
+  documentType: "tor" | "invitation";
+  state: string;
+  restricted: boolean;
+  unverified: boolean;
+  confidenceLevel: string | null;
+  projectNumber: string | null;
+  createdAt: Date;
+}
+
+export interface AdminTorPage {
+  rows: AdminTorRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** A search term as a literal pattern: nothing a reviewer types is read as regex syntax. */
+function literal(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 }
 
 export interface AdminOverview {
@@ -176,6 +220,82 @@ export class AdminRepository {
       sourceUrl: doc.sourceUrl,
       contentHash: doc.contentHash,
       filename: doc.sourceRefs?.find((s) => s.originalFilename)?.originalFilename,
+      state: doc.pipeline?.state ?? "unknown",
+      restricted: doc.access?.restricted ?? false,
+      ...(doc.access?.reason ? { restrictedReason: doc.access.reason } : {}),
+      documentType: doc.documentType ?? "tor",
+    };
+  }
+
+  /**
+   * Every record, published or not, public or taken down — the review queue sees only the ones a
+   * model graded low, so a published record that turns out wrong could not be reached before.
+   * Newest first; a page at a time.
+   */
+  async listAll(query: AdminTorQuery): Promise<AdminTorPage> {
+    const and: Filter<TorDocument>[] = [];
+    if (query.kind === "tor") and.push({ documentType: { $ne: "invitation" } });
+    if (query.kind === "invitation") and.push({ documentType: "invitation" });
+    const status: Record<Exclude<AdminTorStatus, "all">, Filter<TorDocument>> = {
+      public: { "pipeline.state": "published", "access.restricted": { $ne: true } },
+      restricted: { "access.restricted": true },
+      unverified: { "pipeline.state": "published", unverified: true, "access.restricted": { $ne: true } },
+      processing: { "pipeline.state": { $in: ["queued", "extracting"] } },
+      failed: { "pipeline.state": "failed" },
+    };
+    if (query.status !== "all") and.push(status[query.status]);
+    const q = query.q?.trim();
+    if (q) {
+      const pattern = literal(q);
+      and.push({
+        $or: [
+          { "fields.title.raw": pattern },
+          { "fields.title.value": pattern },
+          { "fields.agency.raw": pattern },
+          { "fields.agency.value": pattern },
+          { "sourceProject.projectNumber": q },
+          { "sourceProject.projectId": q },
+        ],
+      });
+    }
+    const filter: Filter<TorDocument> = and.length > 0 ? { $and: and } : {};
+    const [docs, total] = await Promise.all([
+      tors(this.db)
+        .find(filter, {
+          sort: { createdAt: -1, _id: -1 },
+          skip: (query.page - 1) * query.pageSize,
+          limit: query.pageSize,
+          projection: {
+            "fields.title": 1,
+            "fields.agency": 1,
+            documentType: 1,
+            pipeline: 1,
+            access: 1,
+            unverified: 1,
+            confidenceLevel: 1,
+            sourceProject: 1,
+            createdAt: 1,
+          },
+        })
+        .toArray(),
+      tors(this.db).countDocuments(filter),
+    ]);
+    return {
+      rows: docs.map((doc) => ({
+        id: doc._id.toString(),
+        title: doc.fields?.title?.raw ?? "",
+        agency: doc.fields?.agency?.raw ?? "",
+        documentType: doc.documentType ?? "tor",
+        state: doc.pipeline?.state ?? "unknown",
+        restricted: doc.access?.restricted ?? false,
+        unverified: doc.unverified ?? false,
+        confidenceLevel: doc.confidenceLevel ?? null,
+        projectNumber: doc.sourceProject?.projectNumber ?? doc.sourceProject?.projectId ?? null,
+        createdAt: doc.createdAt,
+      })),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
     };
   }
 
@@ -290,6 +410,20 @@ export class AdminRepository {
         },
       },
       { returnDocument: "before" },
+    );
+    if (!result) throw new NotFoundError(`tor ${torId} not found`);
+    return result;
+  }
+
+  /**
+   * Lifts a takedown: the record is public again. The reason it was taken down stays in the event
+   * log, which is the audit trail; the stored original was never touched (FR-B-6).
+   */
+  async restore(torId: string): Promise<TorDocument> {
+    const result = await tors(this.db).findOneAndUpdate(
+      { _id: new ObjectId(torId) },
+      { $set: { access: { restricted: false }, updatedAt: new Date() } },
+      { returnDocument: "after" },
     );
     if (!result) throw new NotFoundError(`tor ${torId} not found`);
     return result;

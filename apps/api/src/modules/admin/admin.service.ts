@@ -9,6 +9,8 @@ import { cohortFor, type CohortKey } from "../stats/cohort.js";
 import { windowKeysFor } from "../stats/stats.repository.js";
 import type {
   AdminRepository,
+  AdminTorPage,
+  AdminTorQuery,
   FieldEdit,
   QueueEntry,
   ReviewFieldName,
@@ -114,6 +116,11 @@ export class AdminService {
     };
   }
 
+  /** Every record, searchable — the queue shows only what a model graded low. */
+  async listAll(query: AdminTorQuery): Promise<AdminTorPage> {
+    return this.deps.repo.listAll(query);
+  }
+
   async overview() {
     return this.deps.repo.overview();
   }
@@ -213,6 +220,22 @@ export class AdminService {
       reason,
     });
     await this.markCohorts(before);
+  }
+
+  /**
+   * Lifts a takedown. The record keeps `unverified` as the takedown left it, so it returns marked
+   * "unverified extraction" until a reviewer approves it again.
+   */
+  async restore(torId: string, actor: string): Promise<void> {
+    const after = await this.deps.repo.restore(torId);
+    await this.deps.history.record(torId, {
+      from: "restricted",
+      to: "published",
+      actor,
+      source: "admin",
+      reason: "takedown lifted",
+    });
+    await this.markCohorts(after);
   }
 
   private async markCohorts(...records: Array<{ cohort?: CohortKey }>): Promise<void> {

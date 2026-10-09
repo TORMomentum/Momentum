@@ -51,6 +51,34 @@ export interface ReviewRecord extends QueueEntry {
   hasTextLayer: boolean;
   sourceUrl: string | null;
   contentHash: string;
+  /** Absent from an API older than the all-TORs list. */
+  state?: string;
+  restricted?: boolean;
+  restrictedReason?: string;
+  documentType?: "tor" | "invitation";
+}
+
+export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "failed";
+export type AdminTorKind = "tor" | "invitation" | "all";
+
+export interface AdminTorRow {
+  id: string;
+  title: string;
+  agency: string;
+  documentType: "tor" | "invitation";
+  state: string;
+  restricted: boolean;
+  unverified: boolean;
+  confidenceLevel: string | null;
+  projectNumber: string | null;
+  createdAt: string;
+}
+
+export interface AdminTorPage {
+  rows: AdminTorRow[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface QueueView {
@@ -158,6 +186,20 @@ export function fetchRecord(id: string): Promise<ReviewRecord> {
   return call<ReviewRecord>(`/admin/tors/${encodeURIComponent(id)}`);
 }
 
+export function fetchAllTors(query: { q?: string; status?: AdminTorStatus; kind?: AdminTorKind; page?: number }): Promise<AdminTorPage> {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.status && query.status !== "all") params.set("status", query.status);
+  if (query.kind && query.kind !== "tor") params.set("kind", query.kind);
+  if (query.page && query.page > 1) params.set("page", String(query.page));
+  const search = params.toString();
+  return call<AdminTorPage>(`/admin/tors${search ? `?${search}` : ""}`);
+}
+
+export function restore(id: string): Promise<{ id: string }> {
+  return call(`/admin/tors/${encodeURIComponent(id)}/restore`, { method: "POST" });
+}
+
 export interface FieldEdit {
   field: string;
   value: string;
@@ -206,4 +248,85 @@ export function uploadDocument(file: File): Promise<IntakeResponse> {
   const body = new FormData();
   body.append("file", file, file.name);
   return call<IntakeResponse>("/intake/upload", { method: "POST", body });
+}
+
+export type AccountRole = "vendor" | "admin";
+
+export interface AdminAccountRow {
+  id: string;
+  email: string;
+  displayName: string;
+  role: AccountRole;
+  verified: boolean;
+  disabled: boolean;
+  createdAt: string;
+}
+
+export interface AdminAccountPage {
+  rows: AdminAccountRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminVendorProfile {
+  categories: string[];
+  areas: string[];
+  otherCategories: string[];
+  budget: { minThb: number; maxThb: number } | null;
+  updatedAt: string | null;
+  updatedBy?: "vendor" | "admin";
+}
+
+export interface AdminAuditEntry {
+  action: string;
+  actor: string;
+  at: string;
+  detail?: string;
+}
+
+export interface AdminAccountOpen {
+  account: AdminAccountRow & { hasPassword: boolean; consentAgreedAt: string | null; consentWithdrawnAt: string | null };
+  profile: AdminVendorProfile;
+  audit: AdminAuditEntry[];
+}
+
+export function fetchAccounts(query: { q?: string; page?: number }): Promise<AdminAccountPage> {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.page && query.page > 1) params.set("page", String(query.page));
+  const search = params.toString();
+  return call<AdminAccountPage>(`/admin/accounts${search ? `?${search}` : ""}`);
+}
+
+/** Opening an account is recorded in its audit log by the API. */
+export function fetchAccount(id: string): Promise<AdminAccountOpen> {
+  return call<AdminAccountOpen>(`/admin/accounts/${encodeURIComponent(id)}`);
+}
+
+export function saveAccountProfile(
+  id: string,
+  profile: Pick<AdminVendorProfile, "categories" | "areas" | "otherCategories" | "budget">,
+): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/profile`, { method: "PUT", body: JSON.stringify(profile) });
+}
+
+export function setAccountRole(id: string, role: AccountRole): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/role`, { method: "POST", body: JSON.stringify({ role }) });
+}
+
+export function disableAccount(id: string, reason: string): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/disable`, { method: "POST", body: JSON.stringify({ reason }) });
+}
+
+export function enableAccount(id: string): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/enable`, { method: "POST" });
+}
+
+export function sendVerificationEmail(id: string): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/verification-email`, { method: "POST" });
+}
+
+export function sendPasswordReset(id: string): Promise<unknown> {
+  return call(`/admin/accounts/${encodeURIComponent(id)}/password-reset`, { method: "POST" });
 }

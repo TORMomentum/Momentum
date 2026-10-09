@@ -156,6 +156,27 @@ export interface AccountDocument {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  /** Set by an admin: the account cannot sign in and every session it had is revoked. */
+  disabledAt?: Date;
+}
+
+/**
+ * What an admin did to a vendor's account (NFR-S2). Reading someone's profile is itself recorded,
+ * because personal data is involved, and so is every change and every email sent on their behalf.
+ */
+export interface AdminAuditDocument {
+  accountId: string;
+  action:
+    | "viewed"
+    | "profile-edited"
+    | "role-changed"
+    | "disabled"
+    | "enabled"
+    | "verification-email-sent"
+    | "password-reset-sent";
+  actor: string;
+  at: Date;
+  detail?: string;
 }
 
 export interface SessionDocument {
@@ -198,6 +219,8 @@ export interface VendorProfileDocument {
   budget: { minThb: number; maxThb: number } | null;
   taxonomyVersion: string;
   updatedAt: Date;
+  /** Who made the last change. "admin" is shown to the vendor, so a staff edit is never passed off as theirs. */
+  updatedBy?: "vendor" | "admin";
 }
 
 let client: MongoClient | null = null;
@@ -257,6 +280,10 @@ export function bookmarks(db: Db): Collection<BookmarkDocument> {
   return db.collection<BookmarkDocument>("bookmarks");
 }
 
+export function adminAudit(db: Db): Collection<AdminAuditDocument> {
+  return db.collection<AdminAuditDocument>("admin_audit");
+}
+
 export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
 }
@@ -272,6 +299,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
   await vendorProfiles(db).createIndex({ accountId: 1 }, { unique: true });
+  await adminAudit(db).createIndex({ accountId: 1, at: -1 });
   await tors(db).createIndex({ contentHash: 1 }, { unique: true });
   await tors(db).createIndex({ "pipeline.state": 1, createdAt: -1 });
   // Aggregations and peer groups select on the AGENCY's date, so these index
