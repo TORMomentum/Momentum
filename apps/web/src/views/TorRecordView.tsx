@@ -3,9 +3,13 @@ import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
+import { BookmarkButton } from "../features/bookmarks/BookmarkButton";
 import type { TorDetail, TorDetailField } from "../shared/api/tors.api";
 import {
   addressFrom,
+  DEADLINE_SOON_DAYS,
+  daysLeftLabel,
+  daysUntil,
   deadlineParts,
   formatBaht,
   formatThaiDate,
@@ -50,10 +54,16 @@ function Value({ field, missing }: { field: TorDetailField | undefined; missing:
 export function TorRecordView({
   tor,
   originals,
+  bookmarked = false,
 }: {
   tor: TorDetail;
   /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
   originals: OriginalDocument[];
+  /**
+   * Whether the signed-in vendor has saved this TOR. Optional, because most
+   * readers are not signed in and have saved nothing — absent means not saved.
+   */
+  bookmarked?: boolean;
 }) {
   const { fields, budgetYear } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.
@@ -63,6 +73,9 @@ export function TorRecordView({
     ? deadlineParts(typeof deadline.value === "string" ? deadline.value : null, deadline.raw)
     : null;
   const status = typeof fields.torStatus?.value === "string" ? fields.torStatus.value : null;
+  // Counted only while the TOR is open: announced, as the API's own rule for "open" has it.
+  const daysLeft = status === "announced" ? daysUntil(typeof deadline?.value === "string" ? deadline.value : null) : null;
+  const daysLeftText = daysLeftLabel(daysLeft);
   const qualifications = Array.isArray(fields.qualifications?.value)
     ? (fields.qualifications.value as unknown[]).filter((item): item is string => typeof item === "string")
     : [];
@@ -135,6 +148,13 @@ export function TorRecordView({
               )}
             </div>
             {deadlineText?.window && <div className={styles.deadlineWindow}>เวลา {deadlineText.window}</div>}
+            {daysLeftText && (
+              <div
+                className={`${styles.daysLeft} ${daysLeft !== null && daysLeft <= DEADLINE_SOON_DAYS ? styles.daysLeftSoon : ""}`}
+              >
+                {daysLeftText}
+              </div>
+            )}
             <div className={styles.factNote}>
               {deadlineText && deadline?.raw && (
                 <span className={styles.asWritten}>ตามเอกสาร: {deadline.raw}</span>
@@ -261,6 +281,7 @@ export function TorRecordView({
 
       <div className={styles.detailSide}>
         <div className={styles.sideActions}>
+          <BookmarkButton torId={tor.id} initial={bookmarked} />
           <OriginalPreview {...previewProps} className={styles.openDocBtn}>
             เปิดเอกสารต้นฉบับ
           </OriginalPreview>

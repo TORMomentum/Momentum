@@ -1,4 +1,5 @@
 import { DashboardView } from "../../../src/views/DashboardView";
+import { fetchOwnMatches } from "../../../src/shared/api/matches.api";
 import { fetchDashboard, StatsApiUnavailable } from "../../../src/shared/api/stats.api";
 import { parseDashboardFilters } from "../../../src/shared/lib/dashboard-filters";
 
@@ -19,9 +20,12 @@ export default async function DashboardPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseDashboardFilters(await searchParams);
+  // A signed-in vendor also sees what may be relevant to them; anyone else sees
+  // the public dashboard only (FR-E-1). Fetched alongside, never instead.
+  const matches = fetchOwnMatches();
   try {
     const dashboard = await fetchDashboard(filters);
-    return <DashboardView dashboard={dashboard} filters={filters} />;
+    return <DashboardView dashboard={dashboard} filters={filters} matches={await matches} />;
   } catch (error) {
     console.error("[dashboard] load failed", error);
     return <DashboardView filters={filters} error={error instanceof StatsApiUnavailable} />;

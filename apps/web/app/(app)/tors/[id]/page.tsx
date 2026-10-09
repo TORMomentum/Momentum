@@ -4,6 +4,7 @@ import { fetchTor, type TorDetail } from "../../../../src/shared/api/tors.api";
 import { TorDetailView } from "../../../../src/views/TorDetailView";
 import { originalDocuments } from "../../../../src/features/tor-detail/original-documents";
 import { TorRecordView } from "../../../../src/views/TorRecordView";
+import { fetchOwnBookmarkIds } from "../../../../src/shared/api/bookmarks.api";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
@@ -41,7 +42,8 @@ export default async function TorDetailPage({
     // route (object storage spec §5). The deadline may come from the project's
     // invitation to bid; the reader gets that original too, not only this
     // TOR's (NFR-F6).
-    return <TorRecordView tor={tor} originals={originalDocuments(tor)} />;
+    const savedIds = await fetchOwnBookmarkIds([tor.id]);
+    return <TorRecordView tor={tor} originals={originalDocuments(tor)} bookmarked={savedIds.has(tor.id)} />;
   }
 
   const sample = getTorBySlug(id);

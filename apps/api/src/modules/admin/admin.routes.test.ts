@@ -325,3 +325,61 @@ describe("admin budget correction route", () => {
     expect(typeof stored?.fields.budget?.value).toBe("number");
   });
 });
+
+describe("admin all-TORs list", () => {
+  const list = (query: string) => request(buildTestApp()).get(`/api/v1/admin/tors${query}`).set("Authorization", `Bearer ${adminKey}`);
+
+  it("lists every record, published or taken down, newest first, invitations only when asked", async () => {
+    const queued = await seedQueued();
+    const settled = await seedFieldsToConfirm({ createdAt: new Date(Date.now() + 1000) });
+    const takenDown = await seedFieldsToConfirm({ access: { restricted: true, reason: "ไม่ใช่ TOR" }, createdAt: new Date(Date.now() + 2000) });
+    await seedFieldsToConfirm({ documentType: "invitation" });
+
+    const all = await list("");
+    expect(all.status).toBe(200);
+    expect(all.body.total).toBe(3);
+    expect(all.body.rows.map((row: { id: string }) => row.id)).toEqual([takenDown, settled, queued]);
+    expect(all.body.rows[0]).toMatchObject({ restricted: true, documentType: "tor", state: "published" });
+
+    expect((await list("?status=restricted")).body.rows.map((row: { id: string }) => row.id)).toEqual([takenDown]);
+    expect((await list("?kind=invitation")).body.total).toBe(1);
+  });
+
+  it("searches title and agency as literal text, so a regex character matches itself", async () => {
+    await seedQueued();
+    await seedFieldsToConfirm();
+
+    expect((await list(`?q=${encodeURIComponent("สำนักการแพทย์")}`)).body.total).toBe(1);
+    expect((await list(`?q=${encodeURIComponent(".*")}`)).body.total).toBe(0);
+  });
+
+  it("refuses an unknown status, and requires the admin key", async () => {
+    expect((await list("?status=everything")).status).toBe(400);
+    expect((await request(buildTestApp()).get("/api/v1/admin/tors")).status).toBe(401);
+  });
+});
+
+describe("admin takedown and restore", () => {
+  it("restores a taken-down TOR to the public, logging both, and keeps the original", async () => {
+    const id = await seedFieldsToConfirm();
+    const app = buildTestApp();
+    const auth = { Authorization: `Bearer ${adminKey}` };
+
+    await request(app).post(`/api/v1/admin/tors/${id}/reject`).set(auth).send({ reason: "ไม่ใช่เอกสาร TOR" }).expect(200);
+    expect((await request(app).get(`/api/v1/admin/tors/${id}`).set(auth)).body).toMatchObject({ restricted: true, restrictedReason: "ไม่ใช่เอกสาร TOR" });
+
+    const restored = await request(app).post(`/api/v1/admin/tors/${id}/restore`).set(auth);
+    expect(restored.status).toBe(200);
+    const record = await tors(db).findOne({ _id: new ObjectId(id) });
+    expect(record?.access).toEqual({ restricted: false });
+    expect(record?.storage.key).toBe(recordStorage.key);
+    expect((await torEvents(db).find({ torId: id }).sort({ at: 1, _id: 1 }).toArray()).map((event) => event.to)).toEqual(["restricted", "published"]);
+  });
+
+  it("answers 404 for an unknown record", async () => {
+    const response = await request(buildTestApp())
+      .post(`/api/v1/admin/tors/${new ObjectId().toString()}/restore`)
+      .set("Authorization", `Bearer ${adminKey}`);
+    expect(response.status).toBe(404);
+  });
+});

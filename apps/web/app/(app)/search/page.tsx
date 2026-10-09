@@ -12,6 +12,7 @@ import {
   type RawSearchParams,
 } from "../../../src/features/search/search.params";
 import { SearchView } from "../../../src/views/SearchView";
+import { fetchOwnBookmarkIds } from "../../../src/shared/api/bookmarks.api";
 
 export const metadata: Metadata = {
   title: "ค้นหา TOR",
@@ -36,6 +37,7 @@ export default async function SearchPage({
     fetchTorFacets(),
     searchTors(toSearchQuery(filters)),
   ]);
+  const savedIds = results.status === "fulfilled" ? await fetchOwnBookmarkIds(results.value.items.map((item) => item.id)) : new Set<string>();
 
   if (results.status === "rejected") {
     console.error("tor_search_failed", { reason: String(results.reason) });
@@ -49,6 +51,7 @@ export default async function SearchPage({
       facets={facets.status === "fulfilled" ? facets.value : emptyFacets}
       results={results.status === "fulfilled" ? (results.value as TorSearchResult) : null}
       queryMaxChars={searchQueryMaxChars()}
+      savedIds={[...savedIds]}
     />
   );
 }

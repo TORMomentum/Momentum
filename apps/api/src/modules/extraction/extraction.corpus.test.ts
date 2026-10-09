@@ -71,7 +71,13 @@ const agencyMatches = (got: string, label: string) => {
   return got === l || got.includes(l) || l.includes(got) || got.includes("กรุงเทพมหานคร");
 };
 
-describe.skipIf(!hasCreds)("extraction corpus gate", () => {
+// Having a Vertex credential is NOT consent to spend it. Once the development
+// .env carried the key the app needs, every `npm test` made ten real, billed
+// model calls — and hung on the network when they stalled. The benchmark now
+// runs only when it is asked for: RUN_VERTEX_CORPUS=1 npm test.
+const optedIn = process.env.RUN_VERTEX_CORPUS === "1";
+
+describe.skipIf(!hasCreds || !optedIn)("extraction corpus gate", () => {
   const ids = [...NEVER_LOW, ...ALWAYS_LOW];
   let runs: Array<{ id: string; result: ExtractionResult; label: Label }>;
 

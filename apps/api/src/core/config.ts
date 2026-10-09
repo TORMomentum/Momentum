@@ -128,7 +128,39 @@ const schema = z.object({
   /** Whose calendar decides "today" — when a deadline has passed. */
   TIME_ZONE: z.string().min(1).default("Asia/Bangkok"),
 
+  // Matching. These are deliberately independent tunables until a labelled
+  // relevance benchmark can calibrate them.
+  MATCH_CANDIDATE_CAP: z.coerce.number().int().positive().default(200),
+  /**
+   * How many unclassified TORs one matching request may classify before it
+   * answers. Classification is deterministic and needs no model, so this only
+   * bounds a request's own latency; anything left over is picked up by the next
+   * request, and tools/classify_tors.mts fills the whole corpus at once.
+   */
+  MATCH_CLASSIFY_BATCH: z.coerce.number().int().positive().default(1000),
+  MATCH_PAGE_SIZE: z.coerce.number().int().positive().default(20),
+  MATCH_CLASSIFIER_TITLE_SCORE: z.coerce.number().min(0).max(1).default(1),
+  MATCH_CLASSIFIER_SCOPE_SCORE: z.coerce.number().min(0).max(1).default(0.8),
+  MATCH_CLASSIFIER_QUALIFICATIONS_SCORE: z.coerce.number().min(0).max(1).default(0.6),
+  MATCH_CLASSIFIER_AMBIGUITY_MARGIN: z.coerce.number().min(0).max(1).default(0.1),
+  MATCH_CATEGORY_LEAF_SCORE: z.coerce.number().min(0).max(1).default(1),
+  MATCH_CATEGORY_GROUP_SCORE: z.coerce.number().min(0).max(1).default(0.8),
+  MATCH_CATEGORY_COARSE_SCORE: z.coerce.number().min(0).max(1).default(0.6),
+  MATCH_FREE_TEXT_SCORE: z.coerce.number().min(0).max(1).default(0.4),
+  MATCH_CATEGORY_WEIGHT: z.coerce.number().positive().default(0.7),
+  MATCH_BUDGET_WEIGHT: z.coerce.number().positive().default(0.3),
+  MATCH_AREA_WEIGHT: z.coerce.number().positive().default(0.1),
+  MATCH_BUDGET_NEUTRAL_SCORE: z.coerce.number().min(0).max(1).default(0.5),
+  MATCH_BUDGET_INSIDE_SCORE: z.coerce.number().min(0).max(1).default(1),
+  MATCH_BUDGET_OUTSIDE_MAX_SCORE: z.coerce.number().min(0).max(1).default(0.5),
+  MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER: z.coerce.number().positive().default(2),
+  // Turns on only when extraction supplies a work-location field; agency is never a substitute.
+  MATCH_AREA_SIGNAL_ENABLED: z.coerce.boolean().default(false),
+
   API_PORT: z.coerce.number().int().positive().default(4000),
+  // The extraction worker's probe server, for Cloud Run (TOR-140). Unset, as on a developer
+  // machine, it starts none: sharing API_PORT there put the worker on the API's own port.
+  WORKER_HEALTH_PORT: blankAsAbsent(z.coerce.number().int().positive()),
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
   path: ["T_LOW"],
@@ -220,7 +252,15 @@ export interface Config {
   };
   adminQueuePageSize: number;
   search: SearchConfig;
+  matching: {
+    candidateCap: number; classifyBatch: number; pageSize: number; classifierTitleScore: number; classifierScopeScore: number;
+    classifierQualificationsScore: number; classifierAmbiguityMargin: number; categoryLeafScore: number;
+    categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
+    budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
+    budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
+  };
   apiPort: number;
+  workerHealthPort?: number;
 }
 
 export interface SearchConfig {
@@ -328,6 +368,18 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       facetLimit: parsed.SEARCH_FACET_LIMIT,
       timeZone: parsed.TIME_ZONE,
     },
+    matching: {
+      candidateCap: parsed.MATCH_CANDIDATE_CAP, classifyBatch: parsed.MATCH_CLASSIFY_BATCH, pageSize: parsed.MATCH_PAGE_SIZE,
+      classifierTitleScore: parsed.MATCH_CLASSIFIER_TITLE_SCORE, classifierScopeScore: parsed.MATCH_CLASSIFIER_SCOPE_SCORE,
+      classifierQualificationsScore: parsed.MATCH_CLASSIFIER_QUALIFICATIONS_SCORE, classifierAmbiguityMargin: parsed.MATCH_CLASSIFIER_AMBIGUITY_MARGIN,
+      categoryLeafScore: parsed.MATCH_CATEGORY_LEAF_SCORE, categoryGroupScore: parsed.MATCH_CATEGORY_GROUP_SCORE,
+      categoryCoarseScore: parsed.MATCH_CATEGORY_COARSE_SCORE, freeTextScore: parsed.MATCH_FREE_TEXT_SCORE,
+      categoryWeight: parsed.MATCH_CATEGORY_WEIGHT, budgetWeight: parsed.MATCH_BUDGET_WEIGHT, areaWeight: parsed.MATCH_AREA_WEIGHT,
+      budgetNeutralScore: parsed.MATCH_BUDGET_NEUTRAL_SCORE, budgetInsideScore: parsed.MATCH_BUDGET_INSIDE_SCORE,
+      budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
+      areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
+    },
     apiPort: parsed.API_PORT,
+    ...(parsed.WORKER_HEALTH_PORT !== undefined ? { workerHealthPort: parsed.WORKER_HEALTH_PORT } : {}),
   };
 }

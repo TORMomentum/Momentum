@@ -55,6 +55,26 @@ describe("profile routes", () => {
     expect(response.body.otherCategories).toEqual([]);
   });
 
+  it("gives a new profile a sensible notification preference instead of nothing", async () => {
+    const id = await sessionFor("one@example.test");
+    const response = await request(app).get("/api/v1/me/profile").set("x-session-id", id);
+    expect(response.body.notify).toMatchObject({ preset: "daily", minMatch: 70 });
+  });
+
+  it("stores a stated notification preference and refuses an impossible threshold", async () => {
+    const id = await sessionFor("one@example.test");
+    const notify = { preset: "high", minMatch: 85, leadDays: 14, deadlineReminder: false, anomalyAlert: true };
+    await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send({ ...payload, notify });
+    expect((await request(app).get("/api/v1/me/profile").set("x-session-id", id)).body.notify).toMatchObject(notify);
+
+    const bad = await write(request(app).put("/api/v1/me/profile"))
+      .set("x-session-id", id)
+      .send({ ...payload, notify: { ...notify, minMatch: 500 } });
+    expect(bad.status).toBe(400);
+    // The refused request changed nothing.
+    expect((await request(app).get("/api/v1/me/profile").set("x-session-id", id)).body.notify.minMatch).toBe(85);
+  });
+
   it("gives a read and a write the same shape, and never the database's own id", async () => {
     // These had drifted: a read returned the raw Mongo document and a write a
     // constructed object, so a client saw two different profiles depending on
