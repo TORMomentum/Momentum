@@ -97,6 +97,7 @@ flowchart TD
     SPEC --> PLANS["superpowers/plans/<br/>the slice as tasks"]
     PLANS --> TODO["TODO.md<br/>live status, box by box"]
     TODO --> TEST["TESTING.md + test-report.md<br/>test cases and latest results"]
+    SRS -. "each test case cites a requirement" .-> TEST
     TODO --> LOG["work-log.md<br/>finished work, as verified"]
     PLAN["PLAN.md<br/>decisions, open questions,<br/>known gaps, settled trail"] <--> TODO
     PLAN -. "a decision changes a requirement" .-> SRS
