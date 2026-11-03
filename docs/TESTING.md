@@ -5,50 +5,87 @@ current"); CI fails a pull request that adds or removes a test file without upda
 
 The [SRS](SRS.md) states every requirement as a testable statement with a verification method (T
 test, D demonstration, I inspection, A analysis) and gives each feature an acceptance criterion
-(SRS §6). This document maps those to the automated tests that cover them and to the manual cases
-that only a running stack can prove.
+(SRS §6). This document turns them into test cases: automated ones (§2, with every test in the generated
+[test-report.md](test-report.md)) and manual ones that only a running stack can prove (§3).
 
 ## 1. Running the tests
 
 | Command | What runs | Needs |
 | :---- | :---- | :---- |
-| `npm test` | The whole Vitest suite: unit, route and integration tests | `docker compose up -d mongo gcs` — integration tests use a real MongoDB and the GCS emulator, each on an isolated database |
+| `npm test` | The whole Vitest suite: unit, route and integration tests | the local stack and test environment below |
 | `npm run build && npm test` | The CI order. Packages ship compiled output, so testing before building tests a source tree the app never sees | as above |
+| `npm run test:report` | The whole suite, then regenerates [test-report.md](test-report.md): every test with its result, grouped by feature | as above |
 | `npx vitest run <path>` | One file | as above |
 | `node tools/check_mermaid.mjs` | Parses every Mermaid block under `docs/` | nothing |
 | `node tools/check_docs_drift.mjs` | Fails when code changed without its doc (rules in `tools/docs_drift.mjs`) | `git fetch origin` |
 | `RUN_LIVE_VERTEX=1 npx vitest run apps/api/src/adapters/vertex.ai.test.ts` | One real Vertex AI extraction — **paid**, run deliberately | Vertex credentials |
 | `GCS_REAL_TEST_BUCKET=… GCS_CREDENTIALS=… npx vitest run apps/api/src/adapters/gcs.storage.real.test.ts` | Storage contract against a real, disposable bucket (also the `gcs-real` workflow) | a throwaway bucket |
 
-No test in the default suite calls a paid service or writes to the shared Atlas cluster.
+**Point the suite at the local stack first.** `vitest.setup.ts` renames the database to `*_test`
+but keeps the host from `MONGO_URL`, so a `.env` aimed at Atlas sends the integration tests to the
+shared cluster. Set the values CI uses before running; a variable already set wins over `.env`:
+
+```bash
+docker compose up -d mongo gcs
+export MONGO_URL=mongodb://localhost:27017/tor_radar GCS_BUCKET=tor-raw \
+  GCS_API_ENDPOINT=http://localhost:4443 INTAKE_API_KEYS=ci-intake-key ADMIN_API_KEYS=ci-admin-key \
+  SESSION_SECRET=local-test-only APP_ORIGIN=http://web:3000
+npm run build && npm run test:report
+```
+
+The opt-in tests in the last two rows of the table are the only ones that call a paid or real
+external service; they are skipped unless their variables are set.
 
 **Unit tests passing is not verification.** A change is verified when the manual case in §3 for its
 feature passes against the running stack (`docker compose up`).
 
-## 2. Automated coverage by feature
+## 2. Test cases
 
-| Feature | Requirements | Tests (paths under `apps/api/src/` unless marked `web:` = `apps/web/src/`) |
-| :---- | :---- | :---- |
-| **F1** Intake | FR-A-1…3, NFR-S1, S3, S5 | `modules/intake/*` (auth, routes, service, repository) · `lib/safe-fetch` · `lib/file-type` · `lib/hash` · `lib/storage-key` · `adapters/gcs.storage` · `adapters/mongo.queue` · `workers/reconcile` · `app` |
-| **F2** Thai reading | FR-B-1, B-2, B-4, NFR-F3, F6 | `modules/extraction/*` (service, grading, corpus, taxonomy, categories) · `adapters/vertex.ai` · `lib/pdf-text` · `lib/parse-budget` · `workers/extract.worker*` |
-| **F3** Confidence and review | FR-B-3, FR-G-1, G-2 | `modules/admin/admin.routes` · `modules/admin/admin.repository` · `lib/tor-state*` · web: `views/AdminReviewView` · `features/admin/RecordPanel` |
-| **F4** Search and detail | FR-E-3…5, NFR-F2, F7 | `modules/tors/*` (routes, search, search.timing — NFR-F2 two-second bound) · `lib/stream-document` · `lib/byte-range` · `lib/content-disposition` · web: `views/SearchView` · `views/TorRecordView` · `features/search/search.params` |
-| **F5** Matching and email | FR-C-1…4, NFR-F1 | `modules/matching/*` (match-scorer, tor-classifier, routes) · `modules/notifications/*` · `modules/match-quality/*` · `adapters/*mailer*` · web: `features/dashboard/MatchedTorsPanel` · `features/admin/MatchLabelSheet` |
-| **F6** Profiles and accounts | FR-D-1…3, NFR-S1, S2 | `modules/accounts/*` (routes, repository, tokens, password, sessions) · `modules/profile/profile.routes` · `modules/bookmarks/*` · `core/auth-middleware` · `core/db.accounts` · `modules/admin/admin-accounts.routes` · web: `views/VendorProfileView` · `features/profile/*` · `views/AdminVendorView` |
-| **F7** Dashboard and anomaly | FR-E-1, E-2, E-6, NFR-F4, F5 | `modules/stats/*` (anomaly.rule, cohort, eligibility, repository, routes) · `core/db.stats` · `lib/budget-year` · `tools/backfill_cohorts` · web: `views/DashboardView` · `shared/lib/dashboard-filters` |
-| **F8** Quality checklist | FR-F-1…4, NFR-F5, F6 | `modules/checklist/checklist` · `modules/tors/tors.service.checklist` · web: `features/tor-detail/ChecklistPanel` |
-| **F9** Taxonomy | FR-G-3, FR-B-4 | `packages/seeds/src/work-categories` · `packages/seeds/src/provinces` · `modules/extraction/extraction.taxonomy` · web: `features/profile/TaxonomyPicker` |
-| **F10** PII and takedown | FR-B-5, B-6, NFR-S2, S3 | `lib/redact` · `modules/admin/admin.routes` (reject/restore) · `modules/accounts/accounts.routes` (export, delete) |
-| **F11** CSV export | FR-E-7 | — not built |
-| **F12** Automated collection | FR-A-4 | `sources/national-egp/*` · `sources/bma-egp/enrich` · `routes/sources` (collection only; per-adapter health reporting is not built) |
-| Cross-cutting | NFR-S7 config, admin UI | `core/config` · `lib/metadata-header` · web: `views/AdminTorsView` · `features/admin/AdminTorsTable` · `features/admin/admin.actions` · `features/admin/StaffLoginForm` · `shared/lib/staff-session` · `shared/api/api-client` · `shared/lib/format` · `shared/ui/BudgetRange` |
+Each case states what is tested, the input, the expected result, and the result of the latest run.
+These are the key cases per feature, with inputs copied from the test code. **Every test** — 781 at
+the last run — is listed with its result in the generated [test-report.md](test-report.md).
+
+Result column: the run of 2026-11-03 at commit `81ad2ef` — full suite 771 passed · 0 failed · 10
+skipped (opt-in). `npm run test:report` refreshes the report.
+
+| ID | Req. | Function under test | Input | Expected | Result | Test file |
+| :---- | :---- | :---- | :---- | :---- | :---- | :---- |
+| UT-F1-1 | FR-A-1, NFR-S1 | `POST /api/v1/intake/upload` | PDF upload with no `x-api-key` | 401; nothing stored | Pass | `intake.routes.test.ts` |
+| UT-F1-2 | FR-A-3 | `POST /api/v1/intake/upload` | the same file submitted a second time | 200 (not 202) with the existing record's id | Pass | `intake.routes.test.ts` |
+| UT-F1-3 | NFR-S1 | `isBlockedAddress` (SSRF guard) | `169.254.169.254` · `10.1.2.3` · `::ffff:10.1.2.3` · `not-an-address` | `true` for each — blocked | Pass | `safe-fetch.test.ts` |
+| UT-F1-4 | NFR-S1 | `safeFetchDocument` | a public URL that redirects into a private range | rejected when the redirect is re-checked | Pass | `safe-fetch.test.ts` |
+| UT-F1-5 | NFR-S1 | `detectMimeType` (magic bytes) | `"<html><script>alert(1)</script>"` sent as a PDF | `null` — not accepted as a PDF | Pass | `file-type.test.ts` |
+| UT-F2-1 | FR-B-3 | `grade` | a clean digital TOR with the budget missing | confidence `low`; queued for review | Pass | `extraction.grading.test.ts` |
+| UT-F2-2 | FR-B-3 | `grade` | a scanned TOR (no text layer), budget read at confidence 1 | budget `verified: false`; record `low` | Pass | `extraction.grading.test.ts` |
+| UT-F2-3 | FR-B-3 | `grade` | deadline `2025-12-01`, before the announcement date | deadline not verified; sanity check trips | Pass | `extraction.grading.test.ts` |
+| UT-F3-1 | FR-G-1 | `torStateOf` | `{ torStatus: "announced", deadline: "2026-10-05" }`, today later | `closed` — the date wins over the label | Pass | `tor-state.test.ts` |
+| UT-F3-2 | FR-B-6 | `POST /admin/tors/bulk` | `{ action: "reject", ids: [id] }` with no reason | 400; the TOR stays public | Pass | `admin.routes.test.ts` |
+| UT-F4-1 | NFR-F2 | `GET /tors` search | 5,000-record corpus, every filter at once | answered within 2 s | Pass | `tors.search.timing.test.ts` |
+| UT-F4-2 | NFR-F2 | `GET /tors` search | deep pages of the same corpus | each page within 2 s (cursor, not skip) | Pass | `tors.search.timing.test.ts` |
+| UT-F5-1 | FR-C-1 | `scoreMatch` | TOR asks "ISO 9001 และ/หรือ ISO 14001"; vendor A holds ISO 14001, vendor B holds both | equal scores; reason `qualification-held` | Pass | `match-scorer.test.ts` |
+| UT-F5-2 | FR-C-1 | `scoreMatch` (ว642) | road TOR ≥ ฿5M; vendor holds no กรมบัญชีกลาง road registration | score = registered vendor's × 0.5; first reason `registration-missing` | Pass | `match-scorer.test.ts` |
+| UT-F5-3 | FR-C-2 | `scoreMatch` | TOR budget 500, outside the vendor's range | still listed (not excluded), lower score | Pass | `match-scorer.test.ts` |
+| UT-F5-4 | FR-C-3 | `NotifyService.dispatch` | vendor with email preset `off`, a bookmarked TOR due soon | 0 emails, reminders included | Pass | `notify.service.test.ts` |
+| UT-F6-1 | FR-D-1 | `POST /api/v1/register` | `{ email, password }` with `consent` absent or `false` | 400; 0 accounts; 0 emails | Pass | `accounts.routes.test.ts` |
+| UT-F6-2 | NFR-S2 | `DELETE /me` | the correct current password | account tombstoned, sessions revoked, owned records removed, TORs untouched | Pass | `accounts.routes.test.ts` |
+| UT-F7-1 | §4.5.1 | `verdictFor` (IQR, minN 8) | peers 10…80 (Q1 27.5, Q3 62.5, IQR 35); budget 200 | `anomaly`, side `high`, distance (200 − 62.5) / 35 | Pass | `anomaly.rule.test.ts` |
+| UT-F7-2 | §4.5.1 | `verdictFor` | budget exactly on the upper fence (115) | `normal` | Pass | `anomaly.rule.test.ts` |
+| UT-F7-3 | §4.5.1 | `verdictFor` | budget 999,999 with only 7 peers | `not-evaluated`, reason `insufficient-peers` | Pass | `anomaly.rule.test.ts` |
+| UT-F8-1 | FR-F-2, NFR-F5 | `evaluateChecklist` | a record whose budget is a statistical anomaly | C5 fails; the reason uses only the approved wording | Pass | `checklist.test.ts` |
+| UT-F8-2 | FR-F-1 | `evaluateChecklist` | budget extracted but not verified | C1 fails | Pass | `checklist.test.ts` |
+| UT-F10-1 | FR-B-5 | `redactContactString` | `"ติดต่อ โทร 02-246-1551 มือถือ 081-234-5678"` | office line kept, mobile removed | Pass | `redact.test.ts` |
+| UT-F10-2 | FR-B-6, NFR-S3 | takedown and restore routes | reject (reason "ไม่ใช่เอกสาร TOR"), then restore, a TOR | restricted with the reason, then public again; both logged; same storage key — the original is kept | Pass | `admin.routes.test.ts` |
+
+F11 (CSV export) has no test because it is not built. F12's automated tests cover collection only;
+per-adapter health reporting is not built.
 
 ## 3. Manual acceptance cases
 
 Run against `docker compose up` with the seeded corpus. Each case is the SRS §6 criterion turned into
-steps. Record the date and result in the last column when a case is run for a review or demo.
+steps. When a case is run for a review or demo, record what happened, Pass or Fail, and the date in
+the last column.
 
-| ID | Feature | Steps | Expected | Last run |
+| ID | Feature | Steps (input) | Expected | Actual · Pass/Fail · date |
 | :---- | :---- | :---- | :---- | :---- |
 | TC-F1-1 | F1 | Admin → upload a TOR PDF; submit the same file again | One record; the second submit returns the existing record | |
 | TC-F1-2 | F1 | `POST /api/v1/intake/upload` without `x-api-key` | 401, nothing stored | |
