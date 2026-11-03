@@ -1,0 +1,77 @@
+/*
+ * Past work and certifications. Inputs and pills are the profile's own (see
+ * profile.module.css); this file holds only what the section adds: the drop
+ * zone, the project rows and the registration list.
+ */
+
+.heading { margin: 22px 0 4px; font: 600 13px var(--body); color: var(--ink); }
+
+/* Shown, and plainly not yet working: reading a certificate with AI comes
+   next, and a drop zone that silently did nothing would be worse than none. */
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+  padding: 16px;
+  border: 1.5px dashed var(--ink-20);
+  border-radius: var(--radius-card);
+  font-size: 12.5px;
+  color: var(--ink-55);
+  cursor: not-allowed;
+}
+
+.dropIcon { font-size: 16px; }
+
+.soon {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--blue-ring);
+  color: var(--blue);
+  font: 600 11px var(--body);
+}
+
+.projectList { margin: 0 0 10px; padding: 0; list-style: none; }
+
+.projectRow {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: var(--rule);
+  font-size: 13px;
+}
+
+/* Thai has no spaces to break at; a long project name wraps anywhere. */
+.projectTitle { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+
+.projectMeta { flex: none; font: 12px var(--data); color: var(--ink-65); white-space: nowrap; }
+
+.remove { flex: none; border: 0; padding: 0; background: none; font-size: 12px; color: var(--ink-55); cursor: pointer; }
+
+.remove:hover { color: var(--danger); }
+
+.addRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 4px; }
+
+.input {
+  flex: 1 1 220px;
+  min-width: 0;
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.input:focus { border-color: var(--blue); outline: 2px solid var(--blue-ring); outline-offset: 1px; }
+
+/* Sized to what they hold: four digits of a year, a ฿ figure. */
+.inputYear { flex: 0 1 8ch; }
+
+.inputValue { flex: 0 1 16ch; }
+
+.subheading { margin: 14px 0 6px; font: 600 12px var(--body); color: var(--ink-65); }
+
+.saveRow { display: flex; align-items: center; gap: 14px; margin-top: 18px; }

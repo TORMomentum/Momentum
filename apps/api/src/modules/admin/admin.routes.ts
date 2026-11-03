@@ -15,6 +15,10 @@ export interface AdminRouterDeps {
   adminKeys: string[];
   /** How many queue rows one request may return. */
   queuePageSize: number;
+  /** How many TORs one bulk action may touch. */
+  bulkMax: number;
+  /** How many ids "select everything matching" may return. */
+  selectAllMax: number;
 }
 
 /**
@@ -53,6 +57,14 @@ const editSchema = z.object({
 const editsBodySchema = z.object({ edits: z.array(editSchema).max(20).default([]) });
 
 const rejectSchema = z.object({ reason: z.string().min(3).max(300) });
+
+/** The all-TORs list: primitives only, like every other admin filter. */
+const torsQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  status: z.enum(["all", "public", "restricted", "unverified", "processing", "stuck", "failed"]).default("all"),
+  kind: z.enum(["tor", "invitation", "all"]).default("tor"),
+  page: z.coerce.number().int().positive().max(10_000).default(1),
+});
 const verificationParamsSchema = z.object({ field: z.enum(reviewFieldNames) });
 const verificationBodySchema = z.object({ confirmed: z.boolean() });
 
@@ -83,6 +95,20 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
   router.get("/events", async (req, res) => {
     const { limit } = queueQuerySchema.parse(req.query);
     res.json(await deps.service.events(limit ?? deps.queuePageSize * 2));
+  });
+
+  router.get("/tors", async (req, res) => {
+    const { q, status, kind, page } = torsQuerySchema.parse(req.query);
+    res.json(await deps.service.listAll({ ...(q ? { q } : {}), status, kind, page, pageSize: deps.queuePageSize }));
+  });
+
+  // "Select everything matching": the ids behind the list's current filters,
+  // and the per-request size the screen should send them in. Declared before
+  // "/tors/:id", which would otherwise claim it.
+  router.get("/tors/ids", async (req, res) => {
+    const { q, status, kind } = torsQuerySchema.parse(req.query);
+    const { ids, total } = await deps.service.listAllIds({ ...(q ? { q } : {}), status, kind }, deps.selectAllMax);
+    res.json({ ids, total, chunk: deps.bulkMax });
   });
 
   router.get("/tors/:id", async (req, res) => {
@@ -120,6 +146,19 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
     res.json({ id: req.params.id, unverified: false });
   });
 
+  // One action over many TORs. Each goes through the same service call as the
+  // single-TOR routes, so every one keeps its own history and audit entry; a
+  // TOR that cannot take the action is reported, not allowed to stop the rest.
+  const bulkSchema = z.object({
+    action: z.enum(["reextract", "reject", "restore"]),
+    ids: z.array(z.string().regex(/^[0-9a-f]{24}$/i)).min(1, "ยังไม่ได้เลือกรายการ").max(deps.bulkMax, `เลือกได้ไม่เกิน ${deps.bulkMax} รายการต่อครั้ง`),
+    reason: z.string().trim().min(3).max(300).optional(),
+  }).strict().refine((body) => body.action !== "reject" || body.reason, { message: "ต้องระบุเหตุผลในการถอดจากหน้าสาธารณะ", path: ["reason"] });
+  router.post("/tors/bulk", async (req, res) => {
+    const { action, ids, reason } = bulkSchema.parse(req.body);
+    res.json(await deps.service.bulk(action, [...new Set(ids)], reason, actorOf(req)));
+  });
+
   router.post("/tors/:id/reextract", async (req, res) => {
     await deps.service.reextract(req.params.id, actorOf(req));
     res.status(202).json({ id: req.params.id, state: "queued" });
@@ -129,6 +168,11 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
     const { reason } = rejectSchema.parse(req.body);
     await deps.service.reject(req.params.id, reason, actorOf(req));
     res.json({ id: req.params.id, restricted: true });
+  });
+
+  router.post("/tors/:id/restore", async (req, res) => {
+    await deps.service.restore(req.params.id, actorOf(req));
+    res.json({ id: req.params.id, restricted: false });
   });
 
   return router;

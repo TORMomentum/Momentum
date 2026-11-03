@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProjectSearchUrl, decodeFeed, fileIdFromLink, packageUrl, parseFeed, parseFeedDate } from "./client.js";
+import { announcementListUrl, buildProjectSearchUrl, decodeFeed, fileIdFromLink, packageUrl, parseFeed, parseFeedDate } from "./client.js";
 
 // The item as e-GP published it for project 69099218130 on 2026-09-08.
 const feed = `<?xml version="1.0" encoding="Windows-874" ?>
@@ -79,6 +79,18 @@ describe("fileIdFromLink", () => {
     expect(fileIdFromLink(packageUrl("b4d4dcd9ac3b4b0da09dcc381180ac36"))).toBe("b4d4dcd9ac3b4b0da09dcc381180ac36");
     expect(fileIdFromLink("http://process.gprocurement.go.th/egp2procmainWeb/procsearch.sch")).toBeUndefined();
     expect(fileIdFromLink(undefined)).toBeUndefined();
+  });
+});
+
+describe("announcementListUrl", () => {
+  it("asks for the first page plainly and a later page by its row range, as the list's own ถัดไป does", () => {
+    const first = new URL(announcementListUrl("tor"));
+    const third = new URL(announcementListUrl("invitation", 3));
+
+    expect(first.searchParams.get("announceType")).toBe("1");
+    expect(first.searchParams.has("beginrec")).toBe(false);
+    expect(third.searchParams.get("announceType")).toBe("2");
+    expect([third.searchParams.get("beginrec"), third.searchParams.get("endrec"), third.searchParams.get("grouppage")]).toEqual(["101", "151", "3"]);
   });
 });
 

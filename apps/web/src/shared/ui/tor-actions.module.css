@@ -1,6 +1,31 @@
 /*
- * Star and bookmark icons, shown on a TOR wherever one is listed.
+ * The bookmark control, shown on a TOR wherever one is listed.
+ *
+ * The button's own chrome lives HERE, with the icon, rather than being supplied
+ * by whichever screen happens to render it. It was passed in by the caller, so
+ * a screen that forgot — or named a class that did not exist — got the
+ * browser's default grey box instead of a control.
  */
+
+.bookmarkBtn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.bookmarkBtn:hover { background: var(--blue-ring); transform: scale(1.12); }
+
+.bookmarkBtn:disabled { cursor: default; opacity: 0.6; transform: none; }
+
+.bookmarkBtn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 .starIcon { fill: none; stroke: var(--star); transition: fill 0.2s ease, stroke 0.2s ease; }
 

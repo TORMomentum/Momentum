@@ -37,6 +37,10 @@ than no match: it teaches them to ignore the email, and the email is the product
 
 ### 2.2 Why certifications are a filter and not a score
 
+> **Superseded by §8.2 (revision 3).** The corpus showed certification wording is rarely a clean
+> "must hold X"; they are scored with a stated reason instead. The ว642 registration is the one
+> requirement treated close to a gate, as a score penalty (§8.3).
+
 Many TORs *require* a class or a licence. A vendor without it cannot bid at all, however well the
 rest fits. Scoring it would rank an impossible match above a possible one.
 
@@ -171,6 +175,33 @@ portfolio material as profile contents, and `FR-C-1`, which scores
 qualifications.** The SRS is amended to say when each is collected; the
 requirement that they are held and scored is unchanged.
 
+### 7.1.1 The profile screen has two states, and they are not the same screen
+
+Revision 2 said what is asked and when, and left a gap: it never said that the
+screen changes once the answers exist. Built from §7.1 alone, the profile is a
+setup form that stays a setup form — a vendor who has already answered is shown
+the same sixty-five choices every time they open it, with no way to see what
+they said without reading the highlighting.
+
+**Setting up.** A profile with no work categories chosen has never been filled
+in. It leads with the pickers, because there is exactly one thing to do.
+
+**Afterwards.** A profile that has been answered leads with the answers: what
+work, which areas, what budget, each stated plainly with its own way in to
+change it. The pickers are still there, one section at a time, behind the
+section they belong to.
+
+This is what progressive profiling means in practice. The first visit asks the
+minimum that makes matching work; every visit after it is a place to see and
+correct what was said, and to be offered the next thing worth adding.
+
+**What is offered next is listed, not nagged.** Certifications and past projects
+are named as things that would sharpen matching, with the effect each has stated
+honestly — and nothing is marked incomplete for their absence, because §7.1 says
+neither is ever required to receive alerts. The contextual prompt ("เพิ่ม
+ใบอนุญาตนี้ เพื่อไม่ให้ได้รับแจ้งเตือนที่ไม่ตรง") needs matching to know the
+moment, so it arrives with matching rather than being faked as a standing banner.
+
 ### 7.2 A company-size band is NOT collected
 
 Proposed on the strength of TenderKG's "staffing range", and rejected on review.
@@ -258,3 +289,82 @@ first complaint.
 - Bidders Recommender for Public Procurement Auctions (Spain) — under five bidders per lot
 - Thai e-GP / กรมบัญชีกลาง — UNSPSC as the national classification
 - Baymard Institute — form length against completion
+
+## 8. Revision 3 — Sprint 4 build, 2026-11-03
+
+What was built for the profile's optional section, and where it departs from revisions 1 and 2.
+
+### 8.1 Past projects are typed, and lift TORs like them
+
+A vendor lists past work as title, Buddhist-era year and contract value, up to
+`PROFILE_PAST_PROJECTS_MAX`. Reading a past-work certificate with AI is the next step; the upload
+zone is shown as "เร็วๆ นี้" rather than as a control that does nothing.
+
+The experience signal (`MATCH_EXPERIENCE_WEIGHT`) compares the TOR's classified taxonomy leaves
+with the leaves each project title classifies to: 1 when any project shares a leaf (and the reason
+names that project), 0 otherwise. It joins the weighted mean **only when at least one project
+classifies** — an empty list costs nothing, so a vendor who skips the section is not ranked below
+their own score without it.
+
+### 8.2 Certifications are a score with a reason, never a hidden TOR
+
+Read-only count over the live corpus (223 TORs with extracted qualifications, 2026-10-08):
+ISO 9001 in 23, ISO 14001 in 11, มอก. in 12, SME in 2, the engineer and architect licences in one
+each. Two findings overturn §2.2:
+
+1. The wording is often "ISO 9001 **และ/หรือ** ISO 14001" — either one satisfies it.
+2. มอก. usually qualifies the *product* to be supplied, not the bidder.
+
+A filter built on regex detection of such text would silently hide TORs a vendor could bid on —
+the false negative §7.3 exists to prevent. So the qualification signal
+(`MATCH_QUALIFICATION_WEIGHT`) joins the score only when the TOR names a listed certification
+(or the vendor's own อื่นๆ words) **and** the vendor has saved the section:
+
+| Situation | Effect | Reason shown |
+| :--- | :--- | :--- |
+| Vendor holds every certification named | signal 1 | คุณมี ISO 9001 ที่ TOR นี้ระบุ |
+| Text says หรือ, vendor holds any one | signal 1 | as above |
+| Vendor holds some of several | held ÷ named | TOR นี้ระบุ ISO 14001 ซึ่งคุณยังไม่ได้ระบุ |
+| TOR names none, or section never saved | signal absent | — |
+
+"Not stated" (`certifications` absent) and "holds nothing" (saved, empty) are different states;
+only the second may lower a score. Detection patterns live in `matching/certifications.ts`, with
+the corpus counts that justified each.
+
+### 8.3 The กรมบัญชีกลาง registration (ว642)
+
+A construction TOR at or above `CGD_REGISTRATION_MIN_BUDGET_THB` (default ฿5M) requires a
+registration in its branch. The branch is inferred from the classification and title
+(`cgdBranchOf`, nine branches seeded in `packages/seeds/src/registrations.ts`). A vendor who has
+saved the section without that branch has the TOR's score multiplied by
+`MATCH_REGISTRATION_MISSING_FACTOR` (default 0.5), and the reason leads the list. It is still a
+score, not a gate, because branch inference from a title can be wrong.
+
+The registration class (ชั้น 1–5) is **not asked**: matching does not use it, and a question that
+changes nothing is friction. The stored shape keeps an optional `grade` so it can be added without
+a migration.
+
+### 8.4 The §7.8 benchmark exists
+
+`match_labels` holds one staff judgement per vendor–TOR pair (`relevant`, `not-relevant`,
+`unsure`) with the score and the matched/not-matched decision frozen at labelling time. The
+worksheet shows the vendor's top `LABEL_MATCHED_SHOWN` matches and a sample of
+`LABEL_UNMATCHED_SHOWN` it would not send, so recall can be measured and not only precision.
+`GET /admin/match-quality` reports precision, recall and the unsure rate.
+
+Match emails stay off (`NOTIFY_DISPATCH_ENABLED=false`) until those figures are read against real
+labels. A staff "send now" (`POST /admin/accounts/:id/match-email`, at most
+`NOTIFY_MANUAL_MAX_TORS` TORs) exists for a demo and for a vendor who asks; it refuses a vendor
+whose preset is off and writes an audit entry.
+
+### 8.5 Score assembly, as built
+
+```
+score = weighted mean of the signals present
+        (category, budget, and — when they apply — experience, qualification)
+      × registration factor (1, or MATCH_REGISTRATION_MISSING_FACTOR)
+```
+
+Every weight is a `core/config.ts` key; none is tuned until §8.4's figures exist. The displayed
+percentage and the search filter both use `matchPercent` from `@tor-radar/shared`, so a badge and
+a filter can never disagree by a rounding step.

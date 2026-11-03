@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./app-shell.module.css";
 import { AccountControls } from "./AccountControls";
+import { ModeToggle } from "./ModeToggle";
 import { useViewer } from "../../shared/lib/viewer";
 
 /** โปรไฟล์ของฉัน is vendor-only: the mockup hides that tab when signed out. */
@@ -21,6 +22,9 @@ const VENDOR_TABS = [...PUBLIC_TABS, { href: "/profile", label: "โปรไฟ
 const ADMIN_TABS = [
   { href: "/admin", label: "ภาพรวม", exact: true },
   { href: "/admin/review", label: "คิวตรวจสอบ" },
+  { href: "/admin/tors", label: "TOR ทั้งหมด" },
+  { href: "/admin/vendors", label: "ผู้ใช้" },
+  { href: "/admin/terms", label: "คำที่ผู้ใช้เพิ่มเอง" },
   { href: "/admin/upload", label: "อัปโหลดเอกสาร" },
   { href: "/admin/log", label: "บันทึกกิจกรรม" },
 ];
@@ -70,11 +74,7 @@ export function AppHeader({ staffSlot }: { staffSlot?: React.ReactNode }) {
           Leaving the VIEW is not ending the SESSION. Ending it lives in the
           account menu, with the other sign-out.
         */}
-        {inAdmin && (
-          <Link href="/dashboard" className={styles.modeSwitch}>
-            ออกจากมุมมองผู้ดูแล
-          </Link>
-        )}
+        {inAdmin && <ModeToggle mode="admin" />}
 
         {/* Server-rendered and passed in, because the cookie is httpOnly and a
             client component cannot read it. Renders nothing unless a staff

@@ -1,4 +1,5 @@
-// Canonical BMA agency list (FR-A4 Bangkok-only validation, FR-G3 seeded taxonomy).
+// Canonical BMA agency list: resolves upstream labels to stable ids (FR-G-3 seeded
+// taxonomy). A lookup, never a filter — scope is national (SRS §1.2).
 // Seed pulled from the source API's own MasterOrgGroups dropdown — see docs/DATA-SOURCES.md.
 import { readFileSync } from "node:fs";
 

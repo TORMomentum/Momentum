@@ -14,6 +14,13 @@ import { HistoryRepository } from "./modules/history/history.repository.js";
 import { AdminRepository } from "./modules/admin/admin.repository.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { buildAdminRouter } from "./modules/admin/admin.routes.js";
+import { buildAdminAccountsRouter } from "./modules/admin/admin-accounts.routes.js";
+import { AdminAccountsRepository } from "./modules/admin/admin-accounts.repository.js";
+import { AdminAccountsService } from "./modules/admin/admin-accounts.service.js";
+import { NotifyService } from "./modules/notifications/notify.service.js";
+import { MatchLabelsRepository } from "./modules/match-quality/match-labels.repository.js";
+import { buildMatchQualityRouter } from "./modules/match-quality/match-quality.routes.js";
+import { MatchQualityService } from "./modules/match-quality/match-quality.service.js";
 import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
@@ -25,6 +32,10 @@ import { AccountTokensRepository } from "./modules/accounts/account-tokens.repos
 import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
 import { ProfileRepository } from "./modules/profile/profile.repository.js";
 import { buildProfileRouter } from "./modules/profile/profile.routes.js";
+import { BookmarksRepository } from "./modules/bookmarks/bookmarks.repository.js";
+import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
+import { MatchingRepository } from "./modules/matching/matching.repository.js";
+import { buildMatchingRouter } from "./modules/matching/matching.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -52,8 +63,11 @@ export function buildApp(config: Config, db: Db): Express {
 
   // Read-only view of the BMA eGP source system (docs/DATA-SOURCES.md).
   app.use("/sources", sourcesRouter);
+  const accountsRepository = new AccountsRepository(db, sessionsRepository);
+  const tokensRepository = new AccountTokensRepository(db);
+  const profileRepository = new ProfileRepository(db);
   const accountsRouter = buildAccountsRouter({
-    config, accounts: new AccountsRepository(db, sessionsRepository), tokens: new AccountTokensRepository(db),
+    config, accounts: accountsRepository, tokens: tokensRepository,
     sessions: sessionsRepository, mailer,
   });
   // Mounted twice on purpose. The browser reaches the signed-in account's own
@@ -61,10 +75,14 @@ export function buildApp(config: Config, db: Db): Express {
   // /auth; everything else addresses the versioned API. Mounting the profile
   // under only one of them made the profile screen ask for a path that did not
   // exist, which no API-level test could see.
-  const profileRouter = buildProfileRouter({ config, profiles: new ProfileRepository(db) });
+  const profileRouter = buildProfileRouter({ config, profiles: profileRepository });
+  const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db) });
+  const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config) });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);
+    app.use(prefix, bookmarksRouter);
+    app.use(prefix, matchingRouter);
   }
 
   const service = new IntakeService(
@@ -107,7 +125,7 @@ export function buildApp(config: Config, db: Db): Express {
     `${API_PREFIX}/admin`,
     buildAdminRouter({
       service: new AdminService({
-        repo: new AdminRepository(db, config.budgetMaxThb),
+        repo: new AdminRepository(db, config.budgetMaxThb, config.adminStuckAfterMs),
         history: new HistoryRepository(db),
         queue,
         tLow: config.tLow,
@@ -121,6 +139,42 @@ export function buildApp(config: Config, db: Db): Express {
       storage,
       adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
+      bulkMax: config.adminBulkMax,
+      selectAllMax: config.adminSelectAllMax,
+    }),
+  );
+
+  app.use(
+    `${API_PREFIX}/admin`,
+    buildAdminAccountsRouter({
+      service: new AdminAccountsService({
+        repo: new AdminAccountsRepository(db),
+        accounts: accountsRepository,
+        profiles: profileRepository,
+        sessions: sessionsRepository,
+        tokens: tokensRepository,
+        mailer,
+        appOrigin: config.appOrigin,
+        verifyTokenTtlMs: config.verifyTokenTtlMs,
+        resetTokenTtlMs: config.resetTokenTtlMs,
+        matchEmails: new NotifyService(db, config, mailer),
+      }),
+      adminKeys: config.adminApiKeys,
+      pageSize: config.adminQueuePageSize,
+    }),
+  );
+
+  // The match-quality benchmark (design §7.8): labels and the figures from them.
+  app.use(
+    `${API_PREFIX}/admin`,
+    buildMatchQualityRouter({
+      service: new MatchQualityService({
+        config,
+        profiles: profileRepository,
+        matching: new MatchingRepository(db, config),
+        labels: new MatchLabelsRepository(db),
+      }),
+      adminKeys: config.adminApiKeys,
     }),
   );
 
@@ -130,6 +184,9 @@ export function buildApp(config: Config, db: Db): Express {
       service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
       search: config.search,
+      config,
+      profiles: profileRepository,
+      matching: new MatchingRepository(db, config),
     }),
   );
 

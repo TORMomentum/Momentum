@@ -68,10 +68,13 @@ Start with whichever question you have:
 | **What it must do** — every requirement, testable, with verification method | [docs/SRS.md](docs/SRS.md) |
 | **Why it exists** — problem, stakeholders, personas, user stories, plan | [docs/PROJECT.md](docs/PROJECT.md) |
 | **How the current slice is built** — decisions, seams, security, containers | [docs/superpowers/specs/](docs/superpowers/specs/) |
+| **Every route** — body, query parameters, auth | [docs/API.md](docs/API.md) |
+| **How it is tested** — commands, test cases, manual acceptance cases | [docs/TESTING.md](docs/TESTING.md) |
+| **Which tests pass right now** — every test, grouped by feature (generated) | [docs/test-report.md](docs/test-report.md) |
 | **What is being built right now** | [docs/TODO.md](docs/TODO.md) — the live checklist |
 | **What the project is doing next** — decided, undecided, and why | [docs/PLAN.md](docs/PLAN.md) |
 | **How the current slice is executed** — task by task, with tests | [docs/superpowers/plans/](docs/superpowers/plans/) |
-| **What was already built and verified** | [docs/work-log.md](docs/work-log.md) |
+| **What delegated agents built, and how it was verified** (slice 1 only so far) | [docs/work-log.md](docs/work-log.md) |
 | **Where the TORs come from** — the BMA eGP API, document formats, taxonomy seeds | [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md) |
 | **How accurate the extraction is** | [docs/corpus/BENCHMARK.md](docs/corpus/BENCHMARK.md) |
 | **How to set up Vertex AI** | [docs/gcp-setup.md](docs/gcp-setup.md) |
@@ -83,10 +86,11 @@ Working in this repo with an AI agent: [CLAUDE.md](CLAUDE.md) (Claude Code) or
 
 ## Status
 
-Slices 1 and 2 are both underway — intake, immutable storage (now on Google Cloud Storage), the
-extraction pipeline, confidence tiering, and the admin review/upload screens all work end to end.
-Sample figures are labelled as such wherever the pipeline hasn't filled them in yet. Slices 3–4
-(public dashboard, vendor accounts) are still ahead. The four slices are described in
+All four slices are built: intake and immutable storage on Google Cloud Storage, AI extraction
+with confidence tiering and the review queue, search, the dashboard with its anomaly rule and
+quality checklist, and vendor accounts, profiles and matching. Still open: CSV export (F11), Google
+sign-in, Compose hardening, and match emails, which stay off until the match benchmark exists.
+The four slices are described in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10, and exact task-level progress lives in
 [docs/TODO.md](docs/TODO.md) — the one place it is tracked.
 

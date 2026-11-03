@@ -4,13 +4,21 @@ import type { IntakeResponse } from "@tor-radar/shared";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../../shared/lib/staff-session";
 import {
+  AdminApiFailed,
   approve as approveRecord,
+  bulkTors,
   fetchEvents,
+  fetchTorIds,
   reextract as reextractRecord,
   reject as rejectRecord,
+  restore as restoreRecord,
   saveEdits,
   setFieldVerification,
   uploadDocument,
+  type AdminBulkAction,
+  type AdminTorKind,
+  type AdminTorStatus,
+  type AdminBulkResult,
   type FieldEdit,
 } from "../../shared/lib/admin-api";
 
@@ -44,6 +52,7 @@ export async function saveCorrections(id: string, edits: FieldEdit[]): Promise<v
   await requireStaff();
   await saveEdits(id, edits);
   revalidatePath(REVIEW_PATH);
+  revalidatePath(`/admin/tors/${id}`);
 }
 
 export async function approveRecordAction(id: string, edits: FieldEdit[]): Promise<void> {
@@ -60,6 +69,7 @@ export async function reextractRecordAction(id: string): Promise<void> {
   await requireStaff();
   await reextractRecord(id);
   revalidatePath(REVIEW_PATH);
+  revalidatePath(`/admin/tors/${id}`);
 }
 
 export async function rejectRecordAction(id: string, reason: string): Promise<void> {
@@ -78,6 +88,7 @@ export async function rejectRecordAction(id: string, reason: string): Promise<vo
   if (!trimmedReason) throw new Error("reject reason is required");
   await rejectRecord(id, trimmedReason);
   revalidatePath(REVIEW_PATH);
+  revalidatePath(`/admin/tors/${id}`);
 }
 
 export interface UploadState {
@@ -146,3 +157,48 @@ export async function fetchRecentUploadsAction(): Promise<RecentUpload[]> {
 
   return uploads.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5);
 }
+
+/** Lifts a takedown: the record is public again, and the event log keeps both steps. */
+export async function restoreRecordAction(id: string): Promise<void> {
+  await requireStaff();
+  await restoreRecord(id);
+  revalidatePath(REVIEW_PATH);
+  revalidatePath("/admin/tors");
+  revalidatePath(`/admin/tors/${id}`);
+}
+
+/**
+ * One action over the TORs selected on "TOR ทั้งหมด". Returns rather than
+ * throws, so the API's own Thai refusal reaches the screen in production.
+ */
+export async function bulkTorsAction(
+  action: AdminBulkAction,
+  ids: string[],
+  reason?: string,
+): Promise<{ ok: true; result: AdminBulkResult } | { ok: false; reason: string }> {
+  await requireStaff();
+  try {
+    const result = await bulkTors(action, ids, reason);
+    revalidatePath("/admin/tors");
+    revalidatePath(REVIEW_PATH);
+    return { ok: true, result };
+  } catch (error) {
+    if (error instanceof AdminApiFailed && error.reason) return { ok: false, reason: error.reason };
+    console.error("[admin/tors] bulk action failed", error);
+    return { ok: false, reason: "ทำรายการไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
+}
+
+/** "Select everything matching": the ids behind the list's current filters. */
+export async function selectAllTorsAction(query: { q?: string; status: AdminTorStatus; kind: AdminTorKind }): Promise<
+  { ok: true; ids: string[]; total: number; chunk: number } | { ok: false; reason: string }
+> {
+  await requireStaff();
+  try {
+    return { ok: true, ...(await fetchTorIds(query)) };
+  } catch (error) {
+    console.error("[admin/tors] select all failed", error);
+    return { ok: false, reason: "โหลดรายการทั้งหมดไม่สำเร็จ — ลองใหม่อีกครั้ง" };
+  }
+}
+

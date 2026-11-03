@@ -13,8 +13,9 @@ COPY apps/api/package.json apps/api/package.json
 # glob, and a Dockerfile that names each package by hand goes stale the moment
 # a new one is added (found the hard way — packages/seeds broke this build).
 COPY packages ./packages
-# npm ci runs each package's own "prepare" (tsc) once it's linked, so their
-# source has to be in place before this step, not copied in alongside apps/web.
+# npm ci ends with the root "prepare", which builds the packages in dependency
+# order (shared, then seeds), so their source has to be in place before this
+# step, not copied in alongside apps/web.
 RUN npm ci
 
 COPY apps/web ./apps/web

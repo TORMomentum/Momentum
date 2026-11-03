@@ -13,8 +13,8 @@ Companion files:
 - [`apps/api/src/sources/bma-egp/client.ts`](../apps/api/src/sources/bma-egp/client.ts) — the typed
   client every part of the app goes through; upstream quirks are contained there.
 - [`apps/api/src/data/bma-agencies.json`](../apps/api/src/data/bma-agencies.json) — the canonical
-  75-agency BMA list this API returns, seeded for the Bangkok-only check (FR-A4) and the taxonomy
-  seed (FR-G3).
+  75-agency BMA list this API returns, used to resolve an upstream agency label to a stable id and
+  as a taxonomy seed (FR-G-3). It is a lookup, not a filter: scope is national (SRS §1.2).
 
 ## Base URLs
 
@@ -97,7 +97,7 @@ whose `masterAnnounceTypeName` is `ร่างขอบเขตของงา
 GET https://egp2.bangkok.go.th/api/file/<announcement id>/<url-encoded filename>
 ```
 
-Verified `200 application/pdf`, 3,463,328 bytes for the reference announcement. This URL is the permanent source link every ingested record must keep (FR-A2, NFR-2).
+Verified `200 application/pdf`, 3,463,328 bytes for the reference announcement. This URL is the permanent source link every ingested record must keep (FR-A-2, NFR-S3).
 
 ## What the documents actually are
 
@@ -120,9 +120,9 @@ Consequences:
   `classify_pdf()` in [`tools/collect_tor.py`](../tools/collect_tor.py) implements this, and
   `--recatalog` re-runs it over an existing corpus without re-downloading.
 - A per-document `format_type` derived from the `.pdf` extension alone is wrong for half the corpus.
-- MinIO needs to be sized for tens of GB, not hundreds of MB.
-- Signature images are personal data under PDPA (FR-B5, FR-D3): the raw scan stays immutable in
-  MinIO, but displayed extractions must not surface signature crops.
+- Object storage needs to be sized for tens of GB, not hundreds of MB.
+- Signature images are personal data under PDPA (FR-B-5, FR-D-3): the raw scan stays immutable in
+  object storage, but displayed extractions must not surface signature crops.
 
 ## The TOR type is a narrow slice of this source
 
@@ -153,7 +153,7 @@ Two consequences worth deciding on before Sprint 2:
 - **Notifications (US-01, US-02) key off the wrong stage.** A TOR is the *draft* stage; vendors bid
   on ประกาศเชิญชวน, which is where the deadline lives. Matching only TOR-typed records both misses
   two thirds of biddable work and alerts on drafts that may never become tenders.
-- **Pricing anomaly (FR-E2, FR-F2) currently has one number.** Today the only figure available is
+- **Pricing anomaly (FR-E-2, FR-F-2) currently has one number.** Today the only figure available is
   the agency's declared `projectBudget`. ประกาศราคากลาง carries the official reference price and
   the award announcement carries what was actually paid — the comparison those requirements
   describe needs all three, and all three are already in this API.
@@ -170,11 +170,11 @@ Two consequences worth deciding on before Sprint 2:
 
 ## Taxonomy seeds
 
-`apps/api/src/data/` holds three committed seed files (FR-G3):
+`apps/api/src/data/` holds three committed seed files (FR-G-3):
 
 | File | Records | Origin |
 |---|---|---|
-| `bma-agencies.json` | 75 | `MasterOrgGroups` — backs the FR-A4 Bangkok-only check, read from disk at startup |
+| `bma-agencies.json` | 75 | `MasterOrgGroups` — resolves agency labels to ids (a lookup, never a filter), read from disk at startup |
 | `procurement-categories.json` | 87 | `MasterGoodsIds` (70) + `MasterTypeIds` (9) + `MasterProjectCategories` (8) |
 | `skill-tags.json` | 23 | hand-authored; they describe vendors, not procurement |
 

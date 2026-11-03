@@ -14,6 +14,8 @@ import { parseSearchQuery } from "./tors.query.js";
 import { TorsRepository } from "./tors.repository.js";
 import { buildTorsRouter } from "./tors.routes.js";
 import { TorsService } from "./tors.service.js";
+import { ProfileRepository } from "../profile/profile.repository.js";
+import { MatchingRepository } from "../matching/matching.repository.js";
 
 const config = loadConfig(process.env);
 /** A fixed "today" in Bangkok, so "open" does not drift with the calendar. */
@@ -88,6 +90,9 @@ function buildTestApp() {
       service: new TorsService({ repo: new TorsRepository(db), config, now: () => NOW }),
       storage: {} as Storage,
       search: config.search,
+      config,
+      profiles: new ProfileRepository(db),
+      matching: new MatchingRepository(db, config),
     }),
   );
   app.use(errorMiddleware);

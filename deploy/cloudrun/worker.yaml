@@ -29,6 +29,8 @@ spec:
               value: production
             - name: API_PORT
               value: "8080"
+            - name: WORKER_HEALTH_PORT
+              value: "8080"
             - name: GCS_BUCKET
               value: ${GCS_BUCKET}
             - name: GOOGLE_CLOUD_PROJECT

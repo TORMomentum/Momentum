@@ -18,6 +18,30 @@ function blankAsAbsent<T extends z.ZodTypeAny>(inner: T) {
  * Every threshold and tunable in the system (NFR-S7). Nothing below may appear
  * as a literal anywhere else in the codebase.
  */
+/**
+ * A switch read from the environment.
+ *
+ * NOT z.coerce.boolean(): that is JavaScript's Boolean(), under which every
+ * non-empty string is true — so `NOTIFY_DISPATCH_ENABLED=false`, exactly as
+ * .env.example writes it, switched dispatch ON. A kill switch inverted by its
+ * own template is the worst way for one to fail. This accepts the words people
+ * actually write, treats blank as absent, and rejects anything else outright.
+ */
+function flag(defaultValue: boolean) {
+  return z.preprocess((value) => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === "boolean") return value;
+    const word = String(value).trim().toLowerCase();
+    if (word === "") return undefined;
+    if (["true", "1", "yes", "on"].includes(word)) return true;
+    if (["false", "0", "no", "off"].includes(word)) return false;
+    return value; // left as a string, so z.boolean() below rejects it by name
+  }, z.boolean().default(defaultValue));
+}
+
+/** How many expired job locks make a still-running TOR "stuck" (ADMIN_STUCK_AFTER_MS default). */
+const STUCK_LOCK_MULTIPLE = 5;
+
 const schema = z.object({
   MONGO_URL: z.string().min(1),
 
@@ -76,6 +100,10 @@ const schema = z.object({
   JOB_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   JOB_BACKOFF_MS: z.coerce.number().int().positive().default(30_000),
   JOB_LOCK_MS: z.coerce.number().int().positive().default(120_000),
+  // When a TOR still queued or extracting counts as stuck on the admin
+  // overview. Unset: STUCK_LOCK_MULTIPLE job locks, i.e. a lease that has
+  // expired several times over with no worker finishing it.
+  ADMIN_STUCK_AFTER_MS: blankAsAbsent(z.coerce.number().int().positive()),
   JOB_POLL_MS: z.coerce.number().int().positive().default(2_000),
   RECONCILE_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   RECONCILE_MIN_AGE_MS: z.coerce.number().int().positive().default(120_000),
@@ -118,6 +146,12 @@ const schema = z.object({
 
   /** How many review-queue rows one request returns (FR-G-1). */
   ADMIN_QUEUE_PAGE_SIZE: z.coerce.number().int().positive().max(200).default(25),
+  // Most TORs one bulk action may touch. Each is a separate audited change, run
+  // in turn, so a slip of the select-all stays bounded and the request stays short.
+  ADMIN_BULK_MAX: z.coerce.number().int().positive().max(500).default(100),
+  // Most ids "select everything matching" hands back; the screen then sends
+  // them ADMIN_BULK_MAX at a time.
+  ADMIN_SELECT_ALL_MAX: z.coerce.number().int().positive().default(2000),
 
   // Public search (FR-E-3, NFR-F2). Ceilings bound what one request can ask the database for.
   SEARCH_PAGE_SIZE: z.coerce.number().int().positive().default(20),
@@ -128,7 +162,73 @@ const schema = z.object({
   /** Whose calendar decides "today" — when a deadline has passed. */
   TIME_ZONE: z.string().min(1).default("Asia/Bangkok"),
 
+  // Matching. These are deliberately independent tunables until a labelled
+  // relevance benchmark can calibrate them.
+  MATCH_CANDIDATE_CAP: z.coerce.number().int().positive().default(200),
+  /**
+   * How many unclassified TORs one matching request may classify before it
+   * answers. Classification is deterministic and needs no model, so this only
+   * bounds a request's own latency; anything left over is picked up by the next
+   * request, and tools/classify_tors.mts fills the whole corpus at once.
+   */
+  MATCH_CLASSIFY_BATCH: z.coerce.number().int().positive().default(1000),
+  MATCH_PAGE_SIZE: z.coerce.number().int().positive().default(20),
+  MATCH_CLASSIFIER_TITLE_SCORE: z.coerce.number().min(0).max(1).default(1),
+  MATCH_CLASSIFIER_SCOPE_SCORE: z.coerce.number().min(0).max(1).default(0.8),
+  MATCH_CLASSIFIER_QUALIFICATIONS_SCORE: z.coerce.number().min(0).max(1).default(0.6),
+  MATCH_CLASSIFIER_AMBIGUITY_MARGIN: z.coerce.number().min(0).max(1).default(0.1),
+  MATCH_CATEGORY_LEAF_SCORE: z.coerce.number().min(0).max(1).default(1),
+  MATCH_CATEGORY_GROUP_SCORE: z.coerce.number().min(0).max(1).default(0.8),
+  MATCH_CATEGORY_COARSE_SCORE: z.coerce.number().min(0).max(1).default(0.6),
+  MATCH_FREE_TEXT_SCORE: z.coerce.number().min(0).max(1).default(0.4),
+  MATCH_CATEGORY_WEIGHT: z.coerce.number().positive().default(0.7),
+  MATCH_BUDGET_WEIGHT: z.coerce.number().positive().default(0.3),
+  MATCH_AREA_WEIGHT: z.coerce.number().positive().default(0.1),
+  MATCH_BUDGET_NEUTRAL_SCORE: z.coerce.number().min(0).max(1).default(0.5),
+  MATCH_BUDGET_INSIDE_SCORE: z.coerce.number().min(0).max(1).default(1),
+  MATCH_BUDGET_OUTSIDE_MAX_SCORE: z.coerce.number().min(0).max(1).default(0.5),
+  MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER: z.coerce.number().positive().default(2),
+  // Turns on only when extraction supplies a work-location field; agency is never a substitute.
+  MATCH_AREA_SIGNAL_ENABLED: flag(false),
+  // Past work a vendor lists. Like every weight above it is uncalibrated until
+  // the labelled benchmark (design §7.8); it only enters a score when the
+  // vendor has listed at least one project, so leaving it blank costs nothing.
+  MATCH_EXPERIENCE_WEIGHT: z.coerce.number().positive().default(0.3),
+  // Certifications a TOR names (ISO, มอก., SME, กว./กส.). Enters a score only
+  // when the TOR names one and the vendor has stated what they hold; a signal,
+  // not a filter, because "ISO 9001 และ/หรือ ISO 14001" and product standards
+  // (มอก.) make a strict rule hide TORs a vendor can bid on.
+  MATCH_QUALIFICATION_WEIGHT: z.coerce.number().positive().default(0.3),
+  // หนังสือ ว642: a construction project at or above this value must be bid by
+  // a contractor registered with กรมบัญชีกลาง in that branch.
+  CGD_REGISTRATION_MIN_BUDGET_THB: z.coerce.number().nonnegative().default(5_000_000),
+  // What a score is multiplied by when such a TOR needs a registration the
+  // vendor has said they do not hold. A penalty, not a filter: the branch is
+  // inferred from the title, and a wrong guess must not hide a TOR outright.
+  MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
+  PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
+  // The labelling screen: a vendor's top matches (precision) and a sample of
+  // their category's TORs that did not make the cut (recall).
+  LABEL_MATCHED_SHOWN: z.coerce.number().int().positive().default(10),
+  LABEL_UNMATCHED_SHOWN: z.coerce.number().int().positive().default(10),
+  // An admin's "send this vendor their matches now": the email lists at most
+  // this many, best first, so it stays readable.
+  NOTIFY_MANUAL_MAX_TORS: z.coerce.number().int().positive().default(10),
+
+  // Dispatch remains opt-in until the labelled match-quality benchmark in the
+  // profile-and-matching design §7.8 exists.  The worker records dry runs while
+  // this is false so its behaviour can be reviewed safely.
+  NOTIFY_DISPATCH_ENABLED: flag(false),
+  NOTIFY_DISPATCH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  NOTIFY_DISPATCH_LEASE_MS: z.coerce.number().int().positive().default(55_000),
+  NOTIFY_BATCH_SIZE: z.coerce.number().int().positive().default(100),
+  NOTIFY_DAILY_BOUNDARY: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "NOTIFY_DAILY_BOUNDARY must be HH:MM").default("00:00"),
+  NOTIFY_HIGH_MIN_MATCH: z.coerce.number().min(0).max(100).default(80),
+
   API_PORT: z.coerce.number().int().positive().default(4000),
+  // The extraction worker's probe server, for Cloud Run (TOR-140). Unset, as on a developer
+  // machine, it starts none: sharing API_PORT there put the worker on the API's own port.
+  WORKER_HEALTH_PORT: blankAsAbsent(z.coerce.number().int().positive()),
 }).refine((v) => v.T_LOW <= v.T_HIGH, {
   message: "T_LOW must not exceed T_HIGH",
   path: ["T_LOW"],
@@ -219,8 +319,29 @@ export interface Config {
     timezone: string;
   };
   adminQueuePageSize: number;
+  adminBulkMax: number;
+  adminSelectAllMax: number;
+  adminStuckAfterMs: number;
   search: SearchConfig;
+  matching: {
+    candidateCap: number; classifyBatch: number; pageSize: number; classifierTitleScore: number; classifierScopeScore: number;
+    classifierQualificationsScore: number; classifierAmbiguityMargin: number; categoryLeafScore: number;
+    categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
+    budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
+    budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
+    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
+    manualEmailMaxTors: number; labelMatchedShown: number; labelUnmatchedShown: number;
+  };
+  notifications: {
+    dispatchEnabled: boolean;
+    dispatchIntervalMs: number;
+    dispatchLeaseMs: number;
+    batchSize: number;
+    dailyBoundary: string;
+    highMinMatch: number;
+  };
   apiPort: number;
+  workerHealthPort?: number;
 }
 
 export interface SearchConfig {
@@ -320,6 +441,9 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       timezone: parsed.COHORT_TIMEZONE,
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
+    adminBulkMax: parsed.ADMIN_BULK_MAX,
+    adminSelectAllMax: parsed.ADMIN_SELECT_ALL_MAX,
+    adminStuckAfterMs: parsed.ADMIN_STUCK_AFTER_MS ?? parsed.JOB_LOCK_MS * STUCK_LOCK_MULTIPLE,
     search: {
       pageSize: parsed.SEARCH_PAGE_SIZE,
       maxPageSize: parsed.SEARCH_MAX_PAGE_SIZE,
@@ -328,6 +452,30 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       facetLimit: parsed.SEARCH_FACET_LIMIT,
       timeZone: parsed.TIME_ZONE,
     },
+    matching: {
+      candidateCap: parsed.MATCH_CANDIDATE_CAP, classifyBatch: parsed.MATCH_CLASSIFY_BATCH, pageSize: parsed.MATCH_PAGE_SIZE,
+      classifierTitleScore: parsed.MATCH_CLASSIFIER_TITLE_SCORE, classifierScopeScore: parsed.MATCH_CLASSIFIER_SCOPE_SCORE,
+      classifierQualificationsScore: parsed.MATCH_CLASSIFIER_QUALIFICATIONS_SCORE, classifierAmbiguityMargin: parsed.MATCH_CLASSIFIER_AMBIGUITY_MARGIN,
+      categoryLeafScore: parsed.MATCH_CATEGORY_LEAF_SCORE, categoryGroupScore: parsed.MATCH_CATEGORY_GROUP_SCORE,
+      categoryCoarseScore: parsed.MATCH_CATEGORY_COARSE_SCORE, freeTextScore: parsed.MATCH_FREE_TEXT_SCORE,
+      categoryWeight: parsed.MATCH_CATEGORY_WEIGHT, budgetWeight: parsed.MATCH_BUDGET_WEIGHT, areaWeight: parsed.MATCH_AREA_WEIGHT,
+      budgetNeutralScore: parsed.MATCH_BUDGET_NEUTRAL_SCORE, budgetInsideScore: parsed.MATCH_BUDGET_INSIDE_SCORE,
+      budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
+      areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
+      experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, qualificationWeight: parsed.MATCH_QUALIFICATION_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
+      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
+      manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
+      labelMatchedShown: parsed.LABEL_MATCHED_SHOWN, labelUnmatchedShown: parsed.LABEL_UNMATCHED_SHOWN,
+    },
+    notifications: {
+      dispatchEnabled: parsed.NOTIFY_DISPATCH_ENABLED,
+      dispatchIntervalMs: parsed.NOTIFY_DISPATCH_INTERVAL_MS,
+      dispatchLeaseMs: parsed.NOTIFY_DISPATCH_LEASE_MS,
+      batchSize: parsed.NOTIFY_BATCH_SIZE,
+      dailyBoundary: parsed.NOTIFY_DAILY_BOUNDARY,
+      highMinMatch: parsed.NOTIFY_HIGH_MIN_MATCH,
+    },
     apiPort: parsed.API_PORT,
+    ...(parsed.WORKER_HEALTH_PORT !== undefined ? { workerHealthPort: parsed.WORKER_HEALTH_PORT } : {}),
   };
 }

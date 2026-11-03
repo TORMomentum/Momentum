@@ -23,7 +23,7 @@
   line-height: 1.8;
 }
 
-.filters { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 24px; }
+.filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1; }
 
 /* ---------- filter chips and their option panels ---------- */
 
@@ -32,29 +32,29 @@
 .chip {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   white-space: nowrap;
-  font: 500 11px var(--data);
-  border: 1px solid var(--ink-28);
+  font: 500 12px var(--body);
+  border: 1px solid var(--ink-12);
   background: var(--paper);
   color: var(--ink);
-  padding: 8px 14px;
-  border-radius: 99px;
+  padding: 7px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.chip:hover { border-color: var(--blue); }
+.chip:hover { border-color: var(--ink-28); }
 
-/* A chip reads as filtered while it holds anything but "all", and stays lit
-   while its panel is open. */
+/* Quiet until it filters: a set value turns blue, an open panel keeps its ring. */
 
-.chipFiltered,
-.chipOpen { border-color: var(--blue); background: var(--blue-wash); }
+.chipFiltered { border-color: var(--blue); background: var(--blue-wash); }
 
-.chipOpen { box-shadow: 0 0 0 3px var(--blue-ring); }
+.chipFiltered .chipValue { color: var(--blue); }
 
-.chipLabel { color: rgba(18, 35, 60, 0.55); }
+.chipOpen { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-ring); }
+
+.chipLabel { color: var(--ink-62); }
 
 .chipValue { font-weight: 600; }
 
@@ -196,45 +196,70 @@
   font-size: 12px;
   color: var(--blue);
   cursor: pointer;
+  margin-left: auto;
 }
 
 .clearFilters:hover { text-decoration: underline; }
 
+.filterBand {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding: 14px;
+  border: 1px solid var(--ink-12);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgba(18, 35, 60, 0.04);
+}
+
+.filterBandHead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 2px; }
+
+.filterBandLabel { font: 600 12px var(--body); color: var(--ink-62); margin-right: 4px; }
+
+/* A segmented control: one grey track, the picked state lifted out of it. */
 .states {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 14px 0 16px;
-  border-bottom: var(--rule);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  background: var(--panel);
 }
 
 .stateChip {
   display: flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 7px 12px;
-  border: var(--rule);
-  border-radius: 999px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
   background: none;
+  text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.stateChip:hover { border-color: var(--blue); }
+.stateChip:hover { background: rgba(255, 255, 255, 0.7); }
 
-.stateChipKey { font-size: 12px; color: var(--ink-65); }
+.stateChipText { display: grid; gap: 1px; min-width: 0; }
 
-.stateChipValue { font: 600 14px var(--display); color: var(--ink); }
+.stateChipKey { font: 500 13px var(--body); color: var(--ink); white-space: nowrap; }
 
 .stateChipNote { font: 10px var(--data); color: var(--ink-62); }
+
+.stateChipValue { font: 600 20px/1 var(--data); color: var(--ink); font-variant-numeric: tabular-nums; }
 
 /* The one a vendor is looking for reads first, before anything is picked. */
 .stateChipOpen .stateChipKey, .stateChipOpen .stateChipValue { color: var(--blue); }
 
-.stateChipOn {
-  border-color: var(--blue);
-  background: rgba(29, 99, 216, 0.08);
-}
+.stateChipOn,
+.stateChipOn:hover { background: var(--paper); box-shadow: 0 1px 3px rgba(18, 35, 60, 0.14), 0 0 0 1px var(--ink-12); }
+
+.stateChipOn .stateChipValue { color: var(--blue); }
+
+/* A state with nothing in it stays visible — the zero is information — but steps back. */
+.stateChipNone .stateChipKey, .stateChipNone .stateChipValue, .stateChipNone .stateChipNote { color: var(--ink-55); }
 
 .panelHeadStacked {
   margin-top: 32px;
@@ -562,3 +587,4 @@
   .checklistCount { width: 52px; }
   .checklistTable thead th { white-space: normal; }
 }
+

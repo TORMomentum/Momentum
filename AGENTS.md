@@ -25,7 +25,7 @@ Identifiers are the SRS v2.0 scheme: `FR-A-1`…`FR-G-3`, `NFR-F1`…`NFR-F7`, `
 ## Stack — decided, do not substitute
 
 Next.js (App Router) · Node.js + Express REST · MongoDB Atlas for metadata and extracted fields ·
-MinIO for original documents, behind a `Storage` port · Vertex AI (Document AI for Thai OCR, Gemini
+Google Cloud Storage for original documents, behind a `Storage` port (`fake-gcs-server` in Compose) · Vertex AI (Document AI for Thai OCR, Gemini
 for extraction) · email only, over SMTP · Docker Compose · CI on every pull request.
 
 ## Structure
@@ -57,8 +57,8 @@ and never `adapters/`; every threshold lives in `core/config.ts`; a feature is o
   one serializer.
 - **No hard-coded values.** Hosts, ports, buckets, credentials, model names, thresholds all come
   from configuration with overridable defaults. `localhost` appears in no source file.
-- **Two storage endpoints:** `MINIO_ENDPOINT` internal, `MINIO_PUBLIC_URL` browser-reachable. Signed
-  URLs are generated on demand, never persisted.
+- **Storage is reached only by the API.** Documents are streamed through it with `nosniff` and
+  `no-store`; there are no signed URLs.
 - **Never share a filesystem path between services** — exchange storage keys and fetch the bytes.
 - **Thai UI**, and extracted values displayed exactly as extracted.
 - **Agencies are not users** — no agency portal, no upload flow for them.
@@ -81,14 +81,33 @@ operator object reaches a Mongo query.
   passing is not verification.
 - Tests and builds run in containers, not on the host. Never commit secrets.
 
+## Docs stay current
+
+A change is not done until its docs are updated in the same pull request. CI enforces it
+(`node tools/check_docs_drift.mjs`); the full table is in CLAUDE.md, "Docs stay current".
+
+| Change | Doc |
+| :---- | :---- |
+| Route, body, query, auth | `docs/API.md` |
+| Collection, index, module, worker | `docs/ARCHITECTURE.md` |
+| Behaviour a spec describes | its spec in `docs/superpowers/specs/`, as a dated revision |
+| Test added or removed | `docs/TESTING.md` |
+| Anything finished or still open | `docs/TODO.md` |
+| These rules | `CLAUDE.md` and this file, together |
+
+At session start, compare `docs/TODO.md`'s "last updated" date with `git log`; if code landed
+without its docs, fix the docs first.
+
 ## Commands
 
 ```
-docker compose up      # web :3000 · api :4000 · mongo · minio :9000/:9001
+docker compose up      # web :3000 · api :4000 · mongo · gcs (emulator) :4443
 npm run dev            # web + api dev servers
 npm test               # vitest
 npm run lint           # eslint
 npm run build          # all workspaces
+node tools/check_docs_drift.mjs   # docs in step with code
+node tools/check_mermaid.mjs      # every diagram parses
 ```
 
 ## If you are here as a cross-check

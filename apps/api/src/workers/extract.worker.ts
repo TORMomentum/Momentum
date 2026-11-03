@@ -175,7 +175,8 @@ if (isEntry) {
   // file to read.
   loadEnvFile();
   const config = loadConfig(process.env);
-  startHealthServer(config.apiPort);
+  // Only where a probe port is configured (Cloud Run). Locally the API already owns API_PORT.
+  if (config.workerHealthPort !== undefined) startHealthServer(config.workerHealthPort);
   startWorker(config).catch((error: Error) => {
     console.error(JSON.stringify({ event: "worker_crashed", message: error.message }));
     process.exit(1);

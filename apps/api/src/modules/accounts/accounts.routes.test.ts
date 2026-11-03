@@ -290,6 +290,7 @@ describe("account routes", () => {
     expect(response.body.account.consent).toMatchObject({ noticeVersion: config.consentNotice.version });
     expect(response.body.bookmarks).toHaveLength(1);
     expect(response.body.bookmarks[0].torId).toBe("mine");
+    expect(response.body.bookmarks[0].createdAt).toEqual(expect.any(String));
     expect(serialized).not.toContain("passwordHash");
     expect(serialized).not.toContain("token");
     expect(serialized).not.toContain("other@example.test");

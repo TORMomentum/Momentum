@@ -6,19 +6,16 @@ the team to read.
 **This is not the task list.** [TODO.md](TODO.md) tracks the build box by box and is where live
 status lives. This document explains the direction.
 
-_last updated: 2026-09-14_
+_last updated: 2026-11-03_
 
 ---
 
 ## 1. Where the project is
 
-Slice 1 (foundation and intake) and slice 2 (extraction and confidence) are built and serving. The
-staff review area is complete end to end: a real queue, the stored document beside the extracted
-fields, per-field confirmation, and the three decisions a reviewer can make — each behind a
-confirmation, each written to an audit trail.
-
-Slice 3 — the public surface: search, the dashboard, the anomaly rule — is the next body of work. It
-was waiting on the rendering decision, which is now made.
+All four slices are built (2026-11-03). Sprint 4 — vendor profiles, matching and the admin
+screens — is in review as PR #22. What remains is listed in [TODO.md](TODO.md) §2h and §3: CSV
+export, Google sign-in, Compose hardening, the match benchmark that gates match emails, and the
+open values in §3 below that wait on real data.
 
 ---
 
@@ -172,7 +169,7 @@ re-litigated and nobody has to guess whether something was chosen or merely happ
 | Is a record's anomaly flag stored or derived? | **Derived at read** from per-cohort bounds the worker keeps fresh, never stamped on the record. A stored flag goes stale the moment a budget is corrected or another TOR joins the group, and would then contradict the rule printed beside it; no screen filters or sorts by "anomalous only", so the stamp buys nothing. Cross-checked against MongoDB's own guidance and the Open Contracting Partnership's red-flag library, which computes flags as the output of a run rather than as fields on records | Zen, 2026-09-17 | [dashboard design §2.1](superpowers/specs/2026-09-17-dashboard-anomaly-design.md) |
 | Where do dashboard figures come from (Q2)? | **Scheduled summaries.** A background job writes one summary per agency × category × month, including the IQR bounds the anomaly rule needs; the page reads those and shows its last-updated time, which FR-E-6 requires anyway. Live aggregation over the whole corpus is instant at 500 records and unusable at 100,000 | Zen, 2026-09-14 | Slice 3 design — next |
 | The admin actions spent the admin key with no caller check. Fix now or in slice 4? | **Fix now, as its own change**, not folded into a larger refactor. Server-side staff session, checked first inside every action. A shared-secret stopgap until slice 4's real accounts | Zen, 2026-09-10 | Jira TOR-129 |
-| What does the review screen's document panel show? | **The real stored file**, through a signed URL. The mockup's highlight boxes and zoom controls are not ported: there are no coordinates to draw, and the browser's own viewer already zooms and pages | Zen, 2026-09-11 | [validation port plan](superpowers/plans/2026-09-11-admin-validation-port.md) |
+| What does the review screen's document panel show? | **The real stored file** — first through a signed URL; _superseded 2026-09-14 by "How do documents reach the browser?": streamed through the API_. The mockup's highlight boxes and zoom controls are not ported: there are no coordinates to draw, and the browser's own viewer already zooms and pages | Zen, 2026-09-11 | [validation port plan](superpowers/plans/2026-09-11-admin-validation-port.md) |
 | How much of the new mockup does the review screen take? | **Only the queue page body.** The app-shell navigation stays as built | Zen, 2026-09-11 | Jira TOR-130 |
 | Where does the queue collapse control live? | **On the seam between the columns**, one control in both states, and the collapsed rail carries **no count** — the page header already states it | Zen, 2026-09-10 | commits `859d0ec`, `9c2a7a4` |
 | Which actions ask for confirmation? | **Reject** (reason required), **publish** (when fields are unconfirmed), **re-extract**. Confirm-all, the field tick, sign-out and mark-all-read do not | Zen, 2026-09-11 | commit `27e7e49` |

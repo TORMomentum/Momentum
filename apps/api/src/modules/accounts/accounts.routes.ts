@@ -27,7 +27,7 @@ export interface AccountsRouterDeps {
   mailer: Mailer;
 }
 
-function tokenUrl(origin: string, path: string, token: string): string {
+export function tokenUrl(origin: string, path: string, token: string): string {
   const url = new URL(path, origin);
   url.searchParams.set("token", token);
   return url.toString();
@@ -89,7 +89,7 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     const input = loginSchema.parse(req.body);
     const account = await deps.accounts.findByEmail(input.email);
     const valid = account?.passwordHash ? await verifyPassword(account.passwordHash, input.password) : await verifyAgainstDummy(input.password, deps.config);
-    if (!account || !account.passwordHash || !account.emailVerifiedAt || !valid) throw new UnauthorizedError(AUTH_FAILURE);
+    if (!account || !account.passwordHash || !account.emailVerifiedAt || account.disabledAt || !valid) throw new UnauthorizedError(AUTH_FAILURE);
     const session = await deps.sessions.create(account.id);
     res.json({ sessionId: session.id, expiresAt: session.expiresAt.toISOString() });
   });
@@ -103,7 +103,7 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.post("/password/forgot", ...writes, async (req, res) => {
     const { email } = z.object({ email: z.string().email().max(320) }).parse(req.body);
     const account = await deps.accounts.findByEmail(email);
-    if (account?.passwordHash && account.emailVerifiedAt) {
+    if (account?.passwordHash && account.emailVerifiedAt && !account.disabledAt) {
       const token = await deps.tokens.create(account.id, "reset", deps.config.resetTokenTtlMs);
       await deps.mailer.send(passwordResetEmail(account.email, tokenUrl(deps.config.appOrigin, "/reset-password", token)));
     }

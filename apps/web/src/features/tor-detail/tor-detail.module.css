@@ -83,6 +83,23 @@
 
 .sideActions { display: flex; gap: 10px; margin-bottom: 26px; }
 
+/* Beside the full-width document button the bare 30px icon (sized for a
+   result row) floated with no edge. Here it is a square button of the same
+   height and corners, outlined so the blue button stays the primary action.
+   Two classes: it must beat the shared icon style whatever order the two
+   stylesheets load in. */
+.sideActions .sideBookmark {
+  width: auto;
+  height: auto;
+  align-self: stretch;
+  padding: 0 12px;
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.sideActions .sideBookmark:hover { background: var(--blue-ring); transform: none; }
+
 .openDocBtn {
   display: block;
   white-space: nowrap;
@@ -258,6 +275,10 @@
 .asWritten { display: block; margin-bottom: 3px; }
 
 .deadlineWindow { font: 600 13px var(--data); color: var(--ink); margin: 2px 0 6px; }
+
+.daysLeft { font: 600 13px var(--body); color: var(--verified); margin: 2px 0 6px; }
+
+.daysLeftSoon { color: var(--danger); }
 
 @keyframes detailSkeleton {
   from { opacity: 0.45; }

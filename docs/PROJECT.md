@@ -1,7 +1,7 @@
 # TOR Radar — Thai Procurement TOR Platform
 
 > Problem framing, stakeholders, user stories, prioritisation, cost, delivery plan, and risks.
-> Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, MinIO, Vertex AI.
+> Process: Scrum · Jira · Discord · Docker. Stack: Next.js, Node/Express, MongoDB Atlas, Google Cloud Storage, Vertex AI.
 >
 > **Requirements live in [SRS.md](SRS.md) v2.0** — the testable statements, verification methods,
 > and traceability. **Architecture and structure live in
@@ -174,131 +174,39 @@ browsing TORs uses the same public views as any citizen._
 
 ---
 
-## 6. Functional Requirements
+## 6. Requirements
 
-Requirements are split **MVP** vs **Stretch** so core scope is not conflated with aspirational work.
+Every requirement lives in [SRS.md](SRS.md) v2.0, as a testable statement with its verification
+method. The v1 list that used to sit here is archived in
+[archive/2026-09-PROJECT-requirements-v1.md](archive/2026-09-PROJECT-requirements-v1.md). Older
+documents, commits and Jira tickets still cite v1 identifiers; this is how they map:
 
-### FR-A: TOR Ingestion (MVP)
-- **FR-A1** Accept TOR input via file upload (PDF/JPG/PNG), by URL, and via an authenticated REST
-  ingestion endpoint (admin-seeded from public announcements). All routes feed the same pipeline;
-  the API route is what future automation (FR-A-S1 scraping) would plug into.
-- **FR-A2** Store the original raw document immutably in object storage (MinIO; audit trail; never
-  delete raw). Metadata in MongoDB; bytes NOT in MongoDB documents.
-- **FR-A3** Deduplicate: the same TOR arriving via multiple routes resolves to one record.
-- **FR-A4** Bangkok-only validation: match issuing agency against the canonical BMA agency list;
-  reject or tag non-BMA records.
+| v1 | v2.0 | Note |
+| :---- | :---- | :---- |
+| FR-A1, A2, A3 | FR-A-1, A-2, A-3 | |
+| FR-A4 | — | Bangkok-only validation, **withdrawn**: scope is national (SRS §1.2) |
+| FR-A-S1 | FR-A-4 | Automated collection. v1 FR-A4 and v2.0 FR-A-4 are different requirements |
+| FR-B1 … B4 | FR-B-1 … B-4 | |
+| FR-B5 | FR-B-5, FR-B-6 | Takedown became its own requirement |
+| FR-C1 … C3 | FR-C-1 … C-3 | FR-C-4 (no notification from an unverified field) is new |
+| FR-D1 … D3 | FR-D-1 … D-3 | |
+| FR-D4 | — | Pursuing / won tracking on bookmarks, not carried into v2.0 |
+| FR-E1 … E5 | FR-E-1 … E-5 | FR-E-6 (last-updated time and coverage note) is new |
+| FR-E6 | FR-E-7 | CSV export |
+| FR-F1, F2 | FR-F-1, F-2 | FR-F-3 (methodology link) is new |
+| FR-F3 | FR-F-4 | |
+| FR-G1 … G3 | FR-G-1 … G-3 | |
+| NFR-1 | NFR-F3 | Accuracy measurement |
+| NFR-2 | NFR-S3 | Immutable originals |
+| NFR-3 | NFR-F4 | Mobile load time |
+| NFR-4 | NFR-S6 | Compose, CI, secrets |
+| NFR-5 | NFR-S2 | PDPA-aligned |
+| NFR-6 | NFR-F6 | AI output labelled |
+| NFR-7 | NFR-F7 | Thai UI |
+| NFR-8 | NFR-S1 | Security baseline |
+| NFR-9 | NFR-S4 | Pilot sizing |
 
-### FR-A-S: Ingestion (Stretch)
-- **FR-A-S1** Scraping/polling of configured BMA announcement pages, one adapter per source, with
-  per-source health status (pairs with US-16). MVP corpus is manually seeded instead.
-
-### FR-B: Extraction & Normalization (MVP)
-- **FR-B1** OCR Thai + English from scanned/image documents (Vertex AI Document AI / Gemini vision).
-- **FR-B2** Extract structured fields: title, agency, budget (฿), category, scope summary, required
-  qualifications, submission deadline, contact, status (coarse labels only: announced / closed /
-  awarded).
-- **FR-B3** Per-field confidence score with a two-tier policy. All records auto-publish:
-  - **High confidence (≥ T_high):** published clean; fields feed everything.
-  - **Medium confidence (T_low–T_high):** published with a visible **"unverified extraction"** tag
-    and source-document link; below-threshold fields are excluded from the anomaly rule (FR-E2)
-    and match notifications until verified, so OCR errors cannot create false anomaly flags or
-    false matches. Not queued — admin can correct from the TOR page at any time.
-  - **Very low / suspicious (< T_low, or sanity-check hit: missing critical fields such as
-    budget/agency/deadline, implausible values):** published tagged as above AND routed to the
-    admin review queue (FR-G1) for priority correction.
-
-  Both thresholds set empirically AFTER measuring extraction accuracy on a 10–20-document
-  benchmark set (see NFR-1); full automation is not promised. **Sprint-1 result
-  (`docs/corpus/BENCHMARK.md`, TOR-18):** phase gate PASSED. Model confidence alone
-  does not discriminate correct from wrong, so the two tiers are gated by
-  deterministic per-field rules first (BMA check, budget-range sanity,
-  `cancelled ⇒ no deadline`, OCR'd doc ⇒ `budget_thb`/dates never "clean"), then
-  model confidence at **T_low = 0.80 / T_high = 0.95**.
-- **FR-B4** Normalize extracted qualifications into the shared skill taxonomy used by profiles.
-- **FR-B5** PII handling inside TOR documents: displayed extractions minimize personal data (e.g.
-  officer personal phone numbers, signatures); original documents remain available via source link;
-  a takedown/correction request workflow exists.
-
-### FR-C: Matching & Notification (MVP)
-- **FR-C1** Match engine: score each published TOR against vendor profiles on qualification tags,
-  category interests, and budget range; threshold configurable.
-- **FR-C2** Notify matched vendors via email with the match explanation. Demo target: delivery
-  ≤ 5 min after publish.
-- **FR-C3** Notification preferences: frequency (immediate/daily digest), minimum match score, and
-  filters (category, budget range).
-
-### FR-D: Profiles & Auth (MVP)
-- **FR-D1** Registration/login (email + OAuth). Roles: vendor, admin, anonymous public.
-- **FR-D2** Skill profile CRUD with taxonomy tags + free-text portfolio.
-- **FR-D3** PDPA: explicit consent at signup, data export, account deletion.
-- **FR-D4** (Could) Personal project tracking on bookmarks: vendor marks a TOR pursuing / won /
-  completed; completed items move to a personal archive view. Self-reported and private — never
-  displayed publicly, never treated as a verified award (the platform has no bid data to verify
-  against).
-
-### FR-E: Public Dashboard & Visualization (MVP)
-- **FR-E1** Public (no-login) dashboard: TOR counts + total budget per BMA agency over time. The
-  dashboard always shows a **"data last updated"** timestamp (time of the latest successful
-  ingestion) and a coverage note that figures reflect the ingested corpus, not necessarily all BMA
-  procurement.
-- **FR-E2** Pricing plots with a **documented anomaly rule**: compare budgets only within
-  (category × time-window) peer groups; require a minimum peer-group size (e.g. n ≥ 8) before
-  flagging; flag = outside 1.5×IQR (or z > 3) of the peer group; label "statistical anomaly," never
-  "suspicious." Groups too small to compare are shown unflagged.
-- **FR-E3** Filters: agency, category, date range, budget range, status. Closed/awarded TORs stay
-  browsable indefinitely — the dashboard doubles as a historical archive (raw documents are never
-  deleted, NFR-2).
-- **FR-E4** **Shared TOR detail page** (single feature serving vendors, public, and journalists):
-  structured fields + original-document link + quality-checklist result + status history + per-record
-  extraction provenance ("extracted <timestamp> by <AI model/version>", per NFR-6; re-extraction or
-  admin correction updates the timestamp).
-- **FR-E5** Status transitions: status changes come from admin action or re-ingestion of an updated
-  announcement; each transition records timestamp, source, and actor (supports US-07 history).
-- **FR-E6** (Could) CSV export of the currently filtered TOR list: extracted fields + source links,
-  PII-minimized per FR-B5 (supports US-12).
-
-### FR-F: AI Quality Checklist (Should — ship after extraction is solid)
-Deliberately scoped as a specification-quality checklist rather than an "AI audit": judging
-vendor-locking or corruption requires domain expertise and historical data beyond this project's
-scope, and overclaiming carries defamation risk.
-- **FR-F1** Heuristic, explainable checklist per TOR: budget present? deadline present and
-  plausible (≥ X days)? scope specific (length/section heuristics)? qualifications stated with
-  rationale? budget within peer-group norm (reuses FR-E2 rule)?
-- **FR-F2** Output = score + the exact checklist reasons; clearly labeled "AI-generated
-  specification-quality check — not a legal or corruption judgment."
-- **FR-F3** Checklist anomalies feed the dashboard anomaly view.
-
-### FR-G: Admin (MVP-minimal)
-- **FR-G1** Review queue (minimal version ships WITH ingestion in Sprint 2, not at the end):
-  list of very-low-confidence/suspicious records only (FR-B3 tier 3), side-by-side original vs
-  extracted fields, edit + approve (clears the "unverified" tag).
-- **FR-G2** Corrections are stored and reusable as few-shot examples for the extractor.
-- **FR-G3** Taxonomy + canonical agency list seeded from JSON files; admin UI to edit = stretch.
-
-### Non-functional
-- **NFR-1** Thai OCR/extraction accuracy is the critical path. Sprint 1 deliverable: measure
-  field-level accuracy on 10–20 real BMA TORs; set both FR-B3 confidence thresholds (T_low,
-  T_high) from that data. No fixed accuracy promise until measured.
-- **NFR-2** Original documents retained immutably — never edited in place — and every displayed
-  record links to its source. An accepted PDPA takedown request (FR-B5) restricts access to the
-  document with an audit-trail entry; it does not silently alter or delete the stored original.
-- **NFR-3** Public pages target < 3 s load on mobile (verified against the demo deployment with
-  the seeded corpus); responsive layout.
-- **NFR-4** Dockerized (compose) for dev parity; CI runs tests on PR; secrets via env files not
-  committed (`.env` in `.gitignore`).
-- **NFR-5** PDPA-aligned data handling: explicit consent, PII minimization, export and deletion
-  implemented (FR-B5/FR-D3). This is engineering alignment with PDPA principles — no formal legal
-  compliance certification is claimed.
-- **NFR-6** All AI-derived content labeled as AI-generated. Checklist outputs include their exact
-  rule-based reasons (fully explainable); extracted fields carry a confidence score and a link to
-  the source document for verification.
-- **NFR-7** The web app UI is in Thai (extracted fields displayed as-is; an English UI is out of
-  Phase-1 scope).
-- **NFR-8** Security baseline: passwords hashed (bcrypt/argon2), HTTPS on any deployed
-  environment, role-based authorization on all admin and API routes, rate limiting on the
-  ingestion API, dependency vulnerability audit in CI.
-- **NFR-9** Sized for the Phase-1 pilot: corpus of hundreds of TORs and tens of concurrent users.
-  No uptime guarantee or horizontal-scaling claim is made in Phase 1.
+NFR-F1, NFR-F2, NFR-F5 and NFR-S5, NFR-S7 have no v1 counterpart.
 
 ---
 
@@ -365,7 +273,7 @@ reserve is the plan's main schedule-risk defense.
 | Frontend | Next.js | Dashboard (public), TOR browse/detail, profile UI, admin queue |
 | API | Node.js + Express | REST API, matching engine, notification dispatch |
 | DB | MongoDB Atlas | TOR metadata/extracted fields (flexible schema fits inconsistent TORs), profiles, match records; Atlas Search for text search |
-| Raw document storage | MinIO (S3-compatible object storage, self-hosted in Docker Compose) | Original PDFs/images — NOT stored as Mongo documents |
+| Raw document storage | Google Cloud Storage behind a `Storage` port; `fake-gcs-server` in Docker Compose | Original PDFs/images — NOT stored as Mongo documents |
 | AI | Vertex AI (Document AI / Gemini) | Thai OCR, field extraction, qualification normalization, checklist assist |
 | Notifications | Email (Nodemailer/Resend) | Match alerts |
 | Infra | Docker Compose; deploy target = one small VM or Cloud Run (decide Sprint 1); secrets via env vars | Dev parity + demo hosting |
@@ -400,15 +308,15 @@ blended internal rate for its commercial value.
 
 ### 9.1 Direct (cash) costs
 
-All application software is open source (Next.js, Express, MongoDB Community drivers, MinIO,
-Docker). Paid usage is limited to cloud AI calls and optional hosting. Estimates below assume a
+All application software is open source (Next.js, Express, MongoDB Community drivers, fake-gcs-server,
+Docker). Paid usage is limited to cloud AI calls, object storage and optional hosting. Estimates below assume a
 demo-scale corpus of ~500 documents × ~10 pages and must be re-verified against current provider
 pricing before budgeting.
 
 | Item | Plan / rate | Phase-1 estimate |
 |------|-------------|-------------------|
 | MongoDB Atlas | M0 free tier (512 MB — sufficient for metadata) | ฿0 |
-| MinIO (raw document storage) | Open source, self-hosted in Docker Compose | ฿0 |
+| Google Cloud Storage (raw document storage) | Standard class, pay per GB stored; ~13 GB if the whole BMA corpus is stored | Under US$1 a month |
 | Vertex AI — Document AI OCR | ~US$1.50 per 1,000 pages (Enterprise Document OCR) | ~US$7.50 for 5,000 pages |
 | Vertex AI — Gemini (field extraction, checklist assist) | Flash tier, per-token (e.g. Flash-Lite ~US$0.10/M input, ~US$0.40/M output) | Single-digit US$ at ~500 extractions |
 | AI development headroom | Benchmark loops and re-runs multiply usage | Budget 3–5× the two rows above (~US$30–60 ceiling); a new GCP account's free-trial credit (US$300) covers this if available |

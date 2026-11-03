@@ -13,6 +13,8 @@ import { isolatedDbUrl } from "../../test/mongo.js";
 import { TorsRepository } from "./tors.repository.js";
 import { buildTorsRouter } from "./tors.routes.js";
 import { TorsService } from "./tors.service.js";
+import { ProfileRepository } from "../profile/profile.repository.js";
+import { MatchingRepository } from "../matching/matching.repository.js";
 
 const config = loadConfig(process.env);
 const BYTES = Buffer.from("%PDF-1.7 public document body");
@@ -63,6 +65,9 @@ function buildTestApp() {
       service: new TorsService({ repo: new TorsRepository(db), config }),
       storage,
       search: config.search,
+      config,
+      profiles: new ProfileRepository(db),
+      matching: new MatchingRepository(db, config),
     }),
   );
   app.use(errorMiddleware);

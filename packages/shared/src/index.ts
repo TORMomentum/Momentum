@@ -2,3 +2,4 @@ export * from "./tor.js";
 export * from "./intake.js";
 export * from "./checklist.js";
 export * from "./categories.js";
+export * from "./matching.js";

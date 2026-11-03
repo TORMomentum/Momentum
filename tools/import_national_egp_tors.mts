@@ -4,6 +4,7 @@
  *
  *   npx tsx tools/import_national_egp_tors.mts [--limit 20]                 newest draft TORs (default)
  *   npx tsx tools/import_national_egp_tors.mts --from invitation [--limit]  newest invitations to bid
+ *   npx tsx tools/import_national_egp_tors.mts --pages 5 --limit 250        read 5 pages of the list (50 each)
  *   npx tsx tools/import_national_egp_tors.mts --from feed [--type B0|D0] [--dept 30501]   the RSS feed
  *   npx tsx tools/import_national_egp_tors.mts --project 69099218130        named projects (repeatable,
  *                                                                            or comma-separated)
@@ -73,6 +74,8 @@ function argValue(name: string): string | undefined {
 }
 
 const LIMIT = Number(argValue("--limit") ?? 20);
+/** Pages of e-GP's announcement list to read, 50 rows each; --limit still caps the projects. */
+const PAGES = Number(argValue("--pages") ?? 1);
 const FROM = argValue("--from") ?? "tor";
 const TYPE = (argValue("--type") ?? "D0") as AnnounceType;
 const DEPT = argValue("--dept");
@@ -84,6 +87,10 @@ const PROJECTS = process.argv
 const DELAY_MS = Number(process.env.EGP_IMPORT_DELAY_MS ?? 1_000);
 const SUBMITTED_BY = "national-egp-import";
 
+if (!Number.isInteger(PAGES) || PAGES < 1) {
+  console.error("--pages must be a positive whole number");
+  process.exit(1);
+}
 if (!Number.isInteger(LIMIT) || LIMIT < 1) {
   console.error("--limit must be a positive integer");
   process.exit(1);
@@ -298,9 +305,17 @@ async function targets(): Promise<Target[]> {
   }
 
   const kind = FROM === "invitation" ? "invitation" : "tor";
-  const rows = await fetchAnnouncementList(kind);
-  await sleep(DELAY_MS);
-  console.log(`list ${kind === "tor" ? "draft TOR" : "invitation"}: ${rows.length} announcement(s)`);
+  // Pages are read in order and a project seen on an earlier page is not repeated: the list moves
+  // while it is being read, so a row can slide from one page onto the next.
+  const byProject = new Map<string, Awaited<ReturnType<typeof fetchAnnouncementList>>[number]>();
+  for (let page = 1; page <= PAGES; page += 1) {
+    const pageRows = await fetchAnnouncementList(kind, page);
+    await sleep(DELAY_MS);
+    for (const row of pageRows) if (!byProject.has(row.projectId)) byProject.set(row.projectId, row);
+    if (pageRows.length === 0) break;
+  }
+  const rows = [...byProject.values()];
+  console.log(`list ${kind === "tor" ? "draft TOR" : "invitation"}: ${rows.length} announcement(s) from ${PAGES} page(s)`);
   return rows.slice(0, LIMIT).map((row) => ({
     projectId: row.projectId,
     from: kind === "tor" ? ("tor-list" as const) : ("invitation-list" as const),

@@ -75,15 +75,15 @@ flowchart TB
 
     subgraph compose["Docker Compose network · project tor-radar"]
         web["<b>web</b> ✅<br/>Next.js 16 App Router<br/>:3000"]
-        api["<b>api</b> 🔨<br/>Express 5 REST<br/>:4000 · /health live,<br/>intake router awaiting wiring"]
+        api["<b>api</b> ✅<br/>Express 5 REST<br/>:4000"]
         worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
-        stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells"]
+        stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells ·<br/>no Compose service yet"]
         mongo[("<b>mongo</b> ✅<br/>MongoDB 7<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
 
-    vertex["☁️ Vertex AI ⬜ slice 2"]
-    smtp["✉️ SMTP ⬜ slice 4"]
+    vertex["☁️ Vertex AI ✅<br/>Gemini"]
+    smtp["✉️ SMTP ✅<br/>dispatch off until<br/>the match benchmark"]
     realgcs[("☁️ Google Cloud Storage<br/>deployment only")]
 
     browser -->|"HTTPS, incl. streamed<br/>document bytes"| web
@@ -100,11 +100,9 @@ flowchart TB
     gcs -.->|"same client,<br/>real credentials"| realgcs
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
-    classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
     classDef store fill:#f1f4f9,stroke:#12233c,color:#12233c
     class web,api,worker,stats built
-    class vertex,smtp planned
-    class mongo,gcs,realgcs store
+    class mongo,gcs,realgcs,vertex,smtp store
 ```
 
 **Why the statistics worker is separate from the extraction worker:** a stalled OCR call must not
@@ -169,10 +167,27 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `Queue` interfaces | `Storage` exposes `putIfAbsent`, never `put` |
-| `adapters/` | GCS storage, Mongo-backed queue | Imported by `app.ts` only |
+| `ports/` | `Storage`, `Queue`, `Ai`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put` |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI, SMTP and recording mailers | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
-| `workers/` ⬜ | Extraction worker and the orphan reconciler | Same wiring rules as the API |
+| `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
+
+The feature modules, as of Sprint 4:
+
+| Module | Owns |
+| :--- | :--- |
+| `intake/` | The three intake routes, dedupe, immutable storage, enqueue |
+| `extraction/` | OCR and field extraction, confidence grading |
+| `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter |
+| `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
+| `accounts/` | Registration, sign-in, sessions, password reset, PDPA export and deletion |
+| `profile/` | The vendor profile, and its separately saved past projects and certifications |
+| `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
+| `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
+| `bookmarks/` | A vendor's private saved list |
+| `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |
+| `match-quality/` | The labelled benchmark that gates match emails (matching design §7.8) |
+| `history/` | `tor_events`, the append-only transition log |
 
 ### `apps/web/src/`
 
@@ -207,7 +222,7 @@ feature it belongs to has not been given its folder yet.
 
 ## 5. How a document travels
 
-### 5.1 Intake 🔨
+### 5.1 Intake ✅
 
 Three routes, one service. Nothing is accepted twice, and nothing is ever overwritten.
 
@@ -242,7 +257,7 @@ sequenceDiagram
 **The order is fixed:** store bytes → insert record → enqueue. A crash between steps leaves an
 orphaned object in storage, never a job pointing at a record that does not exist.
 
-### 5.2 Extraction ⬜ slice 1 task 11 · AI in slice 2
+### 5.2 Extraction ✅
 
 ```mermaid
 sequenceDiagram
@@ -250,7 +265,7 @@ sequenceDiagram
     participant W as extract.worker
     participant Q as ingest_jobs
     participant St as GCS
-    participant V as Vertex AI ⬜
+    participant V as Vertex AI
     participant T as tors
 
     loop every poll interval
@@ -314,8 +329,13 @@ erDiagram
     TORS ||--o{ INGEST_JOBS : "one job per extraction attempt"
     TORS ||--o{ SOURCE_REFS : "every route that submitted it"
     SOURCES ||--o{ TORS : "collected from (slice 2+)"
-    VENDORS ||--o{ MATCHES : "scored against"
-    TORS ||--o{ MATCHES : "scored for"
+    ACCOUNTS ||--o| VENDOR_PROFILES : "states what it does"
+    ACCOUNTS ||--o{ BOOKMARKS : "saves"
+    ACCOUNTS ||--o{ NOTIFICATIONS : "one row per email sent or dry-run"
+    ACCOUNTS ||--o{ MATCH_LABELS : "judged for, by staff"
+    ACCOUNTS ||--o{ ADMIN_AUDIT : "every staff read or change"
+    TORS ||--o| TOR_CLASSIFICATIONS : "classified into the taxonomy"
+    TORS ||--o{ MATCH_LABELS : "judged against a vendor"
     TORS ||--o| TOR_PEER_STATS : "judged against, by cohort key"
     TORS ||--o{ TOR_ROLLUPS : "counted into"
 
@@ -393,20 +413,60 @@ erDiagram
         date lastSuccessAt "FR-A-4 shows this"
         string health
     }
-    VENDORS {
+    ACCOUNTS {
         objectId _id PK
         string email UK
-        array skills "taxonomy tags"
-        object budgetRange "min, max · scored by FR-C-1"
+        string role "vendor | admin"
+        object consent "notice version and hash, agreedAt, withdrawnAt"
+        date disabledAt "set by staff; revokes every session"
     }
-    MATCHES {
-        objectId _id PK
-        objectId torId FK
-        objectId vendorId FK
-        int score "match %"
-        date notifiedAt
+    VENDOR_PROFILES {
+        string accountId UK
+        array categories "taxonomy node ids"
+        array otherCategories "free text the taxonomy lacks"
+        object budget "minThb, maxThb · a preference, scored not filtered"
+        object notify "preset, minMatch, leadDays"
+        array pastProjects "title, year in BE, valueThb · capped by config"
+        object certifications "cgd branches, tags, other · absent = not stated"
+        string updatedBy "vendor | admin · shown to the vendor"
+    }
+    TOR_CLASSIFICATIONS {
+        string torId UK
+        object classification "coarse, leaves, nodes, evidence, outcome"
+        string mapperVersion "a stale version is reclassified on read"
+    }
+    MATCH_LABELS {
+        string accountId PK
+        string torId PK
+        string label "relevant | not-relevant | unsure"
+        number score "frozen at labelling time"
+        bool matched "met the vendor's email threshold then"
+        string labelledBy
+    }
+    NOTIFICATIONS {
+        string accountId PK
+        string torId PK
+        string reason PK "match | deadline-reminder | daily-digest"
+        bool dryRun PK "a dry run never suppresses a real send"
+        date sentAt
+    }
+    BOOKMARKS {
+        string accountId PK
+        string torId PK
+    }
+    ADMIN_AUDIT {
+        string accountId FK
+        string action "viewed, profile-edited, match-email-sent, ..."
+        string actor
+        date at
     }
 ```
+
+**Match scores are not stored.** A score is a function of the profile, the TOR and its
+classification, all three of which change; it is computed when read
+(`matching.scores.ts`) so a vendor never sees a score made from an old profile. What *is* stored is
+what must not move afterwards: a sent email (`notifications`) and a staff judgement with the score
+it was made against (`match_labels`).
 
 Three shapes are load-bearing:
 
@@ -453,6 +513,11 @@ Three shapes are load-bearing:
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
 | `tor_peer_stats.category + month`, unique | One bounds document per peer group, which is what makes a recompute idempotent |
 | `tor_peer_stats.dirty + dirtyAt`, partial | The statistics worker's claim query |
+| `vendor_profiles.accountId`, unique | One profile per account |
+| `tor_classifications.torId`, unique · `classification.leaves.id + updatedAt` · `classification.coarse + updatedAt` | One classification per TOR; the two candidate reads matching runs in parallel (precise leaf, broad coarse group) |
+| `match_labels.accountId + torId`, unique | A re-judgement overwrites, so a pair counts once in the figures |
+| `notifications.accountId + torId + reason + dryRun`, unique | An email is sent at most once per reason, even with two workers |
+| `admin_audit.accountId + at` | One vendor's audit trail, newest first |
 | `tor_rollups.agency + month` · `category + month` | The dashboard's two filter shapes. A single `agency + category + month` compound cannot serve "one agency across months with no category", because category sits between the two fields used |
 
 ---
@@ -467,7 +532,7 @@ not do — because those are the ones a well-meaning change quietly breaks.
 | No in-document array grows without bound | A document is read and rewritten whole; an array with no ceiling makes every operation on that record slower forever | `$push` + `$slice`, with the full trail in `tor_events` |
 | Originals are never altered or deleted | FR-A-2, NFR-S3 — a takedown restricts access and writes an audit entry, it does not touch the file | `Storage` port exposes `putIfAbsent`, never `put` |
 | No filesystem path is ever shared between services | Separate containers do not share a filesystem; the pointer travels, the bytes do not | Services exchange storage keys only |
-| Signed URLs are never persisted | They expire, so a stored one becomes a broken link at an unpredictable date | Generated on demand from the key |
+| No signed URLs | Google cannot attach `nosniff` to one, and a signed link keeps working after a takedown | Documents are streamed through the API, which checks takedown status on every request |
 | `localhost` appears in no source file | The literal that is correct in development is exactly what breaks the shipped system | `core/config.ts` + `${VAR:-default}` in Compose |
 | Only `*.repository.ts` touches the database | One place to change when the schema moves | Code review; the module layout makes violations obvious |
 | `modules/` imports `ports/`, never `adapters/` | Tests can supply fakes; the wiring lives in one file | `app.ts` is the only place adapters are named |
@@ -491,13 +556,13 @@ Decided; not substituted without a design change.
 | API | Express, REST | 5 | Small, well-understood surface; no GraphQL need at this size |
 | Validation | Zod | 4 | One schema shared by both apps via `packages/shared` |
 | Database | MongoDB (Atlas in deployment) | 7 | Extracted fields are irregular and evolve per slice; also serves as the job queue |
-| Search | Atlas Search, `lucene.thai` analyzer | ⬜ slice 3 | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
+| Search | Atlas Search, `lucene.thai` analyzer | ⬜ — keyword search is an interim substring match until then | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
 | Object storage | Google Cloud Storage | 8 (client) | Immutable originals behind a `Storage` port; `fake-gcs-server` in Compose and CI |
-| AI | Vertex AI — Document AI OCR, Gemini | ⬜ slice 2 | Thai OCR quality; confidence values per field |
-| Notifications | SMTP email | ⬜ slice 4 | The only channel in scope |
+| AI | Vertex AI — Gemini (Document AI is in the stack decision but not yet called) | — | Thai OCR quality; confidence values per field |
+| Notifications | SMTP email behind a `Mailer` port; Mailpit in Compose | — | The only channel in scope. Dispatch is off (`NOTIFY_DISPATCH_ENABLED`) until the match benchmark exists |
 | Runtime | Node | ≥ 22 | Native `fetch`, `process.loadEnvFile` |
 | Tests | Vitest, Supertest | 4 · 7 | Same runner across workspaces |
-| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, test, build, dependency audit on every PR |
+| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. The dependency audit is not in CI yet (slice 1 task 15) |
 
 **Why Mongo is also the queue (D5):** the alternative is a second infrastructure service for a
 workload of a few thousand documents. An atomic `findOneAndUpdate` claim with a lock expiry gives
@@ -514,7 +579,7 @@ flowchart TB
         direction TB
         w["tor-radar-web<br/>:3000"]
         a["tor-radar-api<br/>:4000 · /health"]
-        k["tor-radar-worker ⬜"]
+        k["tor-radar-worker"]
         m["tor-radar-mongo<br/>healthcheck"]
         s["tor-radar-gcs<br/>fake-gcs-server · ${GCS_EMULATOR_PORT}"]
         mv[("tor-radar-mongo-data")]
@@ -531,9 +596,7 @@ flowchart TB
 
     classDef svc fill:#e8f0fe,stroke:#1d63d8,color:#12233c
     classDef vol fill:#f1f4f9,stroke:#12233c,color:#12233c,stroke-dasharray:3 3
-    classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
-    class w,a,m,s svc
-    class k planned
+    class w,a,m,s,k svc
     class mv,sv vol
 ```
 
@@ -545,8 +608,9 @@ flowchart TB
   directory it ran in, and the logs differ per machine.
 - **The GCS emulator's host port is parameterised** — `${GCS_EMULATOR_PORT:-4443}` — because a
   fixed port collides with another project on the same machine more often than not.
-- ⬜ The Compose file still has the pre-workspace shape: no `worker` service, no health conditions,
-  generic names. That is slice 1 task 15.
+- ⬜ The bullets above are the target. The Compose file has the `worker` service but still no
+  health conditions, generic names, and no service for the statistics or notification worker
+  (both run by `npm run stats-worker` / `notify-worker`). That is slice 1 task 15.
 
 ---
 
@@ -557,10 +621,10 @@ slice reads the records it writes.
 
 | Slice | Features | Delivers | State |
 | :--- | :--- | :--- | :--- |
-| **1** | F1 | Config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens | 🔨 |
-| 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue | ⬜ |
-| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export | ⬜ |
-| 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown | ⬜ |
+| **1** | F1 | Config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens | ✅ except Compose hardening and the CI audit (task 15) | 🔨 |
+| 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue | ✅ |
+| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export | ✅ except CSV export (F11) and Atlas Search |
+| 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown | ✅ except Google sign-in; match emails off until the benchmark |
 
 Task-level progress lives in [TODO.md](TODO.md) and is not repeated here — this document describes
 the shape, not the schedule.

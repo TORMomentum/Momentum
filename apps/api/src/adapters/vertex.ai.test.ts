@@ -84,7 +84,10 @@ const hasCreds = Boolean(
 );
 
 // Skipped without a service-account credential so CI without secrets stays green.
-describe.skipIf(!hasCreds)("VertexAi.extract against real Vertex", () => {
+// A credential being present is not consent to spend it: once the development
+// .env carried the key the app needs, this ran on every `npm test` and failed
+// whenever Google's token endpoint was unreachable. RUN_LIVE_VERTEX=1 opts in.
+describe.skipIf(!hasCreds || process.env.RUN_LIVE_VERTEX !== "1")("VertexAi.extract against real Vertex", () => {
   it("extracts the nine fields from a real Thai TOR", async () => {
     const ai = new VertexAi(config.vertex);
     const bytes = readFileSync(CORPUS + "tor-01.pdf");

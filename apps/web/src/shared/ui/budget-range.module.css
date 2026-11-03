@@ -3,6 +3,12 @@
  * the vendor profile states its budget interest with it.
  */
 
+/* The fill, handles and focus ring take one tone, so a caller can recolour
+   the whole control (search's match filter uses the match-badge green). */
+.root { --range-tone: var(--blue); --range-ring: var(--blue-ring); }
+
+.toneMatch { --range-tone: var(--match); --range-ring: var(--match-ring); }
+
 /* ---- budget dual-range slider ---- */
 
 .sliderWrap { position: relative; height: 28px; margin: 4px 8px 2px; }
@@ -23,7 +29,7 @@
   position: absolute;
   top: 10px;
   height: 8px;
-  background: var(--blue);
+  background: var(--range-tone);
   transition: left 0.3s cubic-bezier(0.22, 1.4, 0.36, 1), right 0.3s cubic-bezier(0.22, 1.4, 0.36, 1);
 }
 
@@ -31,7 +37,7 @@
   position: absolute;
   top: 50%;
   border-radius: 50%;
-  background: var(--blue);
+  background: var(--range-tone);
   transform: translate(-50%, -50%);
   transition:
     width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -80,6 +86,9 @@
   margin: 0;
 }
 
+/* Lifts the min handle above the max one; see minOnTop in BudgetRange. */
+.rangeInputTop { z-index: 1; }
+
 .rangeInput::-webkit-slider-thumb {
   appearance: none;
   width: 26px;
@@ -107,3 +116,51 @@
 .sliderLabels { display: flex; justify-content: space-between; font: 10px var(--data); color: var(--ink-65); }
 
 .sliderLabelActive { color: var(--blue); font-weight: 600; }
+
+/* The two amounts, typed. Laid out as a range — low, a dash, high — so they
+   read as the ends of the slider beneath them. */
+.amounts { display: flex; align-items: center; gap: 8px; margin: 0 8px 10px; }
+
+.amountBox {
+  flex: 1 1 0;
+  min-width: 0;
+  font: 600 12.5px var(--data);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.amountBox:focus-within { border-color: var(--range-tone); outline: 2px solid var(--range-ring); outline-offset: 1px; }
+
+.amountCurrency { font: 600 12px var(--data); color: var(--ink-55); }
+
+.amountInput {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.amountDash { color: var(--ink-55); }
+
+/* One amount: sized to its figure, not stretched across the row. */
+.amountsSingle .amountBox { flex: 0 1 12ch; }
+
+/* Label column shared with the search date range, so the two filters align. */
+.amountsStacked {
+  display: grid;
+  grid-template-columns: var(--filter-label-width) 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.amountLabel { font-size: 12px; color: var(--ink-65); }

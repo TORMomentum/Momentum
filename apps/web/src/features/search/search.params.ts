@@ -9,6 +9,8 @@
  * API validates strictly behind this.
  */
 
+import { MATCH_RANGE } from "@tor-radar/shared";
+
 /** The five states the dashboard's chips use; the API defines them. */
 export const SEARCH_STATES = ["open", "awaiting-invitation", "closed", "awarded", "cancelled"] as const;
 export type SearchState = (typeof SEARCH_STATES)[number];
@@ -26,6 +28,9 @@ export interface SearchFilters {
   /** `YYYY-MM-DD`, inclusive. */
   deadlineFrom: string | null;
   deadlineTo: string | null;
+  /** Whole percentages; null = that end unbounded. */
+  minMatch: number | null;
+  maxMatch: number | null;
   cursor: string | null;
 }
 
@@ -41,6 +46,8 @@ export const EMPTY_FILTERS: SearchFilters = {
   maxBudget: null,
   deadlineFrom: null,
   deadlineTo: null,
+  minMatch: null,
+  maxMatch: null,
   cursor: null,
 };
 
@@ -77,6 +84,13 @@ function date(value: string | string[] | undefined): string | null {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(raw) ? raw : null;
 }
 
+function matchThreshold(value: string | string[] | undefined): number | null {
+  const raw = first(value);
+  if (!raw || !/^\d{1,3}$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return parsed >= MATCH_RANGE.floor && parsed <= MATCH_RANGE.ceiling ? parsed : null;
+}
+
 export function parseSearchParams(params: RawSearchParams): SearchFilters {
   const cursor = first(params.cursor);
   return {
@@ -89,6 +103,8 @@ export function parseSearchParams(params: RawSearchParams): SearchFilters {
     maxBudget: amount(params.maxBudget),
     deadlineFrom: date(params.deadlineFrom),
     deadlineTo: date(params.deadlineTo),
+    minMatch: matchThreshold(params.minMatch),
+    maxMatch: matchThreshold(params.maxMatch),
     cursor: cursor && /^[A-Za-z0-9_-]{1,200}$/.test(cursor) ? cursor : null,
   };
 }
@@ -102,7 +118,9 @@ export function toSearchQuery(filters: SearchFilters): string {
   if (filters.deadlineFrom) params.set("deadlineFrom", filters.deadlineFrom);
   if (filters.deadlineTo) params.set("deadlineTo", filters.deadlineTo);
   if (filters.maxBudget !== null) params.set("maxBudget", String(filters.maxBudget));
+  if (filters.maxMatch !== null) params.set("maxMatch", String(filters.maxMatch));
   if (filters.minBudget !== null) params.set("minBudget", String(filters.minBudget));
+  if (filters.minMatch !== null) params.set("minMatch", String(filters.minMatch));
   if (filters.open) params.set("open", "true");
   if (filters.state) params.set("state", filters.state);
   const q = text(filters.q);
