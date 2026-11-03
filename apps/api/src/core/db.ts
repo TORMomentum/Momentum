@@ -279,7 +279,6 @@ export interface NotificationLeaseDocument {
   leaseUntil: Date;
 }
 
-/** Cached derived data; source TOR documents remain immutable after extraction. */
 /**
  * One person's judgement of one vendor–TOR pair: the labelled benchmark design
  * §7.8 requires before match emails ship. The score and whether the system
@@ -298,6 +297,7 @@ export interface MatchLabelDocument {
   labelledAt: Date;
 }
 
+/** Cached derived data; source TOR documents remain immutable after extraction. */
 export interface TorClassificationDocument {
   torId: string;
   classification: TorClassification;
