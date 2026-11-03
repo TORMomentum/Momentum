@@ -21,14 +21,14 @@ flowchart LR
     admin["👤 Admin<br/><i>X-Api-Key: ADMIN key</i>"]
     partner["🔌 Intake client<br/><i>X-Api-Key: INTAKE key</i>"]
     web["🌐 Next.js server<br/><i>public reads</i>"]
-    vendor["👤 Vendor session<br/><i>slice 4</i>"]
+    vendor["👤 Vendor session<br/><i>cookie, via the Next server</i>"]
 
     subgraph api["API · /api/v1"]
         intake["POST /intake/upload ✅<br/>POST /intake/url ✅<br/>POST /intake ✅"]
-        read["GET /tors ⬜<br/>GET /tors/:id ⬜<br/>GET /tors/:id/document ⬜"]
-        stats["GET /stats/dashboard ⬜<br/>GET /stats/anomalies ⬜<br/>GET /export/tors.csv ⬜"]
-        me["GET·PUT /me/profile ⬜<br/>GET /me/matches ⬜<br/>POST /me/bookmarks/:id ⬜"]
-        adminq["GET /admin/queue ⬜<br/>PATCH /admin/tors/:id ⬜<br/>POST /admin/tors/:id/approve ⬜"]
+        read["GET /tors ✅<br/>GET /tors/:id ✅<br/>GET /tors/:id/document ✅"]
+        stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ⬜"]
+        me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅"]
+        adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅"]
         health["GET /health ✅"]
     end
 
@@ -41,17 +41,17 @@ flowchart LR
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
     classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
-    class intake,health built
-    class read,stats,me,adminq planned
+    class intake,health,read,me,adminq built
+    class stats planned
 ```
 
 | Group | Who calls it | Auth | Slice |
 | :--- | :--- | :--- | :--- |
 | `/intake/*` | admin console, partner scripts | `X-Api-Key`, per-role | 1 ✅ |
-| `/tors/*` | the public site, through the Next server | none (public data) | 3 ⬜ |
-| `/stats/*`, `/export/*` | dashboard and CSV export | none | 3 ⬜ |
-| `/me/*` | a signed-in vendor | session cookie | 4 ⬜ |
-| `/admin/*` | review queue | staff session | 2–4 ⬜ |
+| `/tors/*` | the public site, through the Next server | none (public data); the match-range filter needs a session | 3 ✅ |
+| `/stats/*`, `/export/*` | dashboard and CSV export | none | dashboard ✅ · export ⬜ |
+| `/me/*` | a signed-in vendor | session cookie | 4 ✅ |
+| `/admin/*` | review queue, all TORs, vendor accounts, match quality | admin key, sent by the Next server after its staff gate | 2–4 ✅ |
 
 ---
 
@@ -73,14 +73,16 @@ key needed a header of its own.
 
 | Key | Configured by | Opens |
 | :--- | :--- | :--- |
-| Admin | `ADMIN_API_KEYS` | `POST /intake/upload`, `POST /intake/url` |
+| Admin | `ADMIN_API_KEYS` | `POST /intake/upload`, `POST /intake/url`, every `/admin/*` route |
 | Intake | `INTAKE_API_KEYS` | `POST /intake` |
 
 Keys are compared in **constant time**, and every configured key is checked on every request, so
 neither the value nor which key matched can be recovered by timing the rejection. An empty key list
 opens nothing — a missing configuration fails closed, it does not disable the check.
 
-Slice 4 replaces the admin key with a staff session; the intake key stays, because a partner script
+The browser never holds the admin key. A staff member signs in to the Next server (`requireStaff()`),
+and the Next server calls `/admin/*` with the key. Individual staff accounts in place of the shared
+staff code are TOR-199, not yet built; the intake key stays either way, because a partner script
 has no session.
 
 ### Errors
@@ -364,32 +366,61 @@ The current filter as CSV, with the same PII minimisation as the API.
 
 ---
 
-## 6. Vendor ⬜ (slice 4)
+## 6. Vendor ✅ (slice 4)
 
 | Route | Purpose |
 | :--- | :--- |
-| `GET` · `PUT /api/v1/me/profile` | Skills, budget range, notification preferences (`FR-D-2`) |
-| `GET /api/v1/me/matches` | Scored TORs for this vendor, with the reasons the email shows |
-| `POST` · `DELETE /api/v1/me/bookmarks/:torId` | Private list — never public (`FR-D-3`) |
-| `GET /api/v1/me/export` · `DELETE /api/v1/me` | PDPA data export and account deletion |
+| `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration |
+| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change |
+| `GET /me` · `POST /me/consent/withdraw` | The signed-in account; withdrawing consent |
+| `GET /me/export` · `DELETE /me` | PDPA data export and account deletion |
+| `GET` · `PUT /me/profile` | Categories, budget range, notification preferences (`FR-D-2`) |
+| `PUT /me/profile/extras` | Past projects and certifications, saved on their own so the main form never overwrites them. The body carries both lists whole; a project without an `id` is new and gets one. Saving the section for the first time is what turns `certifications` from *not stated* into a stated answer that may lower a score |
+| `GET /me/matches?page=` | This vendor's open TORs, best first, each with its score and Thai reasons |
+| `GET /me/matches/scores` | Every current score by TOR id, for marking a page of search results |
+| `GET /me/bookmarks` · `GET /me/bookmarks/ids` · `PUT` · `DELETE /me/bookmarks/:torId` | Private list — never public (`FR-D-3`) |
+
+Each route is mounted twice, under `/api/v1` and under `/auth`: the browser reaches its own account
+through the Next handler that owns the cookie, which forwards under `/auth`.
+
+`GET /tors` accepts `minMatch` and `maxMatch` (whole percentages, `MATCH_RANGE` in
+`@tor-radar/shared`) only from a signed-in caller — without a session the request is refused with
+401, never answered with unfiltered results. A TOR is kept when its rounded score (`matchPercent`,
+the same rounding every badge uses) lies in the range.
 
 Session cookie, `HttpOnly` + `Secure` + `SameSite=Lax`. A match score is personal data: it never
 appears in a public response, which is why the signed-out site shows no MATCH %.
 
 ---
 
-## 7. Admin ⬜ (slices 2–4)
+## 7. Admin ✅ (slices 2–4)
 
 | Route | Purpose |
 | :--- | :--- |
-| `GET /api/v1/admin/queue` | Low-confidence records awaiting review (`FR-G-1`) |
-| `GET`, `HEAD` `/api/v1/admin/tors/:id/document` | Streams the original for staff — same contract as the public route (§4), but **without** the restricted check: a reviewer must be able to see what they rejected |
-| `PATCH /api/v1/admin/tors/:id` | Correct extracted fields — the correction is stored, the original document is not touched |
-| `POST /api/v1/admin/tors/:id/approve` | Clears the unverified mark, admits the record to statistics and matching |
-| `POST /api/v1/admin/tors/:id/restrict` | Takedown: restricts access and writes an audit entry (`FR-B-6`) — never deletes |
+| `GET /admin/overview` · `GET /admin/events` | The overview counts (stored, published, failed, stuck, …) and the recent transitions |
+| `GET /admin/queue` | Low-confidence records awaiting review (`FR-G-1`) |
+| `GET /admin/tors?q=&status=&kind=&page=` | Every TOR. `status` is `all`, `public`, `restricted`, `unverified`, `processing`, `stuck` or `failed`. **Stuck** is queued or extracting with no change for `ADMIN_STUCK_AFTER_MS` (default: the job lock × 5) — a job that died rather than one still running |
+| `GET /admin/tors/ids?q=&status=&kind=` | "Select everything matching": `{ ids, total, chunk }` — up to `ADMIN_SELECT_ALL_MAX` ids behind the current filters, and `chunk`, the size the screen must send them in |
+| `POST /admin/tors/bulk` | `{ action, ids, reason? }` with `action` one of `reextract`, `reject`, `restore`; at most `ADMIN_BULK_MAX` ids; `reject` needs a reason. Each TOR goes through the single-TOR path, so each keeps its own history entry. Returns `{ done, failed: [{ id, reason }] }` — one TOR that cannot take the action does not stop the rest |
+| `GET /admin/tors/:id` | One record with everything a reviewer needs |
+| `GET`, `HEAD` `/admin/tors/:id/document` | Streams the original for staff — same contract as the public route (§4), but **without** the restricted check: a reviewer must be able to see what they rejected |
+| `PATCH /admin/tors/:id/fields` · `PATCH /admin/tors/:id/fields/:field/verification` | Correct extracted fields, or confirm one — the correction is stored, the original document is not touched |
+| `POST /admin/tors/:id/approve` | Clears the unverified mark, admits the record to statistics and matching |
+| `POST /admin/tors/:id/reextract` | Queues the stored original for extraction again (a paid Vertex call) |
+| `POST /admin/tors/:id/reject` · `/restore` | Takedown and its reversal: restricts access and writes an audit entry (`FR-B-6`) — never deletes |
+| `GET /admin/accounts` · `GET /admin/accounts/:id` | Vendor accounts; opening one is itself an audit entry |
+| `PUT /admin/accounts/:id/profile` | Staff edit of a vendor profile; the vendor is shown that an admin changed it |
+| `POST /admin/accounts/:id/role` · `/disable` · `/enable` | Role change; disabling revokes every session |
+| `POST /admin/accounts/:id/verification-email` · `/password-reset` | Resend on the vendor's behalf |
+| `POST /admin/accounts/:id/match-email` | Send the vendor their current matches now. Refused for a vendor whose email preset is off or who is not eligible; claims nothing, so the scheduled email still goes |
+| `GET /admin/reports/other-terms` | What vendors typed under อื่นๆ (work and certifications), counted — the taxonomy's missing vocabulary |
+| `GET /admin/accounts/:id/labels` · `PUT /admin/accounts/:id/labels/:torId` | The labelling worksheet for one vendor (what email would send, and a sample it would not), and one judgement: `relevant`, `not-relevant` or `unsure` |
+| `GET /admin/match-quality` | Precision, recall and the unsure rate over every label (matching design §7.8) |
 
-Every one of these writes a transition to `tor_events`, so who changed what and when survives
-(`FR-E-5`).
+Every route is under `/api/v1`.
+
+Every change to a TOR writes a transition to `tor_events`, and every read or change of a vendor
+account writes to `admin_audit`, so who did what and when survives (`FR-E-5`, `NFR-S2`).
 
 ---
 

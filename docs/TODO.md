@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-10-06_
+_last updated: 2026-11-03_
 
 ---
 
@@ -322,14 +322,53 @@ _Triage: [feedback-2026-10-06.md](feedback-2026-10-06.md). Decisions in [PLAN.md
 - [x] **TOR-153 — one save action.** The star is gone; bookmark stays
 - [x] **Dashboard rebuilt around the states** — chips that filter, every breakdown row
       a filter, unknown values named and sorted last, one source for every figure
-- [ ] **TOR-154 — signed-in dashboard** (on hand, closing soon, matched to me)
+- [ ] **TOR-154 — signed-in dashboard** (on hand, closing soon, matched to me) — the "matched
+      to me" panel is built (§2h); "on hand" and "closing soon" are not
 - [ ] **TOR-155 — search ranked by relevance to the vendor.** The closing-soonest half
       already works; the relevance half needs matching
-- [ ] **TOR-156 — no ThaiD, no national ID.** A constraint on registration, which does
-      not exist yet
-- [ ] **Carried:** removing the star left nothing recording "I have done work like
-      this", which FR-D-2 asks for and matching would use — PLAN.md Q5 reopened
+- [x] **TOR-156 — no ThaiD, no national ID.** Registration exists and collects neither;
+      `AccountDocument` has no field for either
+- [x] **Carried:** removing the star left nothing recording "I have done work like
+      this" — past projects on the profile, read by matching (§2h, matching design §8.1)
 - [ ] **Carried:** "closing soon" as its own reading mode, distinct from search
+
+## 2h. Sprint 4 — profile, matching and admin — BUILT, PR #22 (2026-11-03)
+
+_Branch `fix/dashboard-agency-bars`; CI green through `41780c8`. Design:
+[matching design §8](superpowers/specs/2026-10-06-profile-and-matching-design.md) (revision 3).
+Routes: [API.md §6–7](API.md)._
+
+- [x] **Search match filter** — a two-handle range (`minMatch`–`maxMatch`) on the shared
+      `BudgetRange` slider, signed-in only; one rounding (`matchPercent`) for badges and filter
+  - [x] candidate reads projected and run in parallel; classification skipped when counts agree
+        (match-filtered search had hit the 5 s web timeout)
+- [x] **Dashboard "ตรงกับคุณ" panel** — merged from both PRs: score and days left, title, agency,
+      the blue work reason, budget; long titles and prices wrap
+- [x] **Slider fixes** — handles stacked at the right end can be grabbed (`minOnTop`), a track
+      press moves the nearer handle, stacked budget boxes, single-handle mode for the email setting
+- [x] **Profile: past projects and certifications** (`PUT /me/profile/extras`)
+  - [x] past projects lift similar TORs (experience signal)
+  - [x] กรมบัญชีกลาง branches → ว642 penalty on construction TORs ≥ ฿5M
+  - [x] ISO / มอก. / SME / licences / อื่นๆ → qualification signal, scored with a reason, never a
+        filter
+  - [x] upload-and-extract shown as "เร็วๆ นี้"
+  - [ ] **AI reading of past-work certificates** — not built
+- [x] **Admin**
+  - [x] vendor told when an admin edited their profile
+  - [x] "send matches now" from a vendor's page, audited
+  - [x] TOR ทั้งหมด: checkboxes, bulk re-extract / reject / restore, 100 per request
+  - [x] select every TOR matching the filters across pages (chunked, with progress)
+  - [x] stuck extractions shown and filterable; overview counts are links
+  - [x] report of what vendors type under อื่นๆ
+  - [x] match-quality benchmark: labelling worksheet, precision / recall / unsure rate
+  - [ ] **TOR-199 — individual admin accounts** instead of the shared staff code — awaiting go-ahead
+- [x] **CI** — packages built in dependency order on install; admin tests send `x-api-key`
+- [ ] **Clicked through live behind the staff login** — covered by tests only; opening a vendor
+      account writes an audit entry to the shared Atlas, so a person does this
+- [ ] **Label enough pairs to read the benchmark**, then decide on `NOTIFY_DISPATCH_ENABLED`
+- [ ] **Re-extract the 178 failed TORs** — one paid Vertex call each; a cost decision
+- [ ] **Google sign-in** — designed, not built
+- [ ] **Rotate the GCS key that was pasted into chat** — security, not optional
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

@@ -174,6 +174,23 @@ flowchart LR
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` ⬜ | Extraction worker and the orphan reconciler | Same wiring rules as the API |
 
+The feature modules, as of Sprint 4:
+
+| Module | Owns |
+| :--- | :--- |
+| `intake/` | The three intake routes, dedupe, immutable storage, enqueue |
+| `extraction/` | OCR and field extraction, confidence grading |
+| `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter |
+| `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
+| `accounts/` | Registration, sign-in, sessions, password reset, PDPA export and deletion |
+| `profile/` | The vendor profile, and its separately saved past projects and certifications |
+| `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
+| `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
+| `bookmarks/` | A vendor's private saved list |
+| `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |
+| `match-quality/` | The labelled benchmark that gates match emails (matching design §7.8) |
+| `history/` | `tor_events`, the append-only transition log |
+
 ### `apps/web/src/`
 
 Imports flow one direction and never upward:
@@ -314,8 +331,13 @@ erDiagram
     TORS ||--o{ INGEST_JOBS : "one job per extraction attempt"
     TORS ||--o{ SOURCE_REFS : "every route that submitted it"
     SOURCES ||--o{ TORS : "collected from (slice 2+)"
-    VENDORS ||--o{ MATCHES : "scored against"
-    TORS ||--o{ MATCHES : "scored for"
+    ACCOUNTS ||--o| VENDOR_PROFILES : "states what it does"
+    ACCOUNTS ||--o{ BOOKMARKS : "saves"
+    ACCOUNTS ||--o{ NOTIFICATIONS : "one row per email sent or dry-run"
+    ACCOUNTS ||--o{ MATCH_LABELS : "judged for, by staff"
+    ACCOUNTS ||--o{ ADMIN_AUDIT : "every staff read or change"
+    TORS ||--o| TOR_CLASSIFICATIONS : "classified into the taxonomy"
+    TORS ||--o{ MATCH_LABELS : "judged against a vendor"
     TORS ||--o| TOR_PEER_STATS : "judged against, by cohort key"
     TORS ||--o{ TOR_ROLLUPS : "counted into"
 
@@ -393,20 +415,60 @@ erDiagram
         date lastSuccessAt "FR-A-4 shows this"
         string health
     }
-    VENDORS {
+    ACCOUNTS {
         objectId _id PK
         string email UK
-        array skills "taxonomy tags"
-        object budgetRange "min, max · scored by FR-C-1"
+        string role "vendor | admin"
+        object consent "notice version and hash, agreedAt, withdrawnAt"
+        date disabledAt "set by staff; revokes every session"
     }
-    MATCHES {
-        objectId _id PK
-        objectId torId FK
-        objectId vendorId FK
-        int score "match %"
-        date notifiedAt
+    VENDOR_PROFILES {
+        string accountId UK
+        array categories "taxonomy node ids"
+        array otherCategories "free text the taxonomy lacks"
+        object budget "minThb, maxThb · a preference, scored not filtered"
+        object notify "preset, minMatch, leadDays"
+        array pastProjects "title, year in BE, valueThb · capped by config"
+        object certifications "cgd branches, tags, other · absent = not stated"
+        string updatedBy "vendor | admin · shown to the vendor"
+    }
+    TOR_CLASSIFICATIONS {
+        string torId UK
+        object classification "coarse, leaves, nodes, evidence, outcome"
+        string mapperVersion "a stale version is reclassified on read"
+    }
+    MATCH_LABELS {
+        string accountId PK
+        string torId PK
+        string label "relevant | not-relevant | unsure"
+        number score "frozen at labelling time"
+        bool matched "met the vendor's email threshold then"
+        string labelledBy
+    }
+    NOTIFICATIONS {
+        string accountId PK
+        string torId PK
+        string reason PK "match | deadline-reminder | daily-digest"
+        bool dryRun PK "a dry run never suppresses a real send"
+        date sentAt
+    }
+    BOOKMARKS {
+        string accountId PK
+        string torId PK
+    }
+    ADMIN_AUDIT {
+        string accountId FK
+        string action "viewed, profile-edited, match-email-sent, ..."
+        string actor
+        date at
     }
 ```
+
+**Match scores are not stored.** A score is a function of the profile, the TOR and its
+classification, all three of which change; it is computed when read
+(`matching.scores.ts`) so a vendor never sees a score made from an old profile. What *is* stored is
+what must not move afterwards: a sent email (`notifications`) and a staff judgement with the score
+it was made against (`match_labels`).
 
 Three shapes are load-bearing:
 
@@ -453,6 +515,11 @@ Three shapes are load-bearing:
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
 | `tor_peer_stats.category + month`, unique | One bounds document per peer group, which is what makes a recompute idempotent |
 | `tor_peer_stats.dirty + dirtyAt`, partial | The statistics worker's claim query |
+| `vendor_profiles.accountId`, unique | One profile per account |
+| `tor_classifications.torId`, unique · `classification.leaves.id + updatedAt` · `classification.coarse + updatedAt` | One classification per TOR; the two candidate reads matching runs in parallel (precise leaf, broad coarse group) |
+| `match_labels.accountId + torId`, unique | A re-judgement overwrites, so a pair counts once in the figures |
+| `notifications.accountId + torId + reason + dryRun`, unique | An email is sent at most once per reason, even with two workers |
+| `admin_audit.accountId + at` | One vendor's audit trail, newest first |
 | `tor_rollups.agency + month` · `category + month` | The dashboard's two filter shapes. A single `agency + category + month` compound cannot serve "one agency across months with no category", because category sits between the two fields used |
 
 ---
