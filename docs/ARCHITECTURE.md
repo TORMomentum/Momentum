@@ -75,15 +75,15 @@ flowchart TB
 
     subgraph compose["Docker Compose network · project tor-radar"]
         web["<b>web</b> ✅<br/>Next.js 16 App Router<br/>:3000"]
-        api["<b>api</b> 🔨<br/>Express 5 REST<br/>:4000 · /health live,<br/>intake router awaiting wiring"]
+        api["<b>api</b> ✅<br/>Express 5 REST<br/>:4000"]
         worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
-        stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells"]
+        stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells ·<br/>no Compose service yet"]
         mongo[("<b>mongo</b> ✅<br/>MongoDB 7<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
 
-    vertex["☁️ Vertex AI ⬜ slice 2"]
-    smtp["✉️ SMTP ⬜ slice 4"]
+    vertex["☁️ Vertex AI ✅<br/>Gemini"]
+    smtp["✉️ SMTP ✅<br/>dispatch off until<br/>the match benchmark"]
     realgcs[("☁️ Google Cloud Storage<br/>deployment only")]
 
     browser -->|"HTTPS, incl. streamed<br/>document bytes"| web
@@ -100,11 +100,9 @@ flowchart TB
     gcs -.->|"same client,<br/>real credentials"| realgcs
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
-    classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
     classDef store fill:#f1f4f9,stroke:#12233c,color:#12233c
     class web,api,worker,stats built
-    class vertex,smtp planned
-    class mongo,gcs,realgcs store
+    class mongo,gcs,realgcs,vertex,smtp store
 ```
 
 **Why the statistics worker is separate from the extraction worker:** a stalled OCR call must not
@@ -169,10 +167,10 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `Queue` interfaces | `Storage` exposes `putIfAbsent`, never `put` |
-| `adapters/` | GCS storage, Mongo-backed queue | Imported by `app.ts` only |
+| `ports/` | `Storage`, `Queue`, `Ai`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put` |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI, SMTP and recording mailers | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
-| `workers/` ⬜ | Extraction worker and the orphan reconciler | Same wiring rules as the API |
+| `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
 
 The feature modules, as of Sprint 4:
 
@@ -224,7 +222,7 @@ feature it belongs to has not been given its folder yet.
 
 ## 5. How a document travels
 
-### 5.1 Intake 🔨
+### 5.1 Intake ✅
 
 Three routes, one service. Nothing is accepted twice, and nothing is ever overwritten.
 
@@ -259,7 +257,7 @@ sequenceDiagram
 **The order is fixed:** store bytes → insert record → enqueue. A crash between steps leaves an
 orphaned object in storage, never a job pointing at a record that does not exist.
 
-### 5.2 Extraction ⬜ slice 1 task 11 · AI in slice 2
+### 5.2 Extraction ✅
 
 ```mermaid
 sequenceDiagram
@@ -267,7 +265,7 @@ sequenceDiagram
     participant W as extract.worker
     participant Q as ingest_jobs
     participant St as GCS
-    participant V as Vertex AI ⬜
+    participant V as Vertex AI
     participant T as tors
 
     loop every poll interval
@@ -534,7 +532,7 @@ not do — because those are the ones a well-meaning change quietly breaks.
 | No in-document array grows without bound | A document is read and rewritten whole; an array with no ceiling makes every operation on that record slower forever | `$push` + `$slice`, with the full trail in `tor_events` |
 | Originals are never altered or deleted | FR-A-2, NFR-S3 — a takedown restricts access and writes an audit entry, it does not touch the file | `Storage` port exposes `putIfAbsent`, never `put` |
 | No filesystem path is ever shared between services | Separate containers do not share a filesystem; the pointer travels, the bytes do not | Services exchange storage keys only |
-| Signed URLs are never persisted | They expire, so a stored one becomes a broken link at an unpredictable date | Generated on demand from the key |
+| No signed URLs | Google cannot attach `nosniff` to one, and a signed link keeps working after a takedown | Documents are streamed through the API, which checks takedown status on every request |
 | `localhost` appears in no source file | The literal that is correct in development is exactly what breaks the shipped system | `core/config.ts` + `${VAR:-default}` in Compose |
 | Only `*.repository.ts` touches the database | One place to change when the schema moves | Code review; the module layout makes violations obvious |
 | `modules/` imports `ports/`, never `adapters/` | Tests can supply fakes; the wiring lives in one file | `app.ts` is the only place adapters are named |
@@ -558,13 +556,13 @@ Decided; not substituted without a design change.
 | API | Express, REST | 5 | Small, well-understood surface; no GraphQL need at this size |
 | Validation | Zod | 4 | One schema shared by both apps via `packages/shared` |
 | Database | MongoDB (Atlas in deployment) | 7 | Extracted fields are irregular and evolve per slice; also serves as the job queue |
-| Search | Atlas Search, `lucene.thai` analyzer | ⬜ slice 3 | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
+| Search | Atlas Search, `lucene.thai` analyzer | ⬜ — keyword search is an interim substring match until then | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
 | Object storage | Google Cloud Storage | 8 (client) | Immutable originals behind a `Storage` port; `fake-gcs-server` in Compose and CI |
-| AI | Vertex AI — Document AI OCR, Gemini | ⬜ slice 2 | Thai OCR quality; confidence values per field |
-| Notifications | SMTP email | ⬜ slice 4 | The only channel in scope |
+| AI | Vertex AI — Gemini (Document AI is in the stack decision but not yet called) | — | Thai OCR quality; confidence values per field |
+| Notifications | SMTP email behind a `Mailer` port; Mailpit in Compose | — | The only channel in scope. Dispatch is off (`NOTIFY_DISPATCH_ENABLED`) until the match benchmark exists |
 | Runtime | Node | ≥ 22 | Native `fetch`, `process.loadEnvFile` |
 | Tests | Vitest, Supertest | 4 · 7 | Same runner across workspaces |
-| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, test, build, dependency audit on every PR |
+| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. The dependency audit is not in CI yet (slice 1 task 15) |
 
 **Why Mongo is also the queue (D5):** the alternative is a second infrastructure service for a
 workload of a few thousand documents. An atomic `findOneAndUpdate` claim with a lock expiry gives
@@ -581,7 +579,7 @@ flowchart TB
         direction TB
         w["tor-radar-web<br/>:3000"]
         a["tor-radar-api<br/>:4000 · /health"]
-        k["tor-radar-worker ⬜"]
+        k["tor-radar-worker"]
         m["tor-radar-mongo<br/>healthcheck"]
         s["tor-radar-gcs<br/>fake-gcs-server · ${GCS_EMULATOR_PORT}"]
         mv[("tor-radar-mongo-data")]
@@ -598,9 +596,7 @@ flowchart TB
 
     classDef svc fill:#e8f0fe,stroke:#1d63d8,color:#12233c
     classDef vol fill:#f1f4f9,stroke:#12233c,color:#12233c,stroke-dasharray:3 3
-    classDef planned fill:#fff,stroke:#8896ad,color:#5b6879,stroke-dasharray:4 3
-    class w,a,m,s svc
-    class k planned
+    class w,a,m,s,k svc
     class mv,sv vol
 ```
 
@@ -612,8 +608,9 @@ flowchart TB
   directory it ran in, and the logs differ per machine.
 - **The GCS emulator's host port is parameterised** — `${GCS_EMULATOR_PORT:-4443}` — because a
   fixed port collides with another project on the same machine more often than not.
-- ⬜ The Compose file still has the pre-workspace shape: no `worker` service, no health conditions,
-  generic names. That is slice 1 task 15.
+- ⬜ The bullets above are the target. The Compose file has the `worker` service but still no
+  health conditions, generic names, and no service for the statistics or notification worker
+  (both run by `npm run stats-worker` / `notify-worker`). That is slice 1 task 15.
 
 ---
 
@@ -624,10 +621,10 @@ slice reads the records it writes.
 
 | Slice | Features | Delivers | State |
 | :--- | :--- | :--- | :--- |
-| **1** | F1 | Config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens | 🔨 |
-| 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue | ⬜ |
-| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export | ⬜ |
-| 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown | ⬜ |
+| **1** | F1 | Config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens | ✅ except Compose hardening and the CI audit (task 15) | 🔨 |
+| 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue | ✅ |
+| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export | ✅ except CSV export (F11) and Atlas Search |
+| 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown | ✅ except Google sign-in; match emails off until the benchmark |
 
 Task-level progress lives in [TODO.md](TODO.md) and is not repeated here — this document describes
 the shape, not the schedule.
