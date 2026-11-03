@@ -82,6 +82,44 @@ Start with whichever question you have:
 Working in this repo with an AI agent: [CLAUDE.md](CLAUDE.md) (Claude Code) or
 [AGENTS.md](AGENTS.md) (any other agent).
 
+### How the documents connect
+
+Each document is produced from the one before it. Several are updated in the same pull request,
+and a change late in the flow can send an edit back up it.
+
+```mermaid
+flowchart TD
+    REQ(["Requirements gathered from stakeholders"]) --> SRS["SRS.md<br/>what the system must do"]
+    SRS --> PROJ["PROJECT.md<br/>why, who, cost, build order"]
+    SRS --> SPEC["superpowers/specs/<br/>design of one slice"]
+    SPEC --> ARCH["ARCHITECTURE.md<br/>structure, data model, invariants"]
+    SPEC --> API["API.md<br/>every route"]
+    SPEC --> PLANS["superpowers/plans/<br/>the slice as tasks"]
+    PLANS --> TODO["TODO.md<br/>live status, box by box"]
+    TODO --> TEST["TESTING.md + test-report.md<br/>test cases and latest results"]
+    TODO --> LOG["work-log.md<br/>finished work, as verified"]
+    PLAN["PLAN.md<br/>decisions, open questions,<br/>known gaps, settled trail"] <--> TODO
+    PLAN -. "a decision changes a requirement" .-> SRS
+    PLAN -. "a decision changes a design" .-> SPEC
+    RULES["CLAUDE.md + AGENTS.md<br/>rules, stack, structure, security, commands"] -. "read before any work" .-> SPEC
+```
+
+| Document | Written when | Read by | Changes when |
+| :--- | :--- | :--- | :--- |
+| SRS.md | Requirements are agreed with stakeholders | Everyone; every spec cites it | A requirement's meaning or scope changes (extended, never contradicted) |
+| PROJECT.md | After the SRS | The team, assessors | Stakeholders, cost or build order change |
+| superpowers/specs/ | Before each slice is built (brainstorming) | Implementers, reviewers | Behaviour changes, as a dated revision section |
+| ARCHITECTURE.md · API.md | With the first spec, then with every structural change | Anyone touching code | A route, collection, index, module or worker changes (CI checks) |
+| superpowers/plans/ | After a slice's spec is approved (writing-plans) | The agent or person building the slice | Rarely; finished plans stay as the trail |
+| PLAN.md | Throughout the build | The team, to decide what is next | A pivot is decided, a question opens or closes, a gap is found |
+| TODO.md | Throughout the build | Agents and the team, to stay on track | Any task starts, finishes or is discovered |
+| TESTING.md · test-report.md | With each tested feature | Reviewers, the demo | A test is added or removed; `npm run test:report` regenerates the report |
+| work-log.md | When delegated work is finished and verified | Anyone auditing what was built | Each verified task is archived from its agent log |
+| CLAUDE.md · AGENTS.md | At project start | Every agent, before every session | Rules, stack or structure change (both files together) |
+
+Every slice runs the same loop: spec, then plan, then build, with TODO.md and PLAN.md updated as it
+goes and the finished work recorded in work-log.md.
+
 ---
 
 ## Status
