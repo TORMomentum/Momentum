@@ -13,6 +13,7 @@
     "build": "npm run build:packages && npm run build -w apps/api --if-present && npm run build -w apps/web --if-present",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:report": "node tools/test_report.mjs",
     "check:vertex": "node tools/check_vertex.mjs",
     "spike:extract": "node tools/extract_spike.mjs",
     "score:extract": "node tools/score_extraction.mjs",
