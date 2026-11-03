@@ -36,7 +36,7 @@ _last updated: 2026-11-03_
 - [x] **Agent-facing docs** — PROJECT.md, CLAUDE.md, AGENTS.md realigned to v2.0
 - [x] **Implementation plan** — 16 tasks, TDD steps, live verification
 
-## 2. Slice 1 — foundation and intake — IN PROGRESS (11/16)
+## 2. Slice 1 — foundation and intake — IN PROGRESS (14/16)
 
 _Each box below expands into its own sub-list when it is entered. The plan file holds the steps._
 
@@ -149,10 +149,15 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
   - [x] per-file isolated test DBs (`test/mongo.ts`) so `tors`-touching integration files stop
         racing each other under vitest parallelism
   - [x] 89/89 at the root, lint and tsc clean; worker verified live against Mongo
-- [ ] Task 12 — TOR read API, signed links, redaction
-- [ ] Task 13 — design tokens and the admin upload screen
-- [ ] Task 14 — workspace-aware Dockerfiles
-- [ ] Task 15 — Compose services, health gates, CI audit
+- [x] Task 12 — TOR read API and redaction — `modules/tors/` (`4344f29`), `lib/redact.ts`
+      (`a317daf`). Signed links were replaced by streaming through the API (§2e)
+- [x] Task 13 — design tokens (`shared/styles/tokens.css`) and the admin upload screen (`28eac53`, #8)
+- [x] Task 14 — workspace-aware Dockerfiles — both copy the whole `packages/` tree (checked 2026-11-03)
+- [ ] Task 15 — Compose services, health gates, CI audit (found open in the 2026-11-03 docs audit)
+  - [ ] `healthcheck` on mongo and gcs, and `depends_on: condition: service_healthy` for api and worker
+  - [ ] Compose services for `stats-worker` and `notify-worker` — today both run only by hand
+  - [ ] explicit project and container names (ARCHITECTURE §9 describes them as the target)
+  - [ ] `npm audit` step in CI — CLAUDE.md's security baseline names it; CI does not run it
 - [ ] Task 16 — live verification and documentation
 
 ## 2b. Web — mockup port (outside the slice-1 plan, done on request)
