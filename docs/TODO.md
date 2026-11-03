@@ -363,6 +363,11 @@ Routes: [API.md §6–7](API.md)._
   - [x] match-quality benchmark: labelling worksheet, precision / recall / unsure rate
   - [ ] **TOR-199 — individual admin accounts** instead of the shared staff code — awaiting go-ahead
 - [x] **CI** — packages built in dependency order on install; admin tests send `x-api-key`
+- [x] **Docs kept in step with code** — rule in CLAUDE.md and AGENTS.md ("Docs stay current"),
+      enforced in CI by `tools/check_docs_drift.mjs` (label `docs-not-needed` for an exception);
+      Mermaid parse added to CI; [TESTING.md](TESTING.md) maps features to tests and manual cases
+  - [ ] **Run the TESTING.md §3 manual cases** before the demo and record the results
+  - [ ] **Source health per adapter (F12)** — not built; TESTING.md says so
 - [ ] **Clicked through live behind the staff login** — covered by tests only; opening a vendor
       account writes an audit entry to the shared Atlas, so a person does this
 - [ ] **Label enough pairs to read the benchmark**, then decide on `NOTIFY_DISPATCH_ENABLED`

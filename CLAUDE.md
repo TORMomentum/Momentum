@@ -120,6 +120,37 @@ multipart caps.
 - Run tests and builds inside containers, not on the host. Never commit secrets.
 - Definition of Done: reviewed, tests pass, runs in shared Docker Compose, demoable.
 
+## Docs stay current — part of Done, not a follow-up
+
+Several agents and people work on this repo, and each new session reads only the docs. A doc
+that lags the code misleads the next one, so a change is not done until its docs are updated in the
+**same pull request** — before a feature is reported finished, before a milestone summary, and
+before a session ends. Sprint 4 shipped nine feature commits with no doc change; this rule exists
+because of that.
+
+| When the change touches | Update |
+| :---- | :---- |
+| A route, its body, its query parameters, or its auth | [docs/API.md](docs/API.md) |
+| A collection, field, index, module, or worker | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — ERD, index table, module table |
+| Behaviour a design spec describes (a rule, a score, a threshold's meaning) | That spec in `docs/superpowers/specs/` — a dated revision section; superseded text gets a banner, never a silent edit |
+| A requirement's meaning or scope | [docs/SRS.md](docs/SRS.md) — extend it, never contradict it in code |
+| A test added, removed, or a requirement newly covered | [docs/TESTING.md](docs/TESTING.md) |
+| A config value, env var, or tunable | `.env.example` and the spec or doc that explains it |
+| Anything finished, started, or found open | [docs/TODO.md](docs/TODO.md) — the only place live status lives; bump its "last updated" date |
+| These rules, the stack, or the structure | This file **and** [AGENTS.md](AGENTS.md), together |
+
+**At every milestone** (a slice, a sprint, a PR ready for review), run this before saying it is done:
+
+1. `node tools/check_docs_drift.mjs` — CI runs it on every pull request and fails on a miss; it
+   catches the mechanical rows, so still read `git diff main --stat` for spec and SRS changes.
+2. Route tables in API.md are checked against the code (grep the routers), not written from memory.
+3. Every Mermaid block in a changed doc parses — GitHub renders a broken one as an error, silently.
+4. TODO.md ticks only what was verified, and lists what is still open.
+5. Doc updates go in their own `docs:` commit, separate from the feature commits.
+
+**At the start of a session**, compare TODO.md's "last updated" date and API.md's route tables with
+`git log` since that date. If code landed without its docs, fix the docs first and say so.
+
 ## Build order
 
 Four slices, each with its own design spec, plan, and build cycle. Slice 1 comes first because every
@@ -147,6 +178,8 @@ npm run dev                       # web + api dev servers (no containers)
 npm test                          # vitest
 npm run lint                      # eslint
 npm run build                     # build all workspaces
+node tools/check_docs_drift.mjs   # fails when code changed without its doc (also in CI)
+node tools/check_mermaid.mjs      # every Mermaid block under docs/ parses (also in CI)
 python tools/jira_seed.py         # (re)seed Jira — needs JIRA_EMAIL + JIRA_TOKEN, never hardcoded
 ```
 
