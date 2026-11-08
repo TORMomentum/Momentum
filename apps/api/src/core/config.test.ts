@@ -187,4 +187,12 @@ describe("loadConfig", () => {
     });
     expect(config.gcs.credentialsPath).toBe("/secrets/storage.json");
   });
+
+  it("keeps OCR and embeddings off, and refuses OCR without a processor", () => {
+    const config = loadConfig(base);
+    expect(config.ocr.enabled).toBe(false);
+    expect(config.embeddings.enabled).toBe(false);
+    expect(() => loadConfig({ ...base, OCR_ENABLED: "true" })).toThrow(/DOCAI_PROCESSOR_ID/);
+    expect(loadConfig({ ...base, OCR_ENABLED: "true", DOCAI_PROCESSOR_ID: "abc" }).ocr.processorId).toBe("abc");
+  });
 });
