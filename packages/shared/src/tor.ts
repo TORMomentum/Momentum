@@ -101,6 +101,8 @@ export interface TorFields {
   torStatus: ExtractedField<"announced" | "closed" | "awarded" | "cancelled">;
   procurementMethod?: ExtractedField;
   referenceNo?: ExtractedField;
+  /** Where the work is done, as the document states it (TOR-313). Feeds area matching once it names a province. */
+  workLocation?: ExtractedField;
 }
 
 /** Why a record entered the review queue (FR-G-1), as stable machine keys. */
