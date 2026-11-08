@@ -39,6 +39,7 @@ export interface ExtractionResult {
   reviewReasons: string[];
   hasTextLayer: boolean;
   provenance: Provenance;
+  embedding?: { model: string; vector: number[] };
   cohort?: CohortKey;
   cohortDateSource?: "announced" | "intake";
 }
@@ -140,6 +141,7 @@ export class ExtractionRepository {
           hasTextLayer: result.hasTextLayer,
           provenance: result.provenance,
           schemaVersion: TOR_SCHEMA_VERSION,
+          ...(result.embedding ? { embedding: result.embedding } : {}),
           ...(result.cohort ? { cohort: result.cohort, cohortDateSource: result.cohortDateSource } : {}),
           updatedAt: new Date(),
         },

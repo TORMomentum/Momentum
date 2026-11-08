@@ -1,5 +1,6 @@
 import type { Provenance } from "@tor-radar/shared";
 import type { Ai } from "../../ports/ai.port.js";
+import type { Embedder } from "../../ports/embeddings.port.js";
 import type { Ocr } from "../../ports/ocr.port.js";
 import type { Storage } from "../../ports/storage.port.js";
 import { anchorFields } from "../../lib/anchor.js";
@@ -23,11 +24,16 @@ export interface ExtractionConfig {
   maxInputBytes?: number;
 }
 
+/** The part of a TOR that says what the work is; the rest of a long scope adds cost, not meaning. */
+const EMBED_MAX_CHARS = 2_000;
+
 export interface ExtractionServiceDeps {
   storage: Storage;
   ai: Ai;
   /** Absent when OCR is off: fields are then saved without anchors (design 2026-11-08). */
   ocr?: Ocr;
+  /** Absent when embeddings are off: the record is then saved without a vector. */
+  embedder?: Embedder;
   repo: ExtractionRepository;
   config: ExtractionConfig;
 }
@@ -121,6 +127,18 @@ export class ExtractionService {
       }
     }
 
+    // The TOR's meaning, so a vendor's free-text work type can match it by sense.
+    // Like OCR, a failure costs the vector and nothing else.
+    let embedding: { model: string; vector: number[] } | undefined;
+    if (this.deps.embedder) {
+      const text = [fields.title.raw, fields.scopeSummary.raw].filter(Boolean).join("\n").slice(0, EMBED_MAX_CHARS);
+      try {
+        if (text) embedding = { model: this.deps.embedder.model, vector: (await this.deps.embedder.embed([text]))[0]! };
+      } catch (error) {
+        console.warn(JSON.stringify({ event: "embedding_failed", where: "extraction", torId, reason: error instanceof Error ? error.message : "unknown" }));
+      }
+    }
+
     const provenance: Provenance = {
       ocrModel,
       extractModel: this.deps.config.model,
@@ -155,6 +173,7 @@ export class ExtractionService {
       reviewReasons,
       hasTextLayer: textLayer,
       provenance,
+      ...(embedding ? { embedding } : {}),
       ...(cohort ? { cohort: cohort.cohort, cohortDateSource: cohort.cohortDateSource } : {}),
     });
 

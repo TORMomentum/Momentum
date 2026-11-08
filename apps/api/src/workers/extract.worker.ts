@@ -6,6 +6,7 @@ import { connect, ensureIndexes } from "../core/db.js";
 import { MongoQueue } from "../adapters/mongo.queue.js";
 import { createStorage } from "../adapters/storage.factory.js";
 import { DocumentAiOcr } from "../adapters/documentai.ocr.js";
+import { createEmbedder } from "../adapters/embedder.factory.js";
 import { VertexAi } from "../adapters/vertex.ai.js";
 import type { Queue } from "../ports/queue.port.js";
 import { HistoryRepository } from "../modules/history/history.repository.js";
@@ -37,9 +38,11 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
     console.warn(JSON.stringify({ event: "extraction_disabled", reason: "no Vertex credential; using pass-through" }));
     return passThroughHandler;
   }
+  const embedder = createEmbedder(config);
   const service = new ExtractionService({
     storage: createStorage(config, "worker"),
     ai: new VertexAi(config.vertex),
+    ...(embedder ? { embedder } : {}),
     // processorId is guaranteed by config validation whenever OCR is enabled.
     ...(config.ocr.enabled && config.ocr.processorId
       ? {
