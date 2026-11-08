@@ -132,6 +132,8 @@ const schema = z.object({
   // Embeddings for a vendor's free-text work types (TOR-202). Off by default: it spends model calls.
   EMBEDDINGS_ENABLED: flag(false),
   EMBEDDING_MODEL: z.string().min(1).default("text-multilingual-embedding-002"),
+  /** Embedding models are regional; the Gemini default of "global" does not serve them. */
+  EMBEDDING_LOCATION: z.string().min(1).default("us-central1"),
   /** Cosine similarity at or above which a free-text work type counts as the same kind of work. Uncalibrated. */
   EMBEDDING_MIN_SIMILARITY: z.coerce.number().min(0).max(1).default(0.75),
 
@@ -321,7 +323,7 @@ export interface Config {
   };
   extraction: { maxAnnexes: number; maxInputBytes: number };
   ocr: { enabled: boolean; location: string; processorId?: string; maxPages: number; timeoutMs: number };
-  embeddings: { enabled: boolean; model: string; minSimilarity: number };
+  embeddings: { enabled: boolean; model: string; location: string; minSimilarity: number };
   tLow: number;
   tHigh: number;
   thresholdsVersion: string;
@@ -454,6 +456,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     embeddings: {
       enabled: parsed.EMBEDDINGS_ENABLED,
       model: parsed.EMBEDDING_MODEL,
+      location: parsed.EMBEDDING_LOCATION,
       minSimilarity: parsed.EMBEDDING_MIN_SIMILARITY,
     },
     tLow: parsed.T_LOW,
