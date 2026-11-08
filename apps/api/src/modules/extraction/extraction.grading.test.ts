@@ -39,6 +39,21 @@ const ctx = (over: Partial<GradingContext> = {}): GradingContext => ({
   ...over,
 });
 
+describe("grade — work location", () => {
+  it("verifies a confident location only when it names a province, and carries nothing when the model gave none", () => {
+    const named = grade(goodDigital({ workLocation: rf("ต.ในเมือง จ.ขอนแก่น", 0.99) }), ctx()).fields.workLocation;
+    expect(named?.verified).toBe(true);
+    const unnamed = grade(goodDigital({ workLocation: rf("อาคารสำนักงาน ชั้น 3", 0.99) }), ctx()).fields.workLocation;
+    expect(unnamed?.verified).toBe(false);
+    expect(grade(goodDigital(), ctx()).fields.workLocation).toBeUndefined();
+  });
+
+  it("never lets a location alone send a record to review", () => {
+    const result = grade(goodDigital({ workLocation: rf<string>(null, 0.1) }), ctx());
+    expect(result.confidenceLevel).toBe("high");
+  });
+});
+
 describe("grade — category", () => {
   it("verifies a confident category only when it is on the closed list", () => {
     expect(grade(goodDigital({ category: rf("งานก่อสร้าง-ชลประทานและระบบน้ำ", 0.99) }), ctx()).fields.category.verified).toBe(true);
