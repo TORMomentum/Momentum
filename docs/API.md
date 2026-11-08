@@ -404,6 +404,7 @@ appears in a public response, which is why the signed-out site shows no MATCH %.
 | `POST /admin/tors/bulk` | `{ action, ids, reason? }` with `action` one of `reextract`, `reject`, `restore`; at most `ADMIN_BULK_MAX` ids; `reject` needs a reason. Each TOR goes through the single-TOR path, so each keeps its own history entry. Returns `{ done, failed: [{ id, reason }] }` — one TOR that cannot take the action does not stop the rest |
 | `GET /admin/tors/:id` | One record with everything a reviewer needs |
 | `GET`, `HEAD` `/admin/tors/:id/document` | Streams the original for staff — same contract as the public route (§4), but **without** the restricted check: a reviewer must be able to see what they rejected |
+| `GET /admin/tors/:id/pages/:page` | The stored image of one page of the original (`image/jpeg`, `nosniff`, `no-store`) that a field's boxes are drawn on. `page` is a whole number from 1; `400` otherwise, `404` when no image was stored for it. Present only for records extracted with `OCR_ENABLED`. Each field in `GET /admin/tors/:id` may carry `anchor: { page, boxes: [[x0,y0,x1,y1],…] }`, fractions of the page |
 | `PATCH /admin/tors/:id/fields` · `PATCH /admin/tors/:id/fields/:field/verification` | Correct extracted fields, or confirm one — the correction is stored, the original document is not touched |
 | `POST /admin/tors/:id/approve` | Clears the unverified mark, admits the record to statistics and matching |
 | `POST /admin/tors/:id/reextract` | Queues the stored original for extraction again (a paid Vertex call) |

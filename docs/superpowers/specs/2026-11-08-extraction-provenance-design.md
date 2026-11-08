@@ -37,7 +37,20 @@ OCR failing never fails an extraction: the fields are saved without anchors and 
 are a convenience for the reviewer, not part of the record's correctness (NFR-S5 is about the record, not the
 box).
 
-## 4. Out of scope
+## 4. Verified live (2026-11-08)
+
+One corpus TOR (`tor-01.pdf`) through the real Gemini, Document AI and embedding calls: 8 of 13 fields were
+anchored, the boxes were drawn on the stored page image and sat on the title (two lines), agency and budget;
+the work location read `คลองบางน้อย จากที่ดินเอกชนถึงถนนกาญจนาภิเษก`; the record carried schema version 3, the Document AI
+processor as `ocrModel`, and a 768-value embedding. Long free-text fields such as the scope summary are not
+anchored: the model's `raw` is a paraphrase of several paragraphs, and no exact match exists. That is
+decision 3 working as written.
+
+Embedding similarity, on 5 vendor phrases against 8 TOR titles written for the probe: related pairs 0.81–0.91,
+unrelated 0.57–0.72, so `EMBEDDING_MIN_SIMILARITY` defaults to 0.75. This is a small sample and the value is
+**uncalibrated**; it needs the match-quality benchmark before the switch is turned on for vendors.
+
+## 5. Out of scope
 
 Boxes on a text-layer PDF without OCR · editing a box · anchors for annexes · re-measuring accuracy (decision 2
 makes it unnecessary).

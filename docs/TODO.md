@@ -380,6 +380,28 @@ Routes: [API.md §6–7](API.md)._
 - [ ] **Google sign-in** — designed, not built
 - [ ] **Rotate the GCS key that was pasted into chat** — security, not optional
 
+## 2k. Sprint 5 — OCR, provenance, work location, embeddings (TOR-128, TOR-202)
+
+_Design: [`specs/2026-11-08-extraction-provenance-design.md`](superpowers/specs/2026-11-08-extraction-provenance-design.md).
+Branch `feat/tor-202-ocr-provenance`. Verified live on `tor-01.pdf` against Gemini, Document AI and the embedding model._
+
+- [x] **TOR-128 — provenance boxes** — design spec; Document AI behind an `Ocr` port; `locate` and
+      `anchorFields`; page images kept as derived objects; schema version 3; admin page-image route; review
+      screen boxes the place on the page. Off by default (`OCR_ENABLED`)
+- [x] **TOR-202 — work location** — `workLocation` read in the same Gemini request, graded by whether it names a
+      province; area signal in the scorer behind `MATCH_AREA_SIGNAL_ENABLED`
+- [x] **TOR-202 — embeddings** — vendor free-text phrases embedded at save, TORs at extraction, matched by
+      cosine similarity and taken as candidates; off by default (`EMBEDDINGS_ENABLED`)
+- [x] **TOR-202 — call budget** — in the spec §2
+- [ ] **Turn the switches on only after a check** (each spends calls or changes scores)
+  - [ ] `OCR_ENABLED`: set `DOCAI_PROCESSOR_ID`; then re-extract to give existing records anchors
+  - [ ] `MATCH_AREA_SIGNAL_ENABLED`: check `workLocation` on the corpus first
+  - [ ] `EMBEDDINGS_ENABLED`: calibrate `EMBEDDING_MIN_SIMILARITY` (0.75 rests on a 5×8 probe) with the match benchmark
+- [ ] **Fix `GOOGLE_APPLICATION_CREDENTIALS` in the local `.env`** — it points at `app/api/secrets/gcp-sa.json`;
+      the key is in `apps/api/secrets/` (one letter)
+- [ ] Prices for Document AI pages and embeddings were not verifiable from the pricing pages; confirm in the
+      console before enabling
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement

@@ -266,6 +266,7 @@ sequenceDiagram
     participant Q as ingest_jobs
     participant St as GCS
     participant V as Vertex AI
+    participant D as Document AI
     participant T as tors
 
     loop every poll interval
@@ -274,6 +275,11 @@ sequenceDiagram
         W->>St: get(storage.key)
         W->>V: OCR + field extraction
         V-->>W: nine fields, each with confidence
+        opt OCR_ENABLED
+            W->>D: Document AI: words with positions
+            D-->>W: boxes, page images
+            Note over W,D: locates each value; its text never<br/>reaches the extractor (design 2026-11-08)
+        end
         alt success
             W->>T: fields + provenance, state = "published"
         else failure
@@ -344,12 +350,14 @@ erDiagram
         string contentHash UK "sha256 of raw bytes · dedupe key AND storage key"
         object storage "bucket, key, contentType, bytes"
         object pipeline "state, attempts, failedReason"
-        object fields "nine extracted fields, each {raw, value, confidence}"
+        object fields "nine extracted fields, each {raw, value, confidence, anchor?}"
         date announcedAt "the AGENCY's date, not createdAt"
         string sourceUrl "public page, when there is one"
         string confidenceLevel "high | medium | low"
         bool unverified "drives the marking, never the visibility"
         object provenance "model, version, extractedAt, thresholdsVersion"
+        object embedding "model, vector · title and scope, when EMBEDDINGS_ENABLED"
+        int schemaVersion "3: a field may carry an anchor"
         array statusHistory "last 10 transitions, for display only"
         object access "restricted, reason, auditRef · FR-B-6 takedown"
         object cohort "category + month · the peer group's key"
