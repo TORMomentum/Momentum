@@ -278,7 +278,7 @@ sequenceDiagram
         opt OCR_ENABLED
             W->>D: Document AI: words with positions
             D-->>W: boxes, page images
-            Note over W,D: locates each value; its text never<br/>reaches the extractor (design 2026-11-08)
+            Note over W,D: locates each value, and its text never<br/>reaches the extractor (design 2026-11-08)
         end
         alt success
             W->>T: fields + provenance, state = "published"
