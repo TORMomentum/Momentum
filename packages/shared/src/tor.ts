@@ -13,6 +13,14 @@ export interface SourceRef {
 
 export type ConfidenceLevel = "high" | "medium" | "low";
 
+/** Where in the source document a value was read (TOR-128). */
+export interface FieldAnchor {
+  /** 1-based page of the stored original. */
+  page: number;
+  /** One box per line of text, `[x0, y0, x1, y1]` as fractions of the page (0..1). */
+  boxes: Array<[number, number, number, number]>;
+}
+
 /** Every extracted value carries its own confidence and provenance (NFR-F6). */
 export interface ExtractedField<T = string> {
   /** Verbatim from the document, displayed unchanged (NFR-F7). */
@@ -39,6 +47,8 @@ export interface ExtractedField<T = string> {
    * document — e.g. a TOR's deadline read from its project's invitation to bid.
    */
   fromDocument?: string;
+  /** Where the value was read in the stored original; absent when OCR was off or the text was not found. */
+  anchor?: FieldAnchor;
 }
 
 /** What a stored document is. A record without one is a TOR. */
