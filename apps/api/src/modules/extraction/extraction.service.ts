@@ -3,7 +3,7 @@ import type { Ai } from "../../ports/ai.port.js";
 import type { Embedder } from "../../ports/embeddings.port.js";
 import type { Ocr } from "../../ports/ocr.port.js";
 import type { Storage } from "../../ports/storage.port.js";
-import { anchorFields } from "../../lib/anchor.js";
+import { anchorFields, keepAnchorsOn } from "../../lib/anchor.js";
 import { pageImageKey } from "../../lib/storage-key.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
@@ -117,11 +117,19 @@ export class ExtractionService {
       try {
         const ocr = await this.deps.ocr.read({ bytes, contentType });
         const anchored = anchorFields(fields, ocr);
-        located = anchored.fields;
         ocrModel = ocr.model;
+        // An anchor is kept only for a page whose image is stored: a box that
+        // points at a missing image is worse than no box.
+        const stored = new Set<number>();
         for (const page of ocr.pages.filter((p) => p.image && anchored.pages.includes(p.number))) {
-          await this.deps.storage.putIfAbsent(pageImageKey(contentHash, page.number), page.image!.bytes, page.image!.contentType);
+          try {
+            await this.deps.storage.putIfAbsent(pageImageKey(contentHash, page.number), page.image!.bytes, page.image!.contentType);
+            stored.add(page.number);
+          } catch (error) {
+            console.warn(JSON.stringify({ event: "page_image_failed", torId, page: page.number, reason: error instanceof Error ? error.message : "unknown" }));
+          }
         }
+        located = keepAnchorsOn(anchored.fields, stored);
       } catch (error) {
         console.warn(JSON.stringify({ event: "ocr_failed", torId, reason: error instanceof Error ? error.message : "unknown" }));
       }

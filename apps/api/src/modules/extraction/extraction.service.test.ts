@@ -104,6 +104,16 @@ describe("ExtractionService.run provenance (TOR-128)", () => {
     expect(storage.putIfAbsent).toHaveBeenCalledWith("pages/hash1/3.jpg", Buffer.from("jpg"), "image/jpeg");
   });
 
+  it("drops the anchors whose page image could not be stored, and still saves the record", async () => {
+    const { service, repo, storage } = fakes({ ocr: { read: vi.fn(async () => page) } });
+    vi.mocked(storage.putIfAbsent).mockRejectedValueOnce(new Error("bucket unavailable"));
+    await service.run("tor-1");
+
+    const written = repo.writeExtraction.mock.calls[0]![1];
+    expect(written.fields.title.anchor).toBeUndefined();
+    expect(written.fields.title.raw).toBeTruthy();
+  });
+
   it("saves the fields without anchors when OCR fails, rather than failing the extraction", async () => {
     const { service, repo } = fakes({ ocr: { read: vi.fn(async () => { throw new Error("quota"); }) } });
     await service.run("tor-1");

@@ -42,6 +42,43 @@ describe("locate", () => {
   });
 });
 
+// "งบ 100 บาท" in a header, then "ราคา 100 บาท ต่อหน่วย" in the body: the amount appears twice.
+const twice: OcrResult = {
+  text: "งบ 100 บาท\nราคา 100 บาท ต่อหน่วย",
+  model: "m",
+  pages: [
+    {
+      number: 1,
+      tokens: [
+        { start: 0, end: 2, box: [0.1, 0.05, 0.15, 0.08] },
+        { start: 3, end: 6, box: [0.16, 0.05, 0.22, 0.08] },
+        { start: 7, end: 10, box: [0.23, 0.05, 0.3, 0.08] },
+        { start: 11, end: 15, box: [0.1, 0.5, 0.2, 0.53] },
+        { start: 16, end: 19, box: [0.21, 0.5, 0.27, 0.53] },
+        { start: 20, end: 23, box: [0.28, 0.5, 0.34, 0.53] },
+        { start: 24, end: 32, box: [0.35, 0.5, 0.5, 0.53] },
+      ],
+    },
+  ],
+};
+
+describe("a value found in more than one place", () => {
+  it("gets no box, since no place is the one it was read from", () => {
+    expect(locate(twice, "100")).toBeNull();
+    expect(locate(twice, "100 บาท")).toBeNull();
+  });
+
+  it("is a box when the evidence quote says which one", () => {
+    const fields = { budget: { raw: "100", value: 100, confidence: 0.99, verified: true, evidence: "ราคา 100 บาท" } } as unknown as TorFields;
+    expect(anchorFields(fields, twice).fields.budget?.anchor?.boxes).toEqual([[0.21, 0.5, 0.27, 0.53]]);
+  });
+
+  it("stays unanchored when the evidence is as ambiguous as the value", () => {
+    const fields = { budget: { raw: "100", value: 100, confidence: 0.99, verified: true, evidence: "100 บาท" } } as unknown as TorFields;
+    expect(anchorFields(fields, twice).fields.budget?.anchor).toBeUndefined();
+  });
+});
+
 describe("anchorFields", () => {
   const f = (raw: string, extra = {}) => ({ raw, value: raw, confidence: 0.99, verified: true, evidence: "", ...extra });
 
