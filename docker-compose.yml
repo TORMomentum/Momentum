@@ -59,7 +59,10 @@ services:
       - gcs
 
   mongo:
-    image: mongo:7
+    # Atlas's own local image: plain mongod plus the search engine, so $search
+    # and lucene.thai behave in Compose and CI as they do on the Atlas cluster.
+    # Pinned for the same reason as the gcs image below.
+    image: mongodb/mongodb-atlas-local:8.0
     ports:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
