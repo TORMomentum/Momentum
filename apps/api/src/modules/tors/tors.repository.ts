@@ -1,6 +1,7 @@
 import { ObjectId, type Db, type Filter, type WithId } from "mongodb";
 import type { ConfidenceLevel, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
-import { torPeerStats, tors, type TorDocument } from "../../core/db.js";
+import type { SearchConfig } from "../../core/config.js";
+import { SEARCH_PATHS, torPeerStats, tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
 import { stateFilter } from "../../lib/tor-state.js";
@@ -155,12 +156,15 @@ function view<T>(field: ExtractedField<T> | undefined) {
  * Built field by field from parsed primitives. Nothing request-shaped is
  * spread into the query (spec §5.6).
  */
-function buildFilter(criteria: SearchCriteria): Filter<TorDocument> {
+function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filter<TorDocument> {
   const clauses: Filter<TorDocument>[] = [VISIBLE];
 
-  if (criteria.q) {
-    // Interim keyword match (search spec §5): a substring, which Thai needs and
-    // $text cannot do. Replaced by a lucene.thai $search stage with Atlas.
+  if (textIds) {
+    // Atlas Search already decided which records match the words (TOR-201).
+    clauses.push({ _id: { $in: textIds } });
+  } else if (criteria.q) {
+    // Fallback for a mongod without Atlas Search (search spec §5): a substring,
+    // which Thai needs and $text cannot do.
     const pattern = new RegExp(escapeRegExp(criteria.q), "i");
     clauses.push({
       $or: [
@@ -270,7 +274,24 @@ function cursorAt(doc: WithId<TorDocument>, segment: SearchCursor["segment"]): S
 
 /** The only public-TOR code that touches MongoDB. */
 export class TorsRepository {
-  constructor(private readonly db: Db) {}
+  /** `search` switches keyword matching to Atlas Search; omitted, the substring match stays. */
+  constructor(private readonly db: Db, private readonly atlas?: SearchConfig) {}
+
+  /**
+   * Ids of records whose title or agency contains the words of `q`, best match
+   * first, from the `lucene.thai` index. Capped at `maxHits`: past that the
+   * query is too broad to be a keyword search and the tail is dropped.
+   */
+  private async textIds(q: string, config: SearchConfig): Promise<ObjectId[]> {
+    const hits = await tors(this.db)
+      .aggregate<{ _id: ObjectId }>([
+        { $search: { index: config.indexName, text: { query: q, path: [...SEARCH_PATHS] } } },
+        { $limit: config.maxHits },
+        { $project: { _id: 1 } },
+      ])
+      .toArray();
+    return hits.map((hit) => hit._id);
+  }
 
   /**
    * One page of the list. With `closingFirstOn`, the closing segment is read
@@ -278,7 +299,9 @@ export class TorsRepository {
    * reads its order straight from an index, so neither sorts in memory.
    */
   async search(criteria: SearchCriteria, pageSize: number, cursor: SearchCursor | null): Promise<SearchPage> {
-    const filter = buildFilter(criteria);
+    const textIds =
+      criteria.q && this.atlas?.atlasEnabled ? await this.textIds(criteria.q, this.atlas) : null;
+    const filter = buildFilter(criteria, textIds);
     const closing = criteria.closingFirstOn ? closingOn(criteria.closingFirstOn) : null;
     // One extra row says whether another page exists without a second count.
     const wanted = pageSize + 1;
