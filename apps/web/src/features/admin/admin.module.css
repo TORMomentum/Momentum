@@ -1176,3 +1176,24 @@ a.overviewCard:hover { border-color: var(--blue); }
 .selectAllLink { border: 0; padding: 0; background: none; font: 600 12.5px var(--body); color: var(--blue); cursor: pointer; }
 
 .selectAllLink:hover { text-decoration: underline; }
+
+/* A page of the original with the place a value was read boxed on it (TOR-128). */
+.adminPage { position: relative; max-height: 100%; overflow: auto; border: var(--rule); background: var(--paper); }
+.adminPageImage { display: block; width: 100%; height: auto; }
+.adminPageBox {
+  position: absolute;
+  border: 2px solid var(--blue);
+  background: var(--blue-wash);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.adminLocate {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 10px var(--body);
+  color: var(--blue);
+  cursor: pointer;
+}

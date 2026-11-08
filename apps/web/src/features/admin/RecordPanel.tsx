@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { TOR_CATEGORIES, isTorCategory } from "@tor-radar/shared";
 import styles from "./admin.module.css";
 import { AdminConfirmDialog } from "./admin-confirm-dialog";
+import { PageBoxes } from "./PageBoxes";
 import {
   approveRecordAction,
   reextractRecordAction,
@@ -50,6 +51,8 @@ export function RecordPanel({
   const [confirmation, setConfirmation] = useState<"approve" | "reextract" | "reject" | "save" | null>(null);
   const [brokenDocUrl, setBrokenDocUrl] = useState<string | null>(null);
   const [docShown, setDocShown] = useState<"tor" | "invitation">("tor");
+  // The field whose source place is shown on the page image instead of the PDF (TOR-128).
+  const [located, setLocated] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const invitationId = record.fields.deadline?.fromDocument;
   const shownKind = invitationId ? docShown : "tor";
@@ -103,7 +106,13 @@ export function RecordPanel({
           </span>
         </div>
         <div className={styles.adminDocViewer}>
-          {viewerHref && brokenDocUrl !== viewerHref ? (
+          {located && shownKind === "tor" && record.fields[located]?.anchor ? (
+            <PageBoxes
+              src={`/admin/tors/${record.id}/pages/${record.fields[located]!.anchor!.page}`}
+              label={FIELD_ORDER.find(({ key }) => key === located)?.label ?? located}
+              boxes={record.fields[located]!.anchor!.boxes}
+            />
+          ) : viewerHref && brokenDocUrl !== viewerHref ? (
             shownKind === "tor" && record.contentType.startsWith("image/") ? (
               <img
                 src={`${viewerHref}?disposition=inline`}
@@ -236,6 +245,16 @@ export function RecordPanel({
                 )}
                 <div className={styles.adminFieldNote}>
                   {field?.evidence ? `อ้างอิง: “${field.evidence}”` : "ไม่มีข้อความอ้างอิงจากการสกัด"}
+                  {field?.anchor && (
+                    <button
+                      type="button"
+                      className={styles.adminLocate}
+                      aria-pressed={located === key}
+                      onClick={() => setLocated(located === key ? null : key)}
+                    >
+                      {located === key ? "ดูต้นฉบับ PDF" : `ดูตำแหน่งในเอกสาร (หน้า ${field.anchor.page})`}
+                    </button>
+                  )}
                 </div>
               </div>
             );
