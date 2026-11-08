@@ -27,7 +27,7 @@ shared cluster. Set the values CI uses before running; a variable already set wi
 
 ```bash
 docker compose up -d mongo gcs
-export MONGO_URL=mongodb://localhost:27017/tor_radar GCS_BUCKET=tor-raw \
+export MONGO_URL="mongodb://localhost:27017/tor_radar?directConnection=true" GCS_BUCKET=tor-raw \
   GCS_API_ENDPOINT=http://localhost:4443 INTAKE_API_KEYS=ci-intake-key ADMIN_API_KEYS=ci-admin-key \
   SESSION_SECRET=local-test-only APP_ORIGIN=http://web:3000
 npm run build && npm run test:report

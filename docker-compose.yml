@@ -3,7 +3,7 @@
 # two-stage image - is Slice-1 Task 15.
 x-api-env: &api-env
   API_PORT: 4000
-  MONGO_URL: mongodb://mongo:27017/tor_radar
+  MONGO_URL: mongodb://mongo:27017/tor_radar?directConnection=true
   GCS_BUCKET: ${GCS_BUCKET:-tor-raw}
   GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
