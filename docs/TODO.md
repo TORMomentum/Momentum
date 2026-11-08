@@ -393,7 +393,19 @@ Branch `feat/tor-202-ocr-provenance`. Verified live on `tor-01.pdf` against Gemi
 - [x] **TOR-202 — embeddings** — vendor free-text phrases embedded at save, TORs at extraction, matched by
       cosine similarity and taken as candidates; off by default (`EMBEDDINGS_ENABLED`)
 - [x] **TOR-202 — call budget** — in the spec §2
+- [x] **Review fixes (2026-11-09)** — `work_location` asked of Gemini only with `EXTRACT_WORK_LOCATION_ENABLED`
+      (default off), so the measured prompt and schema are unchanged; an anchor is kept only for a page whose
+      image was stored; `locate` returns a box only for a value found in one place, with the evidence quote as
+      the tie-break; the match projection reads `embedding` only when embeddings are on; the unrelated
+      `feature-progress-client-deck.pptx` removed
 - [ ] **Turn the switches on only after a check** (each spends calls or changes scores)
+  - [ ] `EXTRACT_WORK_LOCATION_ENABLED`: re-run the extraction benchmark (`docs/corpus/BENCHMARK.md`) with the
+        new prompt and schema; `T_LOW`/`T_HIGH` were measured without them
+  - [ ] Check that anchoring still covers enough fields on the corpus after the one-place rule (it was 8 of 13
+        on `tor-01.pdf` with first-match)
+  - [ ] `EMBEDDINGS_ENABLED`: vendor free-text goes to Vertex (`EMBEDDING_LOCATION`, `us-central1` by default) and
+        its vector is kept on the profile. Deleting the account removes it; the data export includes it. Decide
+        whether that is acceptable under the PDPA wording before enabling
   - [ ] `OCR_ENABLED`: set `DOCAI_PROCESSOR_ID`; then re-extract to give existing records anchors
   - [ ] `MATCH_AREA_SIGNAL_ENABLED`: check `workLocation` on the corpus first
   - [ ] `EMBEDDINGS_ENABLED`: calibrate `EMBEDDING_MIN_SIMILARITY` (0.75 rests on a 5×8 probe) with the match benchmark

@@ -50,7 +50,28 @@ Embedding similarity, on 5 vendor phrases against 8 TOR titles written for the p
 unrelated 0.57–0.72, so `EMBEDDING_MIN_SIMILARITY` defaults to 0.75. This is a small sample and the value is
 **uncalibrated**; it needs the match-quality benchmark before the switch is turned on for vendors.
 
-## 5. Out of scope
+## 5. Revision 2026-11-09 — review fixes
+
+Found by reviewing PR #32. They supersede the decisions named:
+
+- **Decision 2 and 7 (unchanged extraction).** The first version asked Gemini for `work_location` on every call, so
+  extraction was not unchanged with the switches off, and the thresholds (`T_low`, `T_high`, measured on the prompt
+  and schema without it) rested on an unmeasured prompt. `work_location` is now asked for only when
+  `EXTRACT_WORK_LOCATION_ENABLED` is on (default off); off, the prompt and schema are what the benchmark used
+  (a test compares them). Turning it on needs the benchmark re-run. The budget row "work location: none" holds
+  only for the extra tokens, not for the measured accuracy.
+- **Decision 3 (how a field is located).** "First exact match" could box an earlier, unrelated occurrence of a
+  short value (a budget repeated in a header, `10` inside `100`), which a reviewer would read as evidence. A value
+  now gets a box only when it occurs in exactly one place; when it occurs in several, the model's evidence quote
+  chooses if that quote itself occurs in one place, otherwise there is no box. Fewer fields are anchored; none
+  are anchored wrongly. Coverage on the corpus is to be re-checked (TODO).
+- **Section 3 (failure paths).** An anchor is kept only for a page whose image was stored. A failed image write
+  drops the anchors on that page (`page_image_failed` is logged) and the record is still saved.
+- **Decision 9 (embeddings).** The match query reads the stored vector only when `EMBEDDINGS_ENABLED` is on. A
+  vendor's phrases go to Vertex in `EMBEDDING_LOCATION`, and their vectors are kept on the profile: removed with
+  the account, included in the data export.
+
+## 6. Out of scope
 
 Boxes on a text-layer PDF without OCR · editing a box · anchors for annexes · re-measuring accuracy (decision 2
 makes it unnecessary).
