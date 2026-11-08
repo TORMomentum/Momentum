@@ -44,6 +44,29 @@ describe("match scorer", () => {
     const taxonomy = scoreMatch(profile(), tor(), classification, config, "2026-01-01");
     expect(free.score).toBeLessThan(taxonomy.score); expect(free.reasons).toContainEqual(expect.objectContaining({ code: "free-text", th: "คล้ายกับงานที่คุณระบุเอง: งานโดรนสำรวจ" }));
   });
+  describe("meaning of free text (TOR-202)", () => {
+    const on = { ...config, embeddings: { ...config.embeddings, enabled: true, minSimilarity: 0.75 } };
+    const none = { ...classification, coarse: null, leaves: [], nodes: [] };
+    const vendor = (over: Partial<VendorProfileDocument> = {}): VendorProfileDocument => ({
+      ...profile([]), otherCategories: ["ถ่ายภาพทางอากาศ"],
+      otherCategoryVectors: [{ text: "ถ่ายภาพทางอากาศ", model: "m", vector: [1, 0] }], ...over,
+    });
+    const record = (vector: number[], model = "m") => tor({ embedding: { model, vector }, fields: { title: { value: "จ้างสำรวจด้วยอากาศยานไร้คนขับ" }, deadline: { value: "2027-01-01" } } });
+    const codes = (result: ReturnType<typeof scoreMatch>) => result.reasons.map((reason) => reason.code);
+
+    it("matches by meaning when no word of the phrase appears, and explains it", () => {
+      const result = scoreMatch(vendor(), record([0.9, 0.1]), none, on, "2026-01-01");
+      expect(result.reasons).toContainEqual(expect.objectContaining({ code: "free-text-meaning", th: "ความหมายใกล้เคียงกับงานที่คุณระบุเอง: ถ่ายภาพทางอากาศ" }));
+    });
+
+    it("does not match a different kind of work, a phrase edited since it was embedded, another model, or when off", () => {
+      expect(codes(scoreMatch(vendor(), record([0, 1]), none, on, "2026-01-01"))).not.toContain("free-text-meaning");
+      expect(codes(scoreMatch(vendor({ otherCategories: ["งานอื่น"] }), record([0.9, 0.1]), none, on, "2026-01-01"))).not.toContain("free-text-meaning");
+      expect(codes(scoreMatch(vendor(), record([0.9, 0.1], "other-model"), none, on, "2026-01-01"))).not.toContain("free-text-meaning");
+      expect(codes(scoreMatch(vendor(), record([0.9, 0.1]), none, config, "2026-01-01"))).not.toContain("free-text-meaning");
+    });
+  });
+
   describe("area signal (TOR-313)", () => {
     const on = { ...config, matching: { ...config.matching, areaSignalEnabled: true } };
     const located = (value: string, verified = true) => tor({ fields: { budget: { raw: "150", value: 150, confidence: 1, verified: true }, deadline: { value: "2027-01-01" }, workLocation: { raw: value, value, confidence: 1, verified } } });

@@ -2,6 +2,7 @@ import { CGD_BRANCHES, PROVINCES, WHOLE_COUNTRY_AREA, WORK_CATEGORY_LEAVES } fro
 import type { Config } from "../../core/config.js";
 import type { TorDocument, VendorProfileDocument } from "../../core/db.js";
 import { provincesIn } from "../../lib/province.js";
+import { cosine } from "../../ports/embeddings.port.js";
 import { certificationName, certificationsMentioned, qualificationText } from "./certifications.js";
 import { cgdBranchOf } from "./registration.js";
 import { classifyTor, type TorClassification } from "./tor-classifier.js";
@@ -31,7 +32,7 @@ function freeTextSignal(profile: VendorProfileDocument, record: TorDocument, con
     const terms = [query, ...query.split(/[\s,;/|]+/u).filter((part) => part.length > 1)].map((term) => term.toLocaleLowerCase("th-TH"));
     if (terms.some((term) => text.includes(term))) return { score: config.matching.freeTextScore, reason: { code: "free-text", th: `คล้ายกับงานที่คุณระบุเอง: ${query}` } };
   }
-  return { score: 0, reason: null };
+  return semanticSignal(profile, record, config);
 }
 
 const provinceName = new Map<string, string>(PROVINCES.map((province) => [province.id, province.th]));
@@ -53,6 +54,26 @@ function areaSignal(profile: VendorProfileDocument, record: TorDocument) {
   return provinces.some((id) => areas.includes(id))
     ? { score: 1, reason: { code: "area-inside", th: `งานอยู่ในพื้นที่ที่คุณให้บริการ: ${name}` } }
     : { score: 0, reason: { code: "area-outside", th: `งานอยู่นอกพื้นที่ที่คุณให้บริการ: ${name}` } };
+}
+
+/**
+ * A phrase the vendor wrote, matched to the TOR by meaning when no word of it
+ * appears. Both vectors were made before scoring, by the same model; a phrase
+ * edited since (its text no longer matches) or made by another model is ignored.
+ */
+function semanticSignal(profile: VendorProfileDocument, record: TorDocument, config: Config) {
+  const embedding = record.embedding;
+  if (!config.embeddings.enabled || !embedding) return { score: 0, reason: null };
+  const current = new Set((profile.otherCategories ?? []).map((entry) => entry.trim()));
+  let best: { text: string; similarity: number } | null = null;
+  for (const entry of profile.otherCategoryVectors ?? []) {
+    if (entry.model !== embedding.model || !current.has(entry.text.trim())) continue;
+    const similarity = cosine(entry.vector, embedding.vector);
+    if (similarity >= config.embeddings.minSimilarity && (!best || similarity > best.similarity)) best = { text: entry.text, similarity };
+  }
+  return best
+    ? { score: config.matching.freeTextScore, reason: { code: "free-text-meaning", th: `ความหมายใกล้เคียงกับงานที่คุณระบุเอง: ${best.text}` } }
+    : { score: 0, reason: null };
 }
 
 function budgetSignal(profile: VendorProfileDocument, record: TorDocument, config: Config) {
