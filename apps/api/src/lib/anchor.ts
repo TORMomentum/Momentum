@@ -1,4 +1,4 @@
-import type { FieldAnchor } from "@tor-radar/shared";
+import type { ExtractedField, FieldAnchor, TorFields } from "@tor-radar/shared";
 import type { OcrResult } from "../ports/ocr.port.js";
 
 const BLANK = /\s/;
@@ -51,4 +51,21 @@ export function locate(ocr: OcrResult, quote: string): FieldAnchor | null {
     return { page: page.number, boxes };
   }
   return null;
+}
+
+/**
+ * Puts an anchor on every field the model read from the document. A value the
+ * source system stated, or one read from another record, was not read here and
+ * gets none. Tries what the model quoted as the value, then its evidence.
+ */
+export function anchorFields(fields: TorFields, ocr: OcrResult): { fields: TorFields; pages: number[] } {
+  const pages = new Set<number>();
+  const out: Record<string, ExtractedField<unknown>> = {};
+  for (const [name, field] of Object.entries(fields) as Array<[string, ExtractedField<unknown> | undefined]>) {
+    if (!field) continue;
+    const anchor = field.origin === "source" || field.fromDocument ? null : (locate(ocr, field.raw) ?? locate(ocr, field.evidence ?? ""));
+    if (anchor) pages.add(anchor.page);
+    out[name] = anchor ? { ...field, anchor } : field;
+  }
+  return { fields: out as unknown as TorFields, pages: [...pages].sort((a, b) => a - b) };
 }
