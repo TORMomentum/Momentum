@@ -337,6 +337,19 @@ _Triage: [feedback-2026-10-06.md](feedback-2026-10-06.md). Decisions in [PLAN.md
       this" — past projects on the profile, read by matching (§2h, matching design §8.1)
 - [ ] **Carried:** "closing soon" as its own reading mode, distinct from search
 
+## 2j. Sprint 5 — the three In Progress cards (due 2026-11-12)
+
+_Two branches from `main`: `feat/tor-201-thai-search` (search) and `feat/tor-202-ocr-provenance` (OCR + provenance)._
+
+- [x] **TOR-201 — Thai full-text search with Atlas Search `lucene.thai`** — PR open
+  - [x] `mongodb-atlas-local:8.0` in Compose and CI, connection string `?directConnection=true`
+  - [x] `SEARCH_ATLAS_ENABLED` / `SEARCH_INDEX_NAME` / `SEARCH_MAX_HITS` in config; off by default
+  - [x] index created at API start; `$search` ids feed the existing filter, cursor and order
+  - [x] verified live: `ก่อสร้าง` finds `จ้างก่อสร้างถนนคอนกรีต`, the agency matches, a miss returns nothing
+  - [ ] **TOR-306** — agree the index with the Atlas cluster owner, and set `SEARCH_ATLAS_ENABLED=true` there
+  - [ ] a query now matches whole Thai words, not any substring — confirm that is acceptable to the team
+- [ ] **TOR-202 / TOR-128 — OCR, embeddings, work location and provenance** — see the second branch
+
 ## 2h. Sprint 4 — profile, matching and admin — BUILT, PR #22 (2026-11-03)
 
 _Branch `fix/dashboard-agency-bars`; CI green through `41780c8`. Design:
