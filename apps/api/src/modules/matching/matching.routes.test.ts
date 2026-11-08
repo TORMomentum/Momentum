@@ -128,6 +128,24 @@ describe("matching routes", () => {
     expect((await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId)).body.items.map((item: { id: string }) => item.id)).toContain(id);
   });
 
+  it("finds a TOR by the meaning of a vendor's own words when none of them appears in its title (TOR-202)", async () => {
+    // The app's config has embeddings off; matching reads its own copy.
+    const on = loadConfig({ ...process.env, EMBEDDINGS_ENABLED: "true" });
+    const current = await vendor("meaning@example.test");
+    await vendorProfiles(db).insertOne({
+      accountId: current.accountId, categories: [], otherCategories: ["ถ่ายภาพทางอากาศ"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date(),
+      otherCategoryVectors: [{ text: "ถ่ายภาพทางอากาศ", model: "m", vector: [1, 0] }],
+    });
+    const near = await seed("จ้างสำรวจด้วยอากาศยานไร้คนขับ", 100, { embedding: { model: "m", vector: [0.9, 0.1] } });
+    const far = await seed("จ้างสำรวจด้วยเรือ", 100, { embedding: { model: "m", vector: [0, 1] } });
+
+    const candidates = await new MatchingRepository(db, on).candidatesFor((await vendorProfiles(db).findOne({ accountId: current.accountId }))!);
+    const ids = candidates.map((candidate) => candidate.record._id.toString());
+
+    expect(ids).toContain(near);
+    expect(ids).not.toContain(far);
+  });
+
   it("shows only TORs a vendor can still bid on, each project once, with what a card needs to be read", async () => {
     const current = await vendor("card@example.test");
     await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });

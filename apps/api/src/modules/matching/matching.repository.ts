@@ -1,3 +1,4 @@
+import { cosine } from "../../ports/embeddings.port.js";
 import { ObjectId, type Db, type WithId } from "mongodb";
 import { WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
 import { torClassifications, tors, type TorDocument, type VendorProfileDocument } from "../../core/db.js";
@@ -22,6 +23,8 @@ const MATCH_PROJECTION = {
   documentType: 1,
   duplicateOf: 1,
   unverified: 1,
+  // Read by the scorer for free-text matching by meaning.
+  embedding: 1,
   "fields.title": 1,
   "fields.agency": 1,
   "fields.category": 1,
@@ -54,6 +57,26 @@ function titleClauses(entries: string[]): Record<string, unknown>[] {
     const terms = [entry.trim(), ...entry.split(/[\s,;/|]+/u).filter((part) => part.length > 1)].filter(Boolean);
     return terms.flatMap((term) => [{ "fields.title.value": { $regex: term, $options: "i" } }, { "fields.title.raw": { $regex: term, $options: "i" } }]);
   });
+}
+
+/**
+ * Records whose meaning is close to a phrase the vendor wrote, among the most
+ * recent ones that have a vector. A bounded scan of at most `cap` records, in
+ * memory: there is no vector index, and the cap is what keeps this cheap.
+ */
+async function semanticRecords(db: Db, profile: VendorProfileDocument, config: Config): Promise<WithId<TorDocument>[]> {
+  const current = new Set((profile.otherCategories ?? []).map((entry) => entry.trim()));
+  const vectors = (profile.otherCategoryVectors ?? []).filter((entry) => current.has(entry.text.trim()));
+  if (!config.embeddings.enabled || vectors.length === 0) return [];
+  const recent = await tors(db)
+    .find(
+      { "embedding.model": { $in: [...new Set(vectors.map((entry) => entry.model))] }, "pipeline.state": "published", "access.restricted": { $ne: true }, duplicateOf: null },
+      { sort: { updatedAt: -1 }, limit: config.matching.candidateCap, projection: MATCH_PROJECTION },
+    )
+    .toArray();
+  return recent.filter((record) =>
+    vectors.some((entry) => entry.model === record.embedding?.model && cosine(entry.vector, record.embedding.vector) >= config.embeddings.minSimilarity),
+  );
 }
 
 /** Mongo boundary for matching. The cache is separate so classification never changes a TOR. */
@@ -146,6 +169,9 @@ export class MatchingRepository {
     const records = new Map<string, WithId<TorDocument>>(direct.map((record) => [record._id.toString(), record]));
     const cachedRecords = await tors(this.db).find({ _id: { $in: [...ids].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }, { projection: MATCH_PROJECTION }).toArray();
     for (const record of cachedRecords) records.set(record._id.toString(), record);
+    const semantic = await semanticRecords(this.db, profile, this.config);
+    for (const record of semantic) records.set(record._id.toString(), record);
+    const semanticIds = new Set(semantic.map((record) => record._id.toString()));
     const cacheById = new Map(cached.map((entry) => [entry.torId, entry]));
     const candidates: ClassifiedCandidate[] = [];
     for (const record of records.values()) {
@@ -154,7 +180,7 @@ export class MatchingRepository {
       // A title free-text hit is intentionally allowed outside the taxonomy's
       // coarse set. Other candidates must still agree with the profile crosswalk.
       const freeTextHit = titleClauses(freeText).length > 0 && freeText.some((entry) => [record.fields.title?.value, record.fields.title?.raw].some((title) => typeof title === "string" && title.toLocaleLowerCase("th-TH").includes(entry.trim().toLocaleLowerCase("th-TH"))));
-      if ((classification.coarse && categories.includes(classification.coarse)) || freeTextHit) candidates.push({ record, classification });
+      if ((classification.coarse && categories.includes(classification.coarse)) || freeTextHit || semanticIds.has(record._id.toString())) candidates.push({ record, classification });
       if (candidates.length >= this.config.matching.candidateCap) break;
     }
     return candidates;
