@@ -314,7 +314,7 @@ Covers feature **F2**, **F3**, and **F10**. Realises **UC-8**.
 | ID | Requirement | Verify |
 | :---- | :---- | :---- |
 | **FR-B-1** | The system shall perform Thai and English OCR on scanned and photographed documents using a Thai-capable model. | T, A |
-| **FR-B-2** | The system shall extract nine fields from each TOR: title, issuing agency, budget, category, scope summary, required qualifications, submission deadline, contact, and status. A TOR document does not usually state its submission deadline; where the source links the TOR to its project's invitation to bid, the deadline shall be read from that invitation and marked with the document it came from. Values the source system itself states are recorded as source values, not as extractions. | T |
+| **FR-B-2** | The system shall extract nine fields from each TOR: title, issuing agency, budget, category, scope summary, required qualifications, submission deadline, contact, and status. A TOR document does not usually state its submission deadline; where the source links the TOR to its project's invitation to bid, the deadline shall be read from that invitation and marked with the document it came from. Values the source system itself states are recorded as source values, not as extractions. Where the document states them, the system shall also extract the evaluation method with its score weights, and the required documents and certifications; these follow the same confidence rules as the nine fields (§4.2.1). The winner, the winning price and the bidders shall be read from the project's winner announcement, linked and marked with its source document in the same way as the deadline. | T |
 | **FR-B-3** | The system shall record a confidence value for every extracted field and apply §4.2.1 to it. | T, D |
 | **FR-B-4** | The system shall map extracted qualifications onto the shared skill taxonomy of FR-G-3. | T |
 | **FR-B-5** | The system shall minimise personal data in what it displays, while keeping the original document reachable through its source link. | I, T |
@@ -417,7 +417,7 @@ Covers features **F3** and **F9**. Realises **UC-2** and **UC-10**.
 
 | What is held | What it contains |
 | :---- | :---- |
-| TOR record | The extracted fields, the status history, the confidence level, the extraction provenance, the source URL, the storage key, and any duplicate links |
+| TOR record | The extracted fields (including the evaluation method, required documents and winner details of FR-B-2), the status history, the confidence level, the extraction provenance, the source URL, the storage key, and any duplicate links |
 | Original document | The unaltered file in object storage, referenced by the TOR record |
 | Vendor profile | Account, skills, experience, budget range, notification preferences, and consent record |
 | Match record | The vendor–TOR pair, the score, the matched tags, the budget fit, and when notification was sent |
