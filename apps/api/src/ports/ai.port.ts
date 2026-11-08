@@ -36,6 +36,8 @@ export interface RawExtraction {
   announcementDate: RawField;
   procurementMethod: RawField;
   referenceNo: RawField;
+  /** Where the work is done, as written; absent from a model answer that predates it. */
+  workLocation?: RawField;
   /** The resolved model identifier the provider returned, for provenance (NFR-F6). */
   modelVersion: string;
 }

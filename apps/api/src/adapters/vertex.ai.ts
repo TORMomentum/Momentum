@@ -23,7 +23,7 @@ function vertexHost(location: string): string {
 // port happens in parseExtraction.
 const MODEL_KEYS = [
   "title", "agency", "budget_thb", "category", "scope_summary", "scope_location", "scope_item_count", "required_qualifications",
-  "submission_deadline", "contact", "status", "announcement_date", "procurement_method", "reference_no",
+  "submission_deadline", "contact", "status", "announcement_date", "procurement_method", "reference_no", "work_location",
 ] as const;
 
 const field = (valueSchema: object) => ({
@@ -55,6 +55,7 @@ const RESPONSE_SCHEMA = {
     announcement_date: field({ type: "string", nullable: true }),
     procurement_method: field({ type: "string", nullable: true }),
     reference_no: field({ type: "string", nullable: true }),
+    work_location: field({ type: "string", nullable: true }),
   },
   required: [...MODEL_KEYS],
 };
@@ -72,6 +73,7 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
 - scope_location: ขอบเขตงานหรือรายละเอียดคุณลักษณะเฉพาะอยู่ที่ไหน in_documents = อยู่ในเอกสารที่ได้รับ (ไฟล์หลักหรือเอกสารแนบที่แนบมา), in_annex_not_provided = เอกสารอ้างถึงเอกสารแนบที่ไม่ได้แนบมาให้, none = ไม่มีขอบเขตงานหรือรายละเอียดคุณลักษณะเฉพาะเลย evidence ให้ระบุว่าพบที่เอกสารใด
 - scope_item_count: จำนวนข้อกำหนดที่เป็นรูปธรรมในขอบเขตงานทั้งหมดจากเอกสารที่ได้รับ นับรายการที่ระบุสิ่งที่ต้องส่งมอบหรือคุณลักษณะที่ต้องมี ไม่ว่าอยู่ในรูปแบบใด — ข้อย่อยที่มีเลขกำกับ แถวในตารางคุณลักษณะเฉพาะ รายการในบัญชีแสดงปริมาณงาน (BOQ) หรือคุณลักษณะของสินค้าแต่ละรายการ ถ้าขอบเขตงานยาวมากให้ประมาณได้และลด confidence ไม่นับหัวข้ออื่นของเอกสาร เช่น คุณสมบัติผู้ยื่นข้อเสนอ หลักประกัน หรือการจ่ายเงิน ถ้า scope_location ไม่ใช่ in_documents value = null
 - required_qualifications: เฉพาะคุณสมบัติที่ใช้แยกแยะผู้เสนอราคา (ชั้นทะเบียนผู้รับเหมา, มอก., วิชาชีพวิศวกรรม ฯลฯ) ไม่เอา boilerplate (ล้มละลาย, ทิ้งงาน, ลงทะเบียน e-GP)
+- work_location: สถานที่ที่ต้องทำงานหรือส่งมอบงาน (ตำบล อำเภอ จังหวัด หรือที่ตั้งสถานที่ก่อสร้าง) ตามที่เขียนในเอกสาร ห้ามใช้ที่อยู่ของหน่วยงานแทน ถ้าเอกสารไม่ระบุสถานที่ทำงาน value = null
 - status: announced | closed | awarded | cancelled (ประกาศยกเลิก = cancelled)
 - วันที่ทุก field: ในเอกสารสแกน เลขไทย ๙ กับ ๕ (และ ๖ กับ ๘) มักดูคล้ายกัน ให้อ่านปี พ.ศ. โดยเทียบกับวันที่อื่นในเอกสารเดียวกัน เช่น "ประกาศ ณ วันที่" หรือ "ลงวันที่" ปีย่อสองหลัก (เช่น ก.ย. ๖๙) หมายถึง พ.ศ. ๒๕๖๙
 - submission_deadline: วันยื่นข้อเสนอต้องอยู่หลังวันที่ประกาศของเอกสารเดียวกัน และปกติห่างกันไม่เกินไม่กี่สัปดาห์ ถ้าอ่านแล้วได้วันยื่นข้อเสนอก่อนวันประกาศ ให้ตรวจตัวเลขนั้นใหม่ raw และ value ต้องเป็นการอ่านที่ตรวจแล้ว ถ้ายังไม่แน่ใจให้ลด confidence
@@ -162,6 +164,7 @@ export function parseExtraction(modelJson: unknown, modelVersion: string): RawEx
     announcementDate: toField(m.announcement_date, asStringOrNull(m.announcement_date?.value)),
     procurementMethod: toField(m.procurement_method, asStringOrNull(m.procurement_method?.value)),
     referenceNo: toField(m.reference_no, asStringOrNull(m.reference_no?.value)),
+    workLocation: toField(m.work_location, asStringOrNull(m.work_location?.value)),
     modelVersion,
   };
 

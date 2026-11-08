@@ -33,6 +33,15 @@ describe("parseExtraction", () => {
     reference_no: { raw: "", value: null, confidence: 1, evidence: "-" },
   };
 
+  it("reads the work location, and leaves it absent from an answer that predates it", () => {
+    const withLocation = parseExtraction(
+      { ...wellFormed, work_location: { raw: "ต.ในเมือง จ.ขอนแก่น", value: "ต.ในเมือง จ.ขอนแก่น", confidence: 0.9, evidence: "ข้อ ๑" } },
+      "m",
+    );
+    expect(withLocation.workLocation?.value).toBe("ต.ในเมือง จ.ขอนแก่น");
+    expect(parseExtraction(wellFormed, "m").workLocation).toMatchObject({ value: null, raw: "" });
+  });
+
   it("maps the model's snake_case output onto the camelCase port", () => {
     const result = parseExtraction(wellFormed, "gemini-3.5-flash-001");
     expect(result.budget.value).toBe(5_524_000);
