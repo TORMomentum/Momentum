@@ -31,6 +31,7 @@ import { AccountsRepository } from "./modules/accounts/accounts.repository.js";
 import { AccountTokensRepository } from "./modules/accounts/account-tokens.repository.js";
 import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
 import { ProfileRepository } from "./modules/profile/profile.repository.js";
+import { createEmbedder } from "./adapters/embedder.factory.js";
 import { buildProfileRouter } from "./modules/profile/profile.routes.js";
 import { BookmarksRepository } from "./modules/bookmarks/bookmarks.repository.js";
 import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
@@ -75,7 +76,8 @@ export function buildApp(config: Config, db: Db): Express {
   // /auth; everything else addresses the versioned API. Mounting the profile
   // under only one of them made the profile screen ask for a path that did not
   // exist, which no API-level test could see.
-  const profileRouter = buildProfileRouter({ config, profiles: profileRepository });
+  const embedder = createEmbedder(config);
+  const profileRouter = buildProfileRouter({ config, profiles: profileRepository, ...(embedder ? { embedder } : {}) });
   const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db) });
   const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config) });
   for (const prefix of ["/auth", API_PREFIX]) {

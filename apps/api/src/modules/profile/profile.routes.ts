@@ -1,3 +1,4 @@
+import type { Embedder } from "../../ports/embeddings.port.js";
 import { Router } from "express";
 import { z } from "zod";
 import { NOTIFY_MIN_MATCH } from "@tor-radar/shared";
@@ -111,11 +112,23 @@ export function profileResponse(profile: {
  * one: the screen has something to render and matching has something to read
  * that says "no preference stated" rather than "no answer".
  */
+/** Vectors for the free-text phrases; none when embeddings are off or the call fails, never a failed save. */
+async function embedPhrases(embedder: Embedder | undefined, phrases: string[]) {
+  if (!embedder || phrases.length === 0) return [];
+  try {
+    const vectors = await embedder.embed(phrases);
+    return phrases.map((text, i) => ({ text, model: embedder.model, vector: vectors[i]! }));
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "embedding_failed", where: "profile", reason: error instanceof Error ? error.message : "unknown" }));
+    return [];
+  }
+}
+
 export function emptyProfile() {
   return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null, pastProjects: [], certifications: null };
 }
 
-export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository }): Router {
+export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository; embedder?: Embedder }): Router {
   const router = Router();
   router.get("/me/profile", async (req, res) => {
     if (!req.auth) throw new UnauthorizedError();
@@ -126,8 +139,11 @@ export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepo
     if (!req.auth) throw new UnauthorizedError();
     const input = profileSchema.parse(req.body);
     // Deduplication keeps a replace semantically stable and prevents needless score work.
+    const otherCategories = [...new Set(input.otherCategories)];
     const profile = await deps.profiles.replace(req.auth.account._id.toString(), {
-      categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], otherCategories: [...new Set(input.otherCategories)], budget: input.budget, notify: input.notify, taxonomyVersion: TAXONOMY_VERSION,
+      categories: [...new Set(input.categories)], areas: [...new Set(input.areas)], otherCategories, budget: input.budget, notify: input.notify, taxonomyVersion: TAXONOMY_VERSION,
+      // Embedded here so matching, which scores hundreds of TORs per profile, never calls a model.
+      otherCategoryVectors: await embedPhrases(deps.embedder, otherCategories),
     });
     res.json(profileResponse(profile));
   });

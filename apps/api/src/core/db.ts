@@ -4,8 +4,16 @@ import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
 import type { TorClassification } from "../modules/matching/tor-classifier.js";
 
+/** A text's meaning as numbers, with the model that produced them so models are never mixed (TOR-202). */
+export interface StoredEmbedding {
+  model: string;
+  vector: number[];
+}
+
 export interface TorDocument {
   contentHash: string;
+  /** Title and scope summary, embedded at extraction; absent while embeddings are off. */
+  embedding?: StoredEmbedding;
   storage: { bucket: string; key: string; contentType: string; bytes: number };
   sourceRefs: Array<{
     route: string;
@@ -227,6 +235,8 @@ export interface VendorProfileDocument {
    * existed still read.
    */
   otherCategories?: string[];
+  /** `otherCategories` entries embedded when the profile was saved; one whose text no longer matches is ignored. */
+  otherCategoryVectors?: Array<StoredEmbedding & { text: string }>;
   budget: { minThb: number; maxThb: number } | null;
   /** Optional, so profiles written before the field existed still read. */
   notify?: NotifyPreferences;

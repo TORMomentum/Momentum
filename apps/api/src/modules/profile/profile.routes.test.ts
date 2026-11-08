@@ -15,12 +15,13 @@ import { buildAccountsRouter } from "../accounts/accounts.routes.js";
 import { SessionsRepository } from "../accounts/sessions.js";
 import { hashPassword } from "../accounts/password.js";
 import { ProfileRepository } from "./profile.repository.js";
+import type { Embedder } from "../../ports/embeddings.port.js";
 import { buildProfileRouter } from "./profile.routes.js";
 
 const baseConfig = loadConfig(process.env); const config = { ...baseConfig, authRateLimitPerIp: 1_000, authRateLimitPerEmail: 1_000 };
 let db: Db; let app: express.Express; let sessionsRepository: SessionsRepository;
 function write(builder: request.Test) { return builder.set("origin", config.appOrigin); }
-function testApp() { sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs); const accountsRepository = new AccountsRepository(db, sessionsRepository); const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository)); result.use("/api/v1", buildAccountsRouter({ config, accounts: accountsRepository, tokens: new AccountTokensRepository(db), sessions: sessionsRepository, mailer: new LogMailer() })); result.use("/api/v1", buildProfileRouter({ config, profiles: new ProfileRepository(db) })); result.use(errorMiddleware); return result; }
+function testApp(embedder?: Embedder) { sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs); const accountsRepository = new AccountsRepository(db, sessionsRepository); const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository)); result.use("/api/v1", buildAccountsRouter({ config, accounts: accountsRepository, tokens: new AccountTokensRepository(db), sessions: sessionsRepository, mailer: new LogMailer() })); result.use("/api/v1", buildProfileRouter({ config, profiles: new ProfileRepository(db), ...(embedder ? { embedder } : {}) })); result.use(errorMiddleware); return result; }
 async function account(email: string) { const repo = new AccountsRepository(db, sessionsRepository); return repo.create({ email, displayName: "ผู้ขาย", passwordHash: await hashPassword("correct-password", config), consent: { noticeVersion: "test", noticeHash: "test", agreedAt: new Date(), action: "checkbox" } }); }
 async function sessionFor(email: string) { const created = await account(email); return (await sessionsRepository.create(created.id)).id; }
 const payload = { categories: ["construction.road"], areas: ["chiang-mai"], budget: { minThb: 10, maxThb: 20 } };
@@ -46,6 +47,28 @@ describe("profile routes", () => {
 
     const stored = await vendorProfiles(db).findOne({});
     expect(stored?.categories).not.toContain("ติดตั้งระบบเสียงในหอประชุม");
+  });
+
+  it("embeds the free-text phrases when saving, keeps them out of the response, and survives an embedding failure", async () => {
+    const id = await sessionFor("one@example.test");
+    const embedder: Embedder = { model: "fake-model", embed: async (texts) => texts.map((_, i) => [i + 1, 0]) };
+    const response = await write(request(testApp(embedder)).put("/api/v1/me/profile"))
+      .set("x-session-id", id)
+      .send({ ...payload, otherCategories: ["งานโดรนสำรวจ", "ติดตั้งกล้อง"] });
+
+    expect(response.status).toBe(200);
+    expect(JSON.stringify(response.body)).not.toContain("vector");
+    expect((await vendorProfiles(db).findOne({}))?.otherCategoryVectors).toEqual([
+      { text: "งานโดรนสำรวจ", model: "fake-model", vector: [1, 0] },
+      { text: "ติดตั้งกล้อง", model: "fake-model", vector: [2, 0] },
+    ]);
+
+    const broken: Embedder = { model: "fake-model", embed: async () => { throw new Error("quota"); } };
+    const failed = await write(request(testApp(broken)).put("/api/v1/me/profile"))
+      .set("x-session-id", id)
+      .send({ ...payload, otherCategories: ["งานใหม่"] });
+    expect(failed.status).toBe(200);
+    expect((await vendorProfiles(db).findOne({}))?.otherCategoryVectors).toEqual([]);
   });
 
   it("defaults the free-text list to empty rather than demanding it", async () => {
