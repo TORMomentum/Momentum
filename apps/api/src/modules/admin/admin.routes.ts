@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import type { TorFields } from "@tor-radar/shared";
-import { BadRequestError } from "../../core/errors.js";
+import { BadRequestError, NotFoundError } from "../../core/errors.js";
 import { parseDisposition } from "../../lib/content-disposition.js";
 import { streamDocument } from "../../lib/stream-document.js";
 import type { Storage } from "../../ports/storage.port.js";
@@ -20,6 +20,9 @@ export interface AdminRouterDeps {
   /** How many ids "select everything matching" may return. */
   selectAllMax: number;
 }
+
+/** The most pages OCR ever reads (`OCR_MAX_PAGES` is capped at 15), with room to spare. */
+const PAGE_MAX = 100;
 
 /**
  * Filters and bodies are parsed as primitives only, so nothing shaped like a
@@ -126,6 +129,17 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
   // route matches, and the HEAD path must not open the object.
   router.head("/tors/:id/document", document);
   router.get("/tors/:id/document", document);
+
+  // The page image a field's boxes are drawn on. Derived, small, and read whole.
+  router.get("/tors/:id/pages/:page", async (req, res) => {
+    const page = Number(req.params.page);
+    if (!Number.isInteger(page) || page < 1 || page > PAGE_MAX) throw new BadRequestError("page must be a whole number from 1");
+    const key = await deps.service.pageImageKey(req.params.id, page);
+    if (!(await deps.storage.exists(key))) throw new NotFoundError();
+    const chunks: Buffer[] = [];
+    for await (const chunk of await deps.storage.getStream(key)) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+    res.set({ "Content-Type": "image/jpeg", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store" }).send(Buffer.concat(chunks));
+  });
 
   router.patch("/tors/:id/fields", async (req, res) => {
     const { edits } = editsBodySchema.parse(req.body);

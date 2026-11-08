@@ -184,6 +184,32 @@ describe("admin fields-to-confirm view", () => {
   });
 });
 
+describe("admin page image route", () => {
+  it("serves the stored page image for staff, nosniff and no-store", async () => {
+    const id = await seedQueued();
+    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/2`).set("x-api-key", adminKey);
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toBe("image/jpeg");
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(getStream).toHaveBeenCalledWith("pages/route-test-hash/2.jpg");
+  });
+
+  it("refuses a page that is not a positive whole number, and a request without the key", async () => {
+    const id = await seedQueued();
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/0`).set("x-api-key", adminKey)).status).toBe(400);
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/abc`).set("x-api-key", adminKey)).status).toBe(400);
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/1`)).status).toBe(401);
+  });
+
+  it("is 404 when no image was stored for that page", async () => {
+    const id = await seedQueued();
+    vi.mocked(storage.exists).mockResolvedValueOnce(false);
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/1`).set("x-api-key", adminKey)).status).toBe(404);
+  });
+});
+
 describe("admin document route", () => {
   it("streams a published record's document for staff, with nosniff and no-store", async () => {
     const id = await seedQueued();
