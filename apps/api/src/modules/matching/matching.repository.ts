@@ -23,8 +23,6 @@ const MATCH_PROJECTION = {
   documentType: 1,
   duplicateOf: 1,
   unverified: 1,
-  // Read by the scorer for free-text matching by meaning.
-  embedding: 1,
   "fields.title": 1,
   "fields.agency": 1,
   "fields.category": 1,
@@ -34,6 +32,11 @@ const MATCH_PROJECTION = {
   "fields.scopeSummary": 1,
   "fields.qualifications": 1,
 } as const;
+
+/** The vector (768 numbers a record) is read only when matching by meaning is on. */
+function matchProjection(config: Config) {
+  return config.embeddings.enabled ? { ...MATCH_PROJECTION, embedding: 1 } : MATCH_PROJECTION;
+}
 
 function coarseCategories(profile: VendorProfileDocument): string[] {
   const selected = new Set(profile.categories);
@@ -71,7 +74,7 @@ async function semanticRecords(db: Db, profile: VendorProfileDocument, config: C
   const recent = await tors(db)
     .find(
       { "embedding.model": { $in: [...new Set(vectors.map((entry) => entry.model))] }, "pipeline.state": "published", "access.restricted": { $ne: true }, duplicateOf: null },
-      { sort: { updatedAt: -1 }, limit: config.matching.candidateCap, projection: MATCH_PROJECTION },
+      { sort: { updatedAt: -1 }, limit: config.matching.candidateCap, projection: matchProjection(config) },
     )
     .toArray();
   return recent.filter((record) =>
@@ -122,7 +125,7 @@ export class MatchingRepository {
       .filter(ObjectId.isValid)
       .map((id) => new ObjectId(id));
     const pending = await tors(this.db)
-      .find({ _id: { $nin: done } }, { limit: this.config.matching.classifyBatch, projection: MATCH_PROJECTION })
+      .find({ _id: { $nin: done } }, { limit: this.config.matching.classifyBatch, projection: matchProjection(this.config) })
       .toArray();
     for (const record of pending) await this.classifyAndStore(record);
     return pending.length;
@@ -164,10 +167,10 @@ export class MatchingRepository {
     // records themselves rather than against the cache.
     const clauses: Record<string, unknown>[] = [];
     clauses.push(...titleClauses(freeText));
-    const direct = clauses.length ? await tors(this.db).find({ $or: clauses }, { sort: { updatedAt: -1 }, limit: this.config.matching.candidateCap, projection: MATCH_PROJECTION }).toArray() : [];
+    const direct = clauses.length ? await tors(this.db).find({ $or: clauses }, { sort: { updatedAt: -1 }, limit: this.config.matching.candidateCap, projection: matchProjection(this.config) }).toArray() : [];
     const ids = new Set(cached.map((entry) => entry.torId));
     const records = new Map<string, WithId<TorDocument>>(direct.map((record) => [record._id.toString(), record]));
-    const cachedRecords = await tors(this.db).find({ _id: { $in: [...ids].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }, { projection: MATCH_PROJECTION }).toArray();
+    const cachedRecords = await tors(this.db).find({ _id: { $in: [...ids].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }, { projection: matchProjection(this.config) }).toArray();
     for (const record of cachedRecords) records.set(record._id.toString(), record);
     const semantic = await semanticRecords(this.db, profile, this.config);
     for (const record of semantic) records.set(record._id.toString(), record);
