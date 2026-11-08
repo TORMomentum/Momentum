@@ -120,6 +120,13 @@ const schema = z.object({
   EXTRACT_MAX_ANNEXES: z.coerce.number().int().nonnegative().default(4),
   EXTRACT_MAX_INPUT_BYTES: z.coerce.number().int().positive().default(14_000_000),
 
+  /**
+   * Also ask Gemini where the work is done (TOR-313). Off by default: the T_LOW/T_HIGH
+   * thresholds were measured on a prompt and schema without that field, so turning it
+   * on is a change to the measured extraction. Re-run the benchmark first.
+   */
+  EXTRACT_WORK_LOCATION_ENABLED: flag(false),
+
   // Provenance (TOR-128, design 2026-11-08). Off by default: each enabled run spends Document AI pages.
   OCR_ENABLED: flag(false),
   /** Document AI is multi-region only: "us" or "eu". */
@@ -321,7 +328,7 @@ export interface Config {
     credentialsPath?: string;
     timeoutMs: number;
   };
-  extraction: { maxAnnexes: number; maxInputBytes: number };
+  extraction: { maxAnnexes: number; maxInputBytes: number; workLocation: boolean };
   ocr: { enabled: boolean; location: string; processorId?: string; maxPages: number; timeoutMs: number };
   embeddings: { enabled: boolean; model: string; location: string; minSimilarity: number };
   tLow: number;
@@ -445,7 +452,11 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       credentialsPath: parsed.GOOGLE_APPLICATION_CREDENTIALS,
       timeoutMs: parsed.EXTRACT_TIMEOUT_MS,
     },
-    extraction: { maxAnnexes: parsed.EXTRACT_MAX_ANNEXES, maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES },
+    extraction: {
+      maxAnnexes: parsed.EXTRACT_MAX_ANNEXES,
+      maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES,
+      workLocation: parsed.EXTRACT_WORK_LOCATION_ENABLED,
+    },
     ocr: {
       enabled: parsed.OCR_ENABLED,
       location: parsed.DOCAI_LOCATION,

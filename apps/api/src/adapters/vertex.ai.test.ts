@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DocumentUnreadableError } from "../core/errors.js";
 import { loadConfig } from "../core/config.js";
-import { parseExtraction, userPrompt, VertexAi } from "./vertex.ai.js";
+import { parseExtraction, responseSchema, systemPrompt, userPrompt, VertexAi } from "./vertex.ai.js";
 
 const CORPUS = fileURLToPath(new URL("../../../../docs/corpus/", import.meta.url));
 
@@ -39,7 +39,18 @@ describe("parseExtraction", () => {
       "m",
     );
     expect(withLocation.workLocation?.value).toBe("ต.ในเมือง จ.ขอนแก่น");
-    expect(parseExtraction(wellFormed, "m").workLocation).toMatchObject({ value: null, raw: "" });
+    expect(parseExtraction(wellFormed, "m").workLocation).toBeUndefined();
+  });
+
+  it("asks for the work location only when switched on, so the measured prompt is otherwise unchanged", () => {
+    expect(systemPrompt(false)).not.toContain("work_location");
+    expect(responseSchema(false).properties).not.toHaveProperty("work_location");
+    expect(responseSchema(false).required).not.toContain("work_location");
+    expect(systemPrompt(true)).toContain("work_location");
+    expect(responseSchema(true).properties).toHaveProperty("work_location");
+    expect(responseSchema(true).required).toContain("work_location");
+    // The rest of the prompt is the same either way.
+    expect(systemPrompt(true).replace(/\n- work_location:[^\n]*/, "")).toBe(systemPrompt(false));
   });
 
   it("maps the model's snake_case output onto the camelCase port", () => {

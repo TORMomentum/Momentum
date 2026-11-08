@@ -9,6 +9,12 @@ export interface VertexConfig {
   project?: string;
   credentialsPath?: string;
   timeoutMs: number;
+  /**
+   * Ask for where the work is done. Off by default: the confidence thresholds were
+   * measured on a prompt and schema without it, so adding it is a change to the
+   * measured extraction and needs the benchmark re-run first.
+   */
+  workLocation?: boolean;
 }
 
 const SCOPES = ["https://www.googleapis.com/auth/cloud-platform"];
@@ -23,7 +29,7 @@ function vertexHost(location: string): string {
 // port happens in parseExtraction.
 const MODEL_KEYS = [
   "title", "agency", "budget_thb", "category", "scope_summary", "scope_location", "scope_item_count", "required_qualifications",
-  "submission_deadline", "contact", "status", "announcement_date", "procurement_method", "reference_no", "work_location",
+  "submission_deadline", "contact", "status", "announcement_date", "procurement_method", "reference_no",
 ] as const;
 
 const field = (valueSchema: object) => ({
@@ -55,10 +61,19 @@ const RESPONSE_SCHEMA = {
     announcement_date: field({ type: "string", nullable: true }),
     procurement_method: field({ type: "string", nullable: true }),
     reference_no: field({ type: "string", nullable: true }),
-    work_location: field({ type: "string", nullable: true }),
   },
   required: [...MODEL_KEYS],
 };
+
+/** The schema the model answers to; `work_location` is added only when asked for (TOR-313). */
+export function responseSchema(workLocation: boolean) {
+  if (!workLocation) return RESPONSE_SCHEMA;
+  return {
+    ...RESPONSE_SCHEMA,
+    properties: { ...RESPONSE_SCHEMA.properties, work_location: field({ type: "string", nullable: true }) },
+    required: [...RESPONSE_SCHEMA.required, "work_location"],
+  };
+}
 
 const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข้อมูลจากเอกสารจัดซื้อจัดจ้าง (TOR / ประกาศประกวดราคา) ของหน่วยงานราชการไทย
 สกัดเฉพาะข้อมูลที่ปรากฏจริงในเอกสาร ห้ามเดาหรือเติมจากความรู้ภายนอก
@@ -73,11 +88,19 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
 - scope_location: ขอบเขตงานหรือรายละเอียดคุณลักษณะเฉพาะอยู่ที่ไหน in_documents = อยู่ในเอกสารที่ได้รับ (ไฟล์หลักหรือเอกสารแนบที่แนบมา), in_annex_not_provided = เอกสารอ้างถึงเอกสารแนบที่ไม่ได้แนบมาให้, none = ไม่มีขอบเขตงานหรือรายละเอียดคุณลักษณะเฉพาะเลย evidence ให้ระบุว่าพบที่เอกสารใด
 - scope_item_count: จำนวนข้อกำหนดที่เป็นรูปธรรมในขอบเขตงานทั้งหมดจากเอกสารที่ได้รับ นับรายการที่ระบุสิ่งที่ต้องส่งมอบหรือคุณลักษณะที่ต้องมี ไม่ว่าอยู่ในรูปแบบใด — ข้อย่อยที่มีเลขกำกับ แถวในตารางคุณลักษณะเฉพาะ รายการในบัญชีแสดงปริมาณงาน (BOQ) หรือคุณลักษณะของสินค้าแต่ละรายการ ถ้าขอบเขตงานยาวมากให้ประมาณได้และลด confidence ไม่นับหัวข้ออื่นของเอกสาร เช่น คุณสมบัติผู้ยื่นข้อเสนอ หลักประกัน หรือการจ่ายเงิน ถ้า scope_location ไม่ใช่ in_documents value = null
 - required_qualifications: เฉพาะคุณสมบัติที่ใช้แยกแยะผู้เสนอราคา (ชั้นทะเบียนผู้รับเหมา, มอก., วิชาชีพวิศวกรรม ฯลฯ) ไม่เอา boilerplate (ล้มละลาย, ทิ้งงาน, ลงทะเบียน e-GP)
-- work_location: สถานที่ที่ต้องทำงานหรือส่งมอบงาน (ตำบล อำเภอ จังหวัด หรือที่ตั้งสถานที่ก่อสร้าง) ตามที่เขียนในเอกสาร ห้ามใช้ที่อยู่ของหน่วยงานแทน ถ้าเอกสารไม่ระบุสถานที่ทำงาน value = null
 - status: announced | closed | awarded | cancelled (ประกาศยกเลิก = cancelled)
 - วันที่ทุก field: ในเอกสารสแกน เลขไทย ๙ กับ ๕ (และ ๖ กับ ๘) มักดูคล้ายกัน ให้อ่านปี พ.ศ. โดยเทียบกับวันที่อื่นในเอกสารเดียวกัน เช่น "ประกาศ ณ วันที่" หรือ "ลงวันที่" ปีย่อสองหลัก (เช่น ก.ย. ๖๙) หมายถึง พ.ศ. ๒๕๖๙
 - submission_deadline: วันยื่นข้อเสนอต้องอยู่หลังวันที่ประกาศของเอกสารเดียวกัน และปกติห่างกันไม่เกินไม่กี่สัปดาห์ ถ้าอ่านแล้วได้วันยื่นข้อเสนอก่อนวันประกาศ ให้ตรวจตัวเลขนั้นใหม่ raw และ value ต้องเป็นการอ่านที่ตรวจแล้ว ถ้ายังไม่แน่ใจให้ลด confidence
 ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนำหน้าหรือต่อท้าย`;
+
+/** Added to the prompt only with `workLocation` on, after the qualifications line it follows. */
+const WORK_LOCATION_PROMPT = `- work_location: สถานที่ที่ต้องทำงานหรือส่งมอบงาน (ตำบล อำเภอ จังหวัด หรือที่ตั้งสถานที่ก่อสร้าง) ตามที่เขียนในเอกสาร ห้ามใช้ที่อยู่ของหน่วยงานแทน ถ้าเอกสารไม่ระบุสถานที่ทำงาน value = null`;
+
+export function systemPrompt(workLocation: boolean): string {
+  if (!workLocation) return SYSTEM_PROMPT;
+  const marker = "\n- status:";
+  return SYSTEM_PROMPT.replace(marker, `\n${WORK_LOCATION_PROMPT}${marker}`);
+}
 
 /**
  * The instruction sent with the document. The source's publish date goes in as
@@ -164,7 +187,8 @@ export function parseExtraction(modelJson: unknown, modelVersion: string): RawEx
     announcementDate: toField(m.announcement_date, asStringOrNull(m.announcement_date?.value)),
     procurementMethod: toField(m.procurement_method, asStringOrNull(m.procurement_method?.value)),
     referenceNo: toField(m.reference_no, asStringOrNull(m.reference_no?.value)),
-    workLocation: toField(m.work_location, asStringOrNull(m.work_location?.value)),
+    // Present only when the model was asked for it; absent means "not asked", not "not stated".
+    ...(m.work_location ? { workLocation: toField(m.work_location, asStringOrNull(m.work_location.value)) } : {}),
     modelVersion,
   };
 
@@ -208,7 +232,7 @@ export class VertexAi implements Ai {
       `https://${vertexHost(this.config.location)}/v1/projects/${this.config.project}` +
       `/locations/${this.config.location}/publishers/google/models/${this.config.model}:generateContent`;
     const body = {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: systemPrompt(this.config.workLocation === true) }] },
       contents: [
         {
           role: "user",
@@ -225,7 +249,7 @@ export class VertexAi implements Ai {
       ],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: responseSchema(this.config.workLocation === true),
         temperature: 0,
         maxOutputTokens: 8192,
       },
