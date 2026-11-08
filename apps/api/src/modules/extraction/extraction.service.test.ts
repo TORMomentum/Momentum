@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TorFields } from "@tor-radar/shared";
 import { DocumentUnreadableError } from "../../core/errors.js";
 import type { Ai, RawExtraction, RawField } from "../../ports/ai.port.js";
+import type { Ocr, OcrResult } from "../../ports/ocr.port.js";
 import type { Storage } from "../../ports/storage.port.js";
 import type { ExtractionRepository, ExtractionResult, LinkedDeadline } from "./extraction.repository.js";
 import { ExtractionService, type ExtractionConfig } from "./extraction.service.js";
@@ -53,13 +54,15 @@ interface FakeTarget {
   annexes?: Array<{ key: string; contentType: string; bytes: number; filename?: string }>;
 }
 
-function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer; config?: Partial<ExtractionConfig> } & FakeTarget = {}) {
+function fakes(over: { ai?: Partial<Ai>; ocr?: Ocr; bytes?: Buffer; config?: Partial<ExtractionConfig> } & FakeTarget = {}) {
   const storage = {
     getStream: vi.fn(async () => Readable.from([over.bytes ?? DIGITAL_PDF])),
+    putIfAbsent: vi.fn(async () => ({})),
   } as unknown as Storage;
   const ai = { extract: vi.fn(async () => cleanExtraction()), ...over.ai } as Ai;
   const load = vi.fn(async () => ({
     storageKey: "k",
+    contentHash: "hash1",
     contentType: "application/pdf",
     knownFields: over.knownFields ?? {},
     sourceAnnouncedAt: over.sourceAnnouncedAt ?? null,
@@ -73,8 +76,48 @@ function fakes(over: { ai?: Partial<Ai>; bytes?: Buffer; config?: Partial<Extrac
   const linkDeadline = vi.fn<(projectId: string, deadline: LinkedDeadline) => Promise<void>>(async () => {});
   const fakeRepo = { load, writeExtraction, findInvitationDeadline, linkDeadline };
   const repo = fakeRepo as unknown as ExtractionRepository;
-  return { storage, ai, repo: fakeRepo, service: new ExtractionService({ storage, ai, repo, config: { ...config, ...over.config } }) };
+  return { storage, ai, repo: fakeRepo, service: new ExtractionService({ storage, ai, ...(over.ocr ? { ocr: over.ocr } : {}), repo, config: { ...config, ...over.config } }) };
 }
+
+describe("ExtractionService.run provenance (TOR-128)", () => {
+  const title = "ประกวดราคาจ้างก่อสร้างขุดลอกคลองบางน้อย";
+  const page: OcrResult = {
+    text: title,
+    model: "documentai:p1",
+    pages: [
+      {
+        number: 3,
+        tokens: [{ start: 0, end: title.length, box: [0.1, 0.1, 0.9, 0.2] }],
+        image: { bytes: Buffer.from("jpg"), contentType: "image/jpeg" },
+      },
+    ],
+  };
+
+  it("anchors a field, keeps that page's image, and records the OCR model", async () => {
+    const { service, repo, storage } = fakes({ ocr: { read: vi.fn(async () => page) } });
+    await service.run("tor-1");
+
+    const written = repo.writeExtraction.mock.calls[0]![1];
+    expect(written.fields.title.anchor).toEqual({ page: 3, boxes: [[0.1, 0.1, 0.9, 0.2]] });
+    expect(written.provenance.ocrModel).toBe("documentai:p1");
+    expect(storage.putIfAbsent).toHaveBeenCalledWith("pages/hash1/3.jpg", Buffer.from("jpg"), "image/jpeg");
+  });
+
+  it("saves the fields without anchors when OCR fails, rather than failing the extraction", async () => {
+    const { service, repo } = fakes({ ocr: { read: vi.fn(async () => { throw new Error("quota"); }) } });
+    await service.run("tor-1");
+
+    const written = repo.writeExtraction.mock.calls[0]![1];
+    expect(written.fields.title.anchor).toBeUndefined();
+    expect(written.provenance.ocrModel).toBe("gemini-3.5-flash");
+  });
+
+  it("does not call OCR at all when none is wired (the switch is off)", async () => {
+    const { service, repo } = fakes();
+    await service.run("tor-1");
+    expect(repo.writeExtraction.mock.calls[0]![1].fields.title.anchor).toBeUndefined();
+  });
+});
 
 describe("ExtractionService.run", () => {
   it("reads a TOR's annexes with it while they fit the count and the byte budget, and says how many were left out", async () => {

@@ -1,6 +1,9 @@
 import type { Provenance } from "@tor-radar/shared";
 import type { Ai } from "../../ports/ai.port.js";
+import type { Ocr } from "../../ports/ocr.port.js";
 import type { Storage } from "../../ports/storage.port.js";
+import { anchorFields } from "../../lib/anchor.js";
+import { pageImageKey } from "../../lib/storage-key.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
@@ -23,6 +26,8 @@ export interface ExtractionConfig {
 export interface ExtractionServiceDeps {
   storage: Storage;
   ai: Ai;
+  /** Absent when OCR is off: fields are then saved without anchors (design 2026-11-08). */
+  ocr?: Ocr;
   repo: ExtractionRepository;
   config: ExtractionConfig;
 }
@@ -53,7 +58,7 @@ export class ExtractionService {
 
   run = async (torId: string): Promise<void> => {
     const target = await this.deps.repo.load(torId);
-    const { storageKey, contentType, knownFields, createdAt } = target;
+    const { storageKey, contentType, knownFields, createdAt, contentHash } = target;
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
@@ -98,8 +103,26 @@ export class ExtractionService {
       knownFields,
     });
 
+    // Where each value was read. Never fails the extraction: an anchor helps the
+    // reviewer, and the record is correct without it (design 2026-11-08 §3).
+    let located = fields;
+    let ocrModel = this.deps.config.model;
+    if (this.deps.ocr) {
+      try {
+        const ocr = await this.deps.ocr.read({ bytes, contentType });
+        const anchored = anchorFields(fields, ocr);
+        located = anchored.fields;
+        ocrModel = ocr.model;
+        for (const page of ocr.pages.filter((p) => p.image && anchored.pages.includes(p.number))) {
+          await this.deps.storage.putIfAbsent(pageImageKey(contentHash, page.number), page.image!.bytes, page.image!.contentType);
+        }
+      } catch (error) {
+        console.warn(JSON.stringify({ event: "ocr_failed", torId, reason: error instanceof Error ? error.message : "unknown" }));
+      }
+    }
+
     const provenance: Provenance = {
-      ocrModel: this.deps.config.model,
+      ocrModel,
       extractModel: this.deps.config.model,
       modelVersion: raw.modelVersion,
       extractedAt: new Date().toISOString(),
@@ -110,11 +133,11 @@ export class ExtractionService {
     // bid does (spec 2026-09-16 e-GP project linking). Whichever of the two is
     // extracted second makes the link.
     const projectId = target.sourceProject?.projectId;
-    let publishedFields = fields;
+    let publishedFields = located;
     if (projectId && target.documentType === "tor") {
       const linked = await this.deps.repo.findInvitationDeadline(projectId);
       if (linked) {
-        publishedFields = { ...fields, deadline: { ...linked.field, fromDocument: linked.invitationId } };
+        publishedFields = { ...located, deadline: { ...linked.field, fromDocument: linked.invitationId } };
       }
     }
 
