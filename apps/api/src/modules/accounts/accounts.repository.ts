@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ObjectId, type Db, type WithId } from "mongodb";
-import { accounts, bookmarks, vendorProfiles, type AccountDocument, type AccountRole, type BookmarkDocument, type SessionDocument, type VendorProfileDocument } from "../../core/db.js";
+import { accounts, behaviourEvents, bookmarks, vendorProfiles, type AccountDocument, type BehaviourEventDocument, type AccountRole, type BookmarkDocument, type SessionDocument, type VendorProfileDocument } from "../../core/db.js";
 import { SessionsRepository } from "./sessions.js";
 
 export interface CreateAccountInput {
@@ -8,6 +8,8 @@ export interface CreateAccountInput {
   displayName: string;
   passwordHash?: string;
   consent: AccountDocument["consent"];
+  /** Agreed at sign-up, separately from the consent above; absent when the box was left unticked. */
+  behaviourConsent?: AccountDocument["behaviourConsent"];
 }
 
 export type StoredAccount = WithId<AccountDocument> & { id: string };
@@ -35,6 +37,7 @@ export class AccountsRepository {
       ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
       role: "vendor",
       consent: input.consent,
+      ...(input.behaviourConsent ? { behaviourConsent: input.behaviourConsent } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -82,6 +85,22 @@ export class AccountsRepository {
     );
   }
 
+  /**
+   * Turns behaviour recording on or off (TOR-215). Off also forgets what was recorded: withdrawing means we
+   * stop and we do not keep what we already had.
+   */
+  async setBehaviourConsent(accountId: string, on: boolean): Promise<void> {
+    if (!ObjectId.isValid(accountId)) return;
+    const now = new Date();
+    await accounts(this.db).updateOne(
+      { _id: new ObjectId(accountId), deletedAt: { $exists: false } },
+      on
+        ? { $set: { behaviourConsent: { agreedAt: now }, updatedAt: now } }
+        : { $set: { "behaviourConsent.withdrawnAt": now, updatedAt: now } },
+    );
+    if (!on) await behaviourEvents(this.db).deleteMany({ accountId });
+  }
+
   async softDelete(accountId: string): Promise<void> {
     if (!ObjectId.isValid(accountId)) return;
     const now = new Date();
@@ -95,7 +114,7 @@ export class AccountsRepository {
     await this.sessionsRepository.revokeAllForAccount(accountId);
   }
 
-  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null }> {
+  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null; behaviourEvents: Array<Omit<BehaviourEventDocument, "_id" | "accountId">> }> {
     if (!ObjectId.isValid(accountId)) throw new Error("Invalid account id");
     const account = await accounts(this.db).findOne({ _id: new ObjectId(accountId) });
     if (!account) throw new Error("Account not found");
@@ -103,11 +122,13 @@ export class AccountsRepository {
     const accountSessions = await this.sessionsRepository.exportMetadataForAccount(accountId);
     const ownedBookmarks = await bookmarks(this.db).find({ accountId }).toArray();
     const profile = await vendorProfiles(this.db).findOne({ accountId });
-    return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks, profile };
+    const events = await behaviourEvents(this.db).find({ accountId }, { projection: { _id: 0, accountId: 0 } }).sort({ at: 1 }).toArray();
+    return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks, profile, behaviourEvents: events };
   }
 
   async removeOwnedData(accountId: string): Promise<void> {
     await bookmarks(this.db).deleteMany({ accountId });
     await vendorProfiles(this.db).deleteMany({ accountId });
+    await behaviourEvents(this.db).deleteMany({ accountId });
   }
 }
