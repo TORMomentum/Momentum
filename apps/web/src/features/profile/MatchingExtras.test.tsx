@@ -66,8 +66,35 @@ describe("MatchingExtras", () => {
       // No id on a row added here: the server assigns it.
       pastProjects: [{ title: "ก่อสร้างถนน คสล. หมู่ 5", year: 2567, valueThb: 4_800_000 }],
       certifications: { cgd: [{ branch: "road" }], tags: [], other: [] },
+      personnel: [],
     });
     expect(container.textContent).toContain("บันทึกแล้ว");
+  });
+
+  it("adds a member of staff by role, ticks what they hold, and saves it with the rest", async () => {
+    render();
+    type("ตำแหน่งบุคลากร", "วิศวกรโยธา");
+    click("+ เพิ่มบุคลากร");
+    expect(container.textContent).toContain("วิศวกรโยธา");
+    // No name is asked for.
+    expect(container.querySelector('input[aria-label*="ชื่อ"][aria-label*="บุคลากร"]')).toBeNull();
+
+    const engineer = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="ใบอนุญาตของ วิศวกรโยธา"] button')].find((button) => button.textContent?.includes("ใบอนุญาตวิศวกร"))!;
+    act(() => engineer.click());
+    expect(engineer.getAttribute("aria-pressed")).toBe("true");
+
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ pastProjects: [], certifications: { cgd: [], tags: [], other: [] }, personnel: [{ id: "m1", role: "วิศวกรโยธา", certifications: ["engineer"], other: [] }] }), { status: 200 }));
+    await act(async () => click("บันทึกผลงานและใบอนุญาต"));
+
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).personnel).toEqual([{ role: "วิศวกรโยธา", certifications: ["engineer"], other: [] }]);
+    expect(container.textContent).toContain("บันทึกแล้ว");
+  });
+
+  it("removes a member of staff", () => {
+    act(() => root.render(<MatchingExtras initialProjects={[]} initialCertifications={null} initialPersonnel={[{ id: "m1", role: "ช่างไฟฟ้า", certifications: [], other: [] }]} />));
+    expect(container.textContent).toContain("ช่างไฟฟ้า");
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="ลบ ช่างไฟฟ้า"]')!.click());
+    expect(container.textContent).not.toContain("ช่างไฟฟ้า");
   });
 
   it("shows the upload as coming, not as something that silently does nothing", () => {
