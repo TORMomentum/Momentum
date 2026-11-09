@@ -373,8 +373,10 @@ The current filter as CSV, with the same PII minimisation as the API.
 | :--- | :--- |
 | `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration |
 | `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change |
-| `GET /me` · `POST /me/consent/withdraw` | The signed-in account; withdrawing consent |
-| `GET /me/export` · `DELETE /me` | PDPA data export and account deletion |
+| `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, and `behaviourEnabled`); withdrawing consent |
+| `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |
+| `POST /me/events` | `{ torId, type: view \| save \| dismiss \| prepare }`, one event, `204`. `403` unless `MATCH_BEHAVIOUR_ENABLED` is on and the vendor consented; `404` for an unknown TOR. A bookmark is recorded as `save` by the server |
+| `GET /me/export` · `DELETE /me` | PDPA data export and account deletion, behaviour events included |
 | `GET` · `PUT /me/profile` | Categories, budget range, notification preferences (`FR-D-2`) |
 | `PUT /me/profile/extras` | Past projects and certifications, saved on their own so the main form never overwrites them. The body carries both lists whole; a project without an `id` is new and gets one. Saving the section for the first time is what turns `certifications` from *not stated* into a stated answer that may lower a score |
 | `GET /me/matches?page=` | This vendor's open TORs, best first, each with its score and Thai reasons |

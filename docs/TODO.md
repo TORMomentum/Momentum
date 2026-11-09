@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-03_
+_last updated: 2026-11-09_
 
 ---
 
@@ -426,6 +426,24 @@ Branch `feat/tor-202-ocr-provenance`. Verified live on `tor-01.pdf` against Gemi
       the key is in `apps/api/secrets/` (one letter)
 - [ ] Prices for Document AI pages and embeddings were not verifiable from the pricing pages; confirm in the
       console before enabling
+
+## 2n. Sprint 5 — behaviour events and the personalised score (TOR-215, TOR-216)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §10.
+Branch `feat/tor-215-216-behaviour`. Off by default (`MATCH_BEHAVIOUR_ENABLED`)._
+
+- [x] **TOR-215 — events and consent** — separate behaviour consent (API at sign-up and on the account page);
+      `POST /me/events`; `save` recorded by the server, `view` by a beacon; export, withdrawal and account
+      deletion all remove or include them; nothing recorded while the switch is off
+- [x] **TOR-216 — score** — weights, point value, cap and window in `core/config.ts`; the adjustment applied last
+      with a named reason, in the feed, the badge and the search filter
+- [ ] **Sign-up checkbox in the web form.** The API takes `behaviourConsent` at registration; the form does not
+      offer it because it cannot know the switch is on. Add it when the switch is turned on (the account page
+      already shows the section only then)
+- [ ] `dismiss` and `prepare` have a route and no screen: there is no dismiss button and no bid-preparation flow yet
+- [ ] **Before turning `MATCH_BEHAVIOUR_ENABLED` on:** run the §8.4 match-quality benchmark with and without it;
+      the weights, point value and cap are placeholders. Emails and the benchmark deliberately use the base score
+- [ ] Decide the retention of events older than `BEHAVIOUR_WINDOW_DAYS` (scoring ignores them; nothing deletes them yet)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

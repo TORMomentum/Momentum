@@ -234,7 +234,7 @@ const schema = z.object({
   /** Score (0..1) one point is worth, and the most behaviour may move a score either way. */
   BEHAVIOUR_POINT_VALUE: z.coerce.number().positive().default(0.01),
   BEHAVIOUR_MAX_ADJUST: z.coerce.number().min(0).max(0.5).default(0.1),
-  /** Older events are ignored by scoring and deleted by the cleanup. */
+  /** Older events are ignored by scoring (nothing deletes them yet, see TODO 2n). */
   BEHAVIOUR_WINDOW_DAYS: z.coerce.number().int().positive().default(90),
   // Past work a vendor lists. Like every weight above it is uncalibrated until
   // the labelled benchmark (design §7.8); it only enters a score when the

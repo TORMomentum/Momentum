@@ -368,3 +368,31 @@ score = weighted mean of the signals present
 Every weight is a `core/config.ts` key; none is tuned until §8.4's figures exist. The displayed
 percentage and the search filter both use `matchPercent` from `@tor-radar/shared`, so a badge and
 a filter can never disagree by a rounding step.
+
+---
+
+## 10. Revision 5 — personalised score, 2026-11-09 (TOR-215, TOR-216)
+
+A recommendation can lean on what the vendor does, on top of the profile they state. Behind
+`MATCH_BEHAVIOUR_ENABLED` (default **off**).
+
+- **Separate consent.** `behaviourConsent` on the account, given at sign-up (optional box) or on the account
+  page, withdrawn on its own. It is not the registration consent and is never a condition of registering.
+  Nothing is recorded or read without it, nor when the account's own consent is withdrawn.
+- **Events.** `view`, `save`, `dismiss`, `prepare`, one document per event in `behaviour_events`. `save` is
+  recorded by the server when a TOR is bookmarked; `view` by a small client beacon on the TOR page, rendered
+  only when consent is on; `dismiss` and `prepare` have a route but no screen yet.
+- **Data minimisation.** With the switch off, **nothing is recorded**, even for a vendor who consented: data
+  nobody uses is not kept. Withdrawing consent deletes the recorded events; export includes them; account
+  deletion removes them.
+- **The adjustment.** Each (TOR, kind of event) counts once, weighted by `BEHAVIOUR_WEIGHT_*` (a dismissal is
+  negative), summed per taxonomy leaf of the TOR it was done to, over `BEHAVIOUR_WINDOW_DAYS`. A candidate's
+  points are the sum over its own leaves; it moves the score by `points × BEHAVIOUR_POINT_VALUE`, clamped to
+  ±`BEHAVIOUR_MAX_ADJUST`, applied last. It never rescues a TOR whose base score is zero.
+- **Reasons (NFR-F6).** "ปรับคะแนนขึ้น/ลง เพราะคุณเคยสนใจ/ปิดงานประเภทนี้ (จากการใช้งานของคุณเอง)".
+- **Where it applies.** The vendor's own feed, the score badge and the match filter in search, so a badge and a
+  filter cannot disagree. Emails and the match-quality benchmark keep the base score: a benchmark of the
+  stated profile must not move with behaviour, and an email must not rest on activity the vendor cannot see.
+- **Not tuned.** The weights, the point value and the cap are placeholders until the §8.4 benchmark can measure
+  their effect.
+
