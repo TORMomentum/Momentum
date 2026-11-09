@@ -401,3 +401,32 @@ The admin review-queue screen and the correction/approval flow (FR-G-1/G-2 — a
 story) · the public TOR read API and detail page (Slice 3) · the anomaly rule and the dashboard
 (Slice 3) · the real editable taxonomy (F9, Slice 4) · Document AI as a live OCR path (added only
 if a later corpus shows Gemini vision failing) · live source adapters (F12).
+
+---
+
+## 13. Revision 2026-11-09 — evaluation method, weights and required documents (TOR-209, TOR-210)
+
+Three more fields beyond the nine (SRS v2.1, FR-B-2), read in the same Gemini request:
+
+| Field | Value | Verified when |
+| :---- | :---- | :---- |
+| `evaluationMethod` | `lowest_price` · `price_performance` · `other` · `null` | confident and one of the three |
+| `evaluationWeights` | `[{name, weight}]`, weight a percentage | confident, every weight in (0, 100], total 100 ± 0.5. Empty is right only for `lowest_price` |
+| `requiredDocuments` | `[{name, holder, certification?}]`, `holder` company · personnel · unspecified | confident and at least one entry |
+
+- **Marking, as everywhere (§4.2.1).** None is critical, so none can send a record to review; below the
+  threshold the field is published unverified and stays out of statistics and matching.
+- **Mapped onto the certification list (TOR-210).** After extraction, a document whose name matches a listed
+  certification (`CERTIFICATIONS` in `packages/seeds`) carries its id in `certification`, using the same
+  patterns matching reads qualifications with. The model supplies `holder`; it never supplies `certification`.
+  The patterns gained the wording the benchmark TORs use for the engineer's licence ("ใบประกอบวิชาชีพวิศวกรรม",
+  no "อนุญาต" — 6 of 10).
+- **Behind `EXTRACT_BIDDING_FIELDS_ENABLED` (default off).** The thresholds were measured without these keys in
+  the prompt and schema; with the switch off both are byte-identical to what was measured (same rule as
+  `EXTRACT_WORK_LOCATION_ENABLED`, §4 of the provenance design). Re-run the benchmark before turning it on.
+- **Corpus run, 10 TORs against real Gemini.** Every TOR is `lowest_price`, so the benchmark has no
+  price-performance sample: the weights rule rests on unit tests, not a real document. `tor-02` returned no
+  method and no documents, and `tor-09` returned documents but no method (confidence 0.8); both are left
+  unverified rather than guessed.
+- Raw quotes of these fields are excluded from the copy-through check: a method or a document name may rightly
+  repeat wording from the qualifications.
