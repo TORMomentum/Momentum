@@ -80,6 +80,25 @@ export interface Provenance {
   thresholdsVersion: string;
 }
 
+/** How bids are scored: price alone, price with other criteria, or something else the TOR describes. */
+export type EvaluationMethod = "lowest_price" | "price_performance" | "other";
+
+/** One scored criterion of a price-performance evaluation; `weight` is a percentage of the total. */
+export interface EvaluationCriterion {
+  name: string;
+  weight: number;
+}
+
+/** A document or certificate a TOR asks the bidder to hold or submit. */
+export interface RequiredDocument {
+  /** As the TOR names it. */
+  name: string;
+  /** Who must hold it: the company, a named person on the team, or the TOR does not say. */
+  holder: "company" | "personnel" | "unspecified";
+  /** The listed certification (packages/seeds CERTIFICATIONS) the name matches; absent when none does. */
+  certification?: string;
+}
+
 /** The nine FR-B-2 fields, plus three cheap extras the detail page can show. */
 export interface TorFields {
   title: ExtractedField;
@@ -103,6 +122,12 @@ export interface TorFields {
   referenceNo?: ExtractedField;
   /** Where the work is done, as the document states it (TOR-313). Feeds area matching once it names a province. */
   workLocation?: ExtractedField;
+  /** How the winner is chosen (TOR-209). Only when the TOR states it. */
+  evaluationMethod?: ExtractedField<EvaluationMethod>;
+  /** The criteria and their weights; empty for a lowest-price evaluation (TOR-209). */
+  evaluationWeights?: ExtractedField<EvaluationCriterion[]>;
+  /** The documents and certificates the bidder must show, company and personnel (TOR-210). */
+  requiredDocuments?: ExtractedField<RequiredDocument[]>;
 }
 
 /** Why a record entered the review queue (FR-G-1), as stable machine keys. */
