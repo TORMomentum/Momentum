@@ -526,6 +526,7 @@ Three shapes are load-bearing:
 | `tors.access.restricted` | Keeps restricted records out of public queries |
 | Atlas Search index `tors_text` (`SEARCH_INDEX_NAME`) | Keyword search on title and agency, raw and extracted value, with `lucene.thai` (TOR-201). Created at API start, not by `ensureIndexes`, because it exists only on Atlas |
 | `behaviour_events.accountId + at` | One vendor's recent activity for their score, and the export and delete of it (TOR-215) |
+| `behaviour_events.accountId + torId + type` **unique** | One event per kind per TOR: a repeat refreshes `at` instead of adding a row |
 | `tor_events.torId + at` | The audit read: one TOR's history, newest first |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |

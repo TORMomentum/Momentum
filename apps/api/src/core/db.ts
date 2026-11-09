@@ -455,6 +455,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
   await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
   await behaviourEvents(db).createIndex({ accountId: 1, at: -1 });
+  await behaviourEvents(db).createIndex({ accountId: 1, torId: 1, type: 1 }, { unique: true });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   // One judgement per pair; relabelling replaces it.
   await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });

@@ -379,13 +379,17 @@ A recommendation can lean on what the vendor does, on top of the profile they st
 - **Separate consent.** `behaviourConsent` on the account, given at sign-up (optional box) or on the account
   page, withdrawn on its own. It is not the registration consent and is never a condition of registering.
   Nothing is recorded or read without it, nor when the account's own consent is withdrawn.
-- **Events.** `view`, `save`, `dismiss`, `prepare`, one document per event in `behaviour_events`. `save` is
+- **Events.** `view`, `save`, `dismiss`, `prepare`, in `behaviour_events` — **one document per (account, TOR, kind)**:
+  doing the same thing again refreshes its time, so repeats cannot crowd other events out of what scoring reads
+  or pile up points. `save` is
   recorded by the server when a TOR is bookmarked; `view` by a small client beacon on the TOR page, rendered
   only when consent is on; `dismiss` and `prepare` have a route but no screen yet.
 - **Data minimisation.** With the switch off, **nothing is recorded**, even for a vendor who consented: data
   nobody uses is not kept. Withdrawing consent deletes the recorded events; export includes them; account
-  deletion removes them.
-- **The adjustment.** Each (TOR, kind of event) counts once, weighted by `BEHAVIOUR_WEIGHT_*` (a dismissal is
+  deletion removes them. Withdrawal flags the account first and deletes second, and a write re-reads consent after
+  it lands and removes its own event if consent has gone, so no interleaving leaves a withdrawn vendor's event
+  behind. Withdrawing what was never given is a no-op.
+- **The adjustment.** Each (TOR, kind of event) counts once (it is stored once), weighted by `BEHAVIOUR_WEIGHT_*` (a dismissal is
   negative), summed per taxonomy leaf of the TOR it was done to, over `BEHAVIOUR_WINDOW_DAYS`. A candidate's
   points are the sum over its own leaves; it moves the score by `points × BEHAVIOUR_POINT_VALUE`, clamped to
   ±`BEHAVIOUR_MAX_ADJUST`, applied last. It never rescues a TOR whose base score is zero.

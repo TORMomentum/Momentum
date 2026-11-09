@@ -92,8 +92,11 @@ export class AccountsRepository {
   async setBehaviourConsent(accountId: string, on: boolean): Promise<void> {
     if (!ObjectId.isValid(accountId)) return;
     const now = new Date();
+    // Withdrawing what was never given changes nothing: a withdrawnAt without an agreedAt is not a state.
     await accounts(this.db).updateOne(
-      { _id: new ObjectId(accountId), deletedAt: { $exists: false } },
+      on
+        ? { _id: new ObjectId(accountId), deletedAt: { $exists: false } }
+        : { _id: new ObjectId(accountId), deletedAt: { $exists: false }, "behaviourConsent.agreedAt": { $exists: true } },
       on
         ? { $set: { behaviourConsent: { agreedAt: now }, updatedAt: now } }
         : { $set: { "behaviourConsent.withdrawnAt": now, updatedAt: now } },

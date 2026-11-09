@@ -1,4 +1,4 @@
-import { ObjectId, type Db } from "mongodb";
+import { MongoServerError, ObjectId, type Db } from "mongodb";
 import type { Config } from "../../core/config.js";
 import { accounts, behaviourEvents, torClassifications, type BehaviourEventType } from "../../core/db.js";
 
@@ -31,17 +31,32 @@ export class BehaviourRepository {
     return this.config.matching.behaviour.enabled;
   }
 
-  /** Records one event; false, and nothing written, when scoring by behaviour is off or the vendor has not consented. */
+  /**
+   * Records one event; false, and nothing kept, when scoring by behaviour is off or the vendor has not consented.
+   *
+   * One document per (account, TOR, kind): doing the same thing again only refreshes its time, so repeats can
+   * neither crowd out other events nor pile up points. Withdrawing consent can land between the consent check
+   * and the write, so consent is read again afterwards and the event removed if it has gone: withdrawal flags
+   * first and deletes second, which leaves no order in which a withdrawn vendor's event survives.
+   */
   async record(accountId: string, torId: string, type: BehaviourEventType): Promise<boolean> {
     if (!this.enabled || !(await this.hasConsent(accountId))) return false;
-    await behaviourEvents(this.db).insertOne({ accountId, torId, type, at: new Date() });
-    return true;
+    const key = { accountId, torId, type };
+    try {
+      await behaviourEvents(this.db).updateOne(key, { $set: { at: new Date() } }, { upsert: true });
+    } catch (error) {
+      // A concurrent identical event won the unique index; it is already recorded.
+      if (!(error instanceof MongoServerError && error.code === 11000)) throw error;
+    }
+    if (await this.hasConsent(accountId)) return true;
+    await behaviourEvents(this.db).deleteMany(key);
+    return false;
   }
 
   /**
    * What the vendor's recent activity says about the kinds of work they care for. Empty unless scoring by
    * behaviour is on and the vendor consented. Each (TOR, kind of event) counts once, so reloading a page
-   * does not pile up points.
+   * does not pile up points. (Recording keeps one per kind already; the check also covers older rows.)
    */
   async affinity(accountId: string): Promise<BehaviourAffinity> {
     const { enabled, weights, windowDays } = this.config.matching.behaviour;

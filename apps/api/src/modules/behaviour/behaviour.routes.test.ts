@@ -3,7 +3,7 @@ import "../../test/env.js";
 import express from "express";
 import type { Db } from "mongodb";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { LogMailer } from "../../adapters/log.mailer.js";
 import { loadConfig, type Config } from "../../core/config.js";
 import { accounts, accountTokens, behaviourEvents, bookmarks, connect, disconnect, ensureIndexes, sessions, torClassifications, tors } from "../../core/db.js";
@@ -109,6 +109,35 @@ describe("behaviour consent and events", () => {
     expect((await request(app).get("/api/v1/me").set("x-session-id", vendor.sessionId)).body.behaviourEnabled).toBe(true);
   });
 
+  it("keeps nothing when consent is withdrawn between the consent check and the write", async () => {
+    const vendor = await sessionFor("one@example.test"); const torId = await seedTor();
+    await grant(vendor.sessionId);
+    const accountsRepository = new AccountsRepository(db, sessionsRepository);
+    // The first read says yes; before the write lands, the whole withdrawal (flag, then delete) completes.
+    const spy = vi.spyOn(behaviour, "hasConsent").mockImplementationOnce(async () => {
+      await accountsRepository.setBehaviourConsent(vendor.accountId, false);
+      return true;
+    });
+    expect(await behaviour.record(vendor.accountId, torId, "view")).toBe(false);
+    spy.mockRestore();
+    expect(await behaviourEvents(db).countDocuments({})).toBe(0);
+  });
+
+  it("answers /me after a withdrawal that came before any consent, and leaves the account as it was", async () => {
+    const vendor = await sessionFor("one@example.test");
+    const withdrawn = await write(request(app).post("/api/v1/me/consent/behaviour/withdraw")).set("x-session-id", vendor.sessionId).send({});
+    expect(withdrawn.status).toBe(200);
+    const me = await request(app).get("/api/v1/me").set("x-session-id", vendor.sessionId);
+    expect(me.status).toBe(200);
+    expect(me.body.behaviourConsent).toBeNull();
+    expect((await accounts(db).findOne({}))?.behaviourConsent).toBeUndefined();
+    // A row that already has only a withdrawal (written before this fix) reads as never given, not as a crash.
+    await accounts(db).updateOne({}, { $set: { "behaviourConsent.withdrawnAt": new Date() } });
+    const old = await request(app).get("/api/v1/me").set("x-session-id", vendor.sessionId);
+    expect(old.status).toBe(200);
+    expect(old.body.behaviourConsent).toBeNull();
+  });
+
   it("needs a signed-in vendor", async () => {
     expect((await write(request(app).post("/api/v1/me/events")).send({ torId: "0".repeat(24), type: "view" })).status).toBe(401);
   });
@@ -156,6 +185,16 @@ describe("behaviour affinity", () => {
     const w = config.matching.behaviour.weights;
     expect(await behaviour.affinity(vendor.accountId)).toEqual({ "construction.road": w.view + w.save });
   });
+
+  it("keeps one row per TOR and kind, so repeats cannot push a save out of what is read", async () => {
+    const vendor = await sessionFor("one@example.test"); await grant(vendor.sessionId);
+    const torId = await seedTor(); await classify(torId, "construction.road");
+    await behaviour.record(vendor.accountId, torId, "save");
+    for (let i = 0; i < 2100; i++) await behaviour.record(vendor.accountId, torId, "view");
+    expect(await behaviourEvents(db).countDocuments({ accountId: vendor.accountId })).toBe(2);
+    const w = config.matching.behaviour.weights;
+    expect(await behaviour.affinity(vendor.accountId)).toEqual({ "construction.road": w.save + w.view });
+  }, 60_000);
 
   it("is empty without consent, when switched off, and outside the window", async () => {
     const vendor = await sessionFor("one@example.test"); const torId = await seedTor(); await classify(torId, "construction.road");
