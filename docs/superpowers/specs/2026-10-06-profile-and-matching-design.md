@@ -390,7 +390,12 @@ A recommendation can lean on what the vendor does, on top of the profile they st
   nobody uses is not kept. Withdrawing consent deletes the recorded events; export includes them; account
   deletion removes them. Withdrawal flags the account first and deletes second, and a write re-reads consent after
   it lands and removes its own event if consent has gone, so no interleaving leaves a withdrawn vendor's event
-  behind. Withdrawing what was never given is a no-op.
+  behind. If that re-read itself fails, the event is removed anyway (nothing kept on a doubt) and the error
+  surfaces. Should that cleanup fail too, the row is an orphan: nothing reads it (every read checks consent), the
+  worker's reconcile sweep (`purgeUnconsented`) deletes it, and consent given afresh starts with no history, so it
+  cannot come back. Giving consent again while it is live keeps what was recorded. Withdrawing what was never
+  given is a no-op. MongoDB has no transaction here (the local database is a single node), so this is
+  ordering plus a sweep, not atomicity.
 - **The adjustment.** Each (TOR, kind of event) counts once (it is stored once), weighted by `BEHAVIOUR_WEIGHT_*` (a dismissal is
   negative), summed per taxonomy leaf of the TOR it was done to, over `BEHAVIOUR_WINDOW_DAYS`. A candidate's
   points are the sum over its own leaves; it moves the score by `points × BEHAVIOUR_POINT_VALUE`, clamped to

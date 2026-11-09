@@ -439,7 +439,9 @@ Branch `feat/tor-215-216-behaviour`. Off by default (`MATCH_BEHAVIOUR_ENABLED`).
       with a named reason, in the feed, the badge and the search filter
 - [x] **TOR-259 — sign-up checkbox.** The form offers an optional box only while `MATCH_BEHAVIOUR_ENABLED` is on
       (read at build time as `NEXT_PUBLIC_BEHAVIOUR_ENABLED`) and sends `behaviourConsent` only when ticked;
-      a web image built with the switch off has to be rebuilt after turning it on
+      a web image built with the switch off has to be rebuilt after turning it on. Compose now passes the switch to
+      the API and worker and, as a build argument, to the web image (checked: an image built with it on carries the
+      box, one built without does not). Cloud Run's manifests pass no switch yet — none of them, this one included
 - [ ] `dismiss` and `prepare` have a route and no screen: there is no dismiss button and no bid-preparation flow yet
 - [ ] **Before turning `MATCH_BEHAVIOUR_ENABLED` on:** run the §8.4 match-quality benchmark with and without it;
       the weights, point value and cap are placeholders. Emails and the benchmark deliberately use the base score
