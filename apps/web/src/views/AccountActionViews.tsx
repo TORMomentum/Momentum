@@ -25,11 +25,29 @@ export function ResetPasswordView() { const token = useSearchParams().get("token
  * primary buttons. Deletion is now plainly a different kind of act — its own
  * block, its own colour, and the password asked for in the same breath.
  */
-export function AccountView({ consent: initialConsent }: { consent: ConsentRecord | null }) {
+export function AccountView({
+  consent: initialConsent,
+  behaviour,
+}: {
+  consent: ConsentRecord | null;
+  /** Present only while scoring by behaviour is on; its consent is separate from the one above. */
+  behaviour?: { consent: { agreedAt: string; withdrawnAt?: string } | null } | null;
+}) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<{ text: string; bad: boolean } | null>(null);
   const [consent, setConsent] = useState<ConsentRecord | null>(initialConsent);
+  const [behaviourOn, setBehaviourOn] = useState(Boolean(behaviour?.consent && !behaviour.consent.withdrawnAt));
+
+  async function setBehaviour(on: boolean) {
+    const response = await post(on ? "me/consent/behaviour" : "me/consent/behaviour/withdraw", {});
+    if (!response.ok) {
+      setMessage({ text: "บันทึกการตั้งค่าไม่สำเร็จ กรุณาลองอีกครั้ง", bad: true });
+      return;
+    }
+    setBehaviourOn(on);
+    setMessage({ text: on ? "เปิดการบันทึกแล้ว" : "ปิดการบันทึกและลบข้อมูลที่บันทึกไว้แล้ว", bad: false });
+  }
 
   async function download() {
     const response = await fetch("/api/auth/me/export", { cache: "no-store" });
@@ -122,6 +140,26 @@ export function AccountView({ consent: initialConsent }: { consent: ConsentRecor
                 ถอนความยินยอม
               </button>
             </>
+          )}
+        </section>
+      )}
+
+      {behaviour && (
+        <section className={account.card}>
+          <h2 className={account.cardTitle}>การบันทึกพฤติกรรมการใช้งาน (ไม่บังคับ)</h2>
+          <p className={account.cardBody}>
+            เมื่อเปิด ระบบจะบันทึกว่าคุณเปิดดู บันทึก หรือปิดงานใด เพื่อปรับคะแนนความเกี่ยวข้องให้ตรงกับความสนใจของคุณ
+            และบอกเหตุผลทุกครั้ง — ใช้ภายในระบบเท่านั้น อยู่ในไฟล์ส่งออก และจะถูกลบเมื่อคุณปิดการบันทึกหรือลบบัญชี
+            การไม่เปิดไม่มีผลต่อการจับคู่ตามปกติ
+          </p>
+          {behaviourOn ? (
+            <button type="button" className={account.action} onClick={() => setBehaviour(false)}>
+              ปิดการบันทึกและลบข้อมูลที่บันทึกไว้
+            </button>
+          ) : (
+            <button type="button" className={account.action} onClick={() => setBehaviour(true)}>
+              เปิดการบันทึก
+            </button>
           )}
         </section>
       )}

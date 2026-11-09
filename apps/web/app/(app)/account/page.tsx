@@ -8,5 +8,10 @@ import { fetchOwnAccount } from "../../../src/shared/api/profile.api";
  */
 export default async function AccountPage() {
   const account = await fetchOwnAccount();
-  return <AccountView consent={account?.consent ?? null} />;
+  return (
+    <AccountView
+      consent={account?.consent ?? null}
+      behaviour={account?.behaviourEnabled ? { consent: account.behaviourConsent ?? null } : null}
+    />
+  );
 }
