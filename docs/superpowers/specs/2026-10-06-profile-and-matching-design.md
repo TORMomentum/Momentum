@@ -378,6 +378,8 @@ A recommendation can lean on what the vendor does, on top of the profile they st
 
 - **Separate consent.** `behaviourConsent` on the account, given at sign-up (optional box) or on the account
   page, withdrawn on its own. It is not the registration consent and is never a condition of registering.
+  The sign-up form shows the box only while `MATCH_BEHAVIOUR_ENABLED` is on (the web build reads it as
+  `NEXT_PUBLIC_BEHAVIOUR_ENABLED`, set from the same variable) and sends `behaviourConsent` only when it is ticked.
   Nothing is recorded or read without it, nor when the account's own consent is withdrawn.
 - **Events.** `view`, `save`, `dismiss`, `prepare`, in `behaviour_events` — **one document per (account, TOR, kind)**:
   doing the same thing again refreshes its time, so repeats cannot crowd other events out of what scoring reads

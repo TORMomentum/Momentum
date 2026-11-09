@@ -437,9 +437,9 @@ Branch `feat/tor-215-216-behaviour`. Off by default (`MATCH_BEHAVIOUR_ENABLED`).
       deletion all remove or include them; nothing recorded while the switch is off
 - [x] **TOR-216 — score** — weights, point value, cap and window in `core/config.ts`; the adjustment applied last
       with a named reason, in the feed, the badge and the search filter
-- [ ] **Sign-up checkbox in the web form.** The API takes `behaviourConsent` at registration; the form does not
-      offer it because it cannot know the switch is on. Add it when the switch is turned on (the account page
-      already shows the section only then)
+- [x] **TOR-259 — sign-up checkbox.** The form offers an optional box only while `MATCH_BEHAVIOUR_ENABLED` is on
+      (read at build time as `NEXT_PUBLIC_BEHAVIOUR_ENABLED`) and sends `behaviourConsent` only when ticked;
+      a web image built with the switch off has to be rebuilt after turning it on
 - [ ] `dismiss` and `prepare` have a route and no screen: there is no dismiss button and no bid-preparation flow yet
 - [ ] **Before turning `MATCH_BEHAVIOUR_ENABLED` on:** run the §8.4 match-quality benchmark with and without it;
       the weights, point value and cap are placeholders. Emails and the benchmark deliberately use the base score
