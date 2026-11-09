@@ -18,6 +18,10 @@ if (existsSync(rootEnv)) {
 const maxUploadBytes = Number(process.env.MAX_UPLOAD_BYTES) || 26_214_400;
 const allowedMimeTypes = process.env.ALLOWED_MIME_TYPES ?? "application/pdf,image/jpeg,image/png";
 
+// The sign-up form offers the behaviour box only while the API records anything (TOR-259):
+// the same MATCH_BEHAVIOUR_ENABLED, not a second switch.
+const behaviourEnabled = process.env.MATCH_BEHAVIOUR_ENABLED === "true";
+
 const nextConfig: NextConfig = {
   // The repo's agent rules live at the root; do not generate a second set here.
   agentRules: false,
@@ -31,6 +35,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_MAX_UPLOAD_BYTES: String(maxUploadBytes),
     NEXT_PUBLIC_ALLOWED_MIME_TYPES: allowedMimeTypes,
+    NEXT_PUBLIC_BEHAVIOUR_ENABLED: String(behaviourEnabled),
   },
   experimental: {
     serverActions: {
