@@ -136,7 +136,7 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.get("/me", (req, res) => {
     if (!req.auth) throw new UnauthorizedError();
     const account = req.auth.account;
-    res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString(), consent: { noticeVersion: account.consent.noticeVersion, agreedAt: account.consent.agreedAt.toISOString(), withdrawnAt: account.consent.withdrawnAt?.toISOString() }, behaviourConsent: account.behaviourConsent ? { agreedAt: account.behaviourConsent.agreedAt.toISOString(), withdrawnAt: account.behaviourConsent.withdrawnAt?.toISOString() } : null });
+    res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString(), consent: { noticeVersion: account.consent.noticeVersion, agreedAt: account.consent.agreedAt.toISOString(), withdrawnAt: account.consent.withdrawnAt?.toISOString() }, behaviourConsent: account.behaviourConsent ? { agreedAt: account.behaviourConsent.agreedAt.toISOString(), withdrawnAt: account.behaviourConsent.withdrawnAt?.toISOString() } : null, behaviourEnabled: deps.config.matching.behaviour.enabled });
   });
 
   // Recording what a vendor views, saves and dismisses is a second consent, given and withdrawn on its own.

@@ -24,6 +24,7 @@ export function buildBehaviourRouter(deps: { config: Config; behaviour: Behaviou
     if (!req.auth) throw new UnauthorizedError();
     const input = eventSchema.parse(req.body);
     const accountId = req.auth.account._id.toString();
+    if (!deps.behaviour.enabled) throw new ForbiddenError("ยังไม่เปิดใช้การบันทึกพฤติกรรมการใช้งาน");
     if (!(await deps.behaviour.hasConsent(accountId))) throw new ForbiddenError("ยังไม่ได้ยินยอมให้บันทึกพฤติกรรมการใช้งาน");
     if (!(await deps.tors.exists(input.torId))) throw new NotFoundError();
     await deps.behaviour.record(accountId, input.torId, input.type);

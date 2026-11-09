@@ -100,6 +100,15 @@ describe("behaviour consent and events", () => {
     expect(await behaviourEvents(db).countDocuments({})).toBe(0);
   });
 
+  it("records nothing while scoring by behaviour is off, even with consent, and says so in /me", async () => {
+    const vendor = await sessionFor("one@example.test"); const torId = await seedTor();
+    await grant(vendor.sessionId);
+    const off = new BehaviourRepository(db, baseConfig);
+    expect(await off.record(vendor.accountId, torId, "view")).toBe(false);
+    expect(await behaviourEvents(db).countDocuments({})).toBe(0);
+    expect((await request(app).get("/api/v1/me").set("x-session-id", vendor.sessionId)).body.behaviourEnabled).toBe(true);
+  });
+
   it("needs a signed-in vendor", async () => {
     expect((await write(request(app).post("/api/v1/me/events")).send({ torId: "0".repeat(24), type: "view" })).status).toBe(401);
   });

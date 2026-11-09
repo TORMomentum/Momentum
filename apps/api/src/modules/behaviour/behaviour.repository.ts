@@ -26,9 +26,14 @@ export class BehaviourRepository {
     return Boolean(consent?.agreedAt) && !consent?.withdrawnAt && !account?.consent?.withdrawnAt;
   }
 
-  /** Records one event; false, and nothing written, when the vendor has not consented. */
+  /** Whether anything is recorded at all: with scoring off there is no use for the data, so none is kept. */
+  get enabled(): boolean {
+    return this.config.matching.behaviour.enabled;
+  }
+
+  /** Records one event; false, and nothing written, when scoring by behaviour is off or the vendor has not consented. */
   async record(accountId: string, torId: string, type: BehaviourEventType): Promise<boolean> {
-    if (!(await this.hasConsent(accountId))) return false;
+    if (!this.enabled || !(await this.hasConsent(accountId))) return false;
     await behaviourEvents(this.db).insertOne({ accountId, torId, type, at: new Date() });
     return true;
   }
