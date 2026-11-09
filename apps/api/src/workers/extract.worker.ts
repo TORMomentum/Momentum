@@ -41,7 +41,7 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
   const embedder = createEmbedder(config);
   const service = new ExtractionService({
     storage: createStorage(config, "worker"),
-    ai: new VertexAi({ ...config.vertex, workLocation: config.extraction.workLocation }),
+    ai: new VertexAi({ ...config.vertex, workLocation: config.extraction.workLocation, biddingFields: config.extraction.biddingFields }),
     ...(embedder ? { embedder } : {}),
     // processorId is guaranteed by config validation whenever OCR is enabled.
     ...(config.ocr.enabled && config.ocr.processorId

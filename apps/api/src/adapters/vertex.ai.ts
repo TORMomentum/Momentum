@@ -1,5 +1,6 @@
 import { GoogleAuth, type GoogleAuth as GoogleAuthType } from "google-auth-library";
 import { TOR_CATEGORIES, normalizeCategory } from "@tor-radar/shared";
+import type { EvaluationCriterion, EvaluationMethod, RequiredDocument } from "@tor-radar/shared";
 import { DocumentUnreadableError, ExtractionError } from "../core/errors.js";
 import type { Ai, ExtractionInput, RawExtraction, RawField, TorStatus } from "../ports/ai.port.js";
 
@@ -15,6 +16,14 @@ export interface VertexConfig {
    * measured extraction and needs the benchmark re-run first.
    */
   workLocation?: boolean;
+  /** Ask for the evaluation method, its weights and the required documents (TOR-209, TOR-210). Off for the same reason. */
+  biddingFields?: boolean;
+}
+
+/** Which optional fields the model is asked for; none is the prompt and schema the thresholds were measured on. */
+export interface AskFor {
+  workLocation?: boolean;
+  biddingFields?: boolean;
 }
 
 const SCOPES = ["https://www.googleapis.com/auth/cloud-platform"];
@@ -65,13 +74,41 @@ const RESPONSE_SCHEMA = {
   required: [...MODEL_KEYS],
 };
 
-/** The schema the model answers to; `work_location` is added only when asked for (TOR-313). */
-export function responseSchema(workLocation: boolean) {
-  if (!workLocation) return RESPONSE_SCHEMA;
+const EVALUATION_METHODS = ["lowest_price", "price_performance", "other"] as const;
+const DOCUMENT_HOLDERS = ["company", "personnel", "unspecified"] as const;
+
+const WORK_LOCATION_SCHEMA = { work_location: field({ type: "string", nullable: true }) };
+const BIDDING_SCHEMA = {
+  evaluation_method: field({ type: "string", enum: [...EVALUATION_METHODS], nullable: true }),
+  evaluation_weights: field({
+    type: "array",
+    items: {
+      type: "object",
+      properties: { name: { type: "string" }, weight: { type: "number" } },
+      required: ["name", "weight"],
+    },
+  }),
+  required_documents: field({
+    type: "array",
+    items: {
+      type: "object",
+      properties: { name: { type: "string" }, holder: { type: "string", enum: [...DOCUMENT_HOLDERS] } },
+      required: ["name", "holder"],
+    },
+  }),
+};
+
+/** The schema the model answers to; optional fields are added only when asked for (TOR-313, TOR-209, TOR-210). */
+export function responseSchema(ask: AskFor = {}) {
+  const extra = {
+    ...(ask.workLocation ? WORK_LOCATION_SCHEMA : {}),
+    ...(ask.biddingFields ? BIDDING_SCHEMA : {}),
+  };
+  if (Object.keys(extra).length === 0) return RESPONSE_SCHEMA;
   return {
     ...RESPONSE_SCHEMA,
-    properties: { ...RESPONSE_SCHEMA.properties, work_location: field({ type: "string", nullable: true }) },
-    required: [...RESPONSE_SCHEMA.required, "work_location"],
+    properties: { ...RESPONSE_SCHEMA.properties, ...extra },
+    required: [...RESPONSE_SCHEMA.required, ...Object.keys(extra)],
   };
 }
 
@@ -96,10 +133,18 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
 /** Added to the prompt only with `workLocation` on, after the qualifications line it follows. */
 const WORK_LOCATION_PROMPT = `- work_location: สถานที่ที่ต้องทำงานหรือส่งมอบงาน (ตำบล อำเภอ จังหวัด หรือที่ตั้งสถานที่ก่อสร้าง) ตามที่เขียนในเอกสาร ห้ามใช้ที่อยู่ของหน่วยงานแทน ถ้าเอกสารไม่ระบุสถานที่ทำงาน value = null`;
 
-export function systemPrompt(workLocation: boolean): string {
-  if (!workLocation) return SYSTEM_PROMPT;
+/** Added only with `biddingFields` on, in the same place. */
+const BIDDING_PROMPT = [
+  "- evaluation_method: วิธีพิจารณาตัดสินผู้ชนะ lowest_price = พิจารณาจากราคาต่ำสุดอย่างเดียว, price_performance = พิจารณาราคาร่วมกับเกณฑ์อื่น (เช่น เกณฑ์ราคาประกอบเกณฑ์อื่น คุณภาพและราคา), other = วิธีอื่นที่เอกสารระบุ ถ้าเอกสารไม่ระบุวิธีพิจารณา value = null raw ให้ยกข้อความที่ระบุวิธีพิจารณา",
+  "- evaluation_weights: เมื่อพิจารณาราคาร่วมกับเกณฑ์อื่น ให้ระบุเกณฑ์แต่ละข้อและน้ำหนักเป็นร้อยละ ในรูป [{name, weight}] ที่ weight รวมกัน 100 raw ให้ยกข้อความตารางน้ำหนัก ถ้าเป็นราคาต่ำสุดหรือเอกสารไม่ระบุน้ำหนัก value = []",
+  "- required_documents: เอกสารและใบรับรองที่ผู้ยื่นข้อเสนอต้องแสดงหรือยื่นเพิ่มเติม (เช่น ใบรับรอง ISO ใบอนุญาตประกอบวิชาชีพ หนังสือรับรองผลงาน) ระบุ holder: company = นิติบุคคลต้องมี, personnel = บุคลากรหรือผู้ปฏิบัติงานที่ระบุต้องมี (เช่น วิศวกร สถาปนิก ผู้ควบคุมงาน), unspecified = เอกสารไม่ระบุ ไม่เอาเอกสารที่ทุกการยื่นข้อเสนอต้องมีเหมือนกัน (หนังสือรับรองนิติบุคคล สำเนาบัตรประชาชน)",
+].join("\n");
+
+export function systemPrompt(ask: AskFor = {}): string {
+  const lines = [ask.workLocation ? WORK_LOCATION_PROMPT : "", ask.biddingFields ? BIDDING_PROMPT : ""].filter(Boolean);
+  if (lines.length === 0) return SYSTEM_PROMPT;
   const marker = "\n- status:";
-  return SYSTEM_PROMPT.replace(marker, `\n${WORK_LOCATION_PROMPT}${marker}`);
+  return SYSTEM_PROMPT.replace(marker, `\n${lines.join("\n")}${marker}`);
 }
 
 /**
@@ -134,6 +179,27 @@ const asCountOrNull = (v: unknown): number | null => {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim()) : NaN;
   return Number.isInteger(n) && n >= 0 ? n : null;
 };
+
+const EVALUATION_METHOD_SET: readonly string[] = EVALUATION_METHODS;
+const HOLDER_SET: readonly string[] = DOCUMENT_HOLDERS;
+
+const asEvaluationMethod = (v: unknown): EvaluationMethod | null =>
+  typeof v === "string" && EVALUATION_METHOD_SET.includes(v) ? (v as EvaluationMethod) : null;
+
+/** Entries without a name or a finite weight are dropped: they cannot be shown or summed. */
+const asCriteria = (v: unknown): EvaluationCriterion[] =>
+  (Array.isArray(v) ? v : []).flatMap((e: { name?: unknown; weight?: unknown } | null) => {
+    const name = typeof e?.name === "string" ? e.name.trim() : "";
+    const weight = typeof e?.weight === "number" && Number.isFinite(e.weight) ? e.weight : null;
+    return name && weight !== null ? [{ name, weight }] : [];
+  });
+
+const asDocuments = (v: unknown): RequiredDocument[] =>
+  (Array.isArray(v) ? v : []).flatMap((e: { name?: unknown; holder?: unknown } | null) => {
+    const name = typeof e?.name === "string" ? e.name.trim() : "";
+    const holder = typeof e?.holder === "string" && HOLDER_SET.includes(e.holder) ? (e.holder as RequiredDocument["holder"]) : "unspecified";
+    return name ? [{ name, holder }] : [];
+  });
 
 const asNumberOrNull = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -189,6 +255,9 @@ export function parseExtraction(modelJson: unknown, modelVersion: string): RawEx
     referenceNo: toField(m.reference_no, asStringOrNull(m.reference_no?.value)),
     // Present only when the model was asked for it; absent means "not asked", not "not stated".
     ...(m.work_location ? { workLocation: toField(m.work_location, asStringOrNull(m.work_location.value)) } : {}),
+    ...(m.evaluation_method ? { evaluationMethod: toField(m.evaluation_method, asEvaluationMethod(m.evaluation_method.value)) } : {}),
+    ...(m.evaluation_weights ? { evaluationWeights: toField(m.evaluation_weights, asCriteria(m.evaluation_weights.value)) } : {}),
+    ...(m.required_documents ? { requiredDocuments: toField(m.required_documents, asDocuments(m.required_documents.value)) } : {}),
     modelVersion,
   };
 
@@ -217,6 +286,7 @@ interface GenerateResponse {
 
 export class VertexAi implements Ai {
   private auth: GoogleAuthType;
+  private readonly ask: AskFor;
 
   constructor(private readonly config: VertexConfig) {
     if (!config.project || !config.credentialsPath) {
@@ -225,6 +295,7 @@ export class VertexAi implements Ai {
       );
     }
     this.auth = new GoogleAuth({ keyFile: config.credentialsPath, scopes: SCOPES });
+    this.ask = { workLocation: config.workLocation === true, biddingFields: config.biddingFields === true };
   }
 
   async extract(input: ExtractionInput): Promise<RawExtraction> {
@@ -232,7 +303,7 @@ export class VertexAi implements Ai {
       `https://${vertexHost(this.config.location)}/v1/projects/${this.config.project}` +
       `/locations/${this.config.location}/publishers/google/models/${this.config.model}:generateContent`;
     const body = {
-      systemInstruction: { parts: [{ text: systemPrompt(this.config.workLocation === true) }] },
+      systemInstruction: { parts: [{ text: systemPrompt(this.ask) }] },
       contents: [
         {
           role: "user",
@@ -249,7 +320,7 @@ export class VertexAi implements Ai {
       ],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: responseSchema(this.config.workLocation === true),
+        responseSchema: responseSchema(this.ask),
         temperature: 0,
         maxOutputTokens: 8192,
       },

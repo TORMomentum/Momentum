@@ -43,14 +43,59 @@ describe("parseExtraction", () => {
   });
 
   it("asks for the work location only when switched on, so the measured prompt is otherwise unchanged", () => {
-    expect(systemPrompt(false)).not.toContain("work_location");
-    expect(responseSchema(false).properties).not.toHaveProperty("work_location");
-    expect(responseSchema(false).required).not.toContain("work_location");
-    expect(systemPrompt(true)).toContain("work_location");
-    expect(responseSchema(true).properties).toHaveProperty("work_location");
-    expect(responseSchema(true).required).toContain("work_location");
+    expect(systemPrompt()).not.toContain("work_location");
+    expect(responseSchema().properties).not.toHaveProperty("work_location");
+    expect(responseSchema().required).not.toContain("work_location");
+    expect(systemPrompt({ workLocation: true })).toContain("work_location");
+    expect(responseSchema({ workLocation: true }).properties).toHaveProperty("work_location");
+    expect(responseSchema({ workLocation: true }).required).toContain("work_location");
     // The rest of the prompt is the same either way.
-    expect(systemPrompt(true).replace(/\n- work_location:[^\n]*/, "")).toBe(systemPrompt(false));
+    expect(systemPrompt({ workLocation: true }).replace(/\n- work_location:[^\n]*/, "")).toBe(systemPrompt());
+  });
+
+  it("asks for the bidding fields only when switched on, leaving the measured prompt untouched", () => {
+    const keys = ["evaluation_method", "evaluation_weights", "required_documents"];
+    for (const key of keys) {
+      expect(systemPrompt()).not.toContain(key);
+      expect(responseSchema().properties).not.toHaveProperty(key);
+      expect(systemPrompt({ biddingFields: true })).toContain(key);
+      expect(responseSchema({ biddingFields: true }).properties).toHaveProperty(key);
+      expect(responseSchema({ biddingFields: true }).required).toContain(key);
+    }
+    // Both extras together add exactly their own lines.
+    const both = systemPrompt({ workLocation: true, biddingFields: true });
+    expect(both.replace(/\n- (work_location|evaluation_method|evaluation_weights|required_documents):[^\n]*/g, "")).toBe(systemPrompt());
+  });
+
+  it("reads the evaluation method, weights and required documents, dropping malformed entries", () => {
+    const result = parseExtraction(
+      {
+        ...wellFormed,
+        evaluation_method: { raw: "เกณฑ์ราคาประกอบเกณฑ์อื่น", value: "price_performance", confidence: 0.9, evidence: "ข้อ ๑๓" },
+        evaluation_weights: {
+          raw: "ราคา ๖๐ คะแนน ผลงาน ๔๐ คะแนน",
+          value: [{ name: "ราคา", weight: 60 }, { name: " ผลงาน ", weight: 40 }, { name: "", weight: 5 }, { name: "x", weight: "ten" }, null],
+          confidence: 0.9,
+          evidence: "ตารางข้อ ๑๓",
+        },
+        required_documents: {
+          raw: "ISO 9001",
+          value: [{ name: "ใบรับรอง ISO 9001", holder: "company" }, { name: "วิศวกรโยธา", holder: "nobody" }, { name: "  " }],
+          confidence: 0.8,
+          evidence: "ข้อ ๒",
+        },
+      },
+      "m",
+    );
+    expect(result.evaluationMethod?.value).toBe("price_performance");
+    expect(result.evaluationWeights?.value).toEqual([{ name: "ราคา", weight: 60 }, { name: "ผลงาน", weight: 40 }]);
+    expect(result.requiredDocuments?.value).toEqual([
+      { name: "ใบรับรอง ISO 9001", holder: "company" },
+      { name: "วิศวกรโยธา", holder: "unspecified" },
+    ]);
+    // An unknown method is no method; a model that was not asked leaves the fields absent.
+    expect(parseExtraction({ ...wellFormed, evaluation_method: { raw: "", value: "random", confidence: 1, evidence: "" } }, "m").evaluationMethod?.value).toBeNull();
+    expect(parseExtraction(wellFormed, "m").evaluationWeights).toBeUndefined();
   });
 
   it("maps the model's snake_case output onto the camelCase port", () => {
