@@ -8,7 +8,7 @@ import type { Config } from "../../core/config.js";
 import { UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { ProfileRepository } from "./profile.repository.js";
-import type { NotifyPreferences, PastProject, VendorCertifications } from "../../core/db.js";
+import type { NotifyPreferences, PastProject, PersonnelMember, VendorCertifications } from "../../core/db.js";
 
 const taxonomyIds = new Set([...WORK_CATEGORIES.map((group) => group.id), ...WORK_CATEGORY_LEAVES.map((leaf) => leaf.id)]);
 const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => province.id)]);
@@ -62,6 +62,13 @@ export function profileExtrasSchema(config: Config) {
       tags: z.array(z.enum(certificationIds)).max(CERTIFICATIONS.length),
       other: z.array(z.string().trim().min(1).max(80)).max(10),
     }).strict(),
+    // Optional: a client that predates the section leaves what is stored alone.
+    personnel: z.array(z.object({
+      id: z.string().max(64).optional(),
+      role: z.string().trim().min(1, "กรุณาระบุตำแหน่ง").max(80),
+      certifications: z.array(z.enum(certificationIds)).max(CERTIFICATIONS.length),
+      other: z.array(z.string().trim().min(1).max(80)).max(10),
+    }).strict()).max(config.matching.personnelMax).optional(),
   }).strict();
 }
 
@@ -91,6 +98,7 @@ export function profileResponse(profile: {
   updatedBy?: "vendor" | "admin";
   pastProjects?: PastProject[];
   certifications?: VendorCertifications | null;
+  personnel?: PersonnelMember[];
 }) {
   return {
     categories: profile.categories,
@@ -104,6 +112,8 @@ export function profileResponse(profile: {
     pastProjects: profile.pastProjects ?? [],
     // null = never stated, which matching treats differently from "holds nothing".
     certifications: profile.certifications ?? null,
+    // [] = none stated yet; the screen cannot tell "no staff" from "not asked", and matching does not need it to.
+    personnel: profile.personnel ?? [],
   };
 }
 
@@ -125,7 +135,7 @@ async function embedPhrases(embedder: Embedder | undefined, phrases: string[]) {
 }
 
 export function emptyProfile() {
-  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null, pastProjects: [], certifications: null };
+  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null, pastProjects: [], certifications: null, personnel: [] };
 }
 
 export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository; embedder?: Embedder }): Router {
@@ -162,6 +172,14 @@ export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepo
           tags: [...new Set(input.certifications.tags)],
           other: [...new Set(input.certifications.other)],
         },
+        ...(input.personnel ? {
+          personnel: input.personnel.map((member) => ({
+            id: member.id ?? randomUUID(),
+            role: member.role,
+            certifications: [...new Set(member.certifications)],
+            other: [...new Set(member.other)],
+          })),
+        } : {}),
       },
       { categories: empty.categories, areas: empty.areas, otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION },
     );

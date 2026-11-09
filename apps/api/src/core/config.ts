@@ -240,6 +240,7 @@ const schema = z.object({
   // inferred from the title, and a wrong guess must not hide a TOR outright.
   MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
   PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
+  PROFILE_PERSONNEL_MAX: z.coerce.number().int().positive().default(50),
   // The labelling screen: a vendor's top matches (precision) and a sample of
   // their category's TORs that did not make the cut (recall).
   LABEL_MATCHED_SHOWN: z.coerce.number().int().positive().default(10),
@@ -367,7 +368,7 @@ export interface Config {
     categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
-    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
+    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number; personnelMax: number;
     manualEmailMaxTors: number; labelMatchedShown: number; labelUnmatchedShown: number;
   };
   notifications: {
@@ -524,7 +525,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
       experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, qualificationWeight: parsed.MATCH_QUALIFICATION_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
-      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
+      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX, personnelMax: parsed.PROFILE_PERSONNEL_MAX,
       manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
       labelMatchedShown: parsed.LABEL_MATCHED_SHOWN, labelUnmatchedShown: parsed.LABEL_UNMATCHED_SHOWN,
     },

@@ -1,8 +1,9 @@
 import type { Db } from "mongodb";
-import { vendorProfiles, type PastProject, type VendorCertifications, type VendorProfileDocument } from "../../core/db.js";
+import { vendorProfiles, type PastProject, type PersonnelMember, type VendorCertifications, type VendorProfileDocument } from "../../core/db.js";
 
-export type VendorProfileInput = Omit<VendorProfileDocument, "accountId" | "updatedAt" | "updatedBy" | "pastProjects" | "certifications">;
-export type VendorProfileExtras = { pastProjects: PastProject[]; certifications: VendorCertifications };
+export type VendorProfileInput = Omit<VendorProfileDocument, "accountId" | "updatedAt" | "updatedBy" | "pastProjects" | "certifications" | "personnel">;
+/** `personnel` is left as stored when absent, so a client that does not know the section cannot wipe it. */
+export type VendorProfileExtras = { pastProjects: PastProject[]; certifications: VendorCertifications; personnel?: PersonnelMember[] };
 
 /** The profile feature's only Mongo boundary. */
 export class ProfileRepository {
