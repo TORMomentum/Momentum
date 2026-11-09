@@ -19,6 +19,9 @@ COPY packages ./packages
 RUN npm ci
 
 COPY apps/web ./apps/web
+# Baked into the client bundle by next.config.ts, so it is a build argument, not a runtime variable.
+ARG MATCH_BEHAVIOUR_ENABLED=false
+ENV MATCH_BEHAVIOUR_ENABLED=$MATCH_BEHAVIOUR_ENABLED
 RUN npm run build -w apps/web
 
 FROM node:22-alpine AS run
