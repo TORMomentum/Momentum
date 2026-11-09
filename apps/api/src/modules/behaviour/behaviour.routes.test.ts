@@ -123,6 +123,38 @@ describe("behaviour consent and events", () => {
     expect(await behaviourEvents(db).countDocuments({})).toBe(0);
   });
 
+  it("keeps nothing when the check after the write fails, and the sweep removes whatever a failed cleanup left", async () => {
+    const vendor = await sessionFor("one@example.test"); const torId = await seedTor();
+    await grant(vendor.sessionId);
+    const accountsRepository = new AccountsRepository(db, sessionsRepository);
+    // Withdrawal completes before the write; then the second consent read fails.
+    const spy = vi.spyOn(behaviour, "hasConsent")
+      .mockImplementationOnce(async () => { await accountsRepository.setBehaviourConsent(vendor.accountId, false); return true; })
+      .mockImplementationOnce(async () => { throw new Error("database unavailable"); });
+    await expect(behaviour.record(vendor.accountId, torId, "view")).rejects.toThrow("database unavailable");
+    spy.mockRestore();
+    expect(await behaviourEvents(db).countDocuments({})).toBe(0);
+
+    // If that cleanup had failed as well, the row would be an orphan: unread, and removed by the sweep.
+    const other = await sessionFor("two@example.test"); await grant(other.sessionId);
+    await behaviourEvents(db).insertOne({ accountId: vendor.accountId, torId, type: "view", at: new Date() });
+    await behaviourEvents(db).insertOne({ accountId: other.accountId, torId, type: "view", at: new Date() });
+    expect(await behaviour.affinity(vendor.accountId)).toEqual({});
+    expect(await behaviour.purgeUnconsented()).toBe(1);
+    expect(await behaviourEvents(db).find({}).toArray()).toMatchObject([{ accountId: other.accountId }]);
+  });
+
+  it("starts fresh consent with no history, but giving consent again while it is live keeps what was recorded", async () => {
+    const vendor = await sessionFor("one@example.test"); const torId = await seedTor();
+    await behaviourEvents(db).insertOne({ accountId: vendor.accountId, torId, type: "view", at: new Date() }); // an orphan
+    await grant(vendor.sessionId);
+    expect(await behaviourEvents(db).countDocuments({})).toBe(0);
+
+    expect((await send(vendor.sessionId, torId, "save")).status).toBe(204);
+    await grant(vendor.sessionId);
+    expect(await behaviourEvents(db).countDocuments({})).toBe(1);
+  });
+
   it("answers /me after a withdrawal that came before any consent, and leaves the account as it was", async () => {
     const vendor = await sessionFor("one@example.test");
     const withdrawn = await write(request(app).post("/api/v1/me/consent/behaviour/withdraw")).set("x-session-id", vendor.sessionId).send({});
@@ -201,7 +233,8 @@ describe("behaviour affinity", () => {
     await behaviourEvents(db).insertOne({ accountId: vendor.accountId, torId, type: "save", at: new Date() });
     expect(await behaviour.affinity(vendor.accountId)).toEqual({});
 
-    await grant(vendor.sessionId);
+    await grant(vendor.sessionId); // fresh consent clears what was there before it
+    await behaviourEvents(db).insertOne({ accountId: vendor.accountId, torId, type: "save", at: new Date() });
     expect(Object.keys(await behaviour.affinity(vendor.accountId))).toEqual(["construction.road"]);
     expect(await new BehaviourRepository(db, baseConfig).affinity(vendor.accountId)).toEqual({});
 
