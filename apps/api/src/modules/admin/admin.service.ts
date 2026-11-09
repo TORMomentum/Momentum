@@ -1,4 +1,5 @@
 import { TOR_CATEGORIES, isTorCategory } from "@tor-radar/shared";
+import { pageImageKey } from "../../lib/storage-key.js";
 import type { Queue } from "../../ports/queue.port.js";
 import { BadRequestError, AppError } from "../../core/errors.js";
 import { extensionFor } from "../../lib/content-disposition.js";
@@ -114,6 +115,12 @@ export class AdminService {
       bytes: record.storage.bytes,
       filename: record.filename ?? `tor-${torId}${extensionFor(record.storage.contentType)}`,
     };
+  }
+
+  /** The stored image of one page of a record's document, which fields are boxed on (TOR-128). */
+  async pageImageKey(torId: string, page: number): Promise<string> {
+    const record = await this.deps.repo.load(torId);
+    return pageImageKey(record.contentHash, page);
   }
 
   /** Every record, searchable — the queue shows only what a model graded low. */

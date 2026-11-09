@@ -25,8 +25,9 @@ export interface FoundTor {
  * Slices 2-4 each add fields; without this marker, "absent" and "not yet
  * written by that slice" are indistinguishable, and a migration has nothing
  * to select on. Bump it when the shape of a written record changes.
+ * 3: a field may carry `anchor`, the page and boxes it was read from (TOR-128).
  */
-export const TOR_SCHEMA_VERSION = 2;
+export const TOR_SCHEMA_VERSION = 3;
 
 /** A source context as record fields; nothing for a plain upload. */
 function contextFields(context: SourceContext | undefined): Partial<TorDocument> {

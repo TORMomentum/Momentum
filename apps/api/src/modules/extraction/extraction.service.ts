@@ -1,6 +1,10 @@
 import type { Provenance } from "@tor-radar/shared";
 import type { Ai } from "../../ports/ai.port.js";
+import type { Embedder } from "../../ports/embeddings.port.js";
+import type { Ocr } from "../../ports/ocr.port.js";
 import type { Storage } from "../../ports/storage.port.js";
+import { anchorFields, keepAnchorsOn } from "../../lib/anchor.js";
+import { pageImageKey } from "../../lib/storage-key.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
@@ -20,9 +24,16 @@ export interface ExtractionConfig {
   maxInputBytes?: number;
 }
 
+/** The part of a TOR that says what the work is; the rest of a long scope adds cost, not meaning. */
+const EMBED_MAX_CHARS = 2_000;
+
 export interface ExtractionServiceDeps {
   storage: Storage;
   ai: Ai;
+  /** Absent when OCR is off: fields are then saved without anchors (design 2026-11-08). */
+  ocr?: Ocr;
+  /** Absent when embeddings are off: the record is then saved without a vector. */
+  embedder?: Embedder;
   repo: ExtractionRepository;
   config: ExtractionConfig;
 }
@@ -53,7 +64,7 @@ export class ExtractionService {
 
   run = async (torId: string): Promise<void> => {
     const target = await this.deps.repo.load(torId);
-    const { storageKey, contentType, knownFields, createdAt } = target;
+    const { storageKey, contentType, knownFields, createdAt, contentHash } = target;
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
 
@@ -98,8 +109,46 @@ export class ExtractionService {
       knownFields,
     });
 
+    // Where each value was read. Never fails the extraction: an anchor helps the
+    // reviewer, and the record is correct without it (design 2026-11-08 §3).
+    let located = fields;
+    let ocrModel = this.deps.config.model;
+    if (this.deps.ocr) {
+      try {
+        const ocr = await this.deps.ocr.read({ bytes, contentType });
+        const anchored = anchorFields(fields, ocr);
+        ocrModel = ocr.model;
+        // An anchor is kept only for a page whose image is stored: a box that
+        // points at a missing image is worse than no box.
+        const stored = new Set<number>();
+        for (const page of ocr.pages.filter((p) => p.image && anchored.pages.includes(p.number))) {
+          try {
+            await this.deps.storage.putIfAbsent(pageImageKey(contentHash, page.number), page.image!.bytes, page.image!.contentType);
+            stored.add(page.number);
+          } catch (error) {
+            console.warn(JSON.stringify({ event: "page_image_failed", torId, page: page.number, reason: error instanceof Error ? error.message : "unknown" }));
+          }
+        }
+        located = keepAnchorsOn(anchored.fields, stored);
+      } catch (error) {
+        console.warn(JSON.stringify({ event: "ocr_failed", torId, reason: error instanceof Error ? error.message : "unknown" }));
+      }
+    }
+
+    // The TOR's meaning, so a vendor's free-text work type can match it by sense.
+    // Like OCR, a failure costs the vector and nothing else.
+    let embedding: { model: string; vector: number[] } | undefined;
+    if (this.deps.embedder) {
+      const text = [fields.title.raw, fields.scopeSummary.raw].filter(Boolean).join("\n").slice(0, EMBED_MAX_CHARS);
+      try {
+        if (text) embedding = { model: this.deps.embedder.model, vector: (await this.deps.embedder.embed([text]))[0]! };
+      } catch (error) {
+        console.warn(JSON.stringify({ event: "embedding_failed", where: "extraction", torId, reason: error instanceof Error ? error.message : "unknown" }));
+      }
+    }
+
     const provenance: Provenance = {
-      ocrModel: this.deps.config.model,
+      ocrModel,
       extractModel: this.deps.config.model,
       modelVersion: raw.modelVersion,
       extractedAt: new Date().toISOString(),
@@ -110,11 +159,11 @@ export class ExtractionService {
     // bid does (spec 2026-09-16 e-GP project linking). Whichever of the two is
     // extracted second makes the link.
     const projectId = target.sourceProject?.projectId;
-    let publishedFields = fields;
+    let publishedFields = located;
     if (projectId && target.documentType === "tor") {
       const linked = await this.deps.repo.findInvitationDeadline(projectId);
       if (linked) {
-        publishedFields = { ...fields, deadline: { ...linked.field, fromDocument: linked.invitationId } };
+        publishedFields = { ...located, deadline: { ...linked.field, fromDocument: linked.invitationId } };
       }
     }
 
@@ -132,6 +181,7 @@ export class ExtractionService {
       reviewReasons,
       hasTextLayer: textLayer,
       provenance,
+      ...(embedding ? { embedding } : {}),
       ...(cohort ? { cohort: cohort.cohort, cohortDateSource: cohort.cohortDateSource } : {}),
     });
 

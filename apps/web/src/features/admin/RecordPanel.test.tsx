@@ -101,6 +101,36 @@ describe("RecordPanel", () => {
     expect(titleField().value).toBe("ค่า B");
   });
 
+  it("boxes where a value was read on the stored page image, and returns to the PDF", async () => {
+    const item = record("a", "ค่า A");
+    item.fields.title = { ...item.fields.title!, anchor: { page: 2, boxes: [[0.1, 0.2, 0.5, 0.3]] } };
+    await act(async () => {
+      root.render(<RecordPanel key={item.id} record={item} documentHref="/admin/tors/a/document" mode="review" />);
+    });
+    expect(container.querySelector("iframe")).not.toBeNull();
+    const locate = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("ดูตำแหน่งในเอกสาร")) as HTMLButtonElement;
+    expect(locate.textContent).toContain("หน้า 2");
+
+    await act(async () => locate.click());
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe("/admin/tors/a/pages/2");
+    const box = container.querySelector<HTMLElement>("[data-testid=source-box]");
+    expect(box?.style.left).toBe("10%");
+    expect(box?.style.width).toBe("40%");
+    expect(container.querySelector("iframe")).toBeNull();
+
+    await act(async () => locate.click());
+    expect(container.querySelector("iframe")).not.toBeNull();
+  });
+
+  it("offers no locate button for a field with no anchor", async () => {
+    const item = record("a", "ค่า A");
+    await act(async () => {
+      root.render(<RecordPanel key={item.id} record={item} documentHref={null} mode="review" />);
+    });
+    expect(container.textContent).not.toContain("ดูตำแหน่งในเอกสาร");
+  });
+
   it("uses management actions without approve-and-publish wording, while review offers approve", async () => {
     const item = record("a", "ค่า A");
     await act(async () => {

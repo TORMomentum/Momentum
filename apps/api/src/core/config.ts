@@ -120,6 +120,30 @@ const schema = z.object({
   EXTRACT_MAX_ANNEXES: z.coerce.number().int().nonnegative().default(4),
   EXTRACT_MAX_INPUT_BYTES: z.coerce.number().int().positive().default(14_000_000),
 
+  /**
+   * Also ask Gemini where the work is done (TOR-313). Off by default: the T_LOW/T_HIGH
+   * thresholds were measured on a prompt and schema without that field, so turning it
+   * on is a change to the measured extraction. Re-run the benchmark first.
+   */
+  EXTRACT_WORK_LOCATION_ENABLED: flag(false),
+
+  // Provenance (TOR-128, design 2026-11-08). Off by default: each enabled run spends Document AI pages.
+  OCR_ENABLED: flag(false),
+  /** Document AI is multi-region only: "us" or "eu". */
+  DOCAI_LOCATION: z.string().min(1).default("us"),
+  DOCAI_PROCESSOR_ID: blankAsAbsent(z.string().min(1)),
+  /** Pages sent per document; 15 is the synchronous limit. Fields past it get no anchor. */
+  OCR_MAX_PAGES: z.coerce.number().int().positive().max(15).default(15),
+  OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+
+  // Embeddings for a vendor's free-text work types (TOR-202). Off by default: it spends model calls.
+  EMBEDDINGS_ENABLED: flag(false),
+  EMBEDDING_MODEL: z.string().min(1).default("text-multilingual-embedding-002"),
+  /** Embedding models are regional; the Gemini default of "global" does not serve them. */
+  EMBEDDING_LOCATION: z.string().min(1).default("us-central1"),
+  /** Cosine similarity at or above which a free-text work type counts as the same kind of work. Uncalibrated. */
+  EMBEDDING_MIN_SIMILARITY: z.coerce.number().min(0).max(1).default(0.75),
+
   // Confidence thresholds — measured, not chosen (O1 closed; docs/corpus/BENCHMARK.md).
   T_LOW: z.coerce.number().min(0).max(1).default(0.8),
   T_HIGH: z.coerce.number().min(0).max(1).default(0.95),
@@ -250,6 +274,9 @@ const schema = z.object({
 }).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GOOGLE_CLOUD_PROJECT), {
   message: "GOOGLE_CLOUD_PROJECT is required unless GCS_API_ENDPOINT points at the emulator",
   path: ["GOOGLE_CLOUD_PROJECT"],
+}).refine((v) => !v.OCR_ENABLED || Boolean(v.DOCAI_PROCESSOR_ID), {
+  message: "DOCAI_PROCESSOR_ID is required when OCR_ENABLED is on",
+  path: ["DOCAI_PROCESSOR_ID"],
 }).refine((v) => v.SEARCH_PAGE_SIZE <= v.SEARCH_MAX_PAGE_SIZE, {
   message: "SEARCH_PAGE_SIZE must not exceed SEARCH_MAX_PAGE_SIZE",
   path: ["SEARCH_PAGE_SIZE"],
@@ -310,7 +337,9 @@ export interface Config {
     credentialsPath?: string;
     timeoutMs: number;
   };
-  extraction: { maxAnnexes: number; maxInputBytes: number };
+  extraction: { maxAnnexes: number; maxInputBytes: number; workLocation: boolean };
+  ocr: { enabled: boolean; location: string; processorId?: string; maxPages: number; timeoutMs: number };
+  embeddings: { enabled: boolean; model: string; location: string; minSimilarity: number };
   tLow: number;
   tHigh: number;
   thresholdsVersion: string;
@@ -435,7 +464,24 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       credentialsPath: parsed.GOOGLE_APPLICATION_CREDENTIALS,
       timeoutMs: parsed.EXTRACT_TIMEOUT_MS,
     },
-    extraction: { maxAnnexes: parsed.EXTRACT_MAX_ANNEXES, maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES },
+    extraction: {
+      maxAnnexes: parsed.EXTRACT_MAX_ANNEXES,
+      maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES,
+      workLocation: parsed.EXTRACT_WORK_LOCATION_ENABLED,
+    },
+    ocr: {
+      enabled: parsed.OCR_ENABLED,
+      location: parsed.DOCAI_LOCATION,
+      processorId: parsed.DOCAI_PROCESSOR_ID,
+      maxPages: parsed.OCR_MAX_PAGES,
+      timeoutMs: parsed.OCR_TIMEOUT_MS,
+    },
+    embeddings: {
+      enabled: parsed.EMBEDDINGS_ENABLED,
+      model: parsed.EMBEDDING_MODEL,
+      location: parsed.EMBEDDING_LOCATION,
+      minSimilarity: parsed.EMBEDDING_MIN_SIMILARITY,
+    },
     tLow: parsed.T_LOW,
     tHigh: parsed.T_HIGH,
     thresholdsVersion: parsed.THRESHOLDS_VERSION,

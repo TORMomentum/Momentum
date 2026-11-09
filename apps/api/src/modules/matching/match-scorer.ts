@@ -1,6 +1,8 @@
-import { CGD_BRANCHES, WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
+import { CGD_BRANCHES, PROVINCES, WHOLE_COUNTRY_AREA, WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
 import type { TorDocument, VendorProfileDocument } from "../../core/db.js";
+import { provincesIn } from "../../lib/province.js";
+import { cosine } from "../../ports/embeddings.port.js";
 import { certificationName, certificationsMentioned, qualificationText } from "./certifications.js";
 import { cgdBranchOf } from "./registration.js";
 import { classifyTor, type TorClassification } from "./tor-classifier.js";
@@ -30,7 +32,48 @@ function freeTextSignal(profile: VendorProfileDocument, record: TorDocument, con
     const terms = [query, ...query.split(/[\s,;/|]+/u).filter((part) => part.length > 1)].map((term) => term.toLocaleLowerCase("th-TH"));
     if (terms.some((term) => text.includes(term))) return { score: config.matching.freeTextScore, reason: { code: "free-text", th: `คล้ายกับงานที่คุณระบุเอง: ${query}` } };
   }
-  return { score: 0, reason: null };
+  return semanticSignal(profile, record, config);
+}
+
+const provinceName = new Map<string, string>(PROVINCES.map((province) => [province.id, province.th]));
+
+/**
+ * Whether the work is where the vendor serves. Silent unless the extracted work
+ * location is verified and names a province, and silent for a vendor serving
+ * the whole country: an unknown place is never scored, and an agency's address
+ * is never a stand-in for it.
+ */
+function areaSignal(profile: VendorProfileDocument, record: TorDocument) {
+  const location = record.fields.workLocation;
+  if (!location?.verified || typeof location.value !== "string") return null;
+  const areas = profile.areas ?? [];
+  if (areas.length === 0 || areas.includes(WHOLE_COUNTRY_AREA)) return null;
+  const provinces = provincesIn(location.value);
+  if (provinces.length === 0) return null;
+  const name = provinceName.get(provinces[0]!) ?? provinces[0]!;
+  return provinces.some((id) => areas.includes(id))
+    ? { score: 1, reason: { code: "area-inside", th: `งานอยู่ในพื้นที่ที่คุณให้บริการ: ${name}` } }
+    : { score: 0, reason: { code: "area-outside", th: `งานอยู่นอกพื้นที่ที่คุณให้บริการ: ${name}` } };
+}
+
+/**
+ * A phrase the vendor wrote, matched to the TOR by meaning when no word of it
+ * appears. Both vectors were made before scoring, by the same model; a phrase
+ * edited since (its text no longer matches) or made by another model is ignored.
+ */
+function semanticSignal(profile: VendorProfileDocument, record: TorDocument, config: Config) {
+  const embedding = record.embedding;
+  if (!config.embeddings.enabled || !embedding) return { score: 0, reason: null };
+  const current = new Set((profile.otherCategories ?? []).map((entry) => entry.trim()));
+  let best: { text: string; similarity: number } | null = null;
+  for (const entry of profile.otherCategoryVectors ?? []) {
+    if (entry.model !== embedding.model || !current.has(entry.text.trim())) continue;
+    const similarity = cosine(entry.vector, embedding.vector);
+    if (similarity >= config.embeddings.minSimilarity && (!best || similarity > best.similarity)) best = { text: entry.text, similarity };
+  }
+  return best
+    ? { score: config.matching.freeTextScore, reason: { code: "free-text-meaning", th: `ความหมายใกล้เคียงกับงานที่คุณระบุเอง: ${best.text}` } }
+    : { score: 0, reason: null };
 }
 
 function budgetSignal(profile: VendorProfileDocument, record: TorDocument, config: Config) {
@@ -129,9 +172,11 @@ export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, 
   if (experience) signals.push({ weight: config.matching.experienceWeight, signal: experience });
   const qualification = qualificationSignal(profile, record);
   if (qualification) signals.push({ weight: config.matching.qualificationWeight, signal: qualification });
-  // Work location is not extracted yet. This switch prevents an agency address
-  // ever becoming a proxy for it; turn it on with the future extracted field.
-  if (config.matching.areaSignalEnabled) { /* location signal belongs here once extracted */ }
+  // Off until the work-location field has been checked against real TORs.
+  if (config.matching.areaSignalEnabled) {
+    const area = areaSignal(profile, record);
+    if (area) signals.push({ weight: config.matching.areaWeight, signal: area });
+  }
   const totalWeight = signals.reduce((total, item) => total + item.weight, 0);
   const weighted = signals.reduce((total, item) => total + item.weight * item.signal.score, 0) / totalWeight;
   const registration = registrationCheck(profile, record, classification, config);

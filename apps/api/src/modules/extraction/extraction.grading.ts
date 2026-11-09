@@ -1,3 +1,4 @@
+import { provincesIn } from "../../lib/province.js";
 import { isTorCategory } from "@tor-radar/shared";
 import type { ConfidenceLevel, ExtractedField, TorFields } from "@tor-radar/shared";
 import type { RawExtraction, RawField } from "../../ports/ai.port.js";
@@ -70,6 +71,9 @@ function structurallyOk(name: keyof TorFields, raw: RawExtraction, ctx: GradingC
     }
     case "torStatus":
       return raw.status.value !== null;
+    case "workLocation":
+      // Usable only if it names a province: area matching reads nothing else from it.
+      return provincesIn(raw.workLocation?.value ?? "").length > 0;
     case "scopeSummary":
       return (raw.scopeSummary.value ?? "").trim().length >= SCOPE_MIN_CHARS;
     case "scopeLocation":
@@ -107,6 +111,7 @@ const RAW_TO_TOR: Record<keyof TorFields, RawKey> = {
   torStatus: "status",
   procurementMethod: "procurementMethod",
   referenceNo: "referenceNo",
+  workLocation: "workLocation",
 };
 
 /** The RawField for a TorFields key, typed loosely (its own T is not needed here). */
@@ -169,6 +174,7 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
     torStatus: buildField(raw.status, verifiedOf("torStatus")),
     procurementMethod: buildField(raw.procurementMethod, false),
     referenceNo: buildField(raw.referenceNo, false),
+    ...(raw.workLocation ? { workLocation: buildField(raw.workLocation, verifiedOf("workLocation")) } : {}),
   };
 
   // Written back exactly as the source stated them, origin and all.
@@ -208,7 +214,7 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
     // Copy-through is a model failure; a value the source stated is not one.
     if (isKnown(name)) continue;
     // The scope count quotes a heading, which may rightly repeat another field's wording.
-    if (name === "scopeItems" || name === "scopeLocation") continue;
+    if (name === "scopeItems" || name === "scopeLocation" || name === "workLocation") continue;
     const r = rawFor(raw, name)?.raw.trim() ?? "";
     if (r) rawCounts.set(r, (rawCounts.get(r) ?? 0) + 1);
   }

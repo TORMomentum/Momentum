@@ -3,9 +3,12 @@ import type { ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceP
 import { tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import { NotFoundError } from "../../core/errors.js";
+import { TOR_SCHEMA_VERSION } from "../intake/intake.repository.js";
 
 export interface ExtractionTarget {
   storageKey: string;
+  /** Names the page images derived from this document. */
+  contentHash: string;
   contentType: string;
   /** The TOR's annexes, read with it within the request's size budget. */
   annexes: StoredAnnex[];
@@ -36,6 +39,7 @@ export interface ExtractionResult {
   reviewReasons: string[];
   hasTextLayer: boolean;
   provenance: Provenance;
+  embedding?: { model: string; vector: number[] };
   cohort?: CohortKey;
   cohortDateSource?: "announced" | "intake";
 }
@@ -50,6 +54,7 @@ export class ExtractionRepository {
       {
         projection: {
           storage: 1,
+          contentHash: 1,
           fields: 1,
           announcedAt: 1,
           announcedAtOrigin: 1,
@@ -73,6 +78,7 @@ export class ExtractionRepository {
 
     return {
       storageKey: doc.storage.key,
+      contentHash: doc.contentHash,
       contentType: doc.storage.contentType,
       annexes: doc.annexes ?? [],
       knownFields,
@@ -134,6 +140,8 @@ export class ExtractionRepository {
           reviewReasons: result.reviewReasons,
           hasTextLayer: result.hasTextLayer,
           provenance: result.provenance,
+          schemaVersion: TOR_SCHEMA_VERSION,
+          ...(result.embedding ? { embedding: result.embedding } : {}),
           ...(result.cohort ? { cohort: result.cohort, cohortDateSource: result.cohortDateSource } : {}),
           updatedAt: new Date(),
         },

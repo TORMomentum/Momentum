@@ -9,6 +9,12 @@ export interface VertexConfig {
   project?: string;
   credentialsPath?: string;
   timeoutMs: number;
+  /**
+   * Ask for where the work is done. Off by default: the confidence thresholds were
+   * measured on a prompt and schema without it, so adding it is a change to the
+   * measured extraction and needs the benchmark re-run first.
+   */
+  workLocation?: boolean;
 }
 
 const SCOPES = ["https://www.googleapis.com/auth/cloud-platform"];
@@ -59,6 +65,16 @@ const RESPONSE_SCHEMA = {
   required: [...MODEL_KEYS],
 };
 
+/** The schema the model answers to; `work_location` is added only when asked for (TOR-313). */
+export function responseSchema(workLocation: boolean) {
+  if (!workLocation) return RESPONSE_SCHEMA;
+  return {
+    ...RESPONSE_SCHEMA,
+    properties: { ...RESPONSE_SCHEMA.properties, work_location: field({ type: "string", nullable: true }) },
+    required: [...RESPONSE_SCHEMA.required, "work_location"],
+  };
+}
+
 const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข้อมูลจากเอกสารจัดซื้อจัดจ้าง (TOR / ประกาศประกวดราคา) ของหน่วยงานราชการไทย
 สกัดเฉพาะข้อมูลที่ปรากฏจริงในเอกสาร ห้ามเดาหรือเติมจากความรู้ภายนอก
 แต่ละ field ให้ตอบ:
@@ -76,6 +92,15 @@ const SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข
 - วันที่ทุก field: ในเอกสารสแกน เลขไทย ๙ กับ ๕ (และ ๖ กับ ๘) มักดูคล้ายกัน ให้อ่านปี พ.ศ. โดยเทียบกับวันที่อื่นในเอกสารเดียวกัน เช่น "ประกาศ ณ วันที่" หรือ "ลงวันที่" ปีย่อสองหลัก (เช่น ก.ย. ๖๙) หมายถึง พ.ศ. ๒๕๖๙
 - submission_deadline: วันยื่นข้อเสนอต้องอยู่หลังวันที่ประกาศของเอกสารเดียวกัน และปกติห่างกันไม่เกินไม่กี่สัปดาห์ ถ้าอ่านแล้วได้วันยื่นข้อเสนอก่อนวันประกาศ ให้ตรวจตัวเลขนั้นใหม่ raw และ value ต้องเป็นการอ่านที่ตรวจแล้ว ถ้ายังไม่แน่ใจให้ลด confidence
 ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนำหน้าหรือต่อท้าย`;
+
+/** Added to the prompt only with `workLocation` on, after the qualifications line it follows. */
+const WORK_LOCATION_PROMPT = `- work_location: สถานที่ที่ต้องทำงานหรือส่งมอบงาน (ตำบล อำเภอ จังหวัด หรือที่ตั้งสถานที่ก่อสร้าง) ตามที่เขียนในเอกสาร ห้ามใช้ที่อยู่ของหน่วยงานแทน ถ้าเอกสารไม่ระบุสถานที่ทำงาน value = null`;
+
+export function systemPrompt(workLocation: boolean): string {
+  if (!workLocation) return SYSTEM_PROMPT;
+  const marker = "\n- status:";
+  return SYSTEM_PROMPT.replace(marker, `\n${WORK_LOCATION_PROMPT}${marker}`);
+}
 
 /**
  * The instruction sent with the document. The source's publish date goes in as
@@ -162,6 +187,8 @@ export function parseExtraction(modelJson: unknown, modelVersion: string): RawEx
     announcementDate: toField(m.announcement_date, asStringOrNull(m.announcement_date?.value)),
     procurementMethod: toField(m.procurement_method, asStringOrNull(m.procurement_method?.value)),
     referenceNo: toField(m.reference_no, asStringOrNull(m.reference_no?.value)),
+    // Present only when the model was asked for it; absent means "not asked", not "not stated".
+    ...(m.work_location ? { workLocation: toField(m.work_location, asStringOrNull(m.work_location.value)) } : {}),
     modelVersion,
   };
 
@@ -205,7 +232,7 @@ export class VertexAi implements Ai {
       `https://${vertexHost(this.config.location)}/v1/projects/${this.config.project}` +
       `/locations/${this.config.location}/publishers/google/models/${this.config.model}:generateContent`;
     const body = {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: systemPrompt(this.config.workLocation === true) }] },
       contents: [
         {
           role: "user",
@@ -222,7 +249,7 @@ export class VertexAi implements Ai {
       ],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: responseSchema(this.config.workLocation === true),
         temperature: 0,
         maxOutputTokens: 8192,
       },

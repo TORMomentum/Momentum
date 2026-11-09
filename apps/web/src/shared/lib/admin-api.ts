@@ -41,6 +41,8 @@ export interface ExtractedFieldView {
   evidence?: string;
   /** The record this value was read from when not this one — a TOR's deadline from its invitation. */
   fromDocument?: string;
+  /** Where the value was read in the stored original (TOR-128). Boxes are fractions of the page. */
+  anchor?: { page: number; boxes: Array<[number, number, number, number]> };
 }
 
 export interface ReviewRecord extends QueueEntry {

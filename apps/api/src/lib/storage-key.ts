@@ -63,3 +63,12 @@ export function storageKeyFor(contentHash: string, contentType: string, at: Date
 export function packageKeyFor(contentHash: string, contentType: string, at: Date = new Date()): string {
   return keyUnder(PACKAGE_PREFIX, contentHash, contentType, at);
 }
+
+/**
+ * Where the image of one page of a stored document lives. Derived data, named
+ * by the document's content hash so it can only ever belong to one document,
+ * and written with `putIfAbsent` like everything else (TOR-128).
+ */
+export function pageImageKey(contentHash: string, page: number): string {
+  return `pages/${contentHash}/${page}.jpg`;
+}

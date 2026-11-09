@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DocumentUnreadableError } from "../core/errors.js";
 import { loadConfig } from "../core/config.js";
-import { parseExtraction, userPrompt, VertexAi } from "./vertex.ai.js";
+import { parseExtraction, responseSchema, systemPrompt, userPrompt, VertexAi } from "./vertex.ai.js";
 
 const CORPUS = fileURLToPath(new URL("../../../../docs/corpus/", import.meta.url));
 
@@ -32,6 +32,26 @@ describe("parseExtraction", () => {
     procurement_method: { raw: "e-bidding", value: "e-bidding", confidence: 1, evidence: "-" },
     reference_no: { raw: "", value: null, confidence: 1, evidence: "-" },
   };
+
+  it("reads the work location, and leaves it absent from an answer that predates it", () => {
+    const withLocation = parseExtraction(
+      { ...wellFormed, work_location: { raw: "ต.ในเมือง จ.ขอนแก่น", value: "ต.ในเมือง จ.ขอนแก่น", confidence: 0.9, evidence: "ข้อ ๑" } },
+      "m",
+    );
+    expect(withLocation.workLocation?.value).toBe("ต.ในเมือง จ.ขอนแก่น");
+    expect(parseExtraction(wellFormed, "m").workLocation).toBeUndefined();
+  });
+
+  it("asks for the work location only when switched on, so the measured prompt is otherwise unchanged", () => {
+    expect(systemPrompt(false)).not.toContain("work_location");
+    expect(responseSchema(false).properties).not.toHaveProperty("work_location");
+    expect(responseSchema(false).required).not.toContain("work_location");
+    expect(systemPrompt(true)).toContain("work_location");
+    expect(responseSchema(true).properties).toHaveProperty("work_location");
+    expect(responseSchema(true).required).toContain("work_location");
+    // The rest of the prompt is the same either way.
+    expect(systemPrompt(true).replace(/\n- work_location:[^\n]*/, "")).toBe(systemPrompt(false));
+  });
 
   it("maps the model's snake_case output onto the camelCase port", () => {
     const result = parseExtraction(wellFormed, "gemini-3.5-flash-001");
