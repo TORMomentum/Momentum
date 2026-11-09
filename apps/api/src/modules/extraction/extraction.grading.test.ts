@@ -100,6 +100,7 @@ describe("grade — required documents", () => {
         requiredDocuments: docs([
           { name: "ใบรับรอง ISO 9001", holder: "company" },
           { name: "ใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม", holder: "personnel" },
+          { name: "สำเนาใบประกอบวิชาชีพวิศวกรรมควบคุม", holder: "personnel" },
           { name: "หนังสือรับรองผลงาน", holder: "company" },
         ]),
       }),
@@ -108,6 +109,7 @@ describe("grade — required documents", () => {
     expect(result?.value).toEqual([
       { name: "ใบรับรอง ISO 9001", holder: "company", certification: "iso-9001" },
       { name: "ใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม", holder: "personnel", certification: "engineer" },
+      { name: "สำเนาใบประกอบวิชาชีพวิศวกรรมควบคุม", holder: "personnel", certification: "engineer" },
       { name: "หนังสือรับรองผลงาน", holder: "company" },
     ]);
     expect(result?.verified).toBe(true);
