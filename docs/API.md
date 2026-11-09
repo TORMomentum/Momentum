@@ -235,8 +235,9 @@ further query, so the cost grows with the number of peer groups on the page, not
 rows.
 
 `coverage` is not decoration: `FR-E-6` requires every surface showing figures to state when they were
-last updated. Keyword matching (`q`) is an interim substring match until Atlas Search is available
-locally — see [PLAN.md](PLAN.md).
+last updated. Keyword matching (`q`) reads the title and agency through an Atlas Search `lucene.thai` index when
+`SEARCH_ATLAS_ENABLED` is on: it matches whole Thai words, best first, up to `SEARCH_MAX_HITS`. With the
+switch off (a plain `mongod`) it falls back to a substring match. The request and response do not change.
 
 ### `GET /api/v1/tors/facets` ✅
 

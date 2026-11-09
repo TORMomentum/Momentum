@@ -78,7 +78,7 @@ flowchart TB
         api["<b>api</b> ✅<br/>Express 5 REST<br/>:4000"]
         worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
         stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells ·<br/>no Compose service yet"]
-        mongo[("<b>mongo</b> ✅<br/>MongoDB 7<br/>metadata, job queue,<br/>peer statistics")]
+        mongo[("<b>mongo</b> ✅<br/>MongoDB 8 (Atlas Local)<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
 
@@ -516,6 +516,7 @@ Three shapes are load-bearing:
 | `tors.announcedAt` | Date-range selection and trends (FR-E-1, FR-E-3) |
 | `tors.fields.agency.value + announcedAt + fields.torStatus.value` | The combined filters of FR-E-3 |
 | `tors.access.restricted` | Keeps restricted records out of public queries |
+| Atlas Search index `tors_text` (`SEARCH_INDEX_NAME`) | Keyword search on title and agency, raw and extracted value, with `lucene.thai` (TOR-201). Created at API start, not by `ensureIndexes`, because it exists only on Atlas |
 | `tor_events.torId + at` | The audit read: one TOR's history, newest first |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
@@ -563,8 +564,8 @@ Decided; not substituted without a design change.
 | 3D / motion | Three.js | 0.185 | The landing radar scene |
 | API | Express, REST | 5 | Small, well-understood surface; no GraphQL need at this size |
 | Validation | Zod | 4 | One schema shared by both apps via `packages/shared` |
-| Database | MongoDB (Atlas in deployment) | 7 | Extracted fields are irregular and evolve per slice; also serves as the job queue |
-| Search | Atlas Search, `lucene.thai` analyzer | ⬜ — keyword search is an interim substring match until then | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
+| Database | MongoDB (Atlas in deployment; `mongodb-atlas-local` in Compose and CI) | 8 | Extracted fields are irregular and evolve per slice; also serves as the job queue |
+| Search | Atlas Search, `lucene.thai` analyzer | ✅ — behind `SEARCH_ATLAS_ENABLED`; a plain `mongod` keeps the substring match | Thai is written without spaces, so a default text index cannot tokenise it. `mongodb/mongodb-atlas-local` runs the same analyzer in Compose and CI |
 | Object storage | Google Cloud Storage | 8 (client) | Immutable originals behind a `Storage` port; `fake-gcs-server` in Compose and CI |
 | AI | Vertex AI — Gemini (Document AI is in the stack decision but not yet called) | — | Thai OCR quality; confidence values per field |
 | Notifications | SMTP email behind a `Mailer` port; Mailpit in Compose | — | The only channel in scope. Dispatch is off (`NOTIFY_DISPATCH_ENABLED`) until the match benchmark exists |

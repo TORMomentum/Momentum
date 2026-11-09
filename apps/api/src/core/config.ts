@@ -183,6 +183,15 @@ const schema = z.object({
   SEARCH_QUERY_MAX_CHARS: z.coerce.number().int().positive().default(100),
   SEARCH_MAX_FILTER_VALUES: z.coerce.number().int().positive().default(20),
   SEARCH_FACET_LIMIT: z.coerce.number().int().positive().default(50),
+  /**
+   * Keyword search through an Atlas Search `lucene.thai` index (TOR-201). Off by
+   * default: only Atlas and mongodb-atlas-local can serve $search, so a plain
+   * mongod falls back to the substring match instead of failing every query.
+   */
+  SEARCH_ATLAS_ENABLED: flag(false),
+  SEARCH_INDEX_NAME: z.string().min(1).default("tors_text"),
+  /** Most ids one keyword query may hand to the filter; bounds the $in list. */
+  SEARCH_MAX_HITS: z.coerce.number().int().positive().default(1000),
   /** Whose calendar decides "today" — when a deadline has passed. */
   TIME_ZONE: z.string().min(1).default("Asia/Bangkok"),
 
@@ -379,6 +388,9 @@ export interface SearchConfig {
   queryMaxChars: number;
   maxFilterValues: number;
   facetLimit: number;
+  atlasEnabled: boolean;
+  indexName: string;
+  maxHits: number;
   timeZone: string;
 }
 
@@ -496,6 +508,9 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       queryMaxChars: parsed.SEARCH_QUERY_MAX_CHARS,
       maxFilterValues: parsed.SEARCH_MAX_FILTER_VALUES,
       facetLimit: parsed.SEARCH_FACET_LIMIT,
+      atlasEnabled: parsed.SEARCH_ATLAS_ENABLED,
+      indexName: parsed.SEARCH_INDEX_NAME,
+      maxHits: parsed.SEARCH_MAX_HITS,
       timeZone: parsed.TIME_ZONE,
     },
     matching: {

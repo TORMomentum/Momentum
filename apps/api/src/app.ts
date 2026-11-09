@@ -183,7 +183,7 @@ export function buildApp(config: Config, db: Db): Express {
   app.use(
     `${API_PREFIX}/tors`,
     buildTorsRouter({
-      service: new TorsService({ repo: new TorsRepository(db), config }),
+      service: new TorsService({ repo: new TorsRepository(db, config.search), config }),
       storage,
       search: config.search,
       config,
