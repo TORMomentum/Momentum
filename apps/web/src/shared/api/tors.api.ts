@@ -96,7 +96,10 @@ export interface TorDetail {
       | "contact"
       | "torStatus"
       | "procurementMethod"
-      | "referenceNo",
+      | "referenceNo"
+      | "evaluationMethod"
+      | "evaluationWeights"
+      | "requiredDocuments",
       TorDetailField
     >
   >;

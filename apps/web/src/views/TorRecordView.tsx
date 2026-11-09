@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BiddingPanel } from "../features/tor-detail/BiddingPanel";
 import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import styles from "../features/tor-detail/tor-detail.module.css";
@@ -263,6 +264,12 @@ export function TorRecordView({
             </div>
           </div>
         )}
+
+        <BiddingPanel
+          evaluationMethod={fields.evaluationMethod}
+          evaluationWeights={fields.evaluationWeights}
+          requiredDocuments={fields.requiredDocuments}
+        />
 
         {tor.checklist && <ChecklistPanel checklist={tor.checklist} />}
 
