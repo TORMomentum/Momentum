@@ -56,6 +56,22 @@ describe("BiddingPanel", () => {
     expect(html).toContain("ยังไม่ยืนยัน");
   });
 
+  it("marks unconfirmed weights even when the method beside them is confirmed, and not the reverse", () => {
+    const weights = field([{ name: "ก", weight: 50 }, { name: "ข", weight: 30 }], { verified: false, confidence: 0.4 });
+    const weightsOnly = render({ evaluationMethod: field("price_performance"), evaluationWeights: weights });
+    expect(weightsOnly).toContain("น้ำหนักคะแนนชุดนี้");
+    expect(weightsOnly.match(/ยังไม่ยืนยัน/g)).toHaveLength(1);
+    expect(weightsOnly.indexOf("ยังไม่ยืนยัน")).toBeGreaterThan(weightsOnly.indexOf("ให้คะแนนตามหัวข้อ"));
+    expect(weightsOnly.indexOf("ยังไม่ยืนยัน")).toBeGreaterThan(weightsOnly.indexOf("น้ำหนักคะแนนชุดนี้"));
+
+    const methodOnly = render({
+      evaluationMethod: field("price_performance", { verified: false }),
+      evaluationWeights: field([{ name: "ก", weight: 100 }]),
+    });
+    expect(methodOnly.match(/ยังไม่ยืนยัน/g)).toHaveLength(1);
+    expect(methodOnly).not.toContain("น้ำหนักคะแนนชุดนี้");
+  });
+
   it("groups required documents by who must hold them, in a fixed order, skipping empty groups", () => {
     const html = render({
       requiredDocuments: field([
