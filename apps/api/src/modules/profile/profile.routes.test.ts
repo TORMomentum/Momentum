@@ -205,10 +205,33 @@ describe("profile routes", () => {
       expect(response.body.personnel).toHaveLength(2);
     });
 
-    it("rejects a certificate off the list, an empty role and too many people, without writing", async () => {
+    it("saves staff without stating the company's certificates, and leaves stated ones alone", async () => {
+      const id = await sessionFor("one@example.test");
+      const staffOnly = { pastProjects: [], personnel: staff };
+      const first = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(staffOnly);
+      expect(first.status).toBe(200);
+      // Still "not stated", which the scorer treats differently from "holds nothing".
+      expect(first.body.certifications).toBeNull();
+      expect((await vendorProfiles(db).findOne({}))?.certifications).toBeUndefined();
+
+      const stated = { cgd: [], tags: ["iso-9001"], other: [] };
+      await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, certifications: stated, personnel: staff });
+      const again = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(staffOnly);
+      expect(again.body.certifications).toEqual(stated);
+    });
+
+    it("rejects a certificate that is not a person's: off the list, or the company's own", async () => {
+      const id = await sessionFor("one@example.test");
+      for (const certification of ["made-up", "iso-9001", "tis", "sme"]) {
+        const response = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: [{ role: "วิศวกร", certifications: [certification], other: [] }] });
+        expect(response.status).toBe(400);
+      }
+      expect(await vendorProfiles(db).countDocuments({})).toBe(0);
+    });
+
+    it("rejects an empty role and too many people, without writing", async () => {
       const id = await sessionFor("one@example.test");
       for (const bad of [
-        { ...base, personnel: [{ role: "วิศวกร", certifications: ["made-up"], other: [] }] },
         { ...base, personnel: [{ role: "  ", certifications: [], other: [] }] },
         { ...base, personnel: Array.from({ length: config.matching.personnelMax + 1 }, (_, i) => ({ role: `ตำแหน่ง ${i}`, certifications: [], other: [] })) },
       ]) expect((await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(bad)).status).toBe(400);

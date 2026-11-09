@@ -79,6 +79,10 @@ describe("MatchingExtras", () => {
     // No name is asked for.
     expect(container.querySelector('input[aria-label*="ชื่อ"][aria-label*="บุคลากร"]')).toBeNull();
 
+    // A person holds a licence to practise, not the company's ISO, มอก. or SME.
+    const offered = [...container.querySelectorAll('[aria-label="ใบอนุญาตของ วิศวกรโยธา"] button')].map((button) => button.textContent);
+    expect(offered).toHaveLength(2);
+    expect(offered.join(" ")).not.toContain("ISO");
     const engineer = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="ใบอนุญาตของ วิศวกรโยธา"] button')].find((button) => button.textContent?.includes("ใบอนุญาตวิศวกร"))!;
     act(() => engineer.click());
     expect(engineer.getAttribute("aria-pressed")).toBe("true");
@@ -86,7 +90,10 @@ describe("MatchingExtras", () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ pastProjects: [], certifications: { cgd: [], tags: [], other: [] }, personnel: [{ id: "m1", role: "วิศวกรโยธา", certifications: ["engineer"], other: [] }] }), { status: 200 }));
     await act(async () => click("บันทึกผลงานและใบอนุญาต"));
 
-    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).personnel).toEqual([{ role: "วิศวกรโยธา", certifications: ["engineer"], other: [] }]);
+    const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
+    expect(body.personnel).toEqual([{ role: "วิศวกรโยธา", certifications: ["engineer"], other: [] }]);
+    // Only staff were edited: the company's certificates stay "not stated", they are not sent as "none".
+    expect(body).not.toHaveProperty("certifications");
     expect(container.textContent).toContain("บันทึกแล้ว");
   });
 

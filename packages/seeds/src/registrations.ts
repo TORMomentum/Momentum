@@ -36,3 +36,9 @@ export const CERTIFICATIONS = [
 ] as const;
 
 export type CertificationId = (typeof CERTIFICATIONS)[number]["id"];
+
+/**
+ * The listed certifications a person holds rather than the company: licences to practise. ISO, มอก. and SME
+ * are the company's, so staff are never recorded as holding them and never satisfy a TOR asking for them.
+ */
+export const PERSONAL_CERTIFICATION_IDS = ["engineer", "architect"] as const satisfies readonly CertificationId[];

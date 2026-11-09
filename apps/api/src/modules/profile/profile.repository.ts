@@ -3,7 +3,7 @@ import { vendorProfiles, type PastProject, type PersonnelMember, type VendorCert
 
 export type VendorProfileInput = Omit<VendorProfileDocument, "accountId" | "updatedAt" | "updatedBy" | "pastProjects" | "certifications" | "personnel">;
 /** `personnel` is left as stored when absent, so a client that does not know the section cannot wipe it. */
-export type VendorProfileExtras = { pastProjects: PastProject[]; certifications: VendorCertifications; personnel?: PersonnelMember[] };
+export type VendorProfileExtras = { pastProjects: PastProject[]; certifications?: VendorCertifications; personnel?: PersonnelMember[] };
 
 /** The profile feature's only Mongo boundary. */
 export class ProfileRepository {

@@ -208,6 +208,16 @@ describe("match scorer", () => {
         expect(result.reasons.find((r) => r.code === "qualification-held")?.th).toMatch(/ISO 9001.*วิศวกร.*\(บุคลากร\)/);
       });
 
+      it("does not let the staff satisfy a company certificate, even where old data lists one against a person", () => {
+        const company = withQualifications("บริษัทต้องได้รับการรับรองมาตรฐาน ISO 9001");
+        const result = scoreMatch(withStaff([["iso-9001"]], []), company, classification, config, "2026-01-01");
+        expect(result.reasons.map((r) => r.code)).toContain("qualification-missing");
+        expect(result.reasons.map((r) => r.code)).not.toContain("qualification-held");
+        // The company's own ISO still counts, and a licence the staff hold still counts beside it.
+        const held = scoreMatch(withStaff([["engineer"]], ["iso-9001"]), withQualifications("ISO 9001 และใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม"), classification, config, "2026-01-01");
+        expect(held.reasons.map((r) => r.code)).not.toContain("qualification-missing");
+      });
+
       it("does not mark the company as missing a certificate it never stated, when only staff were listed", () => {
         const both = withQualifications("ISO 9001 และใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม");
         const result = scoreMatch(withStaff([["engineer"]]), both, classification, config, "2026-01-01");

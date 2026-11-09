@@ -1,6 +1,6 @@
 "use client";
 
-import { CERTIFICATIONS, CGD_BRANCHES } from "@tor-radar/seeds";
+import { CERTIFICATIONS, CGD_BRANCHES, PERSONAL_CERTIFICATION_IDS } from "@tor-radar/seeds";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PastProject, PersonnelMember, VendorCertifications } from "../../shared/api/profile.api";
@@ -37,6 +37,9 @@ export function MatchingExtras({
   const router = useRouter();
   const [projects, setProjects] = useState(initialProjects);
   const [certs, setCerts] = useState(initialCertifications ?? NONE_STATED);
+  // "Not stated" is not "holds nothing" (the scorer lowers a score only for a stated answer), so the company's
+  // certificates are sent only once the vendor has stated them here or already had.
+  const [certsStated, setCertsStated] = useState(initialCertifications !== null);
   const [staff, setStaff] = useState(initialPersonnel);
   const [roleDraft, setRoleDraft] = useState("");
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
@@ -49,6 +52,11 @@ export function MatchingExtras({
     setter(value);
     setDirty(true);
     setMessage(null);
+  }
+
+  function stateCerts(value: VendorCertifications) {
+    setCerts(value);
+    setCertsStated(true);
   }
 
   function addProject() {
@@ -65,7 +73,7 @@ export function MatchingExtras({
   const heldBranch = (branch: string) => certs.cgd.find((entry) => entry.branch === branch);
 
   function toggleBranch(branch: string) {
-    change(setCerts, {
+    change(stateCerts, {
       ...certs,
       cgd: heldBranch(branch) ? certs.cgd.filter((entry) => entry.branch !== branch) : [...certs.cgd, { branch }],
     });
@@ -74,7 +82,7 @@ export function MatchingExtras({
   function addOther() {
     const value = otherDraft.trim();
     if (!value || certs.other.includes(value)) return;
-    change(setCerts, { ...certs, other: [...certs.other, value] });
+    change(stateCerts, { ...certs, other: [...certs.other, value] });
     setOtherDraft("");
   }
 
@@ -111,7 +119,7 @@ export function MatchingExtras({
         body: JSON.stringify({
           // A row added on this screen has no id yet; the server gives it one.
           pastProjects: projects.map(({ id, ...rest }) => (id ? { id, ...rest } : rest)),
-          certifications: certs,
+          ...(certsStated ? { certifications: certs } : {}),
           personnel: staff.map(({ id, ...rest }) => (id ? { id, ...rest } : rest)),
         }),
       });
@@ -127,6 +135,7 @@ export function MatchingExtras({
       const saved = (await response.json()) as { pastProjects: PastProject[]; certifications: VendorCertifications | null; personnel?: PersonnelMember[] };
       setProjects(saved.pastProjects);
       setCerts(saved.certifications ?? NONE_STATED);
+      setCertsStated(saved.certifications !== null);
       setStaff(saved.personnel ?? []);
       setDirty(false);
       setMessage("บันทึกแล้ว — ใช้ในการจับคู่ครั้งถัดไป");
@@ -243,7 +252,7 @@ export function MatchingExtras({
               key={item.id}
               aria-pressed={on}
               className={`${profile.skillPill} ${on ? profile.skillPillOn : ""}`}
-              onClick={() => change(setCerts, { ...certs, tags: on ? certs.tags.filter((tag) => tag !== item.id) : [...certs.tags, item.id] })}
+              onClick={() => change(stateCerts, { ...certs, tags: on ? certs.tags.filter((tag) => tag !== item.id) : [...certs.tags, item.id] })}
             >
               {item.th}
             </button>
@@ -256,7 +265,7 @@ export function MatchingExtras({
             aria-pressed="true"
             className={`${profile.skillPill} ${profile.skillPillOn}`}
             title="คลิกเพื่อลบ"
-            onClick={() => change(setCerts, { ...certs, other: certs.other.filter((item) => item !== value) })}
+            onClick={() => change(stateCerts, { ...certs, other: certs.other.filter((item) => item !== value) })}
           >
             {value} ×
           </button>
@@ -297,7 +306,7 @@ export function MatchingExtras({
                 </button>
               </div>
               <div className={profile.skillRow} role="group" aria-label={`ใบอนุญาตของ ${member.role}`}>
-                {CERTIFICATIONS.map((item) => {
+                {CERTIFICATIONS.filter((item) => (PERSONAL_CERTIFICATION_IDS as readonly string[]).includes(item.id)).map((item) => {
                   const on = member.certifications.includes(item.id);
                   return (
                     <button

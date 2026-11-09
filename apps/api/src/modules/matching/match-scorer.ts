@@ -1,4 +1,4 @@
-import { CGD_BRANCHES, PROVINCES, WHOLE_COUNTRY_AREA, WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
+import { CGD_BRANCHES, PERSONAL_CERTIFICATION_IDS, PROVINCES, WHOLE_COUNTRY_AREA, WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
 import type { TorDocument, VendorProfileDocument } from "../../core/db.js";
 import { provincesIn } from "../../lib/province.js";
@@ -125,7 +125,9 @@ function experienceSignal(profile: VendorProfileDocument, classification: TorCla
  */
 function qualificationSignal(profile: VendorProfileDocument, record: TorDocument) {
   // Personnel stated counts as stating something: TORs mostly ask for people, not ISO (TOR-212).
-  const staff = new Set((profile.personnel ?? []).flatMap((member) => member.certifications));
+  // Only a licence to practise can be held by a person; the company's ISO is not satisfied by an employee having it.
+  const personal = new Set<string>(PERSONAL_CERTIFICATION_IDS);
+  const staff = new Set((profile.personnel ?? []).flatMap((member) => member.certifications).filter((id) => personal.has(id)));
   if (!profile.certifications && staff.size === 0) return null;
   const text = qualificationText(record);
   const company = new Set(profile.certifications?.tags ?? []);
