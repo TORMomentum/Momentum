@@ -48,9 +48,32 @@ export class BehaviourRepository {
       // A concurrent identical event won the unique index; it is already recorded.
       if (!(error instanceof MongoServerError && error.code === 11000)) throw error;
     }
-    if (await this.hasConsent(accountId)) return true;
+    let stillConsenting: boolean;
+    try {
+      stillConsenting = await this.hasConsent(accountId);
+    } catch (error) {
+      // Could not tell whether consent survived: keep nothing rather than guess. If this delete fails too,
+      // purgeUnconsented() removes the row, and nothing reads it meanwhile (reads are gated on consent).
+      await behaviourEvents(this.db).deleteMany(key).catch(() => undefined);
+      throw error;
+    }
+    if (stillConsenting) return true;
     await behaviourEvents(this.db).deleteMany(key);
     return false;
+  }
+
+  /**
+   * Removes the events of every account that has no live consent: the backstop for a withdrawal that raced a
+   * write and then could not clean up after it (a database error between the two). Run by the worker on its
+   * reconcile schedule. Returns how many events it removed.
+   */
+  async purgeUnconsented(): Promise<number> {
+    let removed = 0;
+    for (const accountId of await behaviourEvents(this.db).distinct("accountId")) {
+      if (await this.hasConsent(accountId)) continue;
+      removed += (await behaviourEvents(this.db).deleteMany({ accountId })).deletedCount;
+    }
+    return removed;
   }
 
   /**

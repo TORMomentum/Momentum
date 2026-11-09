@@ -92,6 +92,12 @@ export class AccountsRepository {
   async setBehaviourConsent(accountId: string, on: boolean): Promise<void> {
     if (!ObjectId.isValid(accountId)) return;
     const now = new Date();
+    if (on) {
+      // Consent that starts afresh starts with no history: a row a failed cleanup left behind must not come back to life.
+      const before = await accounts(this.db).findOne({ _id: new ObjectId(accountId) }, { projection: { behaviourConsent: 1 } });
+      const live = Boolean(before?.behaviourConsent?.agreedAt) && !before?.behaviourConsent?.withdrawnAt;
+      if (!live) await behaviourEvents(this.db).deleteMany({ accountId });
+    }
     // Withdrawing what was never given changes nothing: a withdrawnAt without an agreedAt is not a state.
     await accounts(this.db).updateOne(
       on
