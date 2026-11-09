@@ -376,7 +376,7 @@ The current filter as CSV, with the same PII minimisation as the API.
 | `GET /me` · `POST /me/consent/withdraw` | The signed-in account; withdrawing consent |
 | `GET /me/export` · `DELETE /me` | PDPA data export and account deletion |
 | `GET` · `PUT /me/profile` | Categories, budget range, notification preferences (`FR-D-2`) |
-| `PUT /me/profile/extras` | Past projects and certifications, saved on their own so the main form never overwrites them. The body carries both lists whole; a project without an `id` is new and gets one. Saving the section for the first time is what turns `certifications` from *not stated* into a stated answer that may lower a score |
+| `PUT /me/profile/extras` | Past projects, certifications and personnel, saved on their own so the main form never overwrites them. The body carries the lists whole; `personnel` is optional and left as stored when absent, `[]` clears it. A person is `{ role, certifications: [listed ids], other: [] }` with an `id` once saved and no name, capped by `PROFILE_PERSONNEL_MAX`; a project without an `id` is new and gets one. Saving the section for the first time is what turns `certifications` from *not stated* into a stated answer that may lower a score |
 | `GET /me/matches?page=` | This vendor's open TORs, best first, each with its score and Thai reasons |
 | `GET /me/matches/scores` | Every current score by TOR id, for marking a page of search results |
 | `GET /me/bookmarks` · `GET /me/bookmarks/ids` · `PUT` · `DELETE /me/bookmarks/:torId` | Private list — never public (`FR-D-3`) |

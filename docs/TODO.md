@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-03_
+_last updated: 2026-11-09_
 
 ---
 
@@ -426,6 +426,19 @@ Branch `feat/tor-202-ocr-provenance`. Verified live on `tor-01.pdf` against Gemi
       the key is in `apps/api/secrets/` (one letter)
 - [ ] Prices for Document AI pages and embeddings were not verifiable from the pricing pages; confirm in the
       console before enabling
+
+## 2m. Sprint 5 — personnel in the profile and in matching (TOR-212, TOR-213)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §9.
+Branch `feat/tor-212-213-personnel`._
+
+- [x] **TOR-212 — personnel** — role and listed certificates per person, no names; saved with the extras; export
+      and delete cover it (the profile document); section in the matching extras on the profile screen
+- [x] **TOR-213 — matching** — a certificate any member of staff holds counts as held and is named as the staff's
+- [ ] TOR side still reads qualification text only; read `requiredDocuments` (`holder: personnel`) once
+      `EXTRACT_BIDDING_FIELDS_ENABLED` is on
+- [ ] No name is stored on purpose. If the team wants names (to prepare bid documents), that is a PDPA decision
+      about third parties, not a field to add quietly
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

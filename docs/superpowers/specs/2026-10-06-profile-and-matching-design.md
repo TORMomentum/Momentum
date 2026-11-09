@@ -368,3 +368,25 @@ score = weighted mean of the signals present
 Every weight is a `core/config.ts` key; none is tuned until §8.4's figures exist. The displayed
 percentage and the search filter both use `matchPercent` from `@tor-radar/shared`, so a badge and
 a filter can never disagree by a rounding step.
+
+---
+
+## 9. Revision 4 — personnel, 2026-11-09 (TOR-212, TOR-213)
+
+TORs mostly ask for people ("a controlled engineer on the team"), not for the company's ISO, so the profile
+also records who the company can field.
+
+- **`personnel`** on the vendor profile: `[{ id, role, certifications, other }]`. `certifications` are ids from
+  the same list as the company's (`CERTIFICATIONS`). **No name is stored** — matching needs the role and the
+  certificates, and a name would be personal data about a third party for no gain. Capped by
+  `PROFILE_PERSONNEL_MAX`. Saved with the extras (§8.1), so the main form cannot overwrite it; a client that
+  omits the key leaves it alone.
+- **PDPA.** It lives inside the profile document, so the data export and account deletion cover it without a
+  second code path (`UT-F5-5`).
+- **The qualification signal (§8.2) counts it.** A certificate the TOR names counts as held when the company or
+  any member of staff holds it, and a certificate only the staff hold is named so ("… (บุคลากร)").
+  Stating personnel alone counts as stating something, but never lowers the score for a company certificate the
+  vendor said nothing about: a missing mark needs a stated answer, as before.
+- **Not yet:** the TOR side still reads the qualification text only. Reading the structured
+  `requiredDocuments` (extraction design §13, `holder: personnel`) is the next step once those fields are on.
+

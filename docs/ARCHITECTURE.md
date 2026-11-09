@@ -181,7 +181,7 @@ The feature modules, as of Sprint 4:
 | `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter |
 | `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
 | `accounts/` | Registration, sign-in, sessions, password reset, PDPA export and deletion |
-| `profile/` | The vendor profile, and its separately saved past projects and certifications |
+| `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
 | `bookmarks/` | A vendor's private saved list |
@@ -436,6 +436,7 @@ erDiagram
         object notify "preset, minMatch, leadDays"
         array pastProjects "title, year in BE, valueThb · capped by config"
         object certifications "cgd branches, tags, other · absent = not stated"
+        array personnel "role, listed certificates, other · no names · capped by config"
         string updatedBy "vendor | admin · shown to the vendor"
     }
     TOR_CLASSIFICATIONS {
