@@ -16,7 +16,7 @@ import { TaxonomyPicker } from "../features/profile/TaxonomyPicker";
 import { MatchingExtras } from "../features/profile/MatchingExtras";
 import { SavedTorsSection } from "../features/profile/SavedTorList";
 import type { BookmarkRow } from "../shared/api/bookmarks.api";
-import type { PastProject, VendorCertifications } from "../shared/api/profile.api";
+import type { PastProject, PersonnelMember, VendorCertifications } from "../shared/api/profile.api";
 import {
   describeAreas,
   describeBudget,
@@ -81,6 +81,7 @@ function ownedFields(profile: Profile): Profile {
 type ProfileWithExtras = Profile & {
   pastProjects?: PastProject[];
   certifications?: VendorCertifications | null;
+  personnel?: PersonnelMember[];
   updatedAt?: string | null;
   updatedBy?: "vendor" | "admin";
 };
@@ -366,6 +367,7 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
       <MatchingExtras
         initialProjects={initial?.pastProjects ?? []}
         initialCertifications={initial?.certifications ?? null}
+        initialPersonnel={initial?.personnel ?? []}
       />
 
       {saveRow}

@@ -3,7 +3,7 @@
 import { CERTIFICATIONS, CGD_BRANCHES } from "@tor-radar/seeds";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { PastProject, VendorCertifications } from "../../shared/api/profile.api";
+import type { PastProject, PersonnelMember, VendorCertifications } from "../../shared/api/profile.api";
 import { formatBaht, thaiDigitsToArabic } from "../../shared/lib/format";
 import { parseBaht } from "../../shared/ui/BudgetRange";
 import profile from "./profile.module.css";
@@ -28,13 +28,17 @@ const EMPTY_DRAFT: Draft = { title: "", year: "", value: "" };
 export function MatchingExtras({
   initialProjects,
   initialCertifications,
+  initialPersonnel = [],
 }: {
   initialProjects: PastProject[];
   initialCertifications: VendorCertifications | null;
+  initialPersonnel?: PersonnelMember[];
 }) {
   const router = useRouter();
   const [projects, setProjects] = useState(initialProjects);
   const [certs, setCerts] = useState(initialCertifications ?? NONE_STATED);
+  const [staff, setStaff] = useState(initialPersonnel);
+  const [roleDraft, setRoleDraft] = useState("");
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [otherDraft, setOtherDraft] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -74,6 +78,29 @@ export function MatchingExtras({
     setOtherDraft("");
   }
 
+  function addPerson() {
+    const role = roleDraft.trim();
+    if (!role) return;
+    change(setStaff, [...staff, { id: "", role, certifications: [], other: [] }]);
+    setRoleDraft("");
+  }
+
+  function toggleStaffCertification(index: number, certification: string) {
+    change(
+      setStaff,
+      staff.map((member, i) =>
+        i !== index
+          ? member
+          : {
+              ...member,
+              certifications: member.certifications.includes(certification)
+                ? member.certifications.filter((id) => id !== certification)
+                : [...member.certifications, certification],
+            },
+      ),
+    );
+  }
+
   async function save() {
     setSaving(true);
     setMessage(null);
@@ -85,6 +112,7 @@ export function MatchingExtras({
           // A row added on this screen has no id yet; the server gives it one.
           pastProjects: projects.map(({ id, ...rest }) => (id ? { id, ...rest } : rest)),
           certifications: certs,
+          personnel: staff.map(({ id, ...rest }) => (id ? { id, ...rest } : rest)),
         }),
       });
       if (response.status === 401) {
@@ -96,9 +124,10 @@ export function MatchingExtras({
         setMessage("บันทึกไม่สำเร็จ — ตรวจชื่อผลงานและปี (พ.ศ.) แล้วลองอีกครั้ง");
         return;
       }
-      const saved = (await response.json()) as { pastProjects: PastProject[]; certifications: VendorCertifications | null };
+      const saved = (await response.json()) as { pastProjects: PastProject[]; certifications: VendorCertifications | null; personnel?: PersonnelMember[] };
       setProjects(saved.pastProjects);
       setCerts(saved.certifications ?? NONE_STATED);
+      setStaff(saved.personnel ?? []);
       setDirty(false);
       setMessage("บันทึกแล้ว — ใช้ในการจับคู่ครั้งถัดไป");
     } catch {
@@ -244,6 +273,60 @@ export function MatchingExtras({
         />
         <button type="button" className={profile.addSkillPill} onClick={addOther} disabled={!otherDraft.trim()}>
           + เพิ่ม
+        </button>
+      </div>
+
+      <h3 className={styles.heading}>บุคลากร</h3>
+      <p className={profile.pickerHint}>
+        TOR ส่วนใหญ่ขอบุคลากรที่ถือใบอนุญาต ไม่ใช่แค่ใบรับรองของบริษัท — ระบุตำแหน่งและใบอนุญาตที่มี
+        ไม่ต้องใส่ชื่อ ข้อมูลนี้รวมอยู่ในการส่งออกและลบพร้อมบัญชี
+      </p>
+      {staff.length > 0 && (
+        <ul className={styles.projectList}>
+          {staff.map((member, index) => (
+            <li key={member.id || `new-${index}`} className={styles.personRow}>
+              <div className={styles.personHead}>
+                <span className={styles.projectTitle}>{member.role}</span>
+                <button
+                  type="button"
+                  className={styles.remove}
+                  aria-label={`ลบ ${member.role}`}
+                  onClick={() => change(setStaff, staff.filter((_, i) => i !== index))}
+                >
+                  ลบ
+                </button>
+              </div>
+              <div className={profile.skillRow} role="group" aria-label={`ใบอนุญาตของ ${member.role}`}>
+                {CERTIFICATIONS.map((item) => {
+                  const on = member.certifications.includes(item.id);
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      aria-pressed={on}
+                      className={`${profile.skillPill} ${on ? profile.skillPillOn : ""}`}
+                      onClick={() => toggleStaffCertification(index, item.id)}
+                    >
+                      {item.th}
+                    </button>
+                  );
+                })}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className={styles.addRow}>
+        <input
+          className={styles.input}
+          placeholder="ตำแหน่ง เช่น วิศวกรโยธา"
+          aria-label="ตำแหน่งบุคลากร"
+          value={roleDraft}
+          onChange={(event) => setRoleDraft(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && addPerson()}
+        />
+        <button type="button" className={profile.addSkillPill} onClick={addPerson} disabled={!roleDraft.trim()}>
+          + เพิ่มบุคลากร
         </button>
       </div>
 
