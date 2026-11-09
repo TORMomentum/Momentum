@@ -424,6 +424,10 @@ Three more fields beyond the nine (SRS v2.1, FR-B-2), read in the same Gemini re
 - **Behind `EXTRACT_BIDDING_FIELDS_ENABLED` (default off).** The thresholds were measured without these keys in
   the prompt and schema; with the switch off both are byte-identical to what was measured (same rule as
   `EXTRACT_WORK_LOCATION_ENABLED`, §4 of the provenance design). Re-run the benchmark before turning it on.
+  The worker and the extraction benchmark (`extraction.corpus.test.ts`) build the extractor from one function,
+  `vertexConfig(config)`, so the benchmark asks for exactly what production asks for: with the switch on it
+  measures the new prompt and schema, with it off the old. (An earlier version built the benchmark from
+  `config.vertex` alone, which would have gone on measuring the old request after the switch was turned on.)
 - **Corpus run, 10 TORs against real Gemini.** Every TOR is `lowest_price`, so the benchmark has no
   price-performance sample: the weights rule rests on unit tests, not a real document. `tor-02` returned no
   method and no documents, and `tor-09` returned documents but no method (confidence 0.8); both are left
