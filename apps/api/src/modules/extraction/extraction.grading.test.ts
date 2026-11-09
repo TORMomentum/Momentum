@@ -54,6 +54,88 @@ describe("grade — work location", () => {
   });
 });
 
+describe("grade — evaluation method and weights", () => {
+  const method = (value: "lowest_price" | "price_performance" | "other" | null, c = 0.99) => rf(value, c);
+  const weights = (list: Array<{ name: string; weight: number }>, c = 0.99) => rf(list, c);
+  const two = [{ name: "ราคา", weight: 60 }, { name: "ผลงาน", weight: 40 }];
+
+  it("verifies a confident method that is one of the three, and carries nothing when not asked", () => {
+    expect(grade(goodDigital({ evaluationMethod: method("price_performance") }), ctx()).fields.evaluationMethod?.verified).toBe(true);
+    expect(grade(goodDigital({ evaluationMethod: method(null) }), ctx()).fields.evaluationMethod?.verified).toBe(false);
+    expect(grade(goodDigital(), ctx()).fields.evaluationMethod).toBeUndefined();
+    expect(grade(goodDigital(), ctx()).fields.evaluationWeights).toBeUndefined();
+  });
+
+  it("verifies weights only when they are positive percentages adding up to 100", () => {
+    const verified = (list: Array<{ name: string; weight: number }>) =>
+      grade(goodDigital({ evaluationMethod: method("price_performance"), evaluationWeights: weights(list) }), ctx()).fields.evaluationWeights?.verified;
+    expect(verified(two)).toBe(true);
+    expect(verified([{ name: "ราคา", weight: 60.3 }, { name: "ผลงาน", weight: 39.9 }])).toBe(true);
+    expect(verified([{ name: "ราคา", weight: 60 }, { name: "ผลงาน", weight: 30 }])).toBe(false);
+    expect(verified([{ name: "ราคา", weight: 120 }, { name: "ผลงาน", weight: -20 }])).toBe(false);
+    expect(verified([])).toBe(false);
+  });
+
+  it("accepts no weights for a lowest-price evaluation", () => {
+    const empty = (m: "lowest_price" | "price_performance") =>
+      grade(goodDigital({ evaluationMethod: method(m), evaluationWeights: weights([]) }), ctx()).fields.evaluationWeights?.verified;
+    expect(empty("lowest_price")).toBe(true);
+    expect(empty("price_performance")).toBe(false);
+  });
+
+  it("marks a below-threshold value unverified without sending the record to review", () => {
+    const result = grade(goodDigital({ evaluationMethod: method("price_performance", 0.5), evaluationWeights: weights(two, 0.5) }), ctx());
+    expect(result.fields.evaluationMethod?.verified).toBe(false);
+    expect(result.fields.evaluationWeights?.verified).toBe(false);
+    expect(result.confidenceLevel).toBe("high");
+  });
+});
+
+describe("grade — required documents", () => {
+  const docs = (list: Array<{ name: string; holder: "company" | "personnel" | "unspecified" }>, c = 0.99) => rf(list, c);
+
+  it("tags a document that names a listed certification, and leaves others untagged", () => {
+    const result = grade(
+      goodDigital({
+        requiredDocuments: docs([
+          { name: "ใบรับรอง ISO 9001", holder: "company" },
+          { name: "ใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม", holder: "personnel" },
+          { name: "หนังสือรับรองผลงาน", holder: "company" },
+        ]),
+      }),
+      ctx(),
+    ).fields.requiredDocuments;
+    expect(result?.value).toEqual([
+      { name: "ใบรับรอง ISO 9001", holder: "company", certification: "iso-9001" },
+      { name: "ใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม", holder: "personnel", certification: "engineer" },
+      { name: "หนังสือรับรองผลงาน", holder: "company" },
+    ]);
+    expect(result?.verified).toBe(true);
+  });
+
+  it("is unverified when empty or below the threshold, and never sends a record to review", () => {
+    expect(grade(goodDigital({ requiredDocuments: docs([]) }), ctx()).fields.requiredDocuments?.verified).toBe(false);
+    const low = grade(goodDigital({ requiredDocuments: docs([{ name: "ISO 9001", holder: "company" }], 0.4) }), ctx());
+    expect(low.fields.requiredDocuments?.verified).toBe(false);
+    expect(low.confidenceLevel).toBe("high");
+    expect(grade(goodDigital(), ctx()).fields.requiredDocuments).toBeUndefined();
+  });
+
+  it("does not count the new quotes toward copy-through", () => {
+    const same = "ข้อ ๒ คุณสมบัติ";
+    const result = grade(
+      goodDigital({
+        evaluationMethod: rf("price_performance" as const, 0.99, same),
+        evaluationWeights: rf([{ name: "ราคา", weight: 100 }], 0.99, same),
+        requiredDocuments: rf([{ name: "ISO 9001", holder: "company" as const }], 0.99, same),
+      }),
+      ctx(),
+    );
+    expect(result.reviewReasons).not.toContain("copy-through");
+    expect(result.confidenceLevel).toBe("high");
+  });
+});
+
 describe("grade — category", () => {
   it("verifies a confident category only when it is on the closed list", () => {
     expect(grade(goodDigital({ category: rf("งานก่อสร้าง-ชลประทานและระบบน้ำ", 0.99) }), ctx()).fields.category.verified).toBe(true);
