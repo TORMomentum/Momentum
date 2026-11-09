@@ -1,7 +1,7 @@
 import { buildApp } from "./app.js";
 import { loadEnvFile } from "./core/env-file.js";
 import { loadConfig } from "./core/config.js";
-import { connect, disconnect, ensureIndexes } from "./core/db.js";
+import { connect, disconnect, ensureIndexes, ensureSearchIndex } from "./core/db.js";
 
 /**
  * Starts the HTTP API: read the configuration, connect the database, make sure
@@ -18,6 +18,7 @@ async function main(): Promise<void> {
   const config = loadConfig(process.env);
   const db = await connect(config.mongoUrl);
   await ensureIndexes(db);
+  if (config.search.atlasEnabled) await ensureSearchIndex(db, config.search.indexName);
 
   const app = buildApp(config, db);
   // Bind all interfaces so the container port mapping reaches it.

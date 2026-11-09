@@ -11,7 +11,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     env:
-      MONGO_URL: mongodb://localhost:27017/tor_radar
+      MONGO_URL: mongodb://localhost:27017/tor_radar?directConnection=true
       GCS_BUCKET: tor-raw
       GCS_API_ENDPOINT: http://localhost:4443
       INTAKE_API_KEYS: ci-intake-key

@@ -27,7 +27,7 @@ shared cluster. Set the values CI uses before running; a variable already set wi
 
 ```bash
 docker compose up -d mongo gcs
-export MONGO_URL=mongodb://localhost:27017/tor_radar GCS_BUCKET=tor-raw \
+export MONGO_URL="mongodb://localhost:27017/tor_radar?directConnection=true" GCS_BUCKET=tor-raw \
   GCS_API_ENDPOINT=http://localhost:4443 INTAKE_API_KEYS=ci-intake-key ADMIN_API_KEYS=ci-admin-key \
   SESSION_SECRET=local-test-only APP_ORIGIN=http://web:3000
 npm run build && npm run test:report
@@ -60,6 +60,7 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F2-3 | FR-B-3 | `grade` | deadline `2025-12-01`, before the announcement date | deadline not verified; sanity check trips | Pass | `extraction.grading.test.ts` |
 | UT-F3-1 | FR-G-1 | `torStateOf` | `{ torStatus: "announced", deadline: "2026-10-05" }`, today later | `closed` — the date wins over the label | Pass | `tor-state.test.ts` |
 | UT-F3-2 | FR-B-6 | `POST /admin/tors/bulk` | `{ action: "reject", ids: [id] }` with no reason | 400; the TOR stays public | Pass | `admin.routes.test.ts` |
+| UT-F4-0 | FR-E-3 | `GET /tors?q=` keyword | a Thai word inside an unspaced title; the agency; a word in no record | finds the record by word, matches the agency, returns nothing for a miss; index creation is idempotent | Pass | `tors.atlas-search.test.ts` (needs `mongodb-atlas-local`) |
 | UT-F4-1 | NFR-F2 | `GET /tors` search | 5,000-record corpus, every filter at once | answered within 2 s | Pass | `tors.search.timing.test.ts` |
 | UT-F4-2 | NFR-F2 | `GET /tors` search | deep pages of the same corpus | each page within 2 s (cursor, not skip) | Pass | `tors.search.timing.test.ts` |
 | UT-F5-1 | FR-C-1 | `scoreMatch` | TOR asks "ISO 9001 และ/หรือ ISO 14001"; vendor A holds ISO 14001, vendor B holds both | equal scores; reason `qualification-held` | Pass | `match-scorer.test.ts` |

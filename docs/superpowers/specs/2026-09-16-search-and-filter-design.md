@@ -126,3 +126,13 @@ contract doesn't change.
 
 Atlas Search itself · the dashboard (TOR-56/57) · anomaly flags (TOR-60) · checklist and match scores ·
 CSV export (TOR-69) · the tree-wide Cache Components migration · status history on the detail page.
+
+## 8. Revision 2026-11-08 — Atlas Search replaces the interim match (TOR-201)
+
+§5 is superseded when `SEARCH_ATLAS_ENABLED` is on. The repository asks a `lucene.thai` `$search` stage
+for the ids of records whose title or agency contain the query's words (capped at `SEARCH_MAX_HITS`), then
+applies them as an `_id` filter, so every existing filter, cursor and ordering is unchanged. The API
+contract does not change. What does: a query now matches **whole Thai words**, not any substring, so
+`ก่อสร้า` no longer finds `ก่อสร้าง`. With the switch off the substring match of §5 remains, for a
+`mongod` that cannot serve `$search`. `mongodb-atlas-local` replaces `mongo:7` in Compose and CI, and the
+connection string gains `?directConnection=true` because its replica set advertises its container id.

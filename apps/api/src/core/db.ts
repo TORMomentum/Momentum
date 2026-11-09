@@ -386,6 +386,30 @@ export function notificationLeases(db: Db): Collection<NotificationLeaseDocument
   return db.collection<NotificationLeaseDocument>("notification_leases");
 }
 
+/** The text fields a keyword query reads: the extracted value and the text it was read from. */
+export const SEARCH_PATHS = ["fields.title.raw", "fields.title.value", "fields.agency.raw", "fields.agency.value"] as const;
+
+/**
+ * The Atlas Search index behind keyword search (TOR-201). `lucene.thai` splits
+ * Thai into words, which a regular index cannot. Created once and left alone:
+ * it builds in the background, so a query right after creation may find nothing.
+ */
+export async function ensureSearchIndex(db: Db, name: string): Promise<void> {
+  const existing = await tors(db).listSearchIndexes(name).toArray();
+  if (existing.length > 0) return;
+  // The mapping nests one level per path segment: a dotted key is not a path here.
+  const fields: Record<string, unknown> = {};
+  for (const path of SEARCH_PATHS) {
+    let level = fields;
+    const parts = path.split(".");
+    for (const part of parts.slice(0, -1)) {
+      level = ((level[part] ??= { type: "document", dynamic: false, fields: {} }) as { fields: Record<string, unknown> }).fields;
+    }
+    level[parts[parts.length - 1]] = { type: "string", analyzer: "lucene.thai" };
+  }
+  await tors(db).createSearchIndex({ name, definition: { mappings: { dynamic: false, fields } } });
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an

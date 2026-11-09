@@ -3,7 +3,7 @@
 # two-stage image - is Slice-1 Task 15.
 x-api-env: &api-env
   API_PORT: 4000
-  MONGO_URL: mongodb://mongo:27017/tor_radar
+  MONGO_URL: mongodb://mongo:27017/tor_radar?directConnection=true
   GCS_BUCKET: ${GCS_BUCKET:-tor-raw}
   GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
@@ -59,7 +59,10 @@ services:
       - gcs
 
   mongo:
-    image: mongo:7
+    # Atlas's own local image: plain mongod plus the search engine, so $search
+    # and lucene.thai behave in Compose and CI as they do on the Atlas cluster.
+    # Pinned for the same reason as the gcs image below.
+    image: mongodb/mongodb-atlas-local:8.0
     ports:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
