@@ -193,6 +193,8 @@ describe("loadConfig", () => {
     expect(config.ocr.enabled).toBe(false);
     expect(config.embeddings.enabled).toBe(false);
     expect(loadConfig(base).extraction.workLocation).toBe(false);
+    expect(loadConfig(base).extraction.biddingFields).toBe(false);
+    expect(loadConfig({ ...base, EXTRACT_BIDDING_FIELDS_ENABLED: "true" }).extraction.biddingFields).toBe(true);
     expect(() => loadConfig({ ...base, OCR_ENABLED: "true" })).toThrow(/DOCAI_PROCESSOR_ID/);
     expect(loadConfig({ ...base, OCR_ENABLED: "true", DOCAI_PROCESSOR_ID: "abc" }).ocr.processorId).toBe("abc");
   });
