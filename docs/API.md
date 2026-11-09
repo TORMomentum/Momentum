@@ -261,7 +261,9 @@ carries `fromDocument` — a TOR's deadline read from its project's invitation t
 invitation, whose original is available at `GET /api/v1/tors/{fromDocument}/document`. A TOR collected
 from BMA e-GP carries `sourceProject` — `{ "system": "bma-egp", "projectNumber": "69099251609", "url":
 "https://egp2.bangkok.go.th/project-detail/…" }`, the project's own page on the source site — and `null`
-otherwise. Invitations
+otherwise. When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
+`evaluationMethod`, `evaluationWeights` and `requiredDocuments` in the same `{raw, value, confidence, verified}`
+shape (`value` is the structured list; see the extraction spec §13); they are absent from older records. Invitations
 themselves are supporting documents: never listed, counted, or served as a record of their own. Contact data passes through the public
 redaction serializer (`FR-B-5`); evidence quotes are not returned. A restricted or unpublished record
 is a 404.
