@@ -1,4 +1,4 @@
-import { MongoClient, type Collection, type Db } from "mongodb";
+import { MongoClient, MongoServerError, ObjectId, type Collection, type Db } from "mongodb";
 import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
@@ -439,6 +439,29 @@ export async function ensureSearchIndex(db: Db, name: string): Promise<void> {
   await tors(db).createSearchIndex({ name, definition: { mappings: { dynamic: false, fields } } });
 }
 
+/**
+ * One event per (account, TOR, kind). Rows written before that rule can repeat, and a unique index cannot be
+ * built over repeats, so on that one error the older copies are removed (the latest time is kept) and the
+ * build is retried. Nothing runs on a collection that is already clean.
+ */
+async function createBehaviourEventKey(db: Db): Promise<void> {
+  const key = { accountId: 1, torId: 1, type: 1 } as const;
+  try {
+    await behaviourEvents(db).createIndex(key, { unique: true });
+  } catch (error) {
+    if (!(error instanceof MongoServerError && error.code === 11000)) throw error;
+    const repeated = behaviourEvents(db).aggregate<{ ids: ObjectId[]; keep: ObjectId }>([
+      { $sort: { at: -1 } },
+      { $group: { _id: { accountId: "$accountId", torId: "$torId", type: "$type" }, keep: { $first: "$_id" }, ids: { $push: "$_id" } } },
+      { $match: { "ids.1": { $exists: true } } },
+    ]);
+    for await (const group of repeated) {
+      await behaviourEvents(db).deleteMany({ _id: { $in: group.ids.filter((id) => !id.equals(group.keep)) } });
+    }
+    await behaviourEvents(db).createIndex(key, { unique: true });
+  }
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -455,7 +478,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
   await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
   await behaviourEvents(db).createIndex({ accountId: 1, at: -1 });
-  await behaviourEvents(db).createIndex({ accountId: 1, torId: 1, type: 1 }, { unique: true });
+  await createBehaviourEventKey(db);
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   // One judgement per pair; relabelling replaces it.
   await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
