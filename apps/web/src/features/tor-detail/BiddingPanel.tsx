@@ -68,36 +68,46 @@ export function BiddingPanel({
         <section className={styles.biddingBlock} aria-labelledby="evaluation-heading">
           <h2 id="evaluation-heading" className={labels.blockLabel}>
             เกณฑ์การพิจารณา — สกัดโดย AI
-            <Unconfirmed field={evaluationMethod ?? evaluationWeights} />
           </h2>
-          {method && <div className={styles.biddingMethod}>{METHOD_LABELS[method]}</div>}
+          {/* Each value is graded on its own: a confirmed method says nothing about the weights beside it. */}
+          {method && (
+            <div className={styles.biddingMethod}>
+              {METHOD_LABELS[method]}
+              <Unconfirmed field={evaluationMethod} />
+            </div>
+          )}
           {evaluationMethod?.raw && <div className={styles.biddingRaw}>ตามเอกสาร: {evaluationMethod.raw}</div>}
           {criteria.length > 0 && (
-            <table className={styles.criteriaTable}>
-              <thead>
-                <tr>
-                  <th scope="col">หัวข้อ</th>
-                  <th scope="col">น้ำหนัก (ร้อยละ)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {criteria.map((criterion) => (
-                  <tr key={criterion.name}>
-                    <td>{criterion.name}</td>
-                    <td className={styles.criteriaWeight}>{criterion.weight}</td>
+            <>
+              {evaluationWeights && !evaluationWeights.verified && (
+                <div className={styles.biddingRaw}>น้ำหนักคะแนนชุดนี้<Unconfirmed field={evaluationWeights} /></div>
+              )}
+              <table className={styles.criteriaTable}>
+                <thead>
+                  <tr>
+                    <th scope="col">หัวข้อ</th>
+                    <th scope="col">น้ำหนัก (ร้อยละ)</th>
                   </tr>
-                ))}
-              </tbody>
-              {/* The sum is shown, never forced: when the document's own weights do not add up the reader sees it. */}
-              <tfoot>
-                <tr>
-                  <th scope="row">รวม</th>
-                  <td className={styles.criteriaWeight}>
-                    {Math.round(criteria.reduce((sum, criterion) => sum + criterion.weight, 0) * 100) / 100}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {criteria.map((criterion) => (
+                    <tr key={criterion.name}>
+                      <td>{criterion.name}</td>
+                      <td className={styles.criteriaWeight}>{criterion.weight}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                {/* The sum is shown, never forced: when the document's own weights do not add up the reader sees it. */}
+                <tfoot>
+                  <tr>
+                    <th scope="row">รวม</th>
+                    <td className={styles.criteriaWeight}>
+                      {Math.round(criteria.reduce((sum, criterion) => sum + criterion.weight, 0) * 100) / 100}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </>
           )}
         </section>
       )}
