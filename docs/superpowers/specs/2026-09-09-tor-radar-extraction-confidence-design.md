@@ -434,7 +434,8 @@ Three more fields beyond the nine (SRS v2.1, FR-B-2), read in the same Gemini re
   unverified rather than guessed.
 - **On the detail page (TOR-211).** `BiddingPanel` shows the method (our label for the enum, with the document's
   own wording beneath it), the criteria with their weights and the sum of what the document states (never forced to
-  100), and the required documents grouped company / personnel / not stated. Both blocks carry "สกัดโดย AI" and the
-  "ยังไม่ยืนยัน" mark; a record without the fields shows neither block. Names are shown as written (NFR-F7).
+  100), and the required documents grouped company / personnel / not stated. Both blocks carry "สกัดโดย AI". The
+  "ยังไม่ยืนยัน" mark is per value: the method, the weights and the documents are graded separately, so a confirmed
+  method never vouches for unconfirmed weights beside it. A record without the fields shows neither block. Names are shown as written (NFR-F7).
 - Raw quotes of these fields are excluded from the copy-through check: a method or a document name may rightly
   repeat wording from the qualifications.
