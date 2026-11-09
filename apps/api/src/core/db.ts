@@ -162,6 +162,11 @@ export interface AccountDocument {
     action: "checkbox";
     withdrawnAt?: Date;
   };
+  /**
+   * A second, separate consent (TOR-215): recording what the vendor views, saves, dismisses and prepares, to
+   * personalise their score. Absent or withdrawn means no event is recorded and none is read.
+   */
+  behaviourConsent?: { agreedAt: Date; withdrawnAt?: Date };
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -308,6 +313,16 @@ export interface MatchLabelDocument {
 }
 
 /** Cached derived data; source TOR documents remain immutable after extraction. */
+export type BehaviourEventType = "view" | "save" | "dismiss" | "prepare";
+
+/** One thing a consenting vendor did to a TOR (TOR-215). Kept for the scoring window, in the export, and deleted with the account. */
+export interface BehaviourEventDocument {
+  accountId: string;
+  torId: string;
+  type: BehaviourEventType;
+  at: Date;
+}
+
 export interface TorClassificationDocument {
   torId: string;
   classification: TorClassification;
@@ -380,6 +395,10 @@ export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
 }
 
+export function behaviourEvents(db: Db): Collection<BehaviourEventDocument> {
+  return db.collection<BehaviourEventDocument>("behaviour_events");
+}
+
 export function torClassifications(db: Db): Collection<TorClassificationDocument> {
   return db.collection<TorClassificationDocument>("tor_classifications");
 }
@@ -435,6 +454,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // the eventual live email. `reason` distinguishes a match from its reminder.
   await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
   await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
+  await behaviourEvents(db).createIndex({ accountId: 1, at: -1 });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   // One judgement per pair; relabelling replaces it.
   await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });
