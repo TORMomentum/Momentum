@@ -5,6 +5,7 @@ import { provincesIn } from "../../lib/province.js";
 import { cosine } from "../../ports/embeddings.port.js";
 import { certificationName, certificationsMentioned, qualificationText } from "./certifications.js";
 import { cgdBranchOf } from "./registration.js";
+import type { BehaviourAffinity } from "../behaviour/behaviour.repository.js";
 import { classifyTor, type TorClassification } from "./tor-classifier.js";
 
 export type MatchResult = { score: number; reasons: Array<{ code: string; th: string }>; excluded: null | { code: string; th: string } };
@@ -158,7 +159,26 @@ function registrationCheck(profile: VendorProfileDocument, record: TorDocument, 
     : { factor: config.matching.registrationMissingFactor, reason: { code: "registration-missing", th: `งานขนาดนี้ต้องขึ้นทะเบียนกรมบัญชีกลางสาขา${name} ซึ่งคุณยังไม่ได้ระบุ` } };
 }
 
-export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, classification: TorClassification, config: Config, today: string): MatchResult {
+/**
+ * How far the vendor's own activity moves this TOR's score: the points they earned on the kinds of work it
+ * covers, times what a point is worth, never more than the cap either way. Null when switched off, when there
+ * is no activity on this kind of work, or when it nets out to nothing.
+ */
+function behaviourAdjustment(affinity: BehaviourAffinity | undefined, classification: TorClassification, config: Config) {
+  const { enabled, pointValue, maxAdjust } = config.matching.behaviour;
+  if (!enabled || !affinity) return null;
+  const points = [...new Set(classification.leaves.map((leaf) => leaf.id))].reduce((total, id) => total + (affinity[id] ?? 0), 0);
+  const delta = Math.max(-maxAdjust, Math.min(maxAdjust, points * pointValue));
+  if (delta === 0) return null;
+  return {
+    delta,
+    reason: delta > 0
+      ? { code: "behaviour-up", th: "ปรับคะแนนขึ้น เพราะคุณเคยสนใจงานประเภทนี้ (จากการใช้งานของคุณเอง)" }
+      : { code: "behaviour-down", th: "ปรับคะแนนลง เพราะคุณเคยปิดงานประเภทนี้ (จากการใช้งานของคุณเอง)" },
+  };
+}
+
+export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, classification: TorClassification, config: Config, today: string, affinity?: BehaviourAffinity): MatchResult {
   const deadline = record.fields.deadline?.value;
   if (typeof deadline === "string" && deadline < today) return { score: 0, reasons: [], excluded: { code: "deadline-passed", th: "ปิดรับข้อเสนอแล้ว" } };
   if (record.access.restricted) return { score: 0, reasons: [], excluded: { code: "restricted", th: "รายการนี้ถูกจำกัดการเข้าถึง" } };
@@ -184,5 +204,9 @@ export function scoreMatch(profile: VendorProfileDocument, record: TorDocument, 
   // A missing registration is the first thing a vendor needs to know, so it leads.
   if (registration?.factor !== undefined && registration.factor < 1) reasons.unshift(registration.reason);
   else if (registration) reasons.push(registration.reason);
-  return { score: weighted * (registration?.factor ?? 1), reasons, excluded: null };
+  const base = weighted * (registration?.factor ?? 1);
+  // Last, and only a nudge: it can reorder close matches but never rescue a TOR the base score rejects outright.
+  const behaviour = base > 0 ? behaviourAdjustment(affinity, classification, config) : null;
+  if (behaviour) reasons.push(behaviour.reason);
+  return { score: Math.max(0, Math.min(1, base + (behaviour?.delta ?? 0))), reasons, excluded: null };
 }
