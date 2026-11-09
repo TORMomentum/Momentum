@@ -124,14 +124,19 @@ function experienceSignal(profile: VendorProfileDocument, classification: TorCla
  * the TOR uses their words.
  */
 function qualificationSignal(profile: VendorProfileDocument, record: TorDocument) {
-  if (!profile.certifications) return null;
+  // Personnel stated counts as stating something: TORs mostly ask for people, not ISO (TOR-212).
+  const staff = new Set((profile.personnel ?? []).flatMap((member) => member.certifications));
+  if (!profile.certifications && staff.size === 0) return null;
   const text = qualificationText(record);
-  const mentioned = certificationsMentioned(text);
-  const ownWords = profile.certifications.other.filter((entry) => entry.trim().length > 1 && text.includes(entry.trim()));
+  const company = new Set(profile.certifications?.tags ?? []);
+  const ownWords = (profile.certifications?.other ?? []).filter((entry) => entry.trim().length > 1 && text.includes(entry.trim()));
+  // Staff alone cannot show the company lacks a certificate it never said anything about.
+  const mentioned = certificationsMentioned(text).filter((id) => profile.certifications || staff.has(id));
   if (mentioned.length === 0 && ownWords.length === 0) return null;
-  const held = mentioned.filter((id) => profile.certifications!.tags.includes(id));
+  const held = mentioned.filter((id) => company.has(id) || staff.has(id));
   const missing = mentioned.filter((id) => !held.includes(id));
-  const heldNames = [...held.map(certificationName), ...ownWords];
+  // A certificate only the staff hold is named as theirs, so the vendor sees why it counted.
+  const heldNames = [...held.map((id) => (company.has(id) ? certificationName(id) : `${certificationName(id)} (บุคลากร)`)), ...ownWords];
   const either = /หรือ/.test(text) && heldNames.length > 0;
   const score = either || missing.length === 0 ? 1 : held.length / mentioned.length;
   const reason = missing.length > 0 && !either
