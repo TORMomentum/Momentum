@@ -191,5 +191,45 @@ describe("match scorer", () => {
       expect(scoreMatch(holding([]), tor(), classification, config, "2026-01-01").score).toBeCloseTo(plain.score);
     });
   });
-});
 
+  describe("the vendor's own activity", () => {
+    const on = { ...config, matching: { ...config.matching, behaviour: { ...config.matching.behaviour, enabled: true } } };
+    const road = { "construction.road": 5 };
+    const score = (cfg: typeof config, affinity?: Record<string, number>, p = profile(["construction.road"], null)) =>
+      scoreMatch(p, tor(), classification, cfg, "2026-01-01", affinity);
+
+    it("raises the score for work they showed interest in and lowers it for work they dismissed, saying which", () => {
+      const base = score(on).score;
+      const up = score(on, road);
+      const down = score(on, { "construction.road": -5 });
+      expect(up.score).toBeGreaterThan(base);
+      expect(down.score).toBeLessThan(base);
+      expect(up.reasons.map((r) => r.code)).toContain("behaviour-up");
+      expect(down.reasons.map((r) => r.code)).toContain("behaviour-down");
+      expect(up.reasons.find((r) => r.code === "behaviour-up")?.th).toContain("จากการใช้งานของคุณเอง");
+    });
+
+    it("moves a score by points times their value, and never past the cap either way", () => {
+      const { pointValue, maxAdjust } = on.matching.behaviour;
+      const base = score(on).score;
+      expect(score(on, { "construction.road": 2 }).score).toBeCloseTo(Math.min(1, base + 2 * pointValue));
+      expect(score(on, { "construction.road": 10_000 }).score).toBeCloseTo(Math.min(1, base + maxAdjust));
+      expect(score(on, { "construction.road": -10_000 }).score).toBeCloseTo(Math.max(0, base - maxAdjust));
+    });
+
+    it("stays out when switched off, with no activity, or on another kind of work", () => {
+      const base = score(config).score;
+      expect(score(config, road).score).toBeCloseTo(base);
+      expect(score(config, road).reasons.map((r) => r.code)).not.toContain("behaviour-up");
+      expect(score(on, {}).score).toBeCloseTo(base);
+      expect(score(on, { "it.software": 9 }).score).toBeCloseTo(base);
+    });
+
+    it("never rescues a TOR the base score rejects, and keeps the score within 0..1", () => {
+      expect(scoreMatch(profile(), tor({ fields: { deadline: { value: "2020-01-01" } } }), classification, on, "2026-01-01", road).excluded?.code).toBe("deadline-passed");
+      const best = score(on, road, profile(["construction.road"], { minThb: 100, maxThb: 200 })).score;
+      expect(best).toBeLessThanOrEqual(1);
+      expect(score(on, { "construction.road": -10_000 }, profile(["goods"], null)).score).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
