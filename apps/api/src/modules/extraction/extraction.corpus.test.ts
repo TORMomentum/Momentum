@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../core/config.js";
 import { VertexAi } from "../../adapters/vertex.ai.js";
+import { vertexConfig } from "../../adapters/vertex.factory.js";
 import type { Storage } from "../../ports/storage.port.js";
 import { ExtractionService, type ExtractionConfig } from "./extraction.service.js";
 import type { ExtractionRepository, ExtractionResult } from "./extraction.repository.js";
@@ -62,7 +63,7 @@ async function runDoc(id: string): Promise<{ result: ExtractionResult; label: La
     }),
   } as unknown as ExtractionRepository;
   const storage = { getStream: vi.fn(async () => Readable.from([bytes])) } as unknown as Storage;
-  await new ExtractionService({ storage, ai: new VertexAi(config.vertex), repo, config: svcConfig }).run(id);
+  await new ExtractionService({ storage, ai: new VertexAi(vertexConfig(config)), repo, config: svcConfig }).run(id);
   return { result: captured.result!, label };
 }
 

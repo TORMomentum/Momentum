@@ -1,6 +1,7 @@
 import { provincesIn } from "../../lib/province.js";
 import { isTorCategory } from "@tor-radar/shared";
-import type { ConfidenceLevel, ExtractedField, TorFields } from "@tor-radar/shared";
+import type { ConfidenceLevel, ExtractedField, RequiredDocument, TorFields } from "@tor-radar/shared";
+import { certificationsMentioned } from "../matching/certifications.js";
 import type { RawExtraction, RawField } from "../../ports/ai.port.js";
 import { mapQualifications } from "./extraction.taxonomy.js";
 
@@ -45,6 +46,14 @@ const CRITICAL = ["agency", "budget"] as const;
 
 const SCOPE_MIN_CHARS = 40;
 
+/** Fields whose raw quote may rightly repeat another field's wording, so copy-through does not count them. */
+const OPTIONAL_QUOTES = new Set<keyof TorFields>([
+  "scopeItems", "scopeLocation", "workLocation", "evaluationMethod", "evaluationWeights", "requiredDocuments",
+]);
+
+/** Criterion weights are percentages and must add up to 100; rounding in the document is allowed for. */
+const WEIGHT_TOTAL_TOLERANCE = 0.5;
+
 function isValidDate(iso: string | null): Date | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -74,6 +83,17 @@ function structurallyOk(name: keyof TorFields, raw: RawExtraction, ctx: GradingC
     case "workLocation":
       // Usable only if it names a province: area matching reads nothing else from it.
       return provincesIn(raw.workLocation?.value ?? "").length > 0;
+    case "evaluationMethod":
+      return ["lowest_price", "price_performance", "other"].includes(String(raw.evaluationMethod?.value));
+    case "evaluationWeights": {
+      const criteria = raw.evaluationWeights?.value ?? [];
+      // No weights is right for a lowest-price evaluation and incomplete for any other.
+      if (criteria.length === 0) return raw.evaluationMethod?.value === "lowest_price";
+      const total = criteria.reduce((sum, c) => sum + c.weight, 0);
+      return criteria.every((c) => c.weight > 0 && c.weight <= 100) && Math.abs(total - 100) <= WEIGHT_TOTAL_TOLERANCE;
+    }
+    case "requiredDocuments":
+      return (raw.requiredDocuments?.value ?? []).length > 0;
     case "scopeSummary":
       return (raw.scopeSummary.value ?? "").trim().length >= SCOPE_MIN_CHARS;
     case "scopeLocation":
@@ -112,7 +132,22 @@ const RAW_TO_TOR: Record<keyof TorFields, RawKey> = {
   procurementMethod: "procurementMethod",
   referenceNo: "referenceNo",
   workLocation: "workLocation",
+  evaluationMethod: "evaluationMethod",
+  evaluationWeights: "evaluationWeights",
+  requiredDocuments: "requiredDocuments",
 };
+
+/** Each required document that names a listed certification (ISO 9001, วิศวกร...) is tagged with it (TOR-210). */
+function withCertifications(rf: RawField<RequiredDocument[]>): RawField<RequiredDocument[]> {
+  return {
+    ...rf,
+    value:
+      rf.value?.map((doc) => {
+        const [certification] = certificationsMentioned(doc.name);
+        return certification ? { ...doc, certification } : doc;
+      }) ?? null,
+  };
+}
 
 /** The RawField for a TorFields key, typed loosely (its own T is not needed here). */
 function rawFor(raw: RawExtraction, name: keyof TorFields): RawField<unknown> | undefined {
@@ -175,6 +210,11 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
     procurementMethod: buildField(raw.procurementMethod, false),
     referenceNo: buildField(raw.referenceNo, false),
     ...(raw.workLocation ? { workLocation: buildField(raw.workLocation, verifiedOf("workLocation")) } : {}),
+    ...(raw.evaluationMethod ? { evaluationMethod: buildField(raw.evaluationMethod, verifiedOf("evaluationMethod")) } : {}),
+    ...(raw.evaluationWeights ? { evaluationWeights: buildField(raw.evaluationWeights, verifiedOf("evaluationWeights")) } : {}),
+    ...(raw.requiredDocuments
+      ? { requiredDocuments: buildField(withCertifications(raw.requiredDocuments), verifiedOf("requiredDocuments")) }
+      : {}),
   };
 
   // Written back exactly as the source stated them, origin and all.
@@ -214,7 +254,7 @@ export function grade(modelRaw: RawExtraction, ctx: GradingContext): GradingResu
     // Copy-through is a model failure; a value the source stated is not one.
     if (isKnown(name)) continue;
     // The scope count quotes a heading, which may rightly repeat another field's wording.
-    if (name === "scopeItems" || name === "scopeLocation" || name === "workLocation") continue;
+    if (OPTIONAL_QUOTES.has(name)) continue;
     const r = rawFor(raw, name)?.raw.trim() ?? "";
     if (r) rawCounts.set(r, (rawCounts.get(r) ?? 0) + 1);
   }

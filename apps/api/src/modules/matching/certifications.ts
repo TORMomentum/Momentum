@@ -12,7 +12,8 @@ const MENTIONS: Record<CertificationId, RegExp> = {
   "iso-45001": /ISO\s*45001|OHSAS\s*18001|มอก\.?\s*18001/i,
   tis: /มอก\.|มาตรฐานผลิตภัณฑ์อุตสาหกรรม/,
   sme: /\bSMEs?\b|สสว|วิสาหกิจขนาดกลางและขนาดย่อม/i,
-  engineer: /ใบอนุญาตประกอบวิชาชีพวิศวกรรม|วิศวกรควบคุม|สภาวิศวกร/,
+  // "ใบประกอบวิชาชีพ..." without "อนุญาต" is how required-document lists name it (6 of the 10 benchmark TORs).
+  engineer: /ใบ(?:อนุญาต)?ประกอบวิชาชีพวิศวกรรม|วิศวกรควบคุม|สภาวิศวกร/,
   architect: /ใบอนุญาตประกอบวิชาชีพสถาปัตยกรรม|สถาปนิก/,
 };
 

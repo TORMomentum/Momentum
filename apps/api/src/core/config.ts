@@ -127,6 +127,13 @@ const schema = z.object({
    */
   EXTRACT_WORK_LOCATION_ENABLED: flag(false),
 
+  /**
+   * Also ask Gemini for the evaluation method, its score weights and the required documents
+   * (TOR-209, TOR-210). Off by default for the same reason as the work location: the thresholds
+   * were measured without these fields in the prompt and schema.
+   */
+  EXTRACT_BIDDING_FIELDS_ENABLED: flag(false),
+
   // Provenance (TOR-128, design 2026-11-08). Off by default: each enabled run spends Document AI pages.
   OCR_ENABLED: flag(false),
   /** Document AI is multi-region only: "us" or "eu". */
@@ -338,7 +345,7 @@ export interface Config {
     credentialsPath?: string;
     timeoutMs: number;
   };
-  extraction: { maxAnnexes: number; maxInputBytes: number; workLocation: boolean };
+  extraction: { maxAnnexes: number; maxInputBytes: number; workLocation: boolean; biddingFields: boolean };
   ocr: { enabled: boolean; location: string; processorId?: string; maxPages: number; timeoutMs: number };
   embeddings: { enabled: boolean; model: string; location: string; minSimilarity: number };
   tLow: number;
@@ -469,6 +476,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       maxAnnexes: parsed.EXTRACT_MAX_ANNEXES,
       maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES,
       workLocation: parsed.EXTRACT_WORK_LOCATION_ENABLED,
+      biddingFields: parsed.EXTRACT_BIDDING_FIELDS_ENABLED,
     },
     ocr: {
       enabled: parsed.OCR_ENABLED,
