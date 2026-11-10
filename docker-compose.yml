@@ -20,6 +20,10 @@ x-api-env: &api-env
   # Compose passes only what it lists, so a switch missing here is off in the container whatever .env says.
   MATCH_BEHAVIOUR_ENABLED: ${MATCH_BEHAVIOUR_ENABLED:-false}
   DRAFT_ENABLED: ${DRAFT_ENABLED:-false}
+  DRAFT_RATE_PER_HOUR: ${DRAFT_RATE_PER_HOUR:-10}
+  DRAFT_TIMEOUT_MS: ${DRAFT_TIMEOUT_MS:-45000}
+  DRAFT_MAX_OUTPUT_TOKENS: ${DRAFT_MAX_OUTPUT_TOKENS:-8192}
+  DRAFT_TEMPERATURE: ${DRAFT_TEMPERATURE:-0.3}
 
 services:
   web:
