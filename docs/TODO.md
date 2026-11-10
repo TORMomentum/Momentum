@@ -490,10 +490,16 @@ Branch `feat/tor-218-vendor-vault`._
       delete after confirming. Web handlers pass the bytes through; checked live through Next with 200 KB of binary
       coming back byte for byte. Not seen in a browser
 - [x] **TOR-269 — tests and API.md**
+- [x] **Review of #37 fixed** — an upload arriving while the account is deleted can no longer leave a file (checked live: the
+      paused upload answers `409`, the bucket is empty); the row is written first and kept until its file is gone,
+      swept by the worker otherwise; the file cap is exact (12 at once against 3: 3 stored); the web handler refuses
+      before reading and stops at the limit
 - [ ] **Before using it in a real project:** create the `tor-vault` bucket and give its identity `create`, `get`,
       `delete` on that bucket only (`docs/gcp-setup.md` §3b); set `GCS_VAULT_BUCKET` in the deploy variables.
       Cloud Run's manifests do not pass it yet, like the other settings
 - [ ] No virus scan of what is uploaded; decide before real vendors rely on it
+- [ ] The sweep runs in the extract worker's reconcile pass; a deployment without that worker never clears a stuck upload
+- [ ] A deleted account leaves its discarded rows (an account id and a key, no metadata) until their upload or the sweep clears them
 - [ ] TOR-219 matches a TOR's `requiredDocuments` against the vault; TOR-220 drafts from it
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA

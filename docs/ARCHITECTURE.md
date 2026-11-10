@@ -185,7 +185,7 @@ The feature modules, as of Sprint 4:
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
 | `bookmarks/` | A vendor's private saved list |
-| `vault/` | A vendor's own files (CV, certificates, past work): upload, list, download, delete; the bytes in the vault bucket, the record here (TOR-218) |
+| `vault/` | A vendor's own files (CV, certificates, past work): upload, list, download, delete; the bytes in the vault bucket, the record here, written before the bytes; the worker's reconcile pass sweeps unfinished uploads (TOR-218) |
 | `behaviour/` | What a consenting vendor viewed, saved, dismissed or prepared, recorded and turned into per-work-type points for the score; the worker's reconcile pass deletes rows of accounts without live consent |
 | `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |
 | `match-quality/` | The labelled benchmark that gates match emails (matching design §7.8) |
@@ -475,6 +475,8 @@ erDiagram
     }
     VAULT_DOCUMENTS {
         string accountId FK
+        int slot "unique per account: the file cap"
+        string status "pending | ready | discarded"
         string kind "cv | certificate | past_work"
         string certificationId "the vendor statement, certificates only"
         string filename
@@ -540,6 +542,8 @@ Three shapes are load-bearing:
 | `tors.access.restricted` | Keeps restricted records out of public queries |
 | Atlas Search index `tors_text` (`SEARCH_INDEX_NAME`) | Keyword search on title and agency, raw and extracted value, with `lucene.thai` (TOR-201). Created at API start, not by `ensureIndexes`, because it exists only on Atlas |
 | `vault_documents.accountId + uploadedAt` | One vendor's files, newest first, and the export and delete of them (TOR-218) |
+| `vault_documents.accountId + slot` **unique** | An account has `VAULT_MAX_FILES` slots; an upload takes one before it reads a byte, so the cap holds under concurrent uploads |
+| `vault_documents.status + uploadedAt` | The sweep: unfinished or discarded uploads old enough not to be running |
 | `behaviour_events.accountId + at` | One vendor's recent activity for their score, and the export and delete of it (TOR-215) |
 | `behaviour_events.accountId + torId + type` **unique** | One event per kind per TOR: a repeat refreshes `at` instead of adding a row. Built on a collection that still holds older repeats, `ensureIndexes` removes the older copies (the latest `at` stays) and retries once |
 | `tor_events.torId + at` | The audit read: one TOR's history, newest first |
