@@ -31,6 +31,31 @@ describe("vault handlers", () => {
     expect(session).toBe("sess");
   });
 
+  it("reads nothing from an upload without a session, and nothing from one that says it is too big", async () => {
+    let pulled = 0;
+    const stream = () => new ReadableStream<Uint8Array>({ pull(controller) { pulled += 1; controller.enqueue(new Uint8Array(1024)); } }, { highWaterMark: 0 });
+    const post = (headers: Record<string, string>) =>
+      POST(new NextRequest(`${ORIGIN}/api/vault`, { method: "POST", headers: { origin: ORIGIN, ...headers }, body: stream(), duplex: "half" } as unknown as ConstructorParameters<typeof NextRequest>[1]));
+
+    const signedOut = await post({ cookie: "" });
+    const huge = await post({ cookie: "tor-radar-session=sess", "content-length": String(64 * 1024 * 1024) });
+
+    expect([signedOut.status, huge.status]).toEqual([401, 413]);
+    expect(pulled).toBe(0);
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
+  it("stops reading an upload that runs past the limit even when it does not say how big it is", async () => {
+    vi.stubEnv("VAULT_MAX_FILE_BYTES", "100");
+    let pulled = 0;
+    const endless = new ReadableStream<Uint8Array>({ pull(controller) { pulled += 1; controller.enqueue(new Uint8Array(600 * 1024)); } }, { highWaterMark: 0 });
+    const response = await POST(new NextRequest(`${ORIGIN}/api/vault`, { method: "POST", headers: { origin: ORIGIN, cookie: "tor-radar-session=sess" }, body: endless, duplex: "half" } as unknown as ConstructorParameters<typeof NextRequest>[1]));
+
+    expect(response.status).toBe(413);
+    expect(pulled).toBeLessThan(6);
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
   it("refuses uploads and deletes that do not come from this site, before calling the API", async () => {
     const upload = await POST(req("/api/vault", { method: "POST", headers: { origin: "http://evil.test" }, body: "x" }));
     const noOrigin = await DELETE(req("/api/vault/d1", { method: "DELETE" }), ctx);
