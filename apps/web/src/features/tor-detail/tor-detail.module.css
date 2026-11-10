@@ -314,3 +314,38 @@
 .checkNone { background: var(--ink-12); color: var(--ink-62); }
 .checkLabel { font: 600 13px var(--body); color: var(--ink); }
 .checkReason { margin-top: 2px; font-size: 12px; line-height: 1.6; color: var(--ink-62); }
+
+.biddingBlock { margin-top: 24px; }
+
+.biddingMethod { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+
+.biddingRaw { font: 11px var(--data); color: rgba(18, 35, 60, 0.6); margin-bottom: 10px; }
+
+.criteriaTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.criteriaTable th, .criteriaTable td { text-align: left; padding: 7px 4px; border-bottom: var(--rule); }
+
+.criteriaTable thead th { font: 600 11px var(--data); color: rgba(18, 35, 60, 0.6); }
+
+.criteriaTable tfoot th, .criteriaTable tfoot td { font-weight: 600; border-bottom: 0; }
+
+.criteriaTable th:last-child, .criteriaWeight { text-align: right; font-family: var(--data); }
+
+.docGroup { margin-top: 10px; }
+
+.docGroupLabel { font: 600 11px var(--data); color: rgba(18, 35, 60, 0.6); margin-bottom: 4px; }
+
+.docList { list-style: none; margin: 0; padding: 0; }
+
+.docItem { font-size: 13px; line-height: 1.7; padding: 4px 0 4px 22px; position: relative; border-bottom: var(--rule); }
+
+.docItem::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid rgba(18, 35, 60, 0.4);
+  border-radius: 3px;
+}

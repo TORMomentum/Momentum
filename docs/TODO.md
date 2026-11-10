@@ -439,7 +439,9 @@ Branch `feat/tor-209-210-extraction-fields`. Run live on the 10 benchmark TORs a
 - [ ] `EXTRACT_BIDDING_FIELDS_ENABLED` stays off until the benchmark is re-run with the new prompt and schema
 - [ ] No benchmark TOR is price-performance, so the weights rule has no real document behind it yet
 - [ ] Existing records have none of these fields until re-extracted
-- [ ] TOR-211 shows them on the detail page (next PR)
+- [x] **TOR-211 — detail page** — `BiddingPanel`: evaluation method and weights, required documents by holder,
+      AI label and unconfirmed mark; nothing shown for a record without the fields. Branch
+      `feat/tor-211-detail-bidding-fields`, stacked on this one. Component tests only: not opened in a browser
 
 ## 2m. Sprint 5 — personnel in the profile and in matching (TOR-212, TOR-213)
 

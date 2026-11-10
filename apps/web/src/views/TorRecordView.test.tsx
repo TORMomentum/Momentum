@@ -49,3 +49,22 @@ describe("TorRecordView category", () => {
     expect(html).toMatch(/จัดหมวดจาก: “(<!-- -->)?ครุภัณฑ์สำนักงานและครุภัณฑ์คอมพิวเตอร์/);
   });
 });
+
+describe("TorRecordView bidding fields", () => {
+  it("shows the evaluation criteria and required documents when the record has them, and neither when it does not", () => {
+    const title = { raw: "ซื้อเครื่องเอกซเรย์", value: "ซื้อเครื่องเอกซเรย์", confidence: 1, verified: true };
+    const withFields = render(tor({
+      fields: {
+        title,
+        evaluationWeights: { raw: "", value: [{ name: "ด้านเทคนิค", weight: 100 }], confidence: 0.9, verified: true },
+        requiredDocuments: { raw: "", value: [{ name: "หนังสือรับรองบริษัท", holder: "company" }], confidence: 0.9, verified: true },
+      },
+    }));
+    expect(withFields).toContain("ด้านเทคนิค");
+    expect(withFields).toContain("หนังสือรับรองบริษัท");
+
+    const without = render(tor());
+    expect(without).not.toContain("เอกสารที่ต้องยื่น");
+    expect(without).not.toContain("เกณฑ์การพิจารณา");
+  });
+});
