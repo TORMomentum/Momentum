@@ -531,5 +531,10 @@ Supersedes the "drafting from the vault (TOR-220) is not built" line of §11 and
   data to Vertex AI, which a deployment agrees to deliberately. Limited to `DRAFT_RATE_PER_HOUR` per account; one
   attempt, no retry (the vendor can press again); a cut-off answer is an error, never offered as a finished letter.
   With the switch on and no Vertex credential the route answers `502`, not `404`, so a misconfiguration is visible.
-- **Not tuned.** Temperature, token cap and the prompt are first guesses (`DRAFT_TEMPERATURE`,
-  `DRAFT_MAX_OUTPUT_TOKENS`). There is no measure of how good the letters are yet.
+- **Token cap.** `DRAFT_MAX_OUTPUT_TOKENS` is 8192, the extractor's figure: a first run with 2048 was cut off by the
+  model (`gemini-3.5-flash` counts its reasoning against the cap), and the route answered `502` as designed rather
+  than offering half a letter. Checked live with synthetic data: it stayed within the facts it was given, left the
+  company name, signatory and date as brackets, named only the held file as attached and listed the rest for the
+  vendor to check.
+- **Not tuned.** Temperature and the prompt are first guesses (`DRAFT_TEMPERATURE`). There is no measure of how good
+  the letters are yet; one real draft was read, not a sample.

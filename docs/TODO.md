@@ -526,8 +526,9 @@ Branch `feat/tor-220-draft-from-vault`. Decided with the owner: one Thai cover l
 - [x] **TOR-273 — review and confirm screen** — the panel on the TOR page: what is sent said first, editable text,
       confirm, regenerate; a web handler with its own deadline for the model call
 - [x] **TOR-274 — export** — a `.txt` download only after the vendor confirms; an edit takes the confirmation back
-- [ ] **Not run against the real model:** the prompt and the Vertex adapter are covered by tests with a fake, never by a real
-      Gemini call (no credential in this environment). Read a few real drafts before turning `DRAFT_ENABLED` on
+- [x] **Run against the real model once** (synthetic data): the first run with a 2048-token cap was cut off (reasoning counts
+      against the cap) and answered `502`; at 8192 the letter used only the given facts, left blanks in brackets and attached
+      only the held file. Read more real drafts before turning `DRAFT_ENABLED` on
 - [ ] No measure of draft quality; temperature, token cap and prompt are first guesses
 - [ ] The draft is lost when the vendor leaves the page (by decision); save per TOR if vendors ask
 - [ ] Sending the vendor's profile to Vertex AI needs the deployment's agreement before the switch is on; no separate
