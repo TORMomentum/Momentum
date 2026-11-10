@@ -1,6 +1,8 @@
 import type { Config } from "../core/config.js";
 import type { Storage } from "../ports/storage.port.js";
+import type { VaultStorage } from "../ports/vault-storage.port.js";
 import { GcsStorage } from "./gcs.storage.js";
+import { GcsVaultStorage } from "./gcs.vault.storage.js";
 
 /**
  * The one place an object-storage adapter is constructed (spec §4.5). The API
@@ -11,6 +13,17 @@ import { GcsStorage } from "./gcs.storage.js";
 export function createStorage(config: Config, caller: "api" | "worker"): Storage {
   return new GcsStorage({
     bucket: config.gcs.bucket,
+    apiEndpoint: config.gcs.apiEndpoint,
+    keyFilename: config.gcs.credentialsPath,
+    projectId: config.gcs.projectId,
+    timeoutMs: caller === "api" ? config.gcs.timeoutApiMs : config.gcs.timeoutWorkerMs,
+  });
+}
+
+/** The vendors' vault bucket (TOR-218): same credentials and endpoint settings, its own bucket. */
+export function createVaultStorage(config: Config, caller: "api" | "worker"): VaultStorage {
+  return new GcsVaultStorage({
+    bucket: config.gcs.vaultBucket,
     apiEndpoint: config.gcs.apiEndpoint,
     keyFilename: config.gcs.credentialsPath,
     projectId: config.gcs.projectId,

@@ -167,7 +167,7 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `Queue`, `Ai`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put` |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
 | `adapters/` | GCS storage, Mongo-backed queue, Vertex AI, SMTP and recording mailers | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
@@ -185,6 +185,7 @@ The feature modules, as of Sprint 4:
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
 | `bookmarks/` | A vendor's private saved list |
+| `vault/` | A vendor's own files (CV, certificates, past work): upload, list, download, delete; the bytes in the vault bucket, the record here, written before the bytes; the worker's reconcile pass sweeps unfinished uploads (TOR-218) |
 | `behaviour/` | What a consenting vendor viewed, saved, dismissed or prepared, recorded and turned into per-work-type points for the score; the worker's reconcile pass deletes rows of accounts without live consent |
 | `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |
 | `match-quality/` | The labelled benchmark that gates match emails (matching design §7.8) |
@@ -339,6 +340,7 @@ erDiagram
     ACCOUNTS ||--o| VENDOR_PROFILES : "states what it does"
     ACCOUNTS ||--o{ BOOKMARKS : "saves"
     ACCOUNTS ||--o{ BEHAVIOUR_EVENTS : "only with its separate consent"
+    ACCOUNTS ||--o{ VAULT_DOCUMENTS : "keeps for reuse"
     ACCOUNTS ||--o{ NOTIFICATIONS : "one row per email sent or dry-run"
     ACCOUNTS ||--o{ MATCH_LABELS : "judged for, by staff"
     ACCOUNTS ||--o{ ADMIN_AUDIT : "every staff read or change"
@@ -471,6 +473,19 @@ erDiagram
         string type "view | save | dismiss | prepare"
         date at "ignored by scoring after BEHAVIOUR_WINDOW_DAYS"
     }
+    VAULT_DOCUMENTS {
+        string accountId FK
+        int slot "unique per account: the file cap"
+        string status "pending | ready | discarded"
+        string kind "cv | certificate | past_work"
+        string certificationId "the vendor statement, certificates only"
+        string filename
+        string contentType "from the bytes"
+        int bytes
+        string sha256
+        string key "in the vault bucket, never shown"
+        date uploadedAt
+    }
     ADMIN_AUDIT {
         string accountId FK
         string action "viewed, profile-edited, match-email-sent, ..."
@@ -526,6 +541,9 @@ Three shapes are load-bearing:
 | `tors.fields.agency.value + announcedAt + fields.torStatus.value` | The combined filters of FR-E-3 |
 | `tors.access.restricted` | Keeps restricted records out of public queries |
 | Atlas Search index `tors_text` (`SEARCH_INDEX_NAME`) | Keyword search on title and agency, raw and extracted value, with `lucene.thai` (TOR-201). Created at API start, not by `ensureIndexes`, because it exists only on Atlas |
+| `vault_documents.accountId + uploadedAt` | One vendor's files, newest first, and the export and delete of them (TOR-218) |
+| `vault_documents.accountId + slot` **unique** | An account has `VAULT_MAX_FILES` slots; an upload takes one before it reads a byte, so the cap holds under concurrent uploads |
+| `vault_documents.status + uploadedAt` | The sweep: unfinished or discarded uploads old enough not to be running |
 | `behaviour_events.accountId + at` | One vendor's recent activity for their score, and the export and delete of it (TOR-215) |
 | `behaviour_events.accountId + torId + type` **unique** | One event per kind per TOR: a repeat refreshes `at` instead of adding a row. Built on a collection that still holds older repeats, `ensureIndexes` removes the older copies (the latest `at` stays) and retries once |
 | `tor_events.torId + at` | The audit read: one TOR's history, newest first |

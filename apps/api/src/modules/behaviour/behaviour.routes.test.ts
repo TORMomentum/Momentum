@@ -35,7 +35,7 @@ function testApp() {
   behaviour = new BehaviourRepository(db, config);
   const accountsRepository = new AccountsRepository(db, sessionsRepository);
   const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository));
-  result.use("/api/v1", buildAccountsRouter({ config, accounts: accountsRepository, tokens: new AccountTokensRepository(db), sessions: sessionsRepository, mailer: new LogMailer() }));
+  result.use("/api/v1", buildAccountsRouter({ config, accounts: accountsRepository, tokens: new AccountTokensRepository(db), sessions: sessionsRepository, mailer: new LogMailer(), vault: { removeAll: async () => undefined } }));
   result.use("/api/v1", buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db), behaviour }));
   result.use("/api/v1", buildBehaviourRouter({ config, behaviour, tors: new TorsRepository(db) }));
   result.use(errorMiddleware); return result;

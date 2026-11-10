@@ -16,6 +16,9 @@ import { ExtractionService } from "../modules/extraction/extraction.service.js";
 import { reconcileOrphanedRecords } from "./reconcile.js";
 import { startHealthServer } from "./health-server.js";
 import { BehaviourRepository } from "../modules/behaviour/behaviour.repository.js";
+import { VaultRepository } from "../modules/vault/vault.repository.js";
+import { VaultService } from "../modules/vault/vault.service.js";
+import { createVaultStorage } from "../adapters/storage.factory.js";
 import { StatsRepository } from "../modules/stats/stats.repository.js";
 
 /**
@@ -178,6 +181,13 @@ export async function startWorker(
         if (purged > 0) console.log(JSON.stringify({ event: "behaviour_purged", purged }));
       } catch (error) {
         console.error(JSON.stringify({ event: "behaviour_purge_failed", message: error instanceof Error ? error.message : "unknown" }));
+      }
+      // Files an unfinished vault upload left behind (a crash, or a clean-up that failed at the time).
+      try {
+        const cleared = await new VaultService(new VaultRepository(db), createVaultStorage(config, "worker")).sweep(new Date(Date.now() - config.vault.pendingTtlMs));
+        if (cleared > 0) console.log(JSON.stringify({ event: "vault_swept", cleared }));
+      } catch (error) {
+        console.error(JSON.stringify({ event: "vault_sweep_failed", message: error instanceof Error ? error.message : "unknown" }));
       }
       lastReconcile = Date.now();
     }

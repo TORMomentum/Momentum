@@ -432,4 +432,42 @@ A recommendation can lean on what the vendor does, on top of the profile they st
 - **Not tuned.** The weights, the point value and the cap are placeholders until the §8.4 benchmark can measure
   their effect.
 
+---
 
+## 11. Revision 6 — document vault, 2026-11-10 (TOR-218)
+
+A vendor keeps their own files once and reuses them for every TOR: a CV, certificates, past work.
+
+- **What is kept.** `vault_documents`: `kind` (`cv`, `certificate`, `past_work`), `certificationId` for a
+  certificate (the vendor's own statement, from the certification list — nothing reads it off the file), the
+  filename as given (directory part dropped, 200 characters), the type, size and `sha256`, and the storage `key`.
+  The file's bytes are in a **bucket of their own** (`GCS_VAULT_BUCKET`), under `vault/<accountId>/<uuid>`: no
+  filename goes to object metadata. Two uploads of the same bytes are two files.
+- **Not the originals.** The originals bucket is immutable and its identity cannot delete (`FR-A-2`, `NFR-S3`).
+  A vendor must be able to delete their file and an account deletion must remove them all, so the vault is a
+  separate bucket and a separate port (`VaultStorage`, which adds `delete`); the identity that can delete reaches
+  only that bucket. The bucket is created like the originals bucket — the emulator does not create it.
+- **Intake rules, applied.** The bytes decide the type (PDF, JPG, PNG), whatever the sender called the file;
+  `VAULT_MAX_FILE_BYTES` caps one file; served as an attachment with `nosniff` and `no-store`, never inline.
+  The web handler refuses a request without a session, from a foreign origin or declaring more than the file cap
+  plus 1 MiB of multipart framing before it reads anything, and stops reading at that limit.
+- **The row comes first.** An upload takes one of the account's `VAULT_MAX_FILES` slots and writes its row as
+  `pending`, with the key it is about to write, before any byte is read or stored; the row becomes `ready` once
+  the bytes are stored. `(accountId, slot)` is unique, so the cap holds however many uploads start together (the
+  one that loses a race for a slot looks again and finds none free), and a full vault is refused before the body is
+  read. Only `ready` rows are listed, served, counted in the export. A row is deleted only after the file it names
+  is gone: if an upload fails and its file cannot be removed at that moment, the row stays (`discarded`) and the
+  worker's reconcile pass (`VaultService.sweep`) removes both; the same pass removes a `pending` row older than
+  `VAULT_PENDING_TTL_MS` (a crashed upload) and frees its slot.
+- **Private.** Every read, download and delete is scoped to the signed-in account; another account's file
+  answers `404`, as a missing one does.
+- **PDPA (`FR-D-3`).** The export lists what is kept (not the files, not the key). Deleting the account is
+  ordered so an upload still arriving cannot outlive it: the account is marked `deletingAt` first; every pending
+  upload is then discarded and every file of the account removed, then its rows; then the account is tombstoned.
+  An upload checks the mark after its row exists and finds its row discarded when it tries to finish, so it is
+  either seen by the deletion or sees the mark, answers `409` and removes its own file. If storage is down the
+  mark is cleared, the account stays whole and the vendor can try again. A delete of one file works the same way
+  (file first, then row).
+- **Not yet.** Matching a TOR's `requiredDocuments` to what is kept is the readiness checklist (TOR-219); drafting
+  from the vault is TOR-220. Neither reads the files. A file that is not a PDF or an image is refused; there is no
+  virus scan.

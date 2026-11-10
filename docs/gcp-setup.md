@@ -43,6 +43,12 @@ IAM & Admin → Service Accounts → **Create service account**
   Deliberately no delete: originals are immutable (`FR-A-2`, `NFR-S3`)
 - Keys → Add key → **JSON** → download
 
+**The vendors' vault bucket** (TOR-218) is a second bucket, `tor-vault` (`GCS_VAULT_BUCKET`): vendors delete
+their own files and an account deletion removes them all, so it needs `storage.objects.delete` as well. Grant
+that on **the vault bucket only** — a second custom role (`create`, `get`, `delete`), or a second service
+account — so the originals bucket keeps its no-delete rule. Same settings as the originals bucket otherwise:
+uniform access, public access prevention, no lifecycle rule.
+
 Save it as `secrets/gcs-storage-sa.json`. Both key files live in `secrets/`, which
 `.gitignore` covers twice — the directory itself and the `*-sa.json` pattern.
 

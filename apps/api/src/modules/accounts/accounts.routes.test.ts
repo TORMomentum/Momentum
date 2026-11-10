@@ -24,6 +24,7 @@ const config = {
 let db: Db;
 let mailer: LogMailer;
 let app: express.Express;
+let vaultRemoveAll: (accountId: string) => Promise<void> = async () => undefined;
 
 function buildTestApp() {
   const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
@@ -38,6 +39,7 @@ function buildTestApp() {
     tokens: tokensRepository,
     sessions: sessionsRepository,
     mailer,
+    vault: { removeAll: (accountId: string) => vaultRemoveAll(accountId) },
   }));
   testApp.use(errorMiddleware);
   return testApp;
@@ -93,6 +95,7 @@ beforeEach(async () => {
     tors(db).deleteMany({}),
   ]);
   mailer = new LogMailer();
+  vaultRemoveAll = async () => undefined;
   app = buildTestApp();
 });
 
@@ -334,5 +337,26 @@ describe("account routes", () => {
     expect((await login()).status).toBe(401);
     expect((await request(app).get("/api/v1/me").set("x-session-id", second.body.sessionId as string)).status).toBe(401);
     expect(await tors(db).countDocuments({})).toBe(beforeTors);
+  });
+
+  it("deletion removes the vendor's kept files first, and stops with the account intact when storage fails (TOR-218)", async () => {
+    await verifiedAccount();
+    const signedIn = await login();
+    const account = await accounts(db).findOne({ email: "vendor@example.test" });
+    const removed: string[] = [];
+    vaultRemoveAll = async (id) => { removed.push(id); throw new Error("storage down"); };
+
+    const failed = await write(request(app).delete("/api/v1/me")).set("x-session-id", signedIn.body.sessionId as string).send({ currentPassword: "correct-password" });
+    expect(failed.status).toBe(500);
+    expect(removed).toEqual([account!._id.toString()]);
+    expect((await accounts(db).findOne({ _id: account!._id }))?.deletedAt).toBeUndefined();
+    // Whole again: it may keep files, because the deletion that stopped it did not finish.
+    expect((await accounts(db).findOne({ _id: account!._id }))?.deletingAt).toBeUndefined();
+    expect(await sessions(db).countDocuments({ accountId: account!._id.toString() })).toBe(1);
+
+    vaultRemoveAll = async (id) => { removed.push(id); };
+    const retried = await write(request(app).delete("/api/v1/me")).set("x-session-id", signedIn.body.sessionId as string).send({ currentPassword: "correct-password" });
+    expect(retried.status).toBe(200);
+    expect(removed).toHaveLength(2);
   });
 });
