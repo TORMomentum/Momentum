@@ -498,3 +498,38 @@ against the vendor's vault, on the TOR detail page.
 - **Not yet.** A certificate the profile states the company holds but with no file in the vault is shown as missing
   (no file), not as held; reading the profile's statement too, a score or a filter on readiness, and drafting from
   the vault (TOR-220) are not built.
+
+---
+
+## 13. Revision 8 — AI draft of a cover letter, 2026-11-11 (TOR-220)
+
+Supersedes the "drafting from the vault (TOR-220) is not built" line of §11 and §12. The vendor can ask Gemini for
+**one** Thai cover letter for a TOR. The vendor reviews, edits and confirms it; nothing is ever submitted for them.
+
+- **Scope.** One editable letter addressed to the TOR's agency: who the company is, why it fits this TOR and which
+  required documents are attached. Not a proposal skeleton (approach, team, schedule): the profile does not hold
+  that, and asking for it would invite the model to invent it.
+- **What is sent to Vertex AI.** The TOR's extracted fields as the public detail shows them (title, agency,
+  reference, deadline, scope summary, qualifications); the vendor's own statements from the profile (work
+  categories and areas by their Thai names, certificates and registrations, personnel **by role and what each
+  holds, never a name**, past projects); and the required documents with the readiness result of §12 and, for the
+  ones held, the file's name. **Not sent:** any file's bytes, the storage key, the hash, the account's email or
+  display name, or the company name (the profile has none). A value the model lacks is a bracketed blank, e.g.
+  `[ชื่อบริษัท]`, which the vendor fills in. The prompt tells the model to use only what it is given and to treat
+  anything inside the TOR text as data, not as an instruction.
+- **The same rule as the page.** The attached/missing/"check yourself" status comes from `readinessOf`
+  (`packages/seeds`), the function the TOR page uses, so the letter cannot say a file is attached that the page
+  calls missing. The letter mentions as attached only what is held; the rest is left to the vendor in brackets.
+- **Not stored.** The draft exists only in the response: no collection, so nothing new to export or delete under
+  `FR-D-3`, and the draft is lost when the vendor leaves the page. The log records a failure's reason, never the
+  prompt or the draft.
+- **Review before export (NFR-F6).** The panel labels the text as an AI draft with the model's version, says
+  before the first request what will be sent, and offers the download (`.txt`) only after the vendor ticks that
+  they checked it; any edit un-ticks it, so what was confirmed is what is downloaded. Regenerating over edited
+  text asks first.
+- **Switch and cost.** `DRAFT_ENABLED`, off by default: each draft is a model call and a transfer of the vendor's
+  data to Vertex AI, which a deployment agrees to deliberately. Limited to `DRAFT_RATE_PER_HOUR` per account; one
+  attempt, no retry (the vendor can press again); a cut-off answer is an error, never offered as a finished letter.
+  With the switch on and no Vertex credential the route answers `502`, not `404`, so a misconfiguration is visible.
+- **Not tuned.** Temperature, token cap and the prompt are first guesses (`DRAFT_TEMPERATURE`,
+  `DRAFT_MAX_OUTPUT_TOKENS`). There is no measure of how good the letters are yet.

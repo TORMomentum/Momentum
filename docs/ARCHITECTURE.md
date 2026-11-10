@@ -167,8 +167,8 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
-| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI, SMTP and recording mailers | Imported by `app.ts` only |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
 
@@ -185,6 +185,7 @@ The feature modules, as of Sprint 4:
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
 | `bookmarks/` | A vendor's private saved list |
+| `drafts/` | The AI cover-letter draft for a TOR: the prompt, the facts it is built from, one rate-limited route; stores nothing (TOR-220) |
 | `vault/` | A vendor's own files (CV, certificates, past work): upload, list, download, delete; the bytes in the vault bucket, the record here, written before the bytes; the worker's reconcile pass sweeps unfinished uploads (TOR-218) |
 | `behaviour/` | What a consenting vendor viewed, saved, dismissed or prepared, recorded and turned into per-work-type points for the score; the worker's reconcile pass deletes rows of accounts without live consent |
 | `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |

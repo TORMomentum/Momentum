@@ -512,6 +512,27 @@ Branch `feat/tor-219-readiness-checklist`._
 - [x] **TOR-271 — checklist on the TOR detail page** — under the required documents, signed-in vendors only;
       download link for what is there, link to the profile for what is missing. Not seen in a browser
 - [ ] A certificate the profile states but with no file in the vault shows as missing; read the profile too if that confuses vendors
+- [ ] A required document naming several certifications is always "check it yourself"; deciding "and" from "or" needs extraction to keep the condition
+
+## 2q. Sprint 5 — AI draft of a cover letter (TOR-220)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §13.
+Branch `feat/tor-220-draft-from-vault`. Decided with the owner: one Thai cover letter; profile, TOR fields and file names
+(not contents) sent; the draft not stored._
+
+- [x] **TOR-272 — draft generation** — `POST /me/tors/:id/draft`, a `TextGenerator` port and its Vertex adapter, the prompt;
+      behind `DRAFT_ENABLED` (off), per-account hourly limit; the readiness rule moved to `packages/seeds` so the letter and
+      the page agree
+- [x] **TOR-273 — review and confirm screen** — the panel on the TOR page: what is sent said first, editable text,
+      confirm, regenerate; a web handler with its own deadline for the model call
+- [x] **TOR-274 — export** — a `.txt` download only after the vendor confirms; an edit takes the confirmation back
+- [ ] **Not run against the real model:** the prompt and the Vertex adapter are covered by tests with a fake, never by a real
+      Gemini call (no credential in this environment). Read a few real drafts before turning `DRAFT_ENABLED` on
+- [ ] No measure of draft quality; temperature, token cap and prompt are first guesses
+- [ ] The draft is lost when the vendor leaves the page (by decision); save per TOR if vendors ask
+- [ ] Sending the vendor's profile to Vertex AI needs the deployment's agreement before the switch is on; no separate
+      consent screen exists (the vendor is told what is sent before each request)
+- [ ] Not seen in a browser
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
