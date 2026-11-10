@@ -77,7 +77,7 @@ const schema = z.object({
   DRAFT_ENABLED: flag(false),
   DRAFT_RATE_PER_HOUR: z.coerce.number().int().positive().default(10),
   DRAFT_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
-  DRAFT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(2048),
+  DRAFT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(8192),
   DRAFT_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
 
   // Vendor document vault (TOR-218)
