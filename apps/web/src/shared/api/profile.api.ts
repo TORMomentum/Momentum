@@ -75,6 +75,8 @@ export interface OwnAccount {
   behaviourConsent?: { agreedAt: string; withdrawnAt?: string } | null;
   /** False while scoring by behaviour is off: nothing is recorded, so the screen does not offer it. */
   behaviourEnabled?: boolean;
+  /** False while the AI cover-letter draft is switched off: the TOR page does not offer it (TOR-220). */
+  draftEnabled?: boolean;
 }
 
 /** The signed-in account itself, read on the server from the session cookie. */
