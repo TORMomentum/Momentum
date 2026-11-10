@@ -170,6 +170,8 @@ export interface AccountDocument {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+  /** Set while the account is being deleted: nothing new may be kept for it, and a failed deletion clears it. */
+  deletingAt?: Date;
   /** Set by an admin: the account cannot sign in and every session it had is revoked. */
   disabledAt?: Date;
 }
@@ -339,19 +341,31 @@ export type VaultKind = (typeof VAULT_KINDS)[number];
  * One file a vendor keeps for reuse (TOR-218). The bytes live in the vault bucket under `key`; this is only
  * what the screen lists and what a later readiness check matches against. `certificationId` is the vendor's
  * own statement of which certificate a file is (from the certification list), never something read off it.
+ *
+ * The record exists BEFORE the bytes do. An upload first takes a `slot` and writes this row as `pending`, with
+ * the key it is about to write, so that whatever happens next (a crash, a failed rollback, the account being
+ * deleted mid-upload) there is a row that names the file and can be cleaned up. It becomes `ready` once the
+ * bytes are stored; `discarded` marks one whose upload must not complete. `slot` is unique per account, which is
+ * what makes the file cap hold under concurrent uploads: there are only `VAULT_MAX_FILES` slots to take.
  */
 export interface VaultDocument {
   _id: ObjectId;
   accountId: string;
-  kind: VaultKind;
-  certificationId?: string;
-  filename: string;
-  contentType: string;
-  bytes: number;
-  sha256: string;
+  slot: number;
   key: string;
+  status: "pending" | "ready" | "discarded";
+  /** When the row was created; a pending row's age is how a stuck upload is told from a running one. */
   uploadedAt: Date;
+  kind?: VaultKind;
+  certificationId?: string;
+  filename?: string;
+  contentType?: string;
+  bytes?: number;
+  sha256?: string;
 }
+
+/** A stored, listed file: every field the screen needs is there. */
+export type ReadyVaultDocument = VaultDocument & Required<Pick<VaultDocument, "kind" | "filename" | "contentType" | "bytes" | "sha256">>;
 
 export interface BehaviourEventDocument {
   accountId: string;
@@ -521,6 +535,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await behaviourEvents(db).createIndex({ accountId: 1, at: -1 });
   await createBehaviourEventKey(db);
   await vaultDocuments(db).createIndex({ accountId: 1, uploadedAt: -1 });
+  // One row per slot: the file cap cannot be passed by uploads that start together.
+  await vaultDocuments(db).createIndex({ accountId: 1, slot: 1 }, { unique: true });
+  await vaultDocuments(db).createIndex({ status: 1, uploadedAt: 1 });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   // One judgement per pair; relabelling replaces it.
   await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });

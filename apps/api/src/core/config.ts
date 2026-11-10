@@ -75,6 +75,8 @@ const schema = z.object({
   // Vendor document vault (TOR-218)
   VAULT_MAX_FILE_BYTES: z.coerce.number().int().positive().default(10_485_760),
   VAULT_MAX_FILES: z.coerce.number().int().positive().default(20),
+  /** An upload that has not finished in this long is stuck, not running: the reconcile pass removes what it left. */
+  VAULT_PENDING_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
 
   // Intake limits
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(26_214_400),
@@ -331,7 +333,7 @@ export interface Config {
     timeoutWorkerMs: number;
   };
   maxUploadBytes: number;
-  vault: { maxFileBytes: number; maxFiles: number };
+  vault: { maxFileBytes: number; maxFiles: number; pendingTtlMs: number };
   allowedMimeTypes: string[];
   multipartMaxFiles: number;
   multipartMaxFieldBytes: number;
@@ -462,7 +464,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       timeoutWorkerMs: parsed.STORAGE_TIMEOUT_WORKER_MS,
     },
     maxUploadBytes: parsed.MAX_UPLOAD_BYTES,
-    vault: { maxFileBytes: parsed.VAULT_MAX_FILE_BYTES, maxFiles: parsed.VAULT_MAX_FILES },
+    vault: { maxFileBytes: parsed.VAULT_MAX_FILE_BYTES, maxFiles: parsed.VAULT_MAX_FILES, pendingTtlMs: parsed.VAULT_PENDING_TTL_MS },
     allowedMimeTypes: parsed.ALLOWED_MIME_TYPES.split(",").map((value) => value.trim()),
     multipartMaxFiles: parsed.MULTIPART_MAX_FILES,
     multipartMaxFieldBytes: parsed.MULTIPART_MAX_FIELD_BYTES,

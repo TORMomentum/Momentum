@@ -1,8 +1,10 @@
 import "../../test/env.js";
 import express from "express";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import type { Db } from "mongodb";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig, type Config } from "../../core/config.js";
 import { accounts, connect, disconnect, ensureIndexes, sessions, vaultDocuments } from "../../core/db.js";
 import { errorMiddleware } from "../../core/errors.js";
@@ -65,6 +67,7 @@ beforeEach(async () => {
   storage = new MemoryVaultStorage();
   app = buildApp();
 });
+afterEach(() => { vi.restoreAllMocks(); });
 afterAll(async () => { await disconnect(); });
 
 describe("vendor document vault (TOR-218)", () => {
@@ -190,6 +193,100 @@ describe("vendor document vault (TOR-218)", () => {
     storage.failPut = true;
     expect((await upload(me, PDF)).status).toBe(500);
     expect(await vaultDocuments(db).countDocuments({})).toBe(0);
+  });
+
+  it("an upload still being sent when the account is deleted leaves no file and no row behind", async () => {
+    const me = await sessionFor("one@example.test");
+    const server = app.listen(0);
+    try {
+      const boundary = "----vault-test";
+      const head = `--${boundary}\r\nContent-Disposition: form-data; name="kind"\r\n\r\ncv\r\n--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.pdf"\r\nContent-Type: application/pdf\r\n\r\n`;
+      const req = http.request({
+        port: (server.address() as AddressInfo).port, method: "POST", path: "/api/v1/me/vault",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}`, "x-session-id": me.session, origin: config.appOrigin, "transfer-encoding": "chunked" },
+      });
+      const finished = new Promise<number>((resolve, reject) => {
+        req.on("response", (res) => { res.resume(); res.on("end", () => resolve(res.statusCode ?? 0)); });
+        req.on("error", reject);
+      });
+      req.write(`${head}%PDF-1.4 first half`);
+      // The upload holds its slot; the body is not finished.
+      for (let i = 0; i < 100 && (await vaultDocuments(db).countDocuments({ accountId: me.accountId })) === 0; i += 1) await new Promise((r) => setTimeout(r, 20));
+      expect(await vaultDocuments(db).countDocuments({ accountId: me.accountId })).toBe(1);
+
+      // The account is deleted in full, the way DELETE /me does it, while the upload is still arriving.
+      await accountsRepository.markDeleting(me.accountId);
+      await new VaultService(new VaultRepository(db), storage).removeAll(me.accountId);
+      await accountsRepository.softDelete(me.accountId);
+
+      req.end(` second half\r\n--${boundary}--\r\n`);
+      expect(await finished).toBe(409);
+      expect(storage.objects.size).toBe(0);
+      expect(await vaultDocuments(db).countDocuments({ accountId: me.accountId })).toBe(0);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("keeps nothing for an account that is being deleted when the upload starts", async () => {
+    const me = await sessionFor("one@example.test");
+    await accountsRepository.markDeleting(me.accountId);
+
+    expect((await upload(me, PDF)).status).toBe(409);
+    expect(storage.objects.size).toBe(0);
+    expect(await vaultDocuments(db).countDocuments({ accountId: me.accountId })).toBe(0);
+  });
+
+  it("when the row cannot be finished and the file cannot be removed, the row still names the file and the sweep removes both", async () => {
+    const me = await sessionFor("one@example.test");
+    vi.spyOn(VaultRepository.prototype, "markReady").mockRejectedValueOnce(new Error("database down"));
+    storage.failDelete = true;
+
+    expect((await upload(me, PDF)).status).toBe(500);
+    expect(storage.objects.size).toBe(1); // written, and could not be taken back
+    const rows = await vaultDocuments(db).find({ accountId: me.accountId }).toArray();
+    expect(rows).toHaveLength(1);
+    expect([...storage.objects.keys()]).toEqual([rows[0]!.key]);
+    expect((await request(app).get("/api/v1/me/vault").set("x-session-id", me.session)).body.documents).toEqual([]); // never shown
+
+    const service = new VaultService(new VaultRepository(db), storage);
+    // Too young to be anything but a running upload: left alone.
+    expect(await service.sweep(new Date(Date.now() - 3_600_000))).toBe(0);
+    expect(storage.objects.size).toBe(1);
+    // Storage still down: the row stays for the next pass.
+    expect(await service.sweep(new Date(Date.now() + 1000))).toBe(0);
+    expect(await vaultDocuments(db).countDocuments({})).toBe(1);
+
+    storage.failDelete = false;
+    expect(await service.sweep(new Date(Date.now() + 1000))).toBe(1);
+    expect(storage.objects.size).toBe(0);
+    expect(await vaultDocuments(db).countDocuments({})).toBe(0);
+  });
+
+  it("keeps to the file cap however many uploads start together", async () => {
+    const me = await sessionFor("one@example.test");
+    app = buildApp({ maxFiles: 3 });
+
+    const results = await Promise.all(Array.from({ length: 12 }, () => upload(me, PDF)));
+    const statuses = results.map((r) => r.status).sort();
+
+    expect(statuses.filter((s) => s === 201)).toHaveLength(3);
+    expect(statuses.filter((s) => s === 409)).toHaveLength(9);
+    expect(storage.objects.size).toBe(3);
+    expect(await vaultDocuments(db).countDocuments({ accountId: me.accountId })).toBe(3);
+  });
+
+  it("gives a slot back when an upload is refused, and when a file is deleted", async () => {
+    const me = await sessionFor("one@example.test");
+    app = buildApp({ maxFiles: 1 });
+
+    expect((await upload(me, Buffer.from("not a document"))).status).toBe(400);
+    const first = await upload(me, PDF);
+    expect(first.status).toBe(201);
+    expect((await upload(me, PDF)).status).toBe(409);
+
+    await request(app).delete(`/api/v1/me/vault/${first.body.id}`).set("x-session-id", me.session).set("origin", config.appOrigin);
+    expect((await upload(me, PDF)).status).toBe(201);
   });
 
   it("removeAll deletes every file of one account and none of another's; a failure keeps the records", async () => {

@@ -350,6 +350,8 @@ describe("account routes", () => {
     expect(failed.status).toBe(500);
     expect(removed).toEqual([account!._id.toString()]);
     expect((await accounts(db).findOne({ _id: account!._id }))?.deletedAt).toBeUndefined();
+    // Whole again: it may keep files, because the deletion that stopped it did not finish.
+    expect((await accounts(db).findOne({ _id: account!._id }))?.deletingAt).toBeUndefined();
     expect(await sessions(db).countDocuments({ accountId: account!._id.toString() })).toBe(1);
 
     vaultRemoveAll = async (id) => { removed.push(id); };

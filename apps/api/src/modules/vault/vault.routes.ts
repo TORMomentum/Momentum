@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { CERTIFICATIONS } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
-import { VAULT_KINDS, type VaultDocument, type VaultKind } from "../../core/db.js";
+import { VAULT_KINDS, type ReadyVaultDocument, type VaultKind } from "../../core/db.js";
 import { AppError, BadRequestError, NotFoundError, PayloadTooLargeError, UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { detectMimeType } from "../../lib/file-type.js";
@@ -87,7 +87,7 @@ function cleanFilename(raw: string): string {
   return (base || "document").slice(0, FILENAME_MAX);
 }
 
-function present(doc: VaultDocument) {
+function present(doc: ReadyVaultDocument) {
   return {
     id: doc._id.toString(),
     kind: doc.kind,
@@ -121,42 +121,46 @@ export function buildVaultRouter(deps: VaultRouterDeps): Router {
 
   router.post("/me/vault", write, async (req, res) => {
     const accountId = owner(req);
-    // Cheap refusals first: a full vault should not cost a whole upload. Concurrent uploads can overshoot the
-    // cap by one or two; it bounds storage, it is not a quota that must hold to the byte.
-    if ((await deps.vault.count(accountId)) >= deps.config.vault.maxFiles) {
-      throw new AppError(409, "vault_full", `เก็บเอกสารได้สูงสุด ${deps.config.vault.maxFiles} ไฟล์ กรุณาลบไฟล์เดิมก่อน`);
-    }
-    const upload = await readUpload(req, deps.config);
-    const parsed = fieldsSchema.safeParse(upload.fields);
-    if (!parsed.success) throw new BadRequestError("กรุณาเลือกประเภทเอกสาร");
-    const kind: VaultKind = parsed.data.kind;
-    const certificationId = kind === "certificate" ? parsed.data.certificationId : undefined;
-    if (certificationId !== undefined && !certificationIds.has(certificationId)) throw new BadRequestError("ไม่รู้จักใบรับรองที่ระบุ");
-    if (upload.bytes.byteLength === 0) throw new BadRequestError("ไฟล์ว่างเปล่า");
-
-    // The declared type is the sender's word; the bytes decide.
-    const contentType = detectMimeType(upload.bytes);
-    if (!contentType || !deps.config.allowedMimeTypes.includes(contentType)) throw new BadRequestError("รับเฉพาะไฟล์ PDF, JPG และ PNG");
-
     // A key of its own per file: two uploads of the same bytes are two files, and deleting one leaves the other.
     const key = `vault/${accountId}/${randomUUID()}`;
-    // No filename goes to storage: object metadata is not a place for a person's file names.
-    await deps.storage.putIfAbsent(key, upload.bytes, contentType, { route: "vault" });
+    // The row that names the file comes first, and with it one of the account's few slots: a full vault is
+    // refused before a byte is read, and uploads that start together cannot take more slots than there are.
+    const reservation = await deps.vault.reserve(accountId, key, deps.config.vault.maxFiles);
+    if (!reservation) {
+      throw new AppError(409, "vault_full", `เก็บเอกสารได้สูงสุด ${deps.config.vault.maxFiles} ไฟล์ กรุณาลบไฟล์เดิมก่อน`);
+    }
     try {
-      const doc = await deps.vault.insert({
-        accountId,
+      // Checked after the row exists: deleting the account marks it first and then discards every pending row,
+      // so an upload is either seen by that deletion or sees the mark here.
+      if (!(await deps.vault.accountLive(accountId))) throw new AppError(409, "account_closing", "บัญชีนี้กำลังถูกลบ จึงเก็บเอกสารเพิ่มไม่ได้");
+      const upload = await readUpload(req, deps.config);
+      const parsed = fieldsSchema.safeParse(upload.fields);
+      if (!parsed.success) throw new BadRequestError("กรุณาเลือกประเภทเอกสาร");
+      const kind: VaultKind = parsed.data.kind;
+      const certificationId = kind === "certificate" ? parsed.data.certificationId : undefined;
+      if (certificationId !== undefined && !certificationIds.has(certificationId)) throw new BadRequestError("ไม่รู้จักใบรับรองที่ระบุ");
+      if (upload.bytes.byteLength === 0) throw new BadRequestError("ไฟล์ว่างเปล่า");
+
+      // The declared type is the sender's word; the bytes decide.
+      const contentType = detectMimeType(upload.bytes);
+      if (!contentType || !deps.config.allowedMimeTypes.includes(contentType)) throw new BadRequestError("รับเฉพาะไฟล์ PDF, JPG และ PNG");
+
+      // No filename goes to storage: object metadata is not a place for a person's file names.
+      await deps.storage.putIfAbsent(key, upload.bytes, contentType, { route: "vault" });
+      const doc = await deps.vault.markReady(reservation._id, accountId, {
         kind,
         ...(certificationId ? { certificationId } : {}),
         filename: cleanFilename(upload.filename),
         contentType,
         bytes: upload.bytes.byteLength,
         sha256: sha256(upload.bytes),
-        key,
-        uploadedAt: new Date(),
       });
+      // Not pending any more: the account was deleted while this upload was running. The file goes too.
+      if (!doc) throw new AppError(409, "upload_discarded", "อัปโหลดถูกยกเลิก เพราะบัญชีนี้ถูกลบ");
       res.status(201).json(present(doc));
     } catch (error) {
-      await deps.storage.delete(key).catch(() => undefined); // an unreferenced file is the worse outcome
+      // The file (if written) and then the row; if the file cannot go now the row stays for the sweep.
+      await deps.service.abandon(accountId, reservation._id).catch(() => undefined);
       throw error;
     }
   });

@@ -110,6 +110,20 @@ export class AccountsRepository {
     if (!on) await behaviourEvents(this.db).deleteMany({ accountId });
   }
 
+  /**
+   * The first step of deleting an account: from now nothing new may be kept for it (an upload that is still
+   * running checks this and discards itself). It is cleared again if the deletion cannot finish.
+   */
+  async markDeleting(accountId: string): Promise<void> {
+    if (!ObjectId.isValid(accountId)) return;
+    await accounts(this.db).updateOne({ _id: new ObjectId(accountId) }, { $set: { deletingAt: new Date() } });
+  }
+
+  async clearDeleting(accountId: string): Promise<void> {
+    if (!ObjectId.isValid(accountId)) return;
+    await accounts(this.db).updateOne({ _id: new ObjectId(accountId) }, { $unset: { deletingAt: "" } });
+  }
+
   async softDelete(accountId: string): Promise<void> {
     if (!ObjectId.isValid(accountId)) return;
     const now = new Date();
@@ -117,13 +131,13 @@ export class AccountsRepository {
       { _id: new ObjectId(accountId) },
       {
         $set: { email: `deleted:${randomUUID()}`, deletedAt: now, updatedAt: now },
-        $unset: { displayName: "", passwordHash: "", google: "" },
+        $unset: { displayName: "", passwordHash: "", google: "", deletingAt: "" },
       },
     );
     await this.sessionsRepository.revokeAllForAccount(accountId);
   }
 
-  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null; behaviourEvents: Array<Omit<BehaviourEventDocument, "_id" | "accountId">>; vaultDocuments: Array<Omit<VaultDocument, "_id" | "accountId" | "key">> }> {
+  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null; behaviourEvents: Array<Omit<BehaviourEventDocument, "_id" | "accountId">>; vaultDocuments: Array<Omit<VaultDocument, "_id" | "accountId" | "key" | "slot" | "status">> }> {
     if (!ObjectId.isValid(accountId)) throw new Error("Invalid account id");
     const account = await accounts(this.db).findOne({ _id: new ObjectId(accountId) });
     if (!account) throw new Error("Account not found");
@@ -133,7 +147,7 @@ export class AccountsRepository {
     const profile = await vendorProfiles(this.db).findOne({ accountId });
     const events = await behaviourEvents(this.db).find({ accountId }, { projection: { _id: 0, accountId: 0 } }).sort({ at: 1 }).toArray();
     // What is kept, not the files: the bytes are downloaded from the vault itself. The storage key is ours, not theirs.
-    const vault = await vaultDocuments(this.db).find({ accountId }, { projection: { _id: 0, accountId: 0, key: 0 } }).sort({ uploadedAt: 1 }).toArray();
+    const vault = await vaultDocuments(this.db).find({ accountId, status: "ready" }, { projection: { _id: 0, accountId: 0, key: 0, slot: 0, status: 0 } }).sort({ uploadedAt: 1 }).toArray();
     return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks, profile, behaviourEvents: events, vaultDocuments: vault };
   }
 
