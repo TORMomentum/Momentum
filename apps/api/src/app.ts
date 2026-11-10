@@ -32,6 +32,9 @@ import { AccountTokensRepository } from "./modules/accounts/account-tokens.repos
 import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
 import { ProfileRepository } from "./modules/profile/profile.repository.js";
 import { createEmbedder } from "./adapters/embedder.factory.js";
+import { createTextGenerator } from "./adapters/text.factory.js";
+import { DraftsService } from "./modules/drafts/drafts.service.js";
+import { buildDraftsRouter } from "./modules/drafts/drafts.routes.js";
 import { buildProfileRouter } from "./modules/profile/profile.routes.js";
 import { BehaviourRepository } from "./modules/behaviour/behaviour.repository.js";
 import { buildBehaviourRouter } from "./modules/behaviour/behaviour.routes.js";
@@ -90,6 +93,13 @@ export function buildApp(config: Config, db: Db): Express {
   const behaviourRepository = new BehaviourRepository(db, config);
   const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db), behaviour: behaviourRepository });
   const behaviourRouter = buildBehaviourRouter({ config, behaviour: behaviourRepository, tors: new TorsRepository(db) });
+  const draftsRouter = buildDraftsRouter({
+    config,
+    service: new DraftsService({
+      tors: new TorsService({ repo: new TorsRepository(db, config.search), config }),
+      profiles: profileRepository, vault: vaultRepository, generator: createTextGenerator(config),
+    }),
+  });
   const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config), behaviour: behaviourRepository });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
@@ -98,6 +108,7 @@ export function buildApp(config: Config, db: Db): Express {
     app.use(prefix, behaviourRouter);
     app.use(prefix, matchingRouter);
     app.use(prefix, vaultRouter);
+    app.use(prefix, draftsRouter);
   }
 
   const service = new IntakeService(
