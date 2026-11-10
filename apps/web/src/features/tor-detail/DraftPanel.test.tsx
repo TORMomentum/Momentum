@@ -110,6 +110,22 @@ describe("DraftPanel", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("ไม่สำเร็จ");
   });
 
+  it("keeps the box read-only while a new draft is on its way, so nothing typed can be overwritten by the answer", async () => {
+    await render();
+    await generate();
+    await act(async () => checkbox().click());
+    let release!: (response: Response) => void;
+    fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { release = resolve; }));
+
+    await act(async () => button("ร่างใหม่").click());
+    expect(textarea().readOnly).toBe(true);
+    expect(button("ดาวน์โหลด (.txt)").disabled).toBe(true);
+
+    await act(async () => release(answer({ text: "ร่างที่สอง", modelVersion: "m" })));
+    expect(textarea().readOnly).toBe(false);
+    expect(textarea().value).toBe("ร่างที่สอง");
+  });
+
   it("does not throw away the vendor's edits when asked to draft again, unless they agree", async () => {
     await render();
     await generate();

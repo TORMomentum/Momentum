@@ -89,6 +89,8 @@ export function DraftPanel({ torId }: { torId: string }) {
             aria-label="ร่างจดหมายนำเสนอ"
             value={text}
             rows={16}
+            // Not editable while a new draft is on its way: its answer replaces the text, so anything typed meanwhile would be lost.
+            readOnly={busy}
             onChange={(event) => {
               setText(event.target.value);
               setConfirmed(false);
@@ -98,7 +100,7 @@ export function DraftPanel({ torId }: { torId: string }) {
             <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /> ฉันตรวจสอบและแก้ไขข้อความนี้แล้ว
           </label>
           <div className={styles.draftActions}>
-            <button type="button" className={styles.draftButton} onClick={download} disabled={!confirmed || text.trim() === ""}>
+            <button type="button" className={styles.draftButton} onClick={download} disabled={busy || !confirmed || text.trim() === ""}>
               ดาวน์โหลด (.txt)
             </button>
             <button type="button" className={styles.draftSecondary} onClick={generate} disabled={busy}>
