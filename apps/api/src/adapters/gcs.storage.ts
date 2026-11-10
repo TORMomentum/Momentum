@@ -31,9 +31,9 @@ function statusOf(error: unknown): number | undefined {
  * post-upload validation stays off, because on a mismatch it deletes.
  */
 export class GcsStorage implements Storage {
-  private readonly client: GcsClient;
+  protected readonly client: GcsClient;
 
-  constructor(private readonly settings: GcsSettings) {
+  constructor(protected readonly settings: GcsSettings) {
     this.client = new GcsClient({
       ...(settings.apiEndpoint ? { apiEndpoint: settings.apiEndpoint } : {}),
       ...(settings.keyFilename ? { keyFilename: settings.keyFilename } : {}),
@@ -48,7 +48,7 @@ export class GcsStorage implements Storage {
     });
   }
 
-  private file(key: string): File {
+  protected file(key: string): File {
     return this.client.bucket(this.settings.bucket).file(key);
   }
 
@@ -158,7 +158,7 @@ export class GcsStorage implements Storage {
     };
   }
 
-  private translate(error: unknown): Error {
+  protected translate(error: unknown): Error {
     const status = statusOf(error);
     if (status === undefined || status >= 500) return new ServiceUnavailableError("object storage unavailable");
     return error instanceof Error ? error : new Error(String(error));

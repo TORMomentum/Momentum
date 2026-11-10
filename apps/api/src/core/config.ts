@@ -54,6 +54,12 @@ const schema = z.object({
 
   // Storage — Google Cloud Storage (spec §6)
   GCS_BUCKET: z.string().min(1),
+  /**
+   * The vendors' own files (TOR-218). A separate bucket from the originals: those are never deleted, and a
+   * vendor must be able to delete theirs (and the account's deletion removes them), so the identity that
+   * reaches this bucket needs delete — the one the raw bucket's identity does not have.
+   */
+  GCS_VAULT_BUCKET: z.string().min(1).default("tor-vault"),
   /** Set only for fake-gcs-server. Unset in deployment. */
   GCS_API_ENDPOINT: blankAsAbsent(z.url()),
   /**
@@ -65,6 +71,10 @@ const schema = z.object({
   GCS_CREDENTIALS: blankAsAbsent(z.string().min(1)),
   STORAGE_TIMEOUT_API_MS: z.coerce.number().int().positive().default(10_000),
   STORAGE_TIMEOUT_WORKER_MS: z.coerce.number().int().positive().default(60_000),
+
+  // Vendor document vault (TOR-218)
+  VAULT_MAX_FILE_BYTES: z.coerce.number().int().positive().default(10_485_760),
+  VAULT_MAX_FILES: z.coerce.number().int().positive().default(20),
 
   // Intake limits
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(26_214_400),
@@ -313,6 +323,7 @@ export interface Config {
   };
   gcs: {
     bucket: string;
+    vaultBucket: string;
     apiEndpoint?: string;
     credentialsPath?: string;
     projectId?: string;
@@ -320,6 +331,7 @@ export interface Config {
     timeoutWorkerMs: number;
   };
   maxUploadBytes: number;
+  vault: { maxFileBytes: number; maxFiles: number };
   allowedMimeTypes: string[];
   multipartMaxFiles: number;
   multipartMaxFieldBytes: number;
@@ -442,6 +454,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     gcs: {
       bucket: parsed.GCS_BUCKET,
+      vaultBucket: parsed.GCS_VAULT_BUCKET,
       apiEndpoint: parsed.GCS_API_ENDPOINT,
       credentialsPath: parsed.GCS_CREDENTIALS,
       projectId: parsed.GOOGLE_CLOUD_PROJECT,
@@ -449,6 +462,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       timeoutWorkerMs: parsed.STORAGE_TIMEOUT_WORKER_MS,
     },
     maxUploadBytes: parsed.MAX_UPLOAD_BYTES,
+    vault: { maxFileBytes: parsed.VAULT_MAX_FILE_BYTES, maxFiles: parsed.VAULT_MAX_FILES },
     allowedMimeTypes: parsed.ALLOWED_MIME_TYPES.split(",").map((value) => value.trim()),
     multipartMaxFiles: parsed.MULTIPART_MAX_FILES,
     multipartMaxFieldBytes: parsed.MULTIPART_MAX_FIELD_BYTES,
