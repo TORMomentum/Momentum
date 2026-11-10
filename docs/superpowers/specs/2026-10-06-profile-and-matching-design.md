@@ -488,7 +488,11 @@ against the vendor's vault, on the TOR detail page.
   block says a file is kept, not that it is valid or current.
 - **What is not.** A document that names no listed certification (a statement of past work, a letter) has only
   free text to go on. Matching words would call a file there or missing on a coincidence, so it is listed as
-  "the system cannot compare this, check it yourself". The summary counts the two separately ("1 of 2 that can be
+  "the system cannot compare this, check it yourself". So is a document whose name mentions **more than one**
+  listed certification: extraction tags only the first, and "ISO 9001 and ISO 14001" (both needed) cannot be told
+  from "ISO 9001 or ISO 14001" (either will do), so deciding on the first would call a missing file held, or a
+  usable one missing. It is read from the name (`certificationsMentioned`, now in `packages/seeds`), not the tag, so
+  records extracted before this carry the same first tag and are covered too. The summary counts the two separately ("1 of 2 that can be
   checked · 1 to check yourself"), so a short list of matched items is never read as a complete one.
 - **Unconfirmed lists.** When the extraction of `requiredDocuments` is not confirmed, the block says so (NFR-F6).
 - **Not yet.** A certificate the profile states the company holds but with no file in the vault is shown as missing
