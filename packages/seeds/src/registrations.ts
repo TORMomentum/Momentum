@@ -42,3 +42,23 @@ export type CertificationId = (typeof CERTIFICATIONS)[number]["id"];
  * are the company's, so staff are never recorded as holding them and never satisfy a TOR asking for them.
  */
 export const PERSONAL_CERTIFICATION_IDS = ["engineer", "architect"] as const satisfies readonly CertificationId[];
+
+/**
+ * How a TOR's text names each listed certification. Read from the corpus (2026-10-08, 223 TORs with
+ * qualifications): ISO 9001 in 23, ISO 14001 in 11, มอก. in 12, SME in 2, วิศวกร and สถาปนิก in 1 each.
+ */
+const MENTIONS: Record<CertificationId, RegExp> = {
+  "iso-9001": /ISO\s*9001/i,
+  "iso-14001": /ISO\s*14001/i,
+  "iso-45001": /ISO\s*45001|OHSAS\s*18001|มอก\.?\s*18001/i,
+  tis: /มอก\.|มาตรฐานผลิตภัณฑ์อุตสาหกรรม/,
+  sme: /\bSMEs?\b|สสว|วิสาหกิจขนาดกลางและขนาดย่อม/i,
+  // "ใบประกอบวิชาชีพ..." without "อนุญาต" is how required-document lists name it (6 of the 10 benchmark TORs).
+  engineer: /ใบ(?:อนุญาต)?ประกอบวิชาชีพวิศวกรรม|วิศวกรควบคุม|สภาวิศวกร/,
+  architect: /ใบอนุญาตประกอบวิชาชีพสถาปัตยกรรม|สถาปนิก/,
+};
+
+/** The listed certifications a piece of TOR text mentions, by id. */
+export function certificationsMentioned(text: string): CertificationId[] {
+  return (Object.keys(MENTIONS) as CertificationId[]).filter((id) => MENTIONS[id].test(text));
+}

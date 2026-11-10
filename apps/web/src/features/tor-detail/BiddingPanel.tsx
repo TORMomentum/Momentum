@@ -31,7 +31,7 @@ function criteriaOf(value: unknown): EvaluationCriterion[] {
   );
 }
 
-function documentsOf(value: unknown): RequiredDocument[] {
+export function documentsOf(value: unknown): RequiredDocument[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
     (item): item is RequiredDocument =>

@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-10_
+_last updated: 2026-11-11_
 
 ---
 
@@ -500,7 +500,18 @@ Branch `feat/tor-218-vendor-vault`._
 - [ ] No virus scan of what is uploaded; decide before real vendors rely on it
 - [ ] The sweep runs in the extract worker's reconcile pass; a deployment without that worker never clears a stuck upload
 - [ ] A deleted account leaves its discarded rows (an account id and a key, no metadata) until their upload or the sweep clears them
-- [ ] TOR-219 matches a TOR's `requiredDocuments` against the vault; TOR-220 drafts from it
+- [ ] TOR-220 drafts from the vault
+
+## 2p. Sprint 5 — readiness checklist (TOR-219)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §12.
+Branch `feat/tor-219-readiness-checklist`._
+
+- [x] **TOR-270 — match required documents to vault items** — a document naming a listed certification is there
+      or missing by the vendor's certificate files; any other is left to the vendor, never guessed
+- [x] **TOR-271 — checklist on the TOR detail page** — under the required documents, signed-in vendors only;
+      download link for what is there, link to the profile for what is missing. Not seen in a browser
+- [ ] A certificate the profile states but with no file in the vault shows as missing; read the profile too if that confuses vendors
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

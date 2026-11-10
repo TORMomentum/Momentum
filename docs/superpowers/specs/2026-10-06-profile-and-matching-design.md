@@ -471,3 +471,30 @@ A vendor keeps their own files once and reuses them for every TOR: a CV, certifi
 - **Not yet.** Matching a TOR's `requiredDocuments` to what is kept is the readiness checklist (TOR-219); drafting
   from the vault is TOR-220. Neither reads the files. A file that is not a PDF or an image is refused; there is no
   virus scan.
+
+---
+
+## 12. Revision 7 — readiness checklist, 2026-11-11 (TOR-219)
+
+Supersedes the "Not yet" line of §11 for matching: a TOR's `requiredDocuments` (extraction design §13) is now read
+against the vendor's vault, on the TOR detail page.
+
+- **Where.** A block under the required documents, shown only to a signed-in vendor and only when the TOR lists
+  required documents. It is computed on the page from the record and the vendor's own vault list; there is no new
+  route and nothing is stored.
+- **What is matched.** A required document that names a listed certification (`certification`, tagged at extraction,
+  TOR-210) is **there** when the vault holds a `certificate` whose `certificationId` is that one, and **missing**
+  otherwise. `certificationId` is the vendor's own statement when they uploaded (§11): nothing reads the file, so the
+  block says a file is kept, not that it is valid or current.
+- **What is not.** A document that names no listed certification (a statement of past work, a letter) has only
+  free text to go on. Matching words would call a file there or missing on a coincidence, so it is listed as
+  "the system cannot compare this, check it yourself". So is a document whose name mentions **more than one**
+  listed certification: extraction tags only the first, and "ISO 9001 and ISO 14001" (both needed) cannot be told
+  from "ISO 9001 or ISO 14001" (either will do), so deciding on the first would call a missing file held, or a
+  usable one missing. It is read from the name (`certificationsMentioned`, now in `packages/seeds`), not the tag, so
+  records extracted before this carry the same first tag and are covered too. The summary counts the two separately ("1 of 2 that can be
+  checked · 1 to check yourself"), so a short list of matched items is never read as a complete one.
+- **Unconfirmed lists.** When the extraction of `requiredDocuments` is not confirmed, the block says so (NFR-F6).
+- **Not yet.** A certificate the profile states the company holds but with no file in the vault is shown as missing
+  (no file), not as held; reading the profile's statement too, a score or a filter on readiness, and drafting from
+  the vault (TOR-220) are not built.
