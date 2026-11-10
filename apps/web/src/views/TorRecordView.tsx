@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BiddingPanel } from "../features/tor-detail/BiddingPanel";
 import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
+import { DraftPanel } from "../features/tor-detail/DraftPanel";
 import { ReadinessPanel } from "../features/tor-detail/ReadinessPanel";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
@@ -59,6 +60,7 @@ export function TorRecordView({
   originals,
   bookmarked = false,
   vault = null,
+  draftEnabled = false,
 }: {
   tor: TorDetail;
   /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
@@ -70,6 +72,8 @@ export function TorRecordView({
   bookmarked?: boolean;
   /** The signed-in vendor's kept files, for the readiness checklist; absent for everyone else. */
   vault?: Vault | null;
+  /** Offer the AI cover-letter draft (TOR-220): the vendor is signed in and the deployment has it on. */
+  draftEnabled?: boolean;
 }) {
   const { fields, budgetYear } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.
@@ -277,6 +281,8 @@ export function TorRecordView({
         />
 
         <ReadinessPanel requiredDocuments={fields.requiredDocuments} vault={vault} />
+
+        {draftEnabled && <DraftPanel torId={tor.id} />}
 
         {tor.checklist && <ChecklistPanel checklist={tor.checklist} />}
 

@@ -37,6 +37,8 @@ services:
       - API_BASE_URL=http://api:4000
       # The vault upload handler refuses a body past this before reading it; keep it equal to the API's.
       - VAULT_MAX_FILE_BYTES=${VAULT_MAX_FILE_BYTES:-10485760}
+      # The draft handler waits this long for the model (plus a few seconds); keep it equal to the API's.
+      - DRAFT_TIMEOUT_MS=${DRAFT_TIMEOUT_MS:-45000}
     depends_on:
       - api
 
