@@ -2,10 +2,12 @@ import Link from "next/link";
 import { BiddingPanel } from "../features/tor-detail/BiddingPanel";
 import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
+import { ReadinessPanel } from "../features/tor-detail/ReadinessPanel";
 import styles from "../features/tor-detail/tor-detail.module.css";
 import labels from "../shared/ui/labels.module.css";
 import { BookmarkButton } from "../features/bookmarks/BookmarkButton";
 import type { TorDetail, TorDetailField } from "../shared/api/tors.api";
+import type { Vault } from "../shared/api/vault.api";
 import {
   addressFrom,
   DEADLINE_SOON_DAYS,
@@ -56,6 +58,7 @@ export function TorRecordView({
   tor,
   originals,
   bookmarked = false,
+  vault = null,
 }: {
   tor: TorDetail;
   /** The stored originals a reader can open: the TOR, and its invitation to bid when the deadline came from one. */
@@ -65,6 +68,8 @@ export function TorRecordView({
    * readers are not signed in and have saved nothing — absent means not saved.
    */
   bookmarked?: boolean;
+  /** The signed-in vendor's kept files, for the readiness checklist; absent for everyone else. */
+  vault?: Vault | null;
 }) {
   const { fields, budgetYear } = tor;
   // Our own formatting of the normalised date and stated time, in Arabic numerals.
@@ -270,6 +275,8 @@ export function TorRecordView({
           evaluationWeights={fields.evaluationWeights}
           requiredDocuments={fields.requiredDocuments}
         />
+
+        <ReadinessPanel requiredDocuments={fields.requiredDocuments} vault={vault} />
 
         {tor.checklist && <ChecklistPanel checklist={tor.checklist} />}
 

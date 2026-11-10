@@ -6,6 +6,7 @@ import { originalDocuments } from "../../../../src/features/tor-detail/original-
 import { TorRecordView } from "../../../../src/views/TorRecordView";
 import { fetchOwnBookmarkIds } from "../../../../src/shared/api/bookmarks.api";
 import { fetchOwnAccount } from "../../../../src/shared/api/profile.api";
+import { fetchOwnVault } from "../../../../src/shared/api/vault.api";
 import { ViewBeacon } from "../../../../src/features/tor-detail/ViewBeacon";
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
@@ -47,10 +48,12 @@ export default async function TorDetailPage({
     const savedIds = await fetchOwnBookmarkIds([tor.id]);
     // Only a signed-in vendor who agreed to it is counted as having viewed this (TOR-215).
     const account = await fetchOwnAccount();
+    // The readiness checklist (TOR-219) is the signed-in vendor's own; nobody else is shown it.
+    const vault = account ? await fetchOwnVault() : null;
     const track = Boolean(account?.behaviourEnabled && account.behaviourConsent && !account.behaviourConsent.withdrawnAt && !account.consent.withdrawnAt);
     return (
       <>
-        <TorRecordView tor={tor} originals={originalDocuments(tor)} bookmarked={savedIds.has(tor.id)} />
+        <TorRecordView tor={tor} originals={originalDocuments(tor)} bookmarked={savedIds.has(tor.id)} vault={vault} />
         {track && <ViewBeacon torId={tor.id} />}
       </>
     );
