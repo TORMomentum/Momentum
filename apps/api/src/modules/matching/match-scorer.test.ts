@@ -184,6 +184,51 @@ describe("match scorer", () => {
       expect(codes(scoreMatch(holding([], ["ใบอนุญาตประกอบกิจการโรงงาน"]), named, classification, config, "2026-01-01"))).toContain("qualification-held");
     });
 
+    describe("held by the staff", () => {
+      const withStaff = (certs: string[][], tags?: string[]) => ({
+        ...profile(),
+        ...(tags ? { certifications: { cgd: [], tags, other: [] } } : {}),
+        personnel: certs.map((certifications, i) => ({ id: `p${i}`, role: `ตำแหน่ง ${i}`, certifications, other: [] })),
+      });
+      const engineer = withQualifications("ผู้ยื่นข้อเสนอต้องมีวิศวกรผู้ถือใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม");
+
+      it("counts a certificate a member of staff holds, and names it as the staff's", () => {
+        const held = scoreMatch(withStaff([["engineer"]], []), engineer, classification, config, "2026-01-01");
+        const none = scoreMatch(withStaff([[]], []), engineer, classification, config, "2026-01-01");
+        expect(held.score).toBeGreaterThan(none.score);
+        expect(held.reasons.find((r) => r.code === "qualification-held")?.th).toContain("(บุคลากร)");
+        expect(none.reasons.find((r) => r.code === "qualification-missing")?.th).toContain("ใบอนุญาตวิศวกร");
+      });
+
+      it("adds the company's and the staff's certificates together", () => {
+        const both = withQualifications("ISO 9001 และใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม");
+        const result = scoreMatch(withStaff([["engineer"]], ["iso-9001"]), both, classification, config, "2026-01-01");
+        expect(result.reasons.map((r) => r.code)).toContain("qualification-held");
+        expect(result.reasons.map((r) => r.code)).not.toContain("qualification-missing");
+        expect(result.reasons.find((r) => r.code === "qualification-held")?.th).toMatch(/ISO 9001.*วิศวกร.*\(บุคลากร\)/);
+      });
+
+      it("does not let the staff satisfy a company certificate, even where old data lists one against a person", () => {
+        const company = withQualifications("บริษัทต้องได้รับการรับรองมาตรฐาน ISO 9001");
+        const result = scoreMatch(withStaff([["iso-9001"]], []), company, classification, config, "2026-01-01");
+        expect(result.reasons.map((r) => r.code)).toContain("qualification-missing");
+        expect(result.reasons.map((r) => r.code)).not.toContain("qualification-held");
+        // The company's own ISO still counts, and a licence the staff hold still counts beside it.
+        const held = scoreMatch(withStaff([["engineer"]], ["iso-9001"]), withQualifications("ISO 9001 และใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม"), classification, config, "2026-01-01");
+        expect(held.reasons.map((r) => r.code)).not.toContain("qualification-missing");
+      });
+
+      it("does not mark the company as missing a certificate it never stated, when only staff were listed", () => {
+        const both = withQualifications("ISO 9001 และใบอนุญาตประกอบวิชาชีพวิศวกรรมควบคุม");
+        const result = scoreMatch(withStaff([["engineer"]]), both, classification, config, "2026-01-01");
+        expect(result.reasons.map((r) => r.code)).not.toContain("qualification-missing");
+        // Nothing the staff hold is named: the signal stays out rather than lowering the score.
+        const other = scoreMatch(withStaff([["architect"]]), withQualifications("ISO 9001"), classification, config, "2026-01-01");
+        expect(other.reasons.map((r) => r.code)).not.toContain("qualification-missing");
+        expect(other.score).toBeCloseTo(scoreMatch(profile(), withQualifications("ISO 9001"), classification, config, "2026-01-01").score);
+      });
+    });
+
     it("stays out of the score until the vendor has stated what they hold, and when the TOR names nothing", () => {
       const named = withQualifications("ต้องได้รับการรับรองมาตรฐาน ISO 9001");
       const plain = scoreMatch(profile(), tor(), classification, config, "2026-01-01");
@@ -191,5 +236,45 @@ describe("match scorer", () => {
       expect(scoreMatch(holding([]), tor(), classification, config, "2026-01-01").score).toBeCloseTo(plain.score);
     });
   });
-});
 
+  describe("the vendor's own activity", () => {
+    const on = { ...config, matching: { ...config.matching, behaviour: { ...config.matching.behaviour, enabled: true } } };
+    const road = { "construction.road": 5 };
+    const score = (cfg: typeof config, affinity?: Record<string, number>, p = profile(["construction.road"], null)) =>
+      scoreMatch(p, tor(), classification, cfg, "2026-01-01", affinity);
+
+    it("raises the score for work they showed interest in and lowers it for work they dismissed, saying which", () => {
+      const base = score(on).score;
+      const up = score(on, road);
+      const down = score(on, { "construction.road": -5 });
+      expect(up.score).toBeGreaterThan(base);
+      expect(down.score).toBeLessThan(base);
+      expect(up.reasons.map((r) => r.code)).toContain("behaviour-up");
+      expect(down.reasons.map((r) => r.code)).toContain("behaviour-down");
+      expect(up.reasons.find((r) => r.code === "behaviour-up")?.th).toContain("จากการใช้งานของคุณเอง");
+    });
+
+    it("moves a score by points times their value, and never past the cap either way", () => {
+      const { pointValue, maxAdjust } = on.matching.behaviour;
+      const base = score(on).score;
+      expect(score(on, { "construction.road": 2 }).score).toBeCloseTo(Math.min(1, base + 2 * pointValue));
+      expect(score(on, { "construction.road": 10_000 }).score).toBeCloseTo(Math.min(1, base + maxAdjust));
+      expect(score(on, { "construction.road": -10_000 }).score).toBeCloseTo(Math.max(0, base - maxAdjust));
+    });
+
+    it("stays out when switched off, with no activity, or on another kind of work", () => {
+      const base = score(config).score;
+      expect(score(config, road).score).toBeCloseTo(base);
+      expect(score(config, road).reasons.map((r) => r.code)).not.toContain("behaviour-up");
+      expect(score(on, {}).score).toBeCloseTo(base);
+      expect(score(on, { "it.software": 9 }).score).toBeCloseTo(base);
+    });
+
+    it("never rescues a TOR the base score rejects, and keeps the score within 0..1", () => {
+      expect(scoreMatch(profile(), tor({ fields: { deadline: { value: "2020-01-01" } } }), classification, on, "2026-01-01", road).excluded?.code).toBe("deadline-passed");
+      const best = score(on, road, profile(["construction.road"], { minThb: 100, maxThb: 200 })).score;
+      expect(best).toBeLessThanOrEqual(1);
+      expect(score(on, { "construction.road": -10_000 }, profile(["goods"], null)).score).toBeGreaterThanOrEqual(0);
+    });
+  });
+});

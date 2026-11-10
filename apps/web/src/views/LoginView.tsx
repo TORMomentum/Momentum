@@ -25,6 +25,8 @@ export const MIN_PASSWORD_LENGTH = 8;
 
 /** Deliberately loose: one @, something either side, a dot in the domain.
  * The server decides whether an address is real; this only catches typos. */
+// Read per render so a test can flip it; Next inlines the literal at build time.
+const behaviourEnabled = () => process.env.NEXT_PUBLIC_BEHAVIOUR_ENABLED === "true";
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The server does not say which part was wrong, and neither does this. */
@@ -89,6 +91,8 @@ export function LoginView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [consented, setConsented] = useState(false);
+  // Separate and optional (TOR-259): never a condition of creating the account.
+  const [behaviourConsented, setBehaviourConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -122,7 +126,9 @@ export function LoginView() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
-          isSignup ? { email: address, password, consent: true } : { email: address, password },
+          isSignup
+            ? { email: address, password, consent: true, ...(behaviourEnabled() && behaviourConsented ? { behaviourConsent: true } : {}) }
+            : { email: address, password },
         ),
       });
       // Held no longer than the request that needed it.
@@ -220,6 +226,23 @@ export function LoginView() {
               <span>
                 ยินยอมให้เก็บและประมวลผลข้อมูลตามนโยบายความเป็นส่วนตัว (PDPA) ·
                 ขอส่งออกหรือลบข้อมูลได้ทุกเมื่อ
+              </span>
+            </button>
+          )}
+
+          {isSignup && behaviourEnabled() && (
+            <button
+              type="button"
+              className={styles.consent}
+              onClick={() => setBehaviourConsented((on) => !on)}
+              aria-pressed={behaviourConsented}
+            >
+              <span className={`${styles.consentBox} ${behaviourConsented ? styles.consentOn : ""}`}>
+                {behaviourConsented ? "✓" : ""}
+              </span>
+              <span>
+                (ไม่บังคับ) ยินยอมให้บันทึกประกาศที่ฉันเปิดดู บันทึก และซ่อน เพื่อปรับคะแนนความเหมาะสม ·
+                เปลี่ยนใจและถอนได้ทุกเมื่อในหน้าบัญชี
               </span>
             </button>
           )}

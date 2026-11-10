@@ -25,6 +25,16 @@ export interface VendorProfile {
   pastProjects: PastProject[];
   /** null until the vendor first saves the section: "not stated", not "holds nothing". */
   certifications: VendorCertifications | null;
+  /** The company's people by role and what each holds; no names. */
+  personnel: PersonnelMember[];
+}
+
+export interface PersonnelMember {
+  id: string;
+  role: string;
+  /** Ids from the certification list. */
+  certifications: string[];
+  other: string[];
 }
 
 export interface PastProject {
@@ -61,6 +71,10 @@ export interface OwnAccount {
   role: string;
   emailVerifiedAt?: string;
   consent: { noticeVersion: string; agreedAt: string; withdrawnAt?: string };
+  /** The separate consent to record what the vendor views, saves and dismisses; null = never given. */
+  behaviourConsent?: { agreedAt: string; withdrawnAt?: string } | null;
+  /** False while scoring by behaviour is off: nothing is recorded, so the screen does not offer it. */
+  behaviourEnabled?: boolean;
 }
 
 /** The signed-in account itself, read on the server from the session cookie. */

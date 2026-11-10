@@ -14,12 +14,17 @@ x-api-env: &api-env
   # host's own .env says — a host port is meaningless from another container.
   SMTP_URL: smtp://mail:1025
   MAIL_FROM: ${MAIL_FROM:-TOR Radar <noreply@tor-radar.example>}
+  # Compose passes only what it lists, so a switch missing here is off in the container whatever .env says.
+  MATCH_BEHAVIOUR_ENABLED: ${MATCH_BEHAVIOUR_ENABLED:-false}
 
 services:
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Read by next.config.ts at build time (the sign-up box is inlined into the bundle); keep it equal to the API's.
+        MATCH_BEHAVIOUR_ENABLED: ${MATCH_BEHAVIOUR_ENABLED:-false}
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:

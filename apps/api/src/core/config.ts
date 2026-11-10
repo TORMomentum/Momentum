@@ -230,6 +230,19 @@ const schema = z.object({
   MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER: z.coerce.number().positive().default(2),
   // Turns on only when extraction supplies a work-location field; agency is never a substitute.
   MATCH_AREA_SIGNAL_ENABLED: flag(false),
+  // Personalised score (TOR-216): what a consenting vendor viewed, saved, prepared or dismissed nudges the
+  // score of TORs in the same kind of work. Off until the labelled match-quality benchmark has been run with it.
+  MATCH_BEHAVIOUR_ENABLED: flag(false),
+  /** Points per event type; a dismissal is negative. */
+  BEHAVIOUR_WEIGHT_VIEW: z.coerce.number().default(1),
+  BEHAVIOUR_WEIGHT_SAVE: z.coerce.number().default(3),
+  BEHAVIOUR_WEIGHT_PREPARE: z.coerce.number().default(5),
+  BEHAVIOUR_WEIGHT_DISMISS: z.coerce.number().default(-3),
+  /** Score (0..1) one point is worth, and the most behaviour may move a score either way. */
+  BEHAVIOUR_POINT_VALUE: z.coerce.number().positive().default(0.01),
+  BEHAVIOUR_MAX_ADJUST: z.coerce.number().min(0).max(0.5).default(0.1),
+  /** Older events are ignored by scoring (nothing deletes them yet, see TODO 2n). */
+  BEHAVIOUR_WINDOW_DAYS: z.coerce.number().int().positive().default(90),
   // Past work a vendor lists. Like every weight above it is uncalibrated until
   // the labelled benchmark (design §7.8); it only enters a score when the
   // vendor has listed at least one project, so leaving it blank costs nothing.
@@ -247,6 +260,7 @@ const schema = z.object({
   // inferred from the title, and a wrong guess must not hide a TOR outright.
   MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
   PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
+  PROFILE_PERSONNEL_MAX: z.coerce.number().int().positive().default(50),
   // The labelling screen: a vendor's top matches (precision) and a sample of
   // their category's TORs that did not make the cut (recall).
   LABEL_MATCHED_SHOWN: z.coerce.number().int().positive().default(10),
@@ -374,7 +388,8 @@ export interface Config {
     categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
-    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
+    behaviour: { enabled: boolean; weights: { view: number; save: number; prepare: number; dismiss: number }; pointValue: number; maxAdjust: number; windowDays: number };
+    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number; personnelMax: number;
     manualEmailMaxTors: number; labelMatchedShown: number; labelUnmatchedShown: number;
   };
   notifications: {
@@ -531,8 +546,15 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       budgetNeutralScore: parsed.MATCH_BUDGET_NEUTRAL_SCORE, budgetInsideScore: parsed.MATCH_BUDGET_INSIDE_SCORE,
       budgetOutsideMaxScore: parsed.MATCH_BUDGET_OUTSIDE_MAX_SCORE, budgetDistanceRangeMultiplier: parsed.MATCH_BUDGET_DISTANCE_RANGE_MULTIPLIER,
       areaSignalEnabled: parsed.MATCH_AREA_SIGNAL_ENABLED,
+      behaviour: {
+        enabled: parsed.MATCH_BEHAVIOUR_ENABLED,
+        weights: { view: parsed.BEHAVIOUR_WEIGHT_VIEW, save: parsed.BEHAVIOUR_WEIGHT_SAVE, prepare: parsed.BEHAVIOUR_WEIGHT_PREPARE, dismiss: parsed.BEHAVIOUR_WEIGHT_DISMISS },
+        pointValue: parsed.BEHAVIOUR_POINT_VALUE,
+        maxAdjust: parsed.BEHAVIOUR_MAX_ADJUST,
+        windowDays: parsed.BEHAVIOUR_WINDOW_DAYS,
+      },
       experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, qualificationWeight: parsed.MATCH_QUALIFICATION_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
-      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
+      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX, personnelMax: parsed.PROFILE_PERSONNEL_MAX,
       manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
       labelMatchedShown: parsed.LABEL_MATCHED_SHOWN, labelUnmatchedShown: parsed.LABEL_UNMATCHED_SHOWN,
     },

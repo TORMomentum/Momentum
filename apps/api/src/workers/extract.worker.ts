@@ -15,6 +15,7 @@ import { ExtractionRepository } from "../modules/extraction/extraction.repositor
 import { ExtractionService } from "../modules/extraction/extraction.service.js";
 import { reconcileOrphanedRecords } from "./reconcile.js";
 import { startHealthServer } from "./health-server.js";
+import { BehaviourRepository } from "../modules/behaviour/behaviour.repository.js";
 import { StatsRepository } from "../modules/stats/stats.repository.js";
 
 /**
@@ -171,6 +172,13 @@ export async function startWorker(
     if (Date.now() - lastReconcile > config.reconcileIntervalMs) {
       const requeued = await reconcileOrphanedRecords(db, queue, config.reconcileMinAgeMs);
       if (requeued > 0) console.log(JSON.stringify({ event: "reconciled", requeued }));
+      // A housekeeping failure here must not stop extraction.
+      try {
+        const purged = await new BehaviourRepository(db, config).purgeUnconsented();
+        if (purged > 0) console.log(JSON.stringify({ event: "behaviour_purged", purged }));
+      } catch (error) {
+        console.error(JSON.stringify({ event: "behaviour_purge_failed", message: error instanceof Error ? error.message : "unknown" }));
+      }
       lastReconcile = Date.now();
     }
 
