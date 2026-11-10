@@ -165,4 +165,89 @@ describe("profile routes", () => {
       expect(await vendorProfiles(db).countDocuments({})).toBe(0);
     });
   });
+
+  describe("personnel", () => {
+    const base = {
+      pastProjects: [],
+      certifications: { cgd: [], tags: [], other: [] },
+    };
+    const staff = [
+      { role: "วิศวกรโยธา", certifications: ["engineer", "engineer"], other: ["ผู้ควบคุมงานก่อสร้าง", "ผู้ควบคุมงานก่อสร้าง"] },
+      { role: "ช่างไฟฟ้า", certifications: [], other: [] },
+    ];
+
+    it("saves each person by role and certificates, with an id and no name, and drops duplicates", async () => {
+      const id = await sessionFor("one@example.test");
+      const response = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: staff });
+      expect(response.status).toBe(200);
+      expect(response.body.personnel).toEqual([
+        { id: expect.any(String), role: "วิศวกรโยธา", certifications: ["engineer"], other: ["ผู้ควบคุมงานก่อสร้าง"] },
+        { id: expect.any(String), role: "ช่างไฟฟ้า", certifications: [], other: [] },
+      ]);
+      // A name is not part of the section: asking for one would be personal data about a third party for no gain.
+      expect((await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: [{ role: "x", name: "สมชาย", certifications: [], other: [] }] })).status).toBe(400);
+    });
+
+    it("leaves the staff as stored when a client saves the extras without the section, and clears them when sent an empty list", async () => {
+      const id = await sessionFor("one@example.test");
+      await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: staff });
+      const without = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(base);
+      expect(without.body.personnel).toHaveLength(2);
+      const cleared = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: [] });
+      expect(cleared.body.personnel).toEqual([]);
+    });
+
+    it("survives the main profile form saving, and says nothing is stated before it is saved", async () => {
+      const id = await sessionFor("one@example.test");
+      expect((await request(app).get("/api/v1/me/profile").set("x-session-id", id)).body.personnel).toEqual([]);
+      await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: staff });
+      const response = await write(request(app).put("/api/v1/me/profile")).set("x-session-id", id).send(payload);
+      expect(response.body.personnel).toHaveLength(2);
+    });
+
+    it("saves staff without stating the company's certificates, and leaves stated ones alone", async () => {
+      const id = await sessionFor("one@example.test");
+      const staffOnly = { pastProjects: [], personnel: staff };
+      const first = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(staffOnly);
+      expect(first.status).toBe(200);
+      // Still "not stated", which the scorer treats differently from "holds nothing".
+      expect(first.body.certifications).toBeNull();
+      expect((await vendorProfiles(db).findOne({}))?.certifications).toBeUndefined();
+
+      const stated = { cgd: [], tags: ["iso-9001"], other: [] };
+      await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, certifications: stated, personnel: staff });
+      const again = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(staffOnly);
+      expect(again.body.certifications).toEqual(stated);
+    });
+
+    it("rejects a certificate that is not a person's: off the list, or the company's own", async () => {
+      const id = await sessionFor("one@example.test");
+      for (const certification of ["made-up", "iso-9001", "tis", "sme"]) {
+        const response = await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: [{ role: "วิศวกร", certifications: [certification], other: [] }] });
+        expect(response.status).toBe(400);
+      }
+      expect(await vendorProfiles(db).countDocuments({})).toBe(0);
+    });
+
+    it("rejects an empty role and too many people, without writing", async () => {
+      const id = await sessionFor("one@example.test");
+      for (const bad of [
+        { ...base, personnel: [{ role: "  ", certifications: [], other: [] }] },
+        { ...base, personnel: Array.from({ length: config.matching.personnelMax + 1 }, (_, i) => ({ role: `ตำแหน่ง ${i}`, certifications: [], other: [] })) },
+      ]) expect((await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send(bad)).status).toBe(400);
+      expect(await vendorProfiles(db).countDocuments({})).toBe(0);
+    });
+
+    it("is exported with the profile and removed with the account", async () => {
+      const id = await sessionFor("one@example.test");
+      await write(request(app).put("/api/v1/me/profile/extras")).set("x-session-id", id).send({ ...base, personnel: staff });
+      const exported = await request(app).get("/api/v1/me/export").set("x-session-id", id);
+      expect(exported.body.profile.personnel).toHaveLength(2);
+      expect(exported.body.profile.personnel[0]).toMatchObject({ role: "วิศวกรโยธา", certifications: ["engineer"] });
+      const accountId = (await accounts(db).findOne({ email: "one@example.test" }))!._id.toString();
+      const deleted = await write(request(app).delete("/api/v1/me")).set("x-session-id", id).send({ currentPassword: "correct-password" });
+      expect(deleted.status).toBe(200);
+      expect(await vendorProfiles(db).countDocuments({ accountId })).toBe(0);
+    });
+  });
 });

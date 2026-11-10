@@ -257,6 +257,22 @@ export interface VendorProfileDocument {
    * may lower a score.
    */
   certifications?: VendorCertifications;
+  /**
+   * The people the company can put on a job, by role and what each holds (TOR-212). No names: matching needs
+   * the role and the certificates, and a name would be personal data about a third party for no gain.
+   * Absent until the vendor states it; saved with the other extras, so export and delete cover it with the profile.
+   */
+  personnel?: PersonnelMember[];
+}
+
+export interface PersonnelMember {
+  id: string;
+  /** As the vendor writes it, e.g. "วิศวกรโยธา". */
+  role: string;
+  /** Listed certifications (packages/seeds CERTIFICATIONS) this person holds. */
+  certifications: string[];
+  /** Anything else the person holds, in the vendor's words. */
+  other: string[];
 }
 
 export interface PastProject {

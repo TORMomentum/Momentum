@@ -427,6 +427,33 @@ Branch `feat/tor-202-ocr-provenance`. Verified live on `tor-01.pdf` against Gemi
 - [ ] Prices for Document AI pages and embeddings were not verifiable from the pricing pages; confirm in the
       console before enabling
 
+## 2l. Sprint 5 — evaluation and required documents (TOR-209, TOR-210)
+
+_Spec: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpowers/specs/2026-09-09-tor-radar-extraction-confidence-design.md) §13.
+Branch `feat/tor-209-210-extraction-fields`. Run live on the 10 benchmark TORs against Gemini._
+
+- [x] **TOR-209 — evaluation method and weights** — `evaluationMethod`, `evaluationWeights` in the same request;
+      graded by shape and a total of 100; unverified below threshold
+- [x] **TOR-210 — required documents** — `requiredDocuments` with `holder` (company / personnel), mapped onto the
+      certification list; the engineer-licence pattern now matches the wording TORs use
+- [ ] `EXTRACT_BIDDING_FIELDS_ENABLED` stays off until the benchmark is re-run with the new prompt and schema
+- [ ] No benchmark TOR is price-performance, so the weights rule has no real document behind it yet
+- [ ] Existing records have none of these fields until re-extracted
+- [ ] TOR-211 shows them on the detail page (next PR)
+
+## 2m. Sprint 5 — personnel in the profile and in matching (TOR-212, TOR-213)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §9.
+Branch `feat/tor-212-213-personnel`._
+
+- [x] **TOR-212 — personnel** — role and listed certificates per person, no names; saved with the extras; export
+      and delete cover it (the profile document); section in the matching extras on the profile screen
+- [x] **TOR-213 — matching** — a certificate any member of staff holds counts as held and is named as the staff's
+- [ ] TOR side still reads qualification text only; read `requiredDocuments` (`holder: personnel`) once
+      `EXTRACT_BIDDING_FIELDS_ENABLED` is on
+- [ ] No name is stored on purpose. If the team wants names (to prepare bid documents), that is a PDPA decision
+      about third parties, not a field to add quietly
+
 ## 2n. Sprint 5 — behaviour events and the personalised score (TOR-215, TOR-216)
 
 _Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §10.
@@ -446,6 +473,7 @@ Branch `feat/tor-215-216-behaviour`. Off by default (`MATCH_BEHAVIOUR_ENABLED`).
 - [ ] **Before turning `MATCH_BEHAVIOUR_ENABLED` on:** run the §8.4 match-quality benchmark with and without it;
       the weights, point value and cap are placeholders. Emails and the benchmark deliberately use the base score
 - [ ] Decide the retention of events older than `BEHAVIOUR_WINDOW_DAYS` (scoring ignores them; nothing deletes them yet)
+
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

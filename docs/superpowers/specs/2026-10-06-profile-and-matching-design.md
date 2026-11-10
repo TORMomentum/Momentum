@@ -371,6 +371,31 @@ a filter can never disagree by a rounding step.
 
 ---
 
+## 9. Revision 4 — personnel, 2026-11-09 (TOR-212, TOR-213)
+
+TORs mostly ask for people ("a controlled engineer on the team"), not for the company's ISO, so the profile
+also records who the company can field.
+
+- **`personnel`** on the vendor profile: `[{ id, role, certifications, other }]`. `certifications` are only the
+  licences a person holds — `PERSONAL_CERTIFICATION_IDS` in `packages/seeds` (engineer, architect); the API
+  refuses ISO, มอก. and SME, which are the company's. **No name is stored** — matching needs the role and the
+  certificates, and a name would be personal data about a third party for no gain. Capped by
+  `PROFILE_PERSONNEL_MAX`. Saved with the extras (§8.1), so the main form cannot overwrite it. In the extras
+  request `personnel` and `certifications` are each optional, and a section left out keeps what is stored — so
+  editing only the staff cannot turn the company's certificates from *not stated* into *holds nothing*, which
+  would start lowering scores. The profile screen sends the company's certificates only once the vendor has
+  stated them there or already had.
+- **PDPA.** It lives inside the profile document, so the data export and account deletion cover it without a
+  second code path (`UT-F5-5`).
+- **The qualification signal (§8.2) counts it.** A licence to practise the TOR names counts as held when the company
+  lists it or any member of staff holds it, and one only the staff hold is named so ("… (บุคลากร)"). A
+  company certificate (ISO, มอก., SME) is satisfied by the company's own entry alone: an employee holding one
+  does not make the company certified, even if older data lists one against a person.
+  Stating personnel alone counts as stating something, but never lowers the score for a company certificate the
+  vendor said nothing about: a missing mark needs a stated answer, as before.
+- **Not yet:** the TOR side still reads the qualification text only. Reading the structured
+  `requiredDocuments` (extraction design §13, `holder: personnel`) is the next step once those fields are on.
+
 ## 10. Revision 5 — personalised score, 2026-11-09 (TOR-215, TOR-216)
 
 A recommendation can lean on what the vendor does, on top of the profile they state. Behind
@@ -406,4 +431,5 @@ A recommendation can lean on what the vendor does, on top of the profile they st
   stated profile must not move with behaviour, and an email must not rest on activity the vendor cannot see.
 - **Not tuned.** The weights, the point value and the cap are placeholders until the §8.4 benchmark can measure
   their effect.
+
 

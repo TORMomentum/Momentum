@@ -127,6 +127,13 @@ const schema = z.object({
    */
   EXTRACT_WORK_LOCATION_ENABLED: flag(false),
 
+  /**
+   * Also ask Gemini for the evaluation method, its score weights and the required documents
+   * (TOR-209, TOR-210). Off by default for the same reason as the work location: the thresholds
+   * were measured without these fields in the prompt and schema.
+   */
+  EXTRACT_BIDDING_FIELDS_ENABLED: flag(false),
+
   // Provenance (TOR-128, design 2026-11-08). Off by default: each enabled run spends Document AI pages.
   OCR_ENABLED: flag(false),
   /** Document AI is multi-region only: "us" or "eu". */
@@ -253,6 +260,7 @@ const schema = z.object({
   // inferred from the title, and a wrong guess must not hide a TOR outright.
   MATCH_REGISTRATION_MISSING_FACTOR: z.coerce.number().min(0).max(1).default(0.5),
   PROFILE_PAST_PROJECTS_MAX: z.coerce.number().int().positive().default(20),
+  PROFILE_PERSONNEL_MAX: z.coerce.number().int().positive().default(50),
   // The labelling screen: a vendor's top matches (precision) and a sample of
   // their category's TORs that did not make the cut (recall).
   LABEL_MATCHED_SHOWN: z.coerce.number().int().positive().default(10),
@@ -350,7 +358,7 @@ export interface Config {
     credentialsPath?: string;
     timeoutMs: number;
   };
-  extraction: { maxAnnexes: number; maxInputBytes: number; workLocation: boolean };
+  extraction: { maxAnnexes: number; maxInputBytes: number; workLocation: boolean; biddingFields: boolean };
   ocr: { enabled: boolean; location: string; processorId?: string; maxPages: number; timeoutMs: number };
   embeddings: { enabled: boolean; model: string; location: string; minSimilarity: number };
   tLow: number;
@@ -381,7 +389,7 @@ export interface Config {
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
     budgetOutsideMaxScore: number; budgetDistanceRangeMultiplier: number; areaSignalEnabled: boolean;
     behaviour: { enabled: boolean; weights: { view: number; save: number; prepare: number; dismiss: number }; pointValue: number; maxAdjust: number; windowDays: number };
-    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number;
+    experienceWeight: number; qualificationWeight: number; registrationMinBudgetThb: number; registrationMissingFactor: number; pastProjectsMax: number; personnelMax: number;
     manualEmailMaxTors: number; labelMatchedShown: number; labelUnmatchedShown: number;
   };
   notifications: {
@@ -482,6 +490,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       maxAnnexes: parsed.EXTRACT_MAX_ANNEXES,
       maxInputBytes: parsed.EXTRACT_MAX_INPUT_BYTES,
       workLocation: parsed.EXTRACT_WORK_LOCATION_ENABLED,
+      biddingFields: parsed.EXTRACT_BIDDING_FIELDS_ENABLED,
     },
     ocr: {
       enabled: parsed.OCR_ENABLED,
@@ -545,7 +554,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
         windowDays: parsed.BEHAVIOUR_WINDOW_DAYS,
       },
       experienceWeight: parsed.MATCH_EXPERIENCE_WEIGHT, qualificationWeight: parsed.MATCH_QUALIFICATION_WEIGHT, registrationMinBudgetThb: parsed.CGD_REGISTRATION_MIN_BUDGET_THB,
-      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX,
+      registrationMissingFactor: parsed.MATCH_REGISTRATION_MISSING_FACTOR, pastProjectsMax: parsed.PROFILE_PAST_PROJECTS_MAX, personnelMax: parsed.PROFILE_PERSONNEL_MAX,
       manualEmailMaxTors: parsed.NOTIFY_MANUAL_MAX_TORS,
       labelMatchedShown: parsed.LABEL_MATCHED_SHOWN, labelUnmatchedShown: parsed.LABEL_UNMATCHED_SHOWN,
     },
