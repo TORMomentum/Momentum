@@ -4,7 +4,7 @@ import { sourcesRouter } from "./routes/sources";
 import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
 import { sessionContext } from "./core/session-context.js";
-import { createStorage } from "./adapters/storage.factory.js";
+import { createStorage, createVaultStorage } from "./adapters/storage.factory.js";
 import { createMailer } from "./adapters/mailer.factory.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
@@ -36,6 +36,9 @@ import { buildProfileRouter } from "./modules/profile/profile.routes.js";
 import { BehaviourRepository } from "./modules/behaviour/behaviour.repository.js";
 import { buildBehaviourRouter } from "./modules/behaviour/behaviour.routes.js";
 import { BookmarksRepository } from "./modules/bookmarks/bookmarks.repository.js";
+import { VaultRepository } from "./modules/vault/vault.repository.js";
+import { VaultService } from "./modules/vault/vault.service.js";
+import { buildVaultRouter } from "./modules/vault/vault.routes.js";
 import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 import { MatchingRepository } from "./modules/matching/matching.repository.js";
 import { buildMatchingRouter } from "./modules/matching/matching.routes.js";
@@ -69,10 +72,14 @@ export function buildApp(config: Config, db: Db): Express {
   const accountsRepository = new AccountsRepository(db, sessionsRepository);
   const tokensRepository = new AccountTokensRepository(db);
   const profileRepository = new ProfileRepository(db);
+  const vaultStorage = createVaultStorage(config, "api");
+  const vaultRepository = new VaultRepository(db);
+  const vaultService = new VaultService(vaultRepository, vaultStorage);
   const accountsRouter = buildAccountsRouter({
     config, accounts: accountsRepository, tokens: tokensRepository,
-    sessions: sessionsRepository, mailer,
+    sessions: sessionsRepository, mailer, vault: vaultService,
   });
+  const vaultRouter = buildVaultRouter({ config, vault: vaultRepository, service: vaultService, storage: vaultStorage });
   // Mounted twice on purpose. The browser reaches the signed-in account's own
   // routes through the Next handler that owns the cookie, which forwards under
   // /auth; everything else addresses the versioned API. Mounting the profile
@@ -90,6 +97,7 @@ export function buildApp(config: Config, db: Db): Express {
     app.use(prefix, bookmarksRouter);
     app.use(prefix, behaviourRouter);
     app.use(prefix, matchingRouter);
+    app.use(prefix, vaultRouter);
   }
 
   const service = new IntakeService(

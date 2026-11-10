@@ -332,6 +332,27 @@ export interface MatchLabelDocument {
 export type BehaviourEventType = "view" | "save" | "dismiss" | "prepare";
 
 /** One thing a consenting vendor did to a TOR (TOR-215). Kept for the scoring window, in the export, and deleted with the account. */
+export const VAULT_KINDS = ["cv", "certificate", "past_work"] as const;
+export type VaultKind = (typeof VAULT_KINDS)[number];
+
+/**
+ * One file a vendor keeps for reuse (TOR-218). The bytes live in the vault bucket under `key`; this is only
+ * what the screen lists and what a later readiness check matches against. `certificationId` is the vendor's
+ * own statement of which certificate a file is (from the certification list), never something read off it.
+ */
+export interface VaultDocument {
+  _id: ObjectId;
+  accountId: string;
+  kind: VaultKind;
+  certificationId?: string;
+  filename: string;
+  contentType: string;
+  bytes: number;
+  sha256: string;
+  key: string;
+  uploadedAt: Date;
+}
+
 export interface BehaviourEventDocument {
   accountId: string;
   torId: string;
@@ -409,6 +430,10 @@ export function adminAudit(db: Db): Collection<AdminAuditDocument> {
 
 export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
+}
+
+export function vaultDocuments(db: Db): Collection<VaultDocument> {
+  return db.collection<VaultDocument>("vault_documents");
 }
 
 export function behaviourEvents(db: Db): Collection<BehaviourEventDocument> {
@@ -495,6 +520,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
   await behaviourEvents(db).createIndex({ accountId: 1, at: -1 });
   await createBehaviourEventKey(db);
+  await vaultDocuments(db).createIndex({ accountId: 1, uploadedAt: -1 });
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   // One judgement per pair; relabelling replaces it.
   await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });

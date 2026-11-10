@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ObjectId, type Db, type WithId } from "mongodb";
-import { accounts, behaviourEvents, bookmarks, vendorProfiles, type AccountDocument, type BehaviourEventDocument, type AccountRole, type BookmarkDocument, type SessionDocument, type VendorProfileDocument } from "../../core/db.js";
+import { accounts, behaviourEvents, bookmarks, vaultDocuments, vendorProfiles, type AccountDocument, type BehaviourEventDocument, type AccountRole, type BookmarkDocument, type SessionDocument, type VaultDocument, type VendorProfileDocument } from "../../core/db.js";
 import { SessionsRepository } from "./sessions.js";
 
 export interface CreateAccountInput {
@@ -123,7 +123,7 @@ export class AccountsRepository {
     await this.sessionsRepository.revokeAllForAccount(accountId);
   }
 
-  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null; behaviourEvents: Array<Omit<BehaviourEventDocument, "_id" | "accountId">> }> {
+  async exportOwnedData(accountId: string): Promise<{ account: Omit<AccountDocument, "passwordHash">; sessions: Array<Omit<SessionDocument, "_id" | "accountId">>; bookmarks: BookmarkDocument[]; profile: VendorProfileDocument | null; behaviourEvents: Array<Omit<BehaviourEventDocument, "_id" | "accountId">>; vaultDocuments: Array<Omit<VaultDocument, "_id" | "accountId" | "key">> }> {
     if (!ObjectId.isValid(accountId)) throw new Error("Invalid account id");
     const account = await accounts(this.db).findOne({ _id: new ObjectId(accountId) });
     if (!account) throw new Error("Account not found");
@@ -132,7 +132,9 @@ export class AccountsRepository {
     const ownedBookmarks = await bookmarks(this.db).find({ accountId }).toArray();
     const profile = await vendorProfiles(this.db).findOne({ accountId });
     const events = await behaviourEvents(this.db).find({ accountId }, { projection: { _id: 0, accountId: 0 } }).sort({ at: 1 }).toArray();
-    return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks, profile, behaviourEvents: events };
+    // What is kept, not the files: the bytes are downloaded from the vault itself. The storage key is ours, not theirs.
+    const vault = await vaultDocuments(this.db).find({ accountId }, { projection: { _id: 0, accountId: 0, key: 0 } }).sort({ uploadedAt: 1 }).toArray();
+    return { account: safeAccount, sessions: accountSessions, bookmarks: ownedBookmarks, profile, behaviourEvents: events, vaultDocuments: vault };
   }
 
   async removeOwnedData(accountId: string): Promise<void> {

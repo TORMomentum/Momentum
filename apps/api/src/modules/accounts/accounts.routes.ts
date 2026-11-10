@@ -26,6 +26,8 @@ export interface AccountsRouterDeps {
   tokens: AccountTokensRepository;
   sessions: SessionsRepository;
   mailer: Mailer;
+  /** The vendor's kept files (TOR-218): deleting the account deletes them, and a failure stops the deletion. */
+  vault: { removeAll(accountId: string): Promise<void> };
 }
 
 export function tokenUrl(origin: string, path: string, token: string): string {
@@ -181,6 +183,8 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     }
     const accountId = account._id.toString();
     await deps.tokens.removeAllForAccount(accountId);
+    // Files before records: if storage is down the account stays, the vendor is told, and can try again.
+    await deps.vault.removeAll(accountId);
     await deps.accounts.removeOwnedData(accountId);
     await deps.accounts.softDelete(accountId);
     res.json({ ok: true });
