@@ -20,7 +20,8 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, context: Context) {
   const { id } = await context.params;
   const response = await apiRequest(`/api/v1/me/vault/${encodeURIComponent(id)}/file`, {}, request.cookies.get(COOKIE)?.value);
-  if (!response.ok) return NextResponse.json({ error: "not found" }, { status: response.status === 404 ? 404 : 502 });
+  // Only what the vendor can act on is passed on: signed out, or not theirs. Anything else is the API failing.
+  if (!response.ok) return NextResponse.json({ error: "unavailable" }, { status: response.status === 404 || response.status === 401 ? response.status : 502 });
   const headers = new Headers({ "cache-control": "private, no-store", "x-content-type-options": "nosniff" });
   for (const name of ["content-type", "content-disposition", "content-length"]) {
     const value = response.headers.get(name);
