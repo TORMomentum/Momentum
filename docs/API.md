@@ -27,7 +27,7 @@ flowchart LR
         intake["POST /intake/upload ✅<br/>POST /intake/url ✅<br/>POST /intake ✅"]
         read["GET /tors ✅<br/>GET /tors/:id ✅<br/>GET /tors/:id/document ✅"]
         stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ⬜"]
-        me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅<br/>/me/vault ✅"]
+        me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅<br/>/me/vault ✅<br/>/me/tors/:id/draft ✅"]
         adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅"]
         health["GET /health ✅"]
     end
@@ -375,7 +375,7 @@ The current filter as CSV, with the same PII minimisation as the API.
 | :--- | :--- |
 | `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration |
 | `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change |
-| `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, and `behaviourEnabled`); withdrawing consent |
+| `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, `behaviourEnabled` and `draftEnabled`); withdrawing consent |
 | `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |
 | `POST /me/events` | `{ torId, type: view \| save \| dismiss \| prepare }`, one event, `204`. `403` unless `MATCH_BEHAVIOUR_ENABLED` is on and the vendor consented; `404` for an unknown TOR. A bookmark is recorded as `save` by the server |
 | `GET /me/export` · `DELETE /me` | PDPA data export and account deletion, behaviour events and the vault included. The export lists what is kept in the vault (type, name, size, date), not the files; deleting the account deletes the files first and the records after, and answers an error with the account untouched if storage fails, so it can be retried |
@@ -386,6 +386,7 @@ The current filter as CSV, with the same PII minimisation as the API.
 | `GET /me/vault` | The vendor's kept files and the limits: `{ documents: [{ id, kind: cv \| certificate \| past_work, certificationId?, filename, contentType, bytes, uploadedAt }], limits: { maxFileBytes, maxFiles } }` (TOR-218). Never another account's; no storage key |
 | `POST /me/vault` | Multipart: `kind`, `certificationId` (certificates only, from the certification list) and one `file`. The bytes decide the type (PDF, JPG, PNG; `400` otherwise), `VAULT_MAX_FILE_BYTES` caps the size (`413`), `VAULT_MAX_FILES` the count (`409`, decided before the body is read and exact under concurrent uploads). Stored under a key of its own in the vault bucket, never under the file's name. `201` with the document; `409` too when the account is being deleted, or was while the upload was arriving (the upload keeps nothing). Same-origin only. Through the web (`POST /api/vault`) a request without a session is `401` and one over the size limit `413`, both before the body is read |
 | `GET /me/vault/:id/file` | The file, always as an attachment, `nosniff`, `no-store`, ranges supported. Another account's id and a missing one both answer `404` |
+| `POST /me/tors/:id/draft` | An AI draft of a cover letter for one TOR (TOR-220): `{ text, modelVersion, generatedAt }`, from the vendor's own profile, the TOR's extracted fields and the **names** of the kept files (never their contents, never the account's name or email). Nothing is stored. `404` unless `DRAFT_ENABLED` is on, and for an unknown, malformed, unpublished or restricted TOR; `409 profile_needed` until the profile names some work; `429` past `DRAFT_RATE_PER_HOUR` per account; `502 draft_failed` when the model fails or is cut off. Same-origin only. Through the web it is `POST /api/tors/:id/draft`, which has its own deadline (`DRAFT_TIMEOUT_MS` plus a few seconds) for the model call |
 | `DELETE /me/vault/:id` | Deletes the file, then its record; if storage fails the record stays and the call can be repeated. `404` for one that is not theirs |
 | `GET /me/bookmarks` · `GET /me/bookmarks/ids` · `PUT` · `DELETE /me/bookmarks/:torId` | Private list — never public (`FR-D-3`) |
 

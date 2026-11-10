@@ -53,7 +53,7 @@ export default async function TorDetailPage({
     const track = Boolean(account?.behaviourEnabled && account.behaviourConsent && !account.behaviourConsent.withdrawnAt && !account.consent.withdrawnAt);
     return (
       <>
-        <TorRecordView tor={tor} originals={originalDocuments(tor)} bookmarked={savedIds.has(tor.id)} vault={vault} />
+        <TorRecordView tor={tor} originals={originalDocuments(tor)} bookmarked={savedIds.has(tor.id)} vault={vault} draftEnabled={Boolean(account?.draftEnabled)} />
         {track && <ViewBeacon torId={tor.id} />}
       </>
     );

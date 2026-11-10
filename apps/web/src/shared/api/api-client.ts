@@ -43,12 +43,13 @@ export async function identityToken(audience: string): Promise<string | null> {
   return response.text();
 }
 
-export async function apiRequest(path: string, init: RequestInit = {}, sessionId?: string): Promise<Response> {
+/** `deadlineMs` overrides the default deadline for the rare call that is slow by nature, like a model call. */
+export async function apiRequest(path: string, init: RequestInit = {}, sessionId?: string, deadlineMs?: number): Promise<Response> {
   try {
     const base = apiBaseUrl();
     const token = await identityToken(base);
     return await fetch(`${base}${path}`, {
-      ...init, cache: "no-store", signal: AbortSignal.timeout(timeoutMs()),
+      ...init, cache: "no-store", signal: AbortSignal.timeout(deadlineMs ?? timeoutMs()),
       headers: {
         ...(init.headers ?? {}),
         ...(sessionId ? { "x-session-id": sessionId } : {}),
