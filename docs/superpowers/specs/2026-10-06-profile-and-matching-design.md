@@ -432,4 +432,30 @@ A recommendation can lean on what the vendor does, on top of the profile they st
 - **Not tuned.** The weights, the point value and the cap are placeholders until the §8.4 benchmark can measure
   their effect.
 
+---
 
+## 11. Revision 6 — document vault, 2026-11-10 (TOR-218)
+
+A vendor keeps their own files once and reuses them for every TOR: a CV, certificates, past work.
+
+- **What is kept.** `vault_documents`: `kind` (`cv`, `certificate`, `past_work`), `certificationId` for a
+  certificate (the vendor's own statement, from the certification list — nothing reads it off the file), the
+  filename as given (directory part dropped, 200 characters), the type, size and `sha256`, and the storage `key`.
+  The file's bytes are in a **bucket of their own** (`GCS_VAULT_BUCKET`), under `vault/<accountId>/<uuid>`: no
+  filename goes to object metadata. Two uploads of the same bytes are two files.
+- **Not the originals.** The originals bucket is immutable and its identity cannot delete (`FR-A-2`, `NFR-S3`).
+  A vendor must be able to delete their file and an account deletion must remove them all, so the vault is a
+  separate bucket and a separate port (`VaultStorage`, which adds `delete`); the identity that can delete reaches
+  only that bucket. The bucket is created like the originals bucket — the emulator does not create it.
+- **Intake rules, applied.** The bytes decide the type (PDF, JPG, PNG), whatever the sender called the file;
+  `VAULT_MAX_FILE_BYTES` caps one file and `VAULT_MAX_FILES` the count (the count check runs before the upload
+  is read; concurrent uploads can overshoot it by one, because it bounds storage and is not a quota); served as an
+  attachment with `nosniff` and `no-store`, never inline.
+- **Private.** Every read, download and delete is scoped to the signed-in account; another account's file
+  answers `404`, as a missing one does.
+- **PDPA (`FR-D-3`).** The export lists what is kept (not the files, not the key). Deleting the account deletes
+  the files first and the records after: if storage is down the account stays and the vendor can try again;
+  records deleted first would leave files nothing points to. A delete of one file works the same way.
+- **Not yet.** Matching a TOR's `requiredDocuments` to what is kept is the readiness checklist (TOR-219); drafting
+  from the vault is TOR-220. Neither reads the files. A file that is not a PDF or an image is refused; there is no
+  virus scan.

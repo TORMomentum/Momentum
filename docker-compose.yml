@@ -5,6 +5,7 @@ x-api-env: &api-env
   API_PORT: 4000
   MONGO_URL: mongodb://mongo:27017/tor_radar?directConnection=true
   GCS_BUCKET: ${GCS_BUCKET:-tor-raw}
+  GCS_VAULT_BUCKET: ${GCS_VAULT_BUCKET:-tor-vault}
   GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me-admin-key}

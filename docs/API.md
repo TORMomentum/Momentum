@@ -27,7 +27,7 @@ flowchart LR
         intake["POST /intake/upload ✅<br/>POST /intake/url ✅<br/>POST /intake ✅"]
         read["GET /tors ✅<br/>GET /tors/:id ✅<br/>GET /tors/:id/document ✅"]
         stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ⬜"]
-        me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅"]
+        me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅<br/>/me/vault ✅"]
         adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅"]
         health["GET /health ✅"]
     end
@@ -378,11 +378,15 @@ The current filter as CSV, with the same PII minimisation as the API.
 | `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, and `behaviourEnabled`); withdrawing consent |
 | `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |
 | `POST /me/events` | `{ torId, type: view \| save \| dismiss \| prepare }`, one event, `204`. `403` unless `MATCH_BEHAVIOUR_ENABLED` is on and the vendor consented; `404` for an unknown TOR. A bookmark is recorded as `save` by the server |
-| `GET /me/export` · `DELETE /me` | PDPA data export and account deletion, behaviour events included |
+| `GET /me/export` · `DELETE /me` | PDPA data export and account deletion, behaviour events and the vault included. The export lists what is kept in the vault (type, name, size, date), not the files; deleting the account deletes the files first and the records after, and answers an error with the account untouched if storage fails, so it can be retried |
 | `GET` · `PUT /me/profile` | Categories, budget range, notification preferences (`FR-D-2`) |
 | `PUT /me/profile/extras` | Past projects, certifications and personnel, saved on their own so the main form never overwrites them. The body carries the lists whole; `certifications` and `personnel` are each optional and left as stored when absent (`personnel: []` clears it); editing only the staff never states the company's certificates. A person is `{ role, certifications: ["engineer" \| "architect"], other: [] }` — a licence a person holds, never the company's ISO, มอก. or SME — with an `id` once saved and no name, capped by `PROFILE_PERSONNEL_MAX`; a project without an `id` is new and gets one. Saving the section for the first time is what turns `certifications` from *not stated* into a stated answer that may lower a score |
 | `GET /me/matches?page=` | This vendor's open TORs, best first, each with its score and Thai reasons |
 | `GET /me/matches/scores` | Every current score by TOR id, for marking a page of search results |
+| `GET /me/vault` | The vendor's kept files and the limits: `{ documents: [{ id, kind: cv \| certificate \| past_work, certificationId?, filename, contentType, bytes, uploadedAt }], limits: { maxFileBytes, maxFiles } }` (TOR-218). Never another account's; no storage key |
+| `POST /me/vault` | Multipart: `kind`, `certificationId` (certificates only, from the certification list) and one `file`. The bytes decide the type (PDF, JPG, PNG; `400` otherwise), `VAULT_MAX_FILE_BYTES` caps the size (`413`), `VAULT_MAX_FILES` the count (`409`). Stored under a key of its own in the vault bucket, never under the file's name. `201` with the document; same-origin only |
+| `GET /me/vault/:id/file` | The file, always as an attachment, `nosniff`, `no-store`, ranges supported. Another account's id and a missing one both answer `404` |
+| `DELETE /me/vault/:id` | Deletes the file, then its record; if storage fails the record stays and the call can be repeated. `404` for one that is not theirs |
 | `GET /me/bookmarks` · `GET /me/bookmarks/ids` · `PUT` · `DELETE /me/bookmarks/:torId` | Private list — never public (`FR-D-3`) |
 
 Each route is mounted twice, under `/api/v1` and under `/auth`: the browser reaches its own account

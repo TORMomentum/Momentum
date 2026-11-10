@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-09_
+_last updated: 2026-11-10_
 
 ---
 
@@ -476,6 +476,25 @@ Branch `feat/tor-215-216-behaviour`. Off by default (`MATCH_BEHAVIOUR_ENABLED`).
       the weights, point value and cap are placeholders. Emails and the benchmark deliberately use the base score
 - [ ] Decide the retention of events older than `BEHAVIOUR_WINDOW_DAYS` (scoring ignores them; nothing deletes them yet)
 
+
+## 2o. Sprint 5 — the vendor's document vault (TOR-218)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §11.
+Branch `feat/tor-218-vendor-vault`._
+
+- [x] **TOR-267 — API** — upload, list, download and delete under `/me/vault`; the bytes decide the type; size and
+      count caps; its own bucket and a `VaultStorage` port that can delete; the export lists what is kept and
+      deleting the account removes the files first. Run live against the emulator: a Thai filename, another
+      account's file `404`, the file gone from the bucket after delete and after deleting the account
+- [x] **TOR-268 — screen** — a panel on the profile: list, upload with a type (and which certificate), download,
+      delete after confirming. Web handlers pass the bytes through; checked live through Next with 200 KB of binary
+      coming back byte for byte. Not seen in a browser
+- [x] **TOR-269 — tests and API.md**
+- [ ] **Before using it in a real project:** create the `tor-vault` bucket and give its identity `create`, `get`,
+      `delete` on that bucket only (`docs/gcp-setup.md` §3b); set `GCS_VAULT_BUCKET` in the deploy variables.
+      Cloud Run's manifests do not pass it yet, like the other settings
+- [ ] No virus scan of what is uploaded; decide before real vendors rely on it
+- [ ] TOR-219 matches a TOR's `requiredDocuments` against the vault; TOR-220 drafts from it
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
