@@ -32,6 +32,15 @@ describe("readinessOf", () => {
     expect(readinessOf([iso], [file("e", { kind: "past_work" })])[0]!.status).toBe("missing");
   });
 
+  it("does not decide a document that names several certifications from the first one extraction tagged", () => {
+    // Both are tagged iso-9001 by extraction. "and" needs both, "or" needs either: neither can be told from here.
+    const both = { name: "ISO 9001 และ ISO 14001", holder: "company" as const, certification: "iso-9001" };
+    const either = { name: "ISO 9001 หรือ ISO 14001", holder: "company" as const, certification: "iso-9001" };
+    expect(readinessOf([both, either], [file("a")]).map((row) => row.status)).toEqual(["manual", "manual"]);
+    expect(readinessOf([both, either], [file("b", { certificationId: "iso-14001" })]).map((row) => row.status)).toEqual(["manual", "manual"]);
+    expect(readinessOf([both], []).map((row) => row.status)).toEqual(["manual"]);
+  });
+
   it("leaves a document that names no listed certification to the vendor, never guessing from its words", () => {
     const [row] = readinessOf([{ name: "ISO 9001 CV", holder: "company" }], [file("a")]);
     expect(row!.status).toBe("manual");
