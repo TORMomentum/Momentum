@@ -441,6 +441,19 @@ Branch `feat/tor-209-210-extraction-fields`. Run live on the 10 benchmark TORs a
 - [ ] Existing records have none of these fields until re-extracted
 - [ ] TOR-211 shows them on the detail page (next PR)
 
+## 2m. Sprint 5 — personnel in the profile and in matching (TOR-212, TOR-213)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §9.
+Branch `feat/tor-212-213-personnel`._
+
+- [x] **TOR-212 — personnel** — role and listed certificates per person, no names; saved with the extras; export
+      and delete cover it (the profile document); section in the matching extras on the profile screen
+- [x] **TOR-213 — matching** — a certificate any member of staff holds counts as held and is named as the staff's
+- [ ] TOR side still reads qualification text only; read `requiredDocuments` (`holder: personnel`) once
+      `EXTRACT_BIDDING_FIELDS_ENABLED` is on
+- [ ] No name is stored on purpose. If the team wants names (to prepare bid documents), that is a PDPA decision
+      about third parties, not a field to add quietly
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement

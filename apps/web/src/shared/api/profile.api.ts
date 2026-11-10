@@ -25,6 +25,16 @@ export interface VendorProfile {
   pastProjects: PastProject[];
   /** null until the vendor first saves the section: "not stated", not "holds nothing". */
   certifications: VendorCertifications | null;
+  /** The company's people by role and what each holds; no names. */
+  personnel: PersonnelMember[];
+}
+
+export interface PersonnelMember {
+  id: string;
+  role: string;
+  /** Ids from the certification list. */
+  certifications: string[];
+  other: string[];
 }
 
 export interface PastProject {

@@ -3,12 +3,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { NOTIFY_MIN_MATCH } from "@tor-radar/shared";
 import { randomUUID } from "node:crypto";
-import { CERTIFICATIONS, CGD_BRANCHES, CGD_GRADES, TAXONOMY_VERSION, WHOLE_COUNTRY_AREA, WORK_CATEGORIES, WORK_CATEGORY_LEAVES, PROVINCES } from "@tor-radar/seeds";
+import { CERTIFICATIONS, CGD_BRANCHES, CGD_GRADES, PERSONAL_CERTIFICATION_IDS, TAXONOMY_VERSION, WHOLE_COUNTRY_AREA, WORK_CATEGORIES, WORK_CATEGORY_LEAVES, PROVINCES } from "@tor-radar/seeds";
 import type { Config } from "../../core/config.js";
 import { UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { ProfileRepository } from "./profile.repository.js";
-import type { NotifyPreferences, PastProject, VendorCertifications } from "../../core/db.js";
+import type { NotifyPreferences, PastProject, PersonnelMember, VendorCertifications } from "../../core/db.js";
 
 const taxonomyIds = new Set([...WORK_CATEGORIES.map((group) => group.id), ...WORK_CATEGORY_LEAVES.map((leaf) => leaf.id)]);
 const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => province.id)]);
@@ -57,11 +57,21 @@ export function profileExtrasSchema(config: Config) {
       year: z.number().int().min(2400).max(2700).nullable(),
       valueThb: z.number().finite().nonnegative().nullable(),
     }).strict()).max(config.matching.pastProjectsMax),
+    // Optional: a client that did not touch the company's certificates leaves them "not stated", and a section
+    // that was never stated must not become "holds nothing" because someone edited the staff.
     certifications: z.object({
       cgd: z.array(z.object({ branch: z.enum(branchIds), grade: z.number().int().refine((grade) => (CGD_GRADES as readonly number[]).includes(grade), "ชั้นไม่ถูกต้อง").optional() }).strict()).max(CGD_BRANCHES.length),
       tags: z.array(z.enum(certificationIds)).max(CERTIFICATIONS.length),
       other: z.array(z.string().trim().min(1).max(80)).max(10),
-    }).strict(),
+    }).strict().optional(),
+    // Optional: a client that predates the section leaves what is stored alone.
+    // Only licences a person holds: the company's ISO, มอก. and SME are not a member of staff's.
+    personnel: z.array(z.object({
+      id: z.string().max(64).optional(),
+      role: z.string().trim().min(1, "กรุณาระบุตำแหน่ง").max(80),
+      certifications: z.array(z.enum(PERSONAL_CERTIFICATION_IDS)).max(PERSONAL_CERTIFICATION_IDS.length),
+      other: z.array(z.string().trim().min(1).max(80)).max(10),
+    }).strict()).max(config.matching.personnelMax).optional(),
   }).strict();
 }
 
@@ -91,6 +101,7 @@ export function profileResponse(profile: {
   updatedBy?: "vendor" | "admin";
   pastProjects?: PastProject[];
   certifications?: VendorCertifications | null;
+  personnel?: PersonnelMember[];
 }) {
   return {
     categories: profile.categories,
@@ -104,6 +115,8 @@ export function profileResponse(profile: {
     pastProjects: profile.pastProjects ?? [],
     // null = never stated, which matching treats differently from "holds nothing".
     certifications: profile.certifications ?? null,
+    // [] = none stated yet; the screen cannot tell "no staff" from "not asked", and matching does not need it to.
+    personnel: profile.personnel ?? [],
   };
 }
 
@@ -125,7 +138,7 @@ async function embedPhrases(embedder: Embedder | undefined, phrases: string[]) {
 }
 
 export function emptyProfile() {
-  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null, pastProjects: [], certifications: null };
+  return { categories: [], areas: [WHOLE_COUNTRY_AREA], otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION, updatedAt: null, pastProjects: [], certifications: null, personnel: [] };
 }
 
 export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepository; embedder?: Embedder }): Router {
@@ -156,12 +169,22 @@ export function buildProfileRouter(deps: { config: Config; profiles: ProfileRepo
       req.auth.account._id.toString(),
       {
         pastProjects: input.pastProjects.map((project) => ({ ...project, id: project.id ?? randomUUID() })),
-        certifications: {
-          // One registration per branch; the last one stated wins.
-          cgd: [...new Map(input.certifications.cgd.map((entry) => [entry.branch, entry])).values()],
-          tags: [...new Set(input.certifications.tags)],
-          other: [...new Set(input.certifications.other)],
-        },
+        ...(input.certifications ? {
+          certifications: {
+            // One registration per branch; the last one stated wins.
+            cgd: [...new Map(input.certifications.cgd.map((entry) => [entry.branch, entry])).values()],
+            tags: [...new Set(input.certifications.tags)],
+            other: [...new Set(input.certifications.other)],
+          },
+        } : {}),
+        ...(input.personnel ? {
+          personnel: input.personnel.map((member) => ({
+            id: member.id ?? randomUUID(),
+            role: member.role,
+            certifications: [...new Set(member.certifications)],
+            other: [...new Set(member.other)],
+          })),
+        } : {}),
       },
       { categories: empty.categories, areas: empty.areas, otherCategories: [], budget: null, notify: DEFAULT_NOTIFY, taxonomyVersion: TAXONOMY_VERSION },
     );
