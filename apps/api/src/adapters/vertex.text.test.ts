@@ -13,7 +13,7 @@ vi.mock("google-auth-library", () => ({
 const { VertexText } = await import("./vertex.text.js");
 
 const config = { model: "gemini-test", location: "global", project: "proj", credentialsPath: "key.json", timeoutMs: 1000, maxOutputTokens: 100, temperature: 0.2 };
-const answer = (extra: object = {}) => ({ data: { modelVersion: "gemini-test-002", candidates: [{ content: { parts: [{ text: " เรียน " }, { text: "ท่าน " }] }, ...extra }] } });
+const answer = (extra: object = {}) => ({ data: { modelVersion: "gemini-test-002", candidates: [{ content: { parts: [{ text: " เรียน " }, { text: "ท่าน " }] }, finishReason: "STOP", ...extra }] } });
 
 describe("VertexText", () => {
   beforeEach(() => request.mockReset());
@@ -32,9 +32,14 @@ describe("VertexText", () => {
     expect(call.timeout).toBe(1000);
   });
 
-  it("does not offer text that was cut off at the token cap, nor an empty answer", async () => {
-    request.mockResolvedValueOnce(answer({ finishReason: "MAX_TOKENS" }));
-    await expect(new VertexText(config).generate({ system: "s", prompt: "p" })).rejects.toThrow(/cut off/);
+  it("offers text only when the model stopped on its own: never one cut off, blocked, unexplained or still continuing", async () => {
+    for (const finishReason of ["MAX_TOKENS", "OTHER", "RECITATION", "SAFETY", "CONTINUATION", "FINISH_REASON_UNSPECIFIED", undefined]) {
+      request.mockResolvedValueOnce(answer({ finishReason }));
+      await expect(new VertexText(config).generate({ system: "s", prompt: "p" }), String(finishReason)).rejects.toBeInstanceOf(GenerationError);
+    }
+  });
+
+  it("does not offer an empty answer", async () => {
     request.mockResolvedValueOnce({ data: { candidates: [] } });
     await expect(new VertexText(config).generate({ system: "s", prompt: "p" })).rejects.toBeInstanceOf(GenerationError);
   });

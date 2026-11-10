@@ -54,8 +54,9 @@ export class VertexText implements TextGenerator {
     const candidate = data.candidates?.[0];
     const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim();
     if (!text) throw new GenerationError("model returned no text");
-    // Cut off at the token cap: a letter that stops mid-sentence is not offered as finished.
-    if (candidate?.finishReason === "MAX_TOKENS") throw new GenerationError("model output was cut off");
+    // Only a natural stop is a finished letter. A cut-off at the token cap, a block (RECITATION, SAFETY...), OTHER
+    // and CONTINUATION (more still to come) can all arrive with text in them; none of it is offered as a draft.
+    if (candidate?.finishReason !== "STOP") throw new GenerationError(`model did not finish: ${candidate?.finishReason ?? "no finish reason"}`);
     return { text, modelVersion: data.modelVersion ?? this.config.model };
   }
 }
