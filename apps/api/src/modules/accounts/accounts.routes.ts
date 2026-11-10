@@ -16,7 +16,8 @@ const credentialsSchema = z.object({ email: z.string().email().max(320), passwor
 const tokenSchema = z.object({ token: z.string().min(1).max(1024) });
 const changeSchema = z.object({ currentPassword: z.string().min(1).max(1024), password: z.string().min(8).max(1024) });
 const deleteSchema = z.object({ currentPassword: z.string().min(1).max(1024) });
-const registerSchema = credentialsSchema.extend({ consent: z.literal(true), displayName: z.string().trim().min(1).max(200).optional() });
+// behaviourConsent is a separate, optional box: ticking it is never a condition of registering (TOR-215).
+const registerSchema = credentialsSchema.extend({ consent: z.literal(true), behaviourConsent: z.boolean().optional(), displayName: z.string().trim().min(1).max(200).optional() });
 const AUTH_FAILURE = "ไม่สามารถเข้าสู่ระบบได้";
 
 export interface AccountsRouterDeps {
@@ -70,6 +71,7 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
               agreedAt: new Date(),
               action: "checkbox",
             },
+            ...(input.behaviourConsent ? { behaviourConsent: { agreedAt: new Date() } } : {}),
           })
         ).id;
 
@@ -134,7 +136,20 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.get("/me", (req, res) => {
     if (!req.auth) throw new UnauthorizedError();
     const account = req.auth.account;
-    res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString(), consent: { noticeVersion: account.consent.noticeVersion, agreedAt: account.consent.agreedAt.toISOString(), withdrawnAt: account.consent.withdrawnAt?.toISOString() } });
+    res.json({ id: account._id.toString(), email: account.email, displayName: account.displayName, role: account.role, emailVerifiedAt: account.emailVerifiedAt?.toISOString(), consent: { noticeVersion: account.consent.noticeVersion, agreedAt: account.consent.agreedAt.toISOString(), withdrawnAt: account.consent.withdrawnAt?.toISOString() }, behaviourConsent: account.behaviourConsent?.agreedAt ? { agreedAt: account.behaviourConsent.agreedAt.toISOString(), withdrawnAt: account.behaviourConsent.withdrawnAt?.toISOString() } : null, behaviourEnabled: deps.config.matching.behaviour.enabled });
+  });
+
+  // Recording what a vendor views, saves and dismisses is a second consent, given and withdrawn on its own.
+  router.post("/me/consent/behaviour", ...writes, async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    await deps.accounts.setBehaviourConsent(req.auth.account._id.toString(), true);
+    res.json({ ok: true });
+  });
+
+  router.post("/me/consent/behaviour/withdraw", ...writes, async (req, res) => {
+    if (!req.auth) throw new UnauthorizedError();
+    await deps.accounts.setBehaviourConsent(req.auth.account._id.toString(), false);
+    res.json({ ok: true });
   });
 
   router.post("/me/consent/withdraw", ...writes, async (req, res) => {

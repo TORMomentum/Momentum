@@ -9,6 +9,7 @@ import type { TorsService } from "./tors.service.js";
 import type { Config } from "../../core/config.js";
 import { UnauthorizedError } from "../../core/errors.js";
 import { ProfileRepository } from "../profile/profile.repository.js";
+import type { BehaviourRepository } from "../behaviour/behaviour.repository.js";
 import { MatchingRepository } from "../matching/matching.repository.js";
 import { scoresForAccount } from "../matching/matching.scores.js";
 import { ObjectId } from "mongodb";
@@ -21,6 +22,8 @@ export interface TorsRouterDeps {
   config: Config;
   profiles: ProfileRepository;
   matching: MatchingRepository;
+  /** So the "match %" filter and the badge use the same personalised score as the feed. */
+  behaviour?: BehaviourRepository;
 }
 
 /** Public TOR reads. Authentication middleware must not be mounted here. */

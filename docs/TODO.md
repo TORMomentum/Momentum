@@ -454,6 +454,27 @@ Branch `feat/tor-212-213-personnel`._
 - [ ] No name is stored on purpose. If the team wants names (to prepare bid documents), that is a PDPA decision
       about third parties, not a field to add quietly
 
+## 2n. Sprint 5 — behaviour events and the personalised score (TOR-215, TOR-216)
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §10.
+Branch `feat/tor-215-216-behaviour`. Off by default (`MATCH_BEHAVIOUR_ENABLED`)._
+
+- [x] **TOR-215 — events and consent** — separate behaviour consent (API at sign-up and on the account page);
+      `POST /me/events`; `save` recorded by the server, `view` by a beacon; export, withdrawal and account
+      deletion all remove or include them; nothing recorded while the switch is off
+- [x] **TOR-216 — score** — weights, point value, cap and window in `core/config.ts`; the adjustment applied last
+      with a named reason, in the feed, the badge and the search filter
+- [x] **TOR-259 — sign-up checkbox.** The form offers an optional box only while `MATCH_BEHAVIOUR_ENABLED` is on
+      (read at build time as `NEXT_PUBLIC_BEHAVIOUR_ENABLED`) and sends `behaviourConsent` only when ticked;
+      a web image built with the switch off has to be rebuilt after turning it on. Compose now passes the switch to
+      the API and worker and, as a build argument, to the web image (checked: an image built with it on carries the
+      box, one built without does not). Cloud Run's manifests pass no switch yet — none of them, this one included
+- [ ] `dismiss` and `prepare` have a route and no screen: there is no dismiss button and no bid-preparation flow yet
+- [ ] **Before turning `MATCH_BEHAVIOUR_ENABLED` on:** run the §8.4 match-quality benchmark with and without it;
+      the weights, point value and cap are placeholders. Emails and the benchmark deliberately use the base score
+- [ ] Decide the retention of events older than `BEHAVIOUR_WINDOW_DAYS` (scoring ignores them; nothing deletes them yet)
+
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement

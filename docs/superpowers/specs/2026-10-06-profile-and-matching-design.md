@@ -396,3 +396,40 @@ also records who the company can field.
 - **Not yet:** the TOR side still reads the qualification text only. Reading the structured
   `requiredDocuments` (extraction design §13, `holder: personnel`) is the next step once those fields are on.
 
+## 10. Revision 5 — personalised score, 2026-11-09 (TOR-215, TOR-216)
+
+A recommendation can lean on what the vendor does, on top of the profile they state. Behind
+`MATCH_BEHAVIOUR_ENABLED` (default **off**).
+
+- **Separate consent.** `behaviourConsent` on the account, given at sign-up (optional box) or on the account
+  page, withdrawn on its own. It is not the registration consent and is never a condition of registering.
+  The sign-up form shows the box only while `MATCH_BEHAVIOUR_ENABLED` is on (the web build reads it as
+  `NEXT_PUBLIC_BEHAVIOUR_ENABLED`, set from the same variable) and sends `behaviourConsent` only when it is ticked.
+  Nothing is recorded or read without it, nor when the account's own consent is withdrawn.
+- **Events.** `view`, `save`, `dismiss`, `prepare`, in `behaviour_events` — **one document per (account, TOR, kind)**:
+  doing the same thing again refreshes its time, so repeats cannot crowd other events out of what scoring reads
+  or pile up points. `save` is
+  recorded by the server when a TOR is bookmarked; `view` by a small client beacon on the TOR page, rendered
+  only when consent is on; `dismiss` and `prepare` have a route but no screen yet.
+- **Data minimisation.** With the switch off, **nothing is recorded**, even for a vendor who consented: data
+  nobody uses is not kept. Withdrawing consent deletes the recorded events; export includes them; account
+  deletion removes them. Withdrawal flags the account first and deletes second, and a write re-reads consent after
+  it lands and removes its own event if consent has gone, so no interleaving leaves a withdrawn vendor's event
+  behind. If that re-read itself fails, the event is removed anyway (nothing kept on a doubt) and the error
+  surfaces. Should that cleanup fail too, the row is an orphan: nothing reads it (every read checks consent), the
+  worker's reconcile sweep (`purgeUnconsented`) deletes it, and consent given afresh starts with no history, so it
+  cannot come back. Giving consent again while it is live keeps what was recorded. Withdrawing what was never
+  given is a no-op. MongoDB has no transaction here (the local database is a single node), so this is
+  ordering plus a sweep, not atomicity.
+- **The adjustment.** Each (TOR, kind of event) counts once (it is stored once), weighted by `BEHAVIOUR_WEIGHT_*` (a dismissal is
+  negative), summed per taxonomy leaf of the TOR it was done to, over `BEHAVIOUR_WINDOW_DAYS`. A candidate's
+  points are the sum over its own leaves; it moves the score by `points × BEHAVIOUR_POINT_VALUE`, clamped to
+  ±`BEHAVIOUR_MAX_ADJUST`, applied last. It never rescues a TOR whose base score is zero.
+- **Reasons (NFR-F6).** "ปรับคะแนนขึ้น/ลง เพราะคุณเคยสนใจ/ปิดงานประเภทนี้ (จากการใช้งานของคุณเอง)".
+- **Where it applies.** The vendor's own feed, the score badge and the match filter in search, so a badge and a
+  filter cannot disagree. Emails and the match-quality benchmark keep the base score: a benchmark of the
+  stated profile must not move with behaviour, and an email must not rest on activity the vendor cannot see.
+- **Not tuned.** The weights, the point value and the cap are placeholders until the §8.4 benchmark can measure
+  their effect.
+
+

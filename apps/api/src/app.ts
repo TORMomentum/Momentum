@@ -33,6 +33,8 @@ import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
 import { ProfileRepository } from "./modules/profile/profile.repository.js";
 import { createEmbedder } from "./adapters/embedder.factory.js";
 import { buildProfileRouter } from "./modules/profile/profile.routes.js";
+import { BehaviourRepository } from "./modules/behaviour/behaviour.repository.js";
+import { buildBehaviourRouter } from "./modules/behaviour/behaviour.routes.js";
 import { BookmarksRepository } from "./modules/bookmarks/bookmarks.repository.js";
 import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 import { MatchingRepository } from "./modules/matching/matching.repository.js";
@@ -78,12 +80,15 @@ export function buildApp(config: Config, db: Db): Express {
   // exist, which no API-level test could see.
   const embedder = createEmbedder(config);
   const profileRouter = buildProfileRouter({ config, profiles: profileRepository, ...(embedder ? { embedder } : {}) });
-  const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db) });
-  const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config) });
+  const behaviourRepository = new BehaviourRepository(db, config);
+  const bookmarksRouter = buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db), behaviour: behaviourRepository });
+  const behaviourRouter = buildBehaviourRouter({ config, behaviour: behaviourRepository, tors: new TorsRepository(db) });
+  const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config), behaviour: behaviourRepository });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);
     app.use(prefix, bookmarksRouter);
+    app.use(prefix, behaviourRouter);
     app.use(prefix, matchingRouter);
   }
 
@@ -189,6 +194,7 @@ export function buildApp(config: Config, db: Db): Express {
       config,
       profiles: profileRepository,
       matching: new MatchingRepository(db, config),
+      behaviour: behaviourRepository,
     }),
   );
 

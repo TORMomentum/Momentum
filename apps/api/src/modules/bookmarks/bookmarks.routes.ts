@@ -5,12 +5,13 @@ import type { Config } from "../../core/config.js";
 import { NotFoundError, UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { TorsRepository } from "../tors/tors.repository.js";
+import type { BehaviourRepository } from "../behaviour/behaviour.repository.js";
 import { BookmarksRepository } from "./bookmarks.repository.js";
 
 const paramsSchema = z.object({ torId: z.string().regex(/^[0-9a-f]{24}$/i) });
 const idsSchema = z.object({ torId: z.union([z.string(), z.array(z.string())]).optional() });
 
-export function buildBookmarksRouter(deps: { config: Config; bookmarks: BookmarksRepository; tors: TorsRepository }): Router {
+export function buildBookmarksRouter(deps: { config: Config; bookmarks: BookmarksRepository; tors: TorsRepository; behaviour?: BehaviourRepository }): Router {
   const router = Router();
   const writes = [requireSameOrigin(deps.config.appOrigin), ...authRateLimit(deps.config)];
 
@@ -38,7 +39,10 @@ export function buildBookmarksRouter(deps: { config: Config; bookmarks: Bookmark
     if (!req.auth) throw new UnauthorizedError();
     const { torId } = paramsSchema.parse(req.params);
     if (!await deps.tors.exists(torId)) throw new NotFoundError();
-    await deps.bookmarks.add(req.auth.account._id.toString(), torId);
+    const accountId = req.auth.account._id.toString();
+    await deps.bookmarks.add(accountId, torId);
+    // Saving is the clearest sign of interest, so the server records it; nothing is written without consent.
+    await deps.behaviour?.record(accountId, torId, "save");
     res.json({ ok: true });
   });
 

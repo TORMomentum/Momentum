@@ -1,4 +1,4 @@
-import { MongoClient, type Collection, type Db } from "mongodb";
+import { MongoClient, MongoServerError, ObjectId, type Collection, type Db } from "mongodb";
 import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
@@ -162,6 +162,11 @@ export interface AccountDocument {
     action: "checkbox";
     withdrawnAt?: Date;
   };
+  /**
+   * A second, separate consent (TOR-215): recording what the vendor views, saves, dismisses and prepares, to
+   * personalise their score. Absent or withdrawn means no event is recorded and none is read.
+   */
+  behaviourConsent?: { agreedAt: Date; withdrawnAt?: Date };
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -324,6 +329,16 @@ export interface MatchLabelDocument {
 }
 
 /** Cached derived data; source TOR documents remain immutable after extraction. */
+export type BehaviourEventType = "view" | "save" | "dismiss" | "prepare";
+
+/** One thing a consenting vendor did to a TOR (TOR-215). Kept for the scoring window, in the export, and deleted with the account. */
+export interface BehaviourEventDocument {
+  accountId: string;
+  torId: string;
+  type: BehaviourEventType;
+  at: Date;
+}
+
 export interface TorClassificationDocument {
   torId: string;
   classification: TorClassification;
@@ -396,6 +411,10 @@ export function vendorProfiles(db: Db): Collection<VendorProfileDocument> {
   return db.collection<VendorProfileDocument>("vendor_profiles");
 }
 
+export function behaviourEvents(db: Db): Collection<BehaviourEventDocument> {
+  return db.collection<BehaviourEventDocument>("behaviour_events");
+}
+
 export function torClassifications(db: Db): Collection<TorClassificationDocument> {
   return db.collection<TorClassificationDocument>("tor_classifications");
 }
@@ -436,6 +455,29 @@ export async function ensureSearchIndex(db: Db, name: string): Promise<void> {
   await tors(db).createSearchIndex({ name, definition: { mappings: { dynamic: false, fields } } });
 }
 
+/**
+ * One event per (account, TOR, kind). Rows written before that rule can repeat, and a unique index cannot be
+ * built over repeats, so on that one error the older copies are removed (the latest time is kept) and the
+ * build is retried. Nothing runs on a collection that is already clean.
+ */
+async function createBehaviourEventKey(db: Db): Promise<void> {
+  const key = { accountId: 1, torId: 1, type: 1 } as const;
+  try {
+    await behaviourEvents(db).createIndex(key, { unique: true });
+  } catch (error) {
+    if (!(error instanceof MongoServerError && error.code === 11000)) throw error;
+    const repeated = behaviourEvents(db).aggregate<{ ids: ObjectId[]; keep: ObjectId }>([
+      { $sort: { at: -1 } },
+      { $group: { _id: { accountId: "$accountId", torId: "$torId", type: "$type" }, keep: { $first: "$_id" }, ids: { $push: "$_id" } } },
+      { $match: { "ids.1": { $exists: true } } },
+    ]);
+    for await (const group of repeated) {
+      await behaviourEvents(db).deleteMany({ _id: { $in: group.ids.filter((id) => !id.equals(group.keep)) } });
+    }
+    await behaviourEvents(db).createIndex(key, { unique: true });
+  }
+}
+
 /** Indexes from spec section 4.5. The unique contentHash index is the dedupe guarantee. */
 export async function ensureIndexes(db: Db): Promise<void> {
   // A deleted account overwrites its address with a random tombstone, so an
@@ -451,6 +493,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // the eventual live email. `reason` distinguishes a match from its reminder.
   await notifications(db).createIndex({ accountId: 1, torId: 1, reason: 1, dryRun: 1 }, { unique: true });
   await notifications(db).createIndex({ accountId: 1, reason: 1, period: 1 });
+  await behaviourEvents(db).createIndex({ accountId: 1, at: -1 });
+  await createBehaviourEventKey(db);
   await torClassifications(db).createIndex({ torId: 1 }, { unique: true });
   // One judgement per pair; relabelling replaces it.
   await matchLabels(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });

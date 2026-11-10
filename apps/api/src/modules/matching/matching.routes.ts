@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Config } from "../../core/config.js";
 import type { TorDocument } from "../../core/db.js";
 import { UnauthorizedError } from "../../core/errors.js";
+import type { BehaviourRepository } from "../behaviour/behaviour.repository.js";
 import { ProfileRepository } from "../profile/profile.repository.js";
 import { isOpenOn } from "../tors/tors.service.js";
 import { scoreMatch } from "./match-scorer.js";
@@ -44,7 +45,7 @@ function biddable(record: WithId<TorDocument>, today: string): boolean {
   );
 }
 
-export function buildMatchingRouter(deps: { config: Config; profiles: ProfileRepository; matching: MatchingRepository }): Router {
+export function buildMatchingRouter(deps: { config: Config; profiles: ProfileRepository; matching: MatchingRepository; behaviour?: BehaviourRepository }): Router {
   const router = Router();
   router.get("/me/matches", async (req, res) => {
     if (!req.auth) throw new UnauthorizedError();
@@ -54,6 +55,7 @@ export function buildMatchingRouter(deps: { config: Config; profiles: ProfileRep
       return;
     }
     const { page } = querySchema.parse(req.query);
+    const affinity = await deps.behaviour?.affinity(req.auth.account._id.toString());
     const today = new Date().toLocaleDateString("en-CA", { timeZone: deps.config.search.timeZone });
     const scored = (await deps.matching.candidatesFor(profile))
       .filter(({ record }) => biddable(record, today))
@@ -66,7 +68,7 @@ export function buildMatchingRouter(deps: { config: Config; profiles: ProfileRep
         budget: shown(record.fields.budget, isNumber),
         deadline: { ...shown(record.fields.deadline, isString), ...(record.fields.deadline?.fromDocument ? { fromDocument: record.fields.deadline.fromDocument } : {}) },
         unverified: record.unverified,
-        ...scoreMatch(profile, record, classification, deps.config, today),
+        ...scoreMatch(profile, record, classification, deps.config, today, affinity),
       }))
       .filter((match) => match.excluded === null)
       .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
