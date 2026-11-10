@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-03_
+_last updated: 2026-11-09_
 
 ---
 
@@ -426,6 +426,20 @@ Branch `feat/tor-202-ocr-provenance`. Verified live on `tor-01.pdf` against Gemi
       the key is in `apps/api/secrets/` (one letter)
 - [ ] Prices for Document AI pages and embeddings were not verifiable from the pricing pages; confirm in the
       console before enabling
+
+## 2l. Sprint 5 — evaluation and required documents (TOR-209, TOR-210)
+
+_Spec: [`specs/2026-09-09-tor-radar-extraction-confidence-design.md`](superpowers/specs/2026-09-09-tor-radar-extraction-confidence-design.md) §13.
+Branch `feat/tor-209-210-extraction-fields`. Run live on the 10 benchmark TORs against Gemini._
+
+- [x] **TOR-209 — evaluation method and weights** — `evaluationMethod`, `evaluationWeights` in the same request;
+      graded by shape and a total of 100; unverified below threshold
+- [x] **TOR-210 — required documents** — `requiredDocuments` with `holder` (company / personnel), mapped onto the
+      certification list; the engineer-licence pattern now matches the wording TORs use
+- [ ] `EXTRACT_BIDDING_FIELDS_ENABLED` stays off until the benchmark is re-run with the new prompt and schema
+- [ ] No benchmark TOR is price-performance, so the weights rule has no real document behind it yet
+- [ ] Existing records have none of these fields until re-extracted
+- [ ] TOR-211 shows them on the detail page (next PR)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

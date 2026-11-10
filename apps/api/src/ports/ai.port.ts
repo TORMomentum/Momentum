@@ -1,4 +1,6 @@
-export type TorStatus = "announced" | "closed" | "awarded" | "cancelled";
+import type { EvaluationCriterion, EvaluationMethod, RequiredDocument } from "@tor-radar/shared";
+
+export type TorStatus ="announced" | "closed" | "awarded" | "cancelled";
 
 /** One extracted field before grading: the model's answer, its own confidence, and its evidence. */
 export interface RawField<T = string> {
@@ -38,6 +40,12 @@ export interface RawExtraction {
   referenceNo: RawField;
   /** Where the work is done, as written; absent from a model answer that predates it. */
   workLocation?: RawField;
+  /** How bids are scored; present only when the model was asked (TOR-209). */
+  evaluationMethod?: RawField<EvaluationMethod>;
+  /** The scored criteria with their weights in percent; empty for a lowest-price evaluation (TOR-209). */
+  evaluationWeights?: RawField<EvaluationCriterion[]>;
+  /** The documents and certificates the bidder must show (TOR-210). `certification` is set by grading, not the model. */
+  requiredDocuments?: RawField<RequiredDocument[]>;
   /** The resolved model identifier the provider returned, for provenance (NFR-F6). */
   modelVersion: string;
 }
