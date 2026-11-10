@@ -72,6 +72,14 @@ const schema = z.object({
   STORAGE_TIMEOUT_API_MS: z.coerce.number().int().positive().default(10_000),
   STORAGE_TIMEOUT_WORKER_MS: z.coerce.number().int().positive().default(60_000),
 
+  // AI draft of a cover letter (TOR-220). Off by default: each draft is a Gemini call and sends the vendor's profile
+  // and the names of their kept files to Vertex AI, so it stays off until that has been agreed for the deployment.
+  DRAFT_ENABLED: flag(false),
+  DRAFT_RATE_PER_HOUR: z.coerce.number().int().positive().default(10),
+  DRAFT_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
+  DRAFT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(2048),
+  DRAFT_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
+
   // Vendor document vault (TOR-218)
   VAULT_MAX_FILE_BYTES: z.coerce.number().int().positive().default(10_485_760),
   VAULT_MAX_FILES: z.coerce.number().int().positive().default(20),
@@ -334,6 +342,7 @@ export interface Config {
   };
   maxUploadBytes: number;
   vault: { maxFileBytes: number; maxFiles: number; pendingTtlMs: number };
+  draft: { enabled: boolean; ratePerHour: number; timeoutMs: number; maxOutputTokens: number; temperature: number };
   allowedMimeTypes: string[];
   multipartMaxFiles: number;
   multipartMaxFieldBytes: number;
@@ -465,6 +474,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     maxUploadBytes: parsed.MAX_UPLOAD_BYTES,
     vault: { maxFileBytes: parsed.VAULT_MAX_FILE_BYTES, maxFiles: parsed.VAULT_MAX_FILES, pendingTtlMs: parsed.VAULT_PENDING_TTL_MS },
+    draft: { enabled: parsed.DRAFT_ENABLED, ratePerHour: parsed.DRAFT_RATE_PER_HOUR, timeoutMs: parsed.DRAFT_TIMEOUT_MS, maxOutputTokens: parsed.DRAFT_MAX_OUTPUT_TOKENS, temperature: parsed.DRAFT_TEMPERATURE },
     allowedMimeTypes: parsed.ALLOWED_MIME_TYPES.split(",").map((value) => value.trim()),
     multipartMaxFiles: parsed.MULTIPART_MAX_FILES,
     multipartMaxFieldBytes: parsed.MULTIPART_MAX_FIELD_BYTES,

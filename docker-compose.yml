@@ -19,6 +19,7 @@ x-api-env: &api-env
   MAIL_FROM: ${MAIL_FROM:-TOR Radar <noreply@tor-radar.example>}
   # Compose passes only what it lists, so a switch missing here is off in the container whatever .env says.
   MATCH_BEHAVIOUR_ENABLED: ${MATCH_BEHAVIOUR_ENABLED:-false}
+  DRAFT_ENABLED: ${DRAFT_ENABLED:-false}
 
 services:
   web:
