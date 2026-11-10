@@ -526,10 +526,13 @@ Supersedes the "drafting from the vault (TOR-220) is not built" line of §11 and
 - **Review before export (NFR-F6).** The panel labels the text as an AI draft with the model's version, says
   before the first request what will be sent, and offers the download (`.txt`) only after the vendor ticks that
   they checked it; any edit un-ticks it, so what was confirmed is what is downloaded. Regenerating over edited
-  text asks first.
+  text asks first, and the box is read-only (and the download off) while a new draft is on its way, because its answer
+  replaces the text and anything typed meanwhile would be lost.
 - **Switch and cost.** `DRAFT_ENABLED`, off by default: each draft is a model call and a transfer of the vendor's
   data to Vertex AI, which a deployment agrees to deliberately. Limited to `DRAFT_RATE_PER_HOUR` per account; one
-  attempt, no retry (the vendor can press again); a cut-off answer is an error, never offered as a finished letter.
+  attempt, no retry (the vendor can press again). Only an answer that ended on `finishReason` `STOP` is a draft: a
+  cut-off at the token cap, `OTHER`, `RECITATION`, `SAFETY`, `CONTINUATION` (more still to come) or no reason at all is
+  an error even when text came with it, never offered as a finished letter. Compose passes all four tunables to the API.
   With the switch on and no Vertex credential the route answers `502`, not `404`, so a misconfiguration is visible.
 - **Token cap.** `DRAFT_MAX_OUTPUT_TOKENS` is 8192, the extractor's figure: a first run with 2048 was cut off by the
   model (`gemini-3.5-flash` counts its reasoning against the cap), and the route answered `502` as designed rather
