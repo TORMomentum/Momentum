@@ -547,6 +547,7 @@ Branch `feat/tor-224-company-path`._
 - [ ] **TOR-284 — less-competitive categories** — waits for the winner announcements (TOR-221) and the stage key (TOR-204/205)
 - [ ] No past-work gap by field: past projects carry no category and the extraction reads no experience requirement
 - [ ] The sample is the newest `PATH_SAMPLE_CAP` TORs of the field; a thin field says so but is not widened
+- [ ] The sample reads every classified TOR id of the field before capping (so the cap follows announcement date); not timed on a real-size corpus
 - [ ] Not seen in a browser
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
