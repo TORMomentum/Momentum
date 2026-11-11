@@ -185,6 +185,7 @@ The feature modules, as of Sprint 4:
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
 | `bookmarks/` | A vendor's private saved list |
+| `path/` | The company path: a field's sampled TORs read for what they ask for, against the vendor's profile; one route, stores nothing (TOR-224) |
 | `drafts/` | The AI cover-letter draft for a TOR: the prompt, the facts it is built from, one rate-limited route; stores nothing (TOR-220) |
 | `vault/` | A vendor's own files (CV, certificates, past work): upload, list, download, delete; the bytes in the vault bucket, the record here, written before the bytes; the worker's reconcile pass sweeps unfinished uploads (TOR-218) |
 | `behaviour/` | What a consenting vendor viewed, saved, dismissed or prepared, recorded and turned into per-work-type points for the score; the worker's reconcile pass deletes rows of accounts without live consent |

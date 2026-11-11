@@ -535,6 +535,20 @@ Branch `feat/tor-220-draft-from-vault`. Decided with the owner: one Thai cover l
       consent screen exists (the vendor is told what is sent before each request)
 - [ ] Not seen in a browser
 
+## 2r. Sprint 5 — company path (TOR-224), first two parts
+
+_Spec: [`specs/2026-10-06-profile-and-matching-design.md`](superpowers/specs/2026-10-06-profile-and-matching-design.md) §14.
+Branch `feat/tor-224-company-path`._
+
+- [x] **TOR-282 — target-field picker** — `/profile/path?target=`, a plain GET form over the taxonomy; the choice is
+      in the URL and not stored
+- [x] **TOR-283 — gap analysis against the profile** — `GET /me/path`: what the field's TORs ask for (certifications,
+      registrations) and whether the vendor holds it; "not stated" is never "missing"
+- [ ] **TOR-284 — less-competitive categories** — waits for the winner announcements (TOR-221) and the stage key (TOR-204/205)
+- [ ] No past-work gap by field: past projects carry no category and the extraction reads no experience requirement
+- [ ] The sample is the newest `PATH_SAMPLE_CAP` TORs of the field; a thin field says so but is not widened
+- [ ] Not seen in a browser
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
