@@ -29,13 +29,16 @@ function median(values: number[]): number {
  *
  * A requirement counts from a field read at `tLow` or better, the same bar matching uses, so a doubtful reading
  * never makes a certificate look wanted. A TOR is counted once per requirement however many times it names it.
- * "Holds" follows the scorer: only a section the vendor has stated can say they lack something.
+ * "Holds" follows the scorer: only a section the vendor has stated can say they lack something, and a licence to
+ * practise counts whether it is listed with the company's certifications or on a person. A budget counts only when
+ * it was verified and lies inside the plausible range, the bar the statistics use, so a misread figure cannot
+ * become a typical one.
  */
 export function analyseField(
   target: { id: string; th: string },
   sample: ClassifiedCandidate[],
   profile: VendorProfileDocument | null,
-  config: Pick<Config, "tLow"> & { matching: Pick<Config["matching"], "registrationMinBudgetThb"> },
+  config: Pick<Config, "tLow" | "budgetMinThb" | "budgetMaxThb"> & { matching: Pick<Config["matching"], "registrationMinBudgetThb"> },
 ): FieldPath {
   const sure = (field: { confidence: number } | undefined) => Boolean(field) && field!.confidence >= config.tLow;
   const asked = new Map<string, number>();
@@ -48,7 +51,7 @@ export function analyseField(
     if (sure(documents)) for (const document of documents!.value ?? []) if (document.certification) wanted.add(`certification:${document.certification}`);
     if (sure(record.fields.qualifications)) for (const id of certificationsMentioned(qualificationText(record))) wanted.add(`certification:${id}`);
     const budget = record.fields.budget;
-    if (sure(budget) && typeof budget!.value === "number") {
+    if (sure(budget) && budget!.verified && typeof budget!.value === "number" && Number.isFinite(budget!.value) && budget!.value >= config.budgetMinThb && budget!.value <= config.budgetMaxThb) {
       budgets.push(budget!.value);
       const branch = budget!.value >= config.matching.registrationMinBudgetThb ? cgdBranchOf(record, classification) : null;
       if (branch) wanted.add(`registration:${branch}`);
@@ -60,7 +63,10 @@ export function analyseField(
   const staff = profile?.personnel;
   const holds = (kind: PathRequirement["kind"], id: string): boolean | null => {
     if (kind === "registration") return certifications ? certifications.cgd.some((held) => held.branch === id) : null;
-    if (PERSONAL.has(id)) return staff ? staff.some((member) => member.certifications.includes(id)) : null;
+    if (PERSONAL.has(id)) {
+      if (certifications?.tags.includes(id) || staff?.some((member) => member.certifications.includes(id))) return true;
+      return certifications || staff ? false : null;
+    }
     return certifications ? certifications.tags.includes(id) : null;
   };
 

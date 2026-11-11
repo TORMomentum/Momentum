@@ -107,4 +107,55 @@ describe("company path", () => {
     expect(none.yourLargestProjectThb).toBeNull();
     expect(some.yourLargestProjectThb).toBe(7_000_000);
   });
+
+  it("takes the newest usable TORs up to the cap, however the cache was refreshed and whatever else sits in it", async () => {
+    const capped = { ...config, matching: { ...config.matching, pathSampleCap: 2 } };
+    const cappedApp = express();
+    cappedApp.use(express.json());
+    cappedApp.use(sessionContext(sessionsRepository));
+    cappedApp.use("/api/v1", buildPathRouter({ config: capped, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, capped) }));
+    cappedApp.use(errorMiddleware);
+    const day = (n: number) => new Date(Date.UTC(2026, 0, n));
+    await seed("ปรับปรุงผิวจราจร เก่า", 1_000_000, iso(), { announcedAt: day(1) });
+    await seed("ปรับปรุงผิวจราจร กลาง", 1_000_000, iso(), { announcedAt: day(2) });
+    await seed("ปรับปรุงผิวจราจร ใหม่", 1_000_000, iso(), { announcedAt: day(3) });
+    // Newer than all of them in the cache, but not public: it must not use up a place.
+    await seed("ปรับปรุงผิวจราจร ปิด", 1_000_000, iso(), { announcedAt: day(4), access: { restricted: true } });
+    // Cache refresh order, newest first: the not-public one, then the OLDEST TOR (re-classified last), then the rest.
+    // Neither the refresh time nor the not-public row may decide what the sample is.
+    for (const [rank, title] of ["ปรับปรุงผิวจราจร ปิด", "ปรับปรุงผิวจราจร เก่า", "ปรับปรุงผิวจราจร ใหม่", "ปรับปรุงผิวจราจร กลาง"].entries()) {
+      const record = (await tors(db).findOne({ "fields.title.value": title }))!;
+      await torClassifications(db).updateOne({ torId: record._id.toString() }, { $set: { updatedAt: new Date(Date.UTC(2026, 5, 10 - rank)) } });
+    }
+    const current = await vendor("a@example.test");
+
+    const body = (await request(cappedApp).get("/api/v1/me/path").query({ target: "construction.road" }).set("x-session-id", current.sessionId)).body;
+
+    expect(body.sample).toBe(2);
+    expect(body.requirements[0]).toMatchObject({ id: "iso-9001", asked: 2 });
+    expect(body.budget).toEqual({ n: 2, medianThb: 1_000_000 });
+  });
+
+  it("leaves a budget out of the typical one unless it was verified and is plausible", async () => {
+    await seed("ปรับปรุงผิวจราจร ก", 2_000_000);
+    await seed("ปรับปรุงผิวจราจร ข", 1, { budget: { raw: "1", value: 1, confidence: 1, verified: false } });
+    await seed("ปรับปรุงผิวจราจร ค", config.budgetMaxThb + 1, { budget: { raw: "x", value: config.budgetMaxThb + 1, confidence: 1, verified: true } });
+    const current = await vendor("a@example.test");
+
+    const body = (await get(current.sessionId, "construction.road")).body;
+
+    expect(body.sample).toBe(3);
+    expect(body.budget).toEqual({ n: 1, medianThb: 2_000_000 });
+  });
+
+  it("counts a licence the vendor listed with their certifications, not only one on a person", async () => {
+    await seed("ปรับปรุงผิวจราจร ก", 1_000_000, { requiredDocuments: field([{ name: "ใบประกอบวิชาชีพวิศวกรรม", holder: "personnel", certification: "engineer" }]) });
+    const listed = await vendor("listed@example.test");
+    const base = { categories: [], areas: [], budget: null, taxonomyVersion: "test", updatedAt: new Date() };
+    await vendorProfiles(db).insertOne({ accountId: listed.accountId, ...base, certifications: { cgd: [], tags: ["engineer"], other: [] }, personnel: [], pastProjects: [] });
+
+    const body = (await get(listed.sessionId, "construction.road")).body;
+
+    expect(body.requirements).toEqual([expect.objectContaining({ id: "engineer", holds: true })]);
+  });
 });

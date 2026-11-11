@@ -135,18 +135,20 @@ export class MatchingRepository {
   /**
    * The newest public TORs classified into any of these leaves (the company path, TOR-224). Published, not taken
    * down, and one row per project, as matching lists them; open or closed does not matter, because what a field
-   * has asked for in the past is the point.
+   * has asked for in the past is the point. "Newest" is the agency's announcement date, and the cap comes AFTER the
+   * usable-record filter: capping the classification cache first let restricted or duplicate rows use up the room,
+   * and the cache's own update time says when it was refreshed, not when the TOR was announced.
    */
   async fieldSample(leafIds: string[]): Promise<ClassifiedCandidate[]> {
     await this.ensureClassified();
     const cached = await torClassifications(this.db)
-      .find({ "classification.leaves.id": { $in: leafIds }, mapperVersion: CURRENT_MAPPER_VERSION }, { sort: { updatedAt: -1 }, limit: this.config.matching.pathSampleCap })
+      .find({ "classification.leaves.id": { $in: leafIds }, mapperVersion: CURRENT_MAPPER_VERSION })
       .toArray();
     const byId = new Map(cached.map((entry) => [entry.torId, entry.classification]));
     const records = await tors(this.db)
       .find(
         { _id: { $in: [...byId.keys()].filter(ObjectId.isValid).map((id) => new ObjectId(id)) }, "pipeline.state": "published", "access.restricted": false, documentType: { $ne: "invitation" }, duplicateOf: null },
-        { projection: MATCH_PROJECTION },
+        { sort: { announcedAt: -1, _id: -1 }, limit: this.config.matching.pathSampleCap, projection: MATCH_PROJECTION },
       )
       .toArray();
     return records.map((record) => ({ record, classification: byId.get(record._id.toString())! }));
