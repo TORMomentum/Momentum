@@ -439,3 +439,18 @@ Three more fields beyond the nine (SRS v2.1, FR-B-2), read in the same Gemini re
   method never vouches for unconfirmed weights beside it. A record without the fields shows neither block. Names are shown as written (NFR-F7).
 - Raw quotes of these fields are excluded from the copy-through check: a method or a document name may rightly
   repeat wording from the qualifications.
+
+## 14. Revision 2026-11-12 — a worker that cannot extract publishes nothing
+
+§5.3 left `passThroughHandler` as the fallback when no Vertex credential is configured. That fallback marked
+every record `published` with no fields, and the only trace was one warning in the worker's log: an admin
+upload looked successful and was never read. Superseded here:
+
+- `passThroughHandler` stays exported for the seam tests only; no running worker uses it.
+- `buildHandler` returns nothing when `GOOGLE_CLOUD_PROJECT` or `GOOGLE_APPLICATION_CREDENTIALS` is unset, or the
+  credential path names no file (a typo used to pass the check and fail every job at the first Vertex call).
+- The worker then logs `extraction_disabled` with the reason as an error and **claims no job**: records stay
+  `queued`, the housekeeping in the same loop (reconcile, vault sweep, behaviour purge) keeps running, and
+  setting the credential and restarting resumes the queue.
+- `npm run dev` now starts the extraction worker beside the api and web; before, an upload in a bare dev run sat
+  `queued` because nothing consumed the queue.

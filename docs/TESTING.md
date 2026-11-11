@@ -70,6 +70,7 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F2-1 | FR-B-3 | `grade` | a clean digital TOR with the budget missing | confidence `low`; queued for review | Pass | `extraction.grading.test.ts` |
 | UT-F2-2 | FR-B-3 | `grade` | a scanned TOR (no text layer), budget read at confidence 1 | budget `verified: false`; record `low` | Pass | `extraction.grading.test.ts` |
 | UT-F2-3 | FR-B-3 | `grade` | deadline `2025-12-01`, before the announcement date | deadline not verified; sanity check trips | Pass | `extraction.grading.test.ts` |
+| UT-F2-W1 | FR-A-1 | extraction worker without a credential | no project, no credential path, a path to no file, a real file; a cycle with no handler; a cycle with one | the blocker names what is missing; with no handler nothing is claimed and nothing is published | Pass | `extract.worker.test.ts` |
 | UT-F3-1 | FR-G-1 | `torStateOf` | `{ torStatus: "announced", deadline: "2026-10-05" }`, today later | `closed` — the date wins over the label | Pass | `tor-state.test.ts` |
 | UT-F3-2 | FR-B-6 | `POST /admin/tors/bulk` | `{ action: "reject", ids: [id] }` with no reason | 400; the TOR stays public | Pass | `admin.routes.test.ts` |
 | UT-F4-0 | FR-E-3 | `GET /tors?q=` keyword | a Thai word inside an unspaced title; the agency; a word in no record | finds the record by word, matches the agency, returns nothing for a miss; index creation is idempotent | Pass | `tors.atlas-search.test.ts` (needs `mongodb-atlas-local`) |

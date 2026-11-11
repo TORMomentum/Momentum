@@ -20,7 +20,7 @@ original.
 mkdir secrets                 # then drop in the service-account key files the team gives you
 cp .env.example .env          # fill in the secrets; nothing is committed
 npm install
-npm run dev                   # web :3000 · api :4000
+npm run dev                   # web :3000 · api :4000 · extraction worker
 npm test                      # vitest
 npm run lint                  # eslint
 npm run build                 # all workspaces

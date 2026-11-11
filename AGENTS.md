@@ -102,7 +102,7 @@ without its docs, fix the docs first.
 
 ```
 docker compose up      # web :3000 · api :4000 · mongo · gcs (emulator) :4443
-npm run dev            # web + api dev servers
+npm run dev            # web + api + extraction worker
 npm test               # vitest
 npm run lint           # eslint
 npm run build          # all workspaces

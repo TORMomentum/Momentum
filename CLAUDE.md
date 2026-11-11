@@ -174,7 +174,7 @@ data. All are declared in `core/config.ts` with their open status recorded.
 
 ```
 docker compose up                 # full stack: web :3000 · api :4000 · mongo · gcs (emulator) :4443
-npm run dev                       # web + api dev servers (no containers)
+npm run dev                       # web + api + extraction worker (no containers)
 npm test                          # vitest
 npm run lint                      # eslint
 npm run build                     # build all workspaces
