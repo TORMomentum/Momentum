@@ -225,6 +225,8 @@ const schema = z.object({
   // Matching. These are deliberately independent tunables until a labelled
   // relevance benchmark can calibrate them.
   MATCH_CANDIDATE_CAP: z.coerce.number().int().positive().default(200),
+  /** The most TORs the company path (TOR-224) reads for one field; the newest are taken. */
+  PATH_SAMPLE_CAP: z.coerce.number().int().positive().default(500),
   /**
    * How many unclassified TORs one matching request may classify before it
    * answers. Classification is deterministic and needs no model, so this only
@@ -406,7 +408,7 @@ export interface Config {
   adminStuckAfterMs: number;
   search: SearchConfig;
   matching: {
-    candidateCap: number; classifyBatch: number; pageSize: number; classifierTitleScore: number; classifierScopeScore: number;
+    candidateCap: number; pathSampleCap: number; classifyBatch: number; pageSize: number; classifierTitleScore: number; classifierScopeScore: number;
     classifierQualificationsScore: number; classifierAmbiguityMargin: number; categoryLeafScore: number;
     categoryGroupScore: number; categoryCoarseScore: number; freeTextScore: number; categoryWeight: number;
     budgetWeight: number; areaWeight: number; budgetNeutralScore: number; budgetInsideScore: number;
@@ -563,7 +565,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       timeZone: parsed.TIME_ZONE,
     },
     matching: {
-      candidateCap: parsed.MATCH_CANDIDATE_CAP, classifyBatch: parsed.MATCH_CLASSIFY_BATCH, pageSize: parsed.MATCH_PAGE_SIZE,
+      candidateCap: parsed.MATCH_CANDIDATE_CAP, pathSampleCap: parsed.PATH_SAMPLE_CAP, classifyBatch: parsed.MATCH_CLASSIFY_BATCH, pageSize: parsed.MATCH_PAGE_SIZE,
       classifierTitleScore: parsed.MATCH_CLASSIFIER_TITLE_SCORE, classifierScopeScore: parsed.MATCH_CLASSIFIER_SCOPE_SCORE,
       classifierQualificationsScore: parsed.MATCH_CLASSIFIER_QUALIFICATIONS_SCORE, classifierAmbiguityMargin: parsed.MATCH_CLASSIFIER_AMBIGUITY_MARGIN,
       categoryLeafScore: parsed.MATCH_CATEGORY_LEAF_SCORE, categoryGroupScore: parsed.MATCH_CATEGORY_GROUP_SCORE,

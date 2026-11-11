@@ -541,3 +541,32 @@ Supersedes the "drafting from the vault (TOR-220) is not built" line of §11 and
   vendor to check.
 - **Not tuned.** Temperature and the prompt are first guesses (`DRAFT_TEMPERATURE`). There is no measure of how good
   the letters are yet; one real draft was read, not a sample.
+
+## 14. Revision 9 — company path: target field and gaps, 2026-11-11 (TOR-224)
+
+First two parts of TOR-224. A vendor picks a field of work they want to grow into and sees what the TORs already
+collected in that field ask for, and which of it their profile does not state. The third part (categories with
+less competition) needs winner data and is not built.
+
+- **The field.** One group or one leaf of the work taxonomy (§7), as on the profile; a group covers all its leaves.
+  The target lives in the page's URL (`/profile/path?target=`): it is not stored, so there is nothing new to
+  export or delete under `FR-D-3`, and the profile is read, never changed.
+- **The sample.** The newest `PATH_SAMPLE_CAP` (500) TORs classified into the field's leaves by the current
+  classifier: published, not restricted, not an invitation, not a duplicate. "Newest" is the agency's
+  announcement date, and the cap is applied after those filters, never to the classification cache first (its update
+  time says when a row was refreshed, and rows that are not public would use up places). Open or closed does not matter; what a
+  field has asked for in the past is the point. The figures say "N of M TORs", never "required": they describe the
+  collected corpus (`FR-E-6`), not what any one TOR must ask.
+- **What counts as asked.** A listed certification named in the TOR's required documents or its qualifications
+  (the same reading as §12 and the scorer), and a กรมบัญชีกลาง registration branch for work at or above
+  `CGD_REGISTRATION_MIN_BUDGET_THB` (the scorer's rule, §10). Each counts once per TOR, and only from a field read
+  at `T_low` or better, the bar matching uses, so a doubtful reading never makes a certificate look wanted. The
+  median budget uses only a verified budget inside `BUDGET_MIN_THB`..`BUDGET_MAX_THB`, the statistics' bar, so a
+  misread figure cannot become the typical one.
+- **Held or lacking.** As the scorer: only a stated section can say the vendor lacks something. A vendor who has
+  not stated their certifications (or personnel, for the licences of a person) sees "not stated in the profile",
+  never "missing". A licence to practise counts as held when it is listed with the company's certifications or on
+  a person, as in the scorer. Past work is shown as a fact, the field's median stated budget beside the vendor's largest past
+  project value, with no verdict: no rule says how much past work a TOR needs, and the extraction does not read one.
+- **Not built.** A "gap" for past work by field (past projects carry no category), and the less-competitive
+  categories (TOR-284, needs the winner announcements of TOR-221).

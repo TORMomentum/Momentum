@@ -45,6 +45,7 @@ import { buildVaultRouter } from "./modules/vault/vault.routes.js";
 import { buildBookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 import { MatchingRepository } from "./modules/matching/matching.repository.js";
 import { buildMatchingRouter } from "./modules/matching/matching.routes.js";
+import { buildPathRouter } from "./modules/path/path.routes.js";
 
 /** Every route lives under one version prefix — see docs/API.md §1. */
 export const API_PREFIX = "/api/v1";
@@ -101,12 +102,14 @@ export function buildApp(config: Config, db: Db): Express {
     }),
   });
   const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config), behaviour: behaviourRepository });
+  const pathRouter = buildPathRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config) });
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);
     app.use(prefix, bookmarksRouter);
     app.use(prefix, behaviourRouter);
     app.use(prefix, matchingRouter);
+    app.use(prefix, pathRouter);
     app.use(prefix, vaultRouter);
     app.use(prefix, draftsRouter);
   }
