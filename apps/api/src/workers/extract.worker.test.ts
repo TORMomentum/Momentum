@@ -1,6 +1,8 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { Job, Queue } from "../ports/queue.port.js";
-import { runOnce } from "./extract.worker.js";
+import { loadConfig } from "../core/config.js";
+import { extractionBlocker, runCycle, runOnce } from "./extract.worker.js";
 
 /** A queue with one claimable job, then nothing. */
 function oneJobQueue(job: Job, failResult: { willRetry: boolean }) {
@@ -98,5 +100,32 @@ describe("runOnce", () => {
     expect(queue.abandon).toHaveBeenCalledWith("job-1", "no title, no agency");
     expect(queue.fail).not.toHaveBeenCalled();
     expect(t.onFailed).toHaveBeenCalledWith("tor-1", "no title, no agency");
+  });
+});
+
+describe("when extraction cannot run", () => {
+  const config = (vertex: { project?: string; credentialsPath?: string }) => ({ ...loadConfig({ ...process.env, GOOGLE_CLOUD_PROJECT: vertex.project ?? "", GOOGLE_APPLICATION_CREDENTIALS: vertex.credentialsPath ?? "" }) });
+
+  it("names what is missing, including a credential path that points at no file", () => {
+    expect(extractionBlocker(config({}))).toContain("GOOGLE_CLOUD_PROJECT");
+    expect(extractionBlocker(config({ project: "p" }))).toContain("GOOGLE_APPLICATION_CREDENTIALS");
+    expect(extractionBlocker(config({ project: "p", credentialsPath: "no/such/credential.json" }))).toContain("does not exist");
+    expect(extractionBlocker(config({ project: "p", credentialsPath: fileURLToPath(import.meta.url) }))).toBeNull();
+  });
+
+  it("claims nothing, so no record is published without being read", async () => {
+    const queue = oneJobQueue(job, { willRetry: true });
+    const t = transitions();
+
+    const result = await runCycle({ queue, ...t }, null);
+
+    expect(result).toBe("idle");
+    expect(queue.claim).not.toHaveBeenCalled();
+    expect(t.onPublished).not.toHaveBeenCalled();
+  });
+
+  it("runs the job when there is a handler", async () => {
+    const queue = oneJobQueue(job, { willRetry: true });
+    expect(await runCycle({ queue, ...transitions() }, vi.fn(async () => {}))).toBe("published");
   });
 });
