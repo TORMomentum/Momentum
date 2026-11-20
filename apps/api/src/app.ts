@@ -6,6 +6,7 @@ import { errorMiddleware } from "./core/errors.js";
 import { sessionContext } from "./core/session-context.js";
 import { createStorage, createVaultStorage } from "./adapters/storage.factory.js";
 import { createMailer } from "./adapters/mailer.factory.js";
+import { HibpBreachedPasswords } from "./adapters/hibp.breached-passwords.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
 import { IntakeRepository } from "./modules/intake/intake.repository.js";
 import { IntakeService } from "./modules/intake/intake.service.js";
@@ -81,7 +82,7 @@ export function buildApp(config: Config, db: Db): Express {
   const vaultService = new VaultService(vaultRepository, vaultStorage);
   const accountsRouter = buildAccountsRouter({
     config, accounts: accountsRepository, tokens: tokensRepository,
-    sessions: sessionsRepository, mailer, vault: vaultService,
+    sessions: sessionsRepository, mailer, breachedPasswords: new HibpBreachedPasswords(config.hibp), vault: vaultService,
   });
   const vaultRouter = buildVaultRouter({ config, vault: vaultRepository, service: vaultService, storage: vaultStorage });
   // Mounted twice on purpose. The browser reaches the signed-in account's own

@@ -24,6 +24,10 @@ const config = {
 let db: Db;
 let mailer: LogMailer;
 let app: express.Express;
+/** The breach corpus, faked: passwords listed here are "seen"; `corpusDown` makes it unreachable. */
+const leaked = new Set<string>();
+let corpusDown = false;
+const breachedPasswords = { occurrences: async (password: string) => { if (corpusDown) throw new Error("down"); return leaked.has(password) ? 5 : 0; } };
 let vaultRemoveAll: (accountId: string) => Promise<void> = async () => undefined;
 
 function buildTestApp() {
@@ -39,6 +43,7 @@ function buildTestApp() {
     tokens: tokensRepository,
     sessions: sessionsRepository,
     mailer,
+    breachedPasswords,
     vault: { removeAll: (accountId: string) => vaultRemoveAll(accountId) },
   }));
   testApp.use(errorMiddleware);
@@ -95,6 +100,8 @@ beforeEach(async () => {
     tors(db).deleteMany({}),
   ]);
   mailer = new LogMailer();
+  leaked.clear();
+  corpusDown = false;
   vaultRemoveAll = async () => undefined;
   app = buildTestApp();
 });
@@ -104,6 +111,42 @@ afterAll(async () => {
 });
 
 describe("account routes", () => {
+  it("register refuses a password the breach corpus has seen, with the Thai message, and creates nothing (TOR-320)", async () => {
+    leaked.add("leaked-passphrase-1");
+    const response = await register("vendor@example.test", "leaked-passphrase-1");
+
+    expect(response.status).toBe(422);
+    expect(response.body.error).toMatchObject({ code: "password_breached", message: expect.stringContaining("รั่วไหล") });
+    expect(await accounts(db).countDocuments({})).toBe(0);
+    expect(mailer.messages).toHaveLength(0);
+  });
+
+  it("register refuses a password on the bundled common list even when the corpus is unreachable, and accepts others (TOR-320)", async () => {
+    corpusDown = true;
+    const common = await register("a@example.test", "Password");
+    const other = await register("b@example.test", "a-long-unlisted-passphrase");
+
+    expect(common.status).toBe(422);
+    expect(common.body.error.code).toBe("password_breached");
+    expect(other.status).toBe(202);
+  });
+
+  it("password reset refuses a breached password and leaves the link usable; change refuses it too (TOR-320)", async () => {
+    await verifiedAccount();
+    const session = (await login()).body.sessionId as string;
+    leaked.add("leaked-passphrase-2");
+    const changeRefused = await write(request(app).post("/api/v1/password/change")).set("x-session-id", session).send({ currentPassword: "correct-password", password: "leaked-passphrase-2" });
+
+    await write(request(app).post("/api/v1/password/forgot")).send({ email: "vendor@example.test" });
+    const token = tokenFromLastEmail();
+    const refused = await write(request(app).post("/api/v1/password/reset")).send({ token, password: "leaked-passphrase-2" });
+    const retry = await write(request(app).post("/api/v1/password/reset")).send({ token, password: "fresh-unlisted-passphrase" });
+
+    expect(changeRefused.status).toBe(422);
+    expect(refused.status).toBe(422);
+    expect(retry.status).toBe(200);
+  });
+
   it("register creates an account that is not yet verified, records consent, and sends one email", async () => {
     const response = await register();
     const stored = await accounts(db).findOne({ email: "vendor@example.test" });
