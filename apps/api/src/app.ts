@@ -64,6 +64,8 @@ export function buildApp(config: Config, db: Db): Express {
   const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
   const statsRepository = new StatsRepository(db);
 
+  // Without this every request seems to come from the web server, so per-IP limits are one global bucket.
+  if (config.trustProxy !== false) app.set("trust proxy", config.trustProxy);
   app.use(express.json());
   app.use(sessionContext(sessionsRepository));
 

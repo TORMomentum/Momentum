@@ -1,6 +1,7 @@
 import "server-only";
 
 import { identityToken } from "./api-client";
+import { forwardedClientHeaders } from "./client-ip";
 
 /** Headers the browser may see from the API's document response (spec §5.3). */
 const FORWARDED = [
@@ -39,6 +40,7 @@ export async function proxyDocument(
   const upstream = await fetch(target, {
     method: request.method,
     headers: {
+      ...(await forwardedClientHeaders(request.headers)),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...extraHeaders,
       ...(request.headers.get("range") ? { range: request.headers.get("range") as string } : {}),
