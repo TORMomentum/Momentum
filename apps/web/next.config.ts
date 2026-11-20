@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+import { securityHeaderRules } from "./src/shared/lib/security-headers";
 
 /**
  * Configuration lives in ONE file for the whole repository, and Next only reads
@@ -22,7 +23,19 @@ const allowedMimeTypes = process.env.ALLOWED_MIME_TYPES ?? "application/pdf,imag
 // the same MATCH_BEHAVIOUR_ENABLED, not a second switch.
 const behaviourEnabled = process.env.MATCH_BEHAVIOUR_ENABLED === "true";
 
+// The same HSTS_MAX_AGE_SECONDS the API reads (TOR-321); one year unless set.
+const hstsMaxAgeSeconds = Number(process.env.HSTS_MAX_AGE_SECONDS ?? 31_536_000);
+
 const nextConfig: NextConfig = {
+  // Security headers on every response (TOR-321) — the policy itself is in
+  // src/shared/lib/security-headers.ts.
+  poweredByHeader: false,
+  async headers() {
+    return securityHeaderRules({
+      dev: process.env.NODE_ENV !== "production",
+      hstsMaxAgeSeconds: Number.isFinite(hstsMaxAgeSeconds) && hstsMaxAgeSeconds >= 0 ? hstsMaxAgeSeconds : 31_536_000,
+    });
+  },
   // The repo's agent rules live at the root; do not generate a second set here.
   agentRules: false,
   // Development only, and it defaults to bottom-left — directly on top of the
