@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
   // reports what a route rendered as, but moved out of the way.
   devIndicators: { position: "bottom-right" },
   output: "standalone",
+  // Do not announce the framework (TOR-321).
+  poweredByHeader: false,
   // Exposes the same limits to the client bundle as NEXT_PUBLIC_* — see
   // UploadForm.tsx, which reads these instead of restating the numbers.
   env: {
