@@ -258,7 +258,7 @@ and finally smoke-checks each service through `gcloud run services describe` (co
 `Ready` is `True` and the latest created revision is the latest ready one; no request goes
 through IAP) (`.github/workflows/deploy.yml`).
 
-That last step exists because `gcloud run services replace` only ever applies
+The IAP step exists because `gcloud run services replace` only ever applies
 `deploy/cloudrun/web.yaml`'s own spec, and IAP enablement isn't expressible in that Knative
 YAML — it's a separate setting on the service resource, which every `replace` above silently
 drops. Left alone, every deploy would quietly turn `web` back into IAM-only and lock out
