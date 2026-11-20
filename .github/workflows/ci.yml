@@ -21,6 +21,8 @@ jobs:
       # signs nothing that outlives the run.
       SESSION_SECRET: ci-session-secret-not-used-outside-this-run
       APP_ORIGIN: http://web:3000
+      # Compose requires it for the web service; a throwaway value, like the others.
+      STAFF_ACCESS_SECRET: ci-staff-secret-not-used-outside-this-run
     steps:
       - uses: actions/checkout@v4
         with:
