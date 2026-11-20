@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-321 Web security headers
+
+- [x] TOR-352 Nonce-based CSP in `apps/web/proxy.ts` (`script-src 'nonce-…' 'strict-dynamic'`; no `unsafe-eval` in production)
+- [x] TOR-353 HSTS (production only), `Referrer-Policy`, `nosniff`, `Permissions-Policy`, `poweredByHeader: false`
+- [x] TOR-354 `frame-ancestors 'none'`, `'self'` for the original-viewer routes; `X-Frame-Options` to match
+- [x] Verified live: zero CSP violations on landing, search, dashboard, login, TOR detail, original; framing blocked from a foreign origin
+- [x] TOR-355 header capture saved as `docs/security/evidence/web-headers.txt` and `.png` (a rendered `curl -I`)
+- [ ] TOR-355 a human still takes the real DevTools Network screenshot for the report
+- [ ] Not run: a deployed Cloud Run + IAP check (HSTS and IAP's own pages); the TOR detail page was checked with a queued record only
+- [ ] `style-src-attr 'unsafe-inline'` stays while components use `style={{…}}`; removing it means moving those to CSS classes or custom properties
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

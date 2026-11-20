@@ -110,6 +110,9 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F8-2 | FR-F-1 | `evaluateChecklist` | budget extracted but not verified | C1 fails | Pass | `checklist.test.ts` |
 | UT-F10-1 | FR-B-5 | `redactContactString` | `"ติดต่อ โทร 02-246-1551 มือถือ 081-234-5678"` | office line kept, mobile removed | Pass | `redact.test.ts` |
 | UT-F10-2 | FR-B-6, NFR-S3 | takedown and restore routes | reject (reason "ไม่ใช่เอกสาร TOR"), then restore, a TOR | restricted with the reason, then public again; both logged; same storage key — the original is kept | Pass | `admin.routes.test.ts` |
+| UT-S1-1 | NFR-S1, ASVS V3.4 | `securityHeaders`, `buildCsp` | `/search` vs `/tors/abc/document` vs `/admin/tors/abc/pages/2`; production vs development; two nonces | nonce differs per call and sits in `script-src`; `frame-ancestors 'none'` + `DENY` except the viewer routes (`'self'` + `SAMEORIGIN`); `unsafe-eval` and missing HSTS only outside production; env extra sources appended | Not in the 2026-11-03 run | `security-headers.test.ts` |
+
+Live check (TOR-321, 2026-11-20, headless Chromium against the production web image): zero CSP violations on `/`, `/search`, `/dashboard`, `/login`, `/tors/:id`, `/tors/:id/original`; the viewer document loads in a same-origin iframe and is blocked in a foreign-origin one; `/search` is blocked in any iframe. Evidence: `docs/security/evidence/web-headers.{txt,png}`.
 
 F11 (CSV export) has no test because it is not built. F12's automated tests cover collection only;
 per-adapter health reporting is not built.

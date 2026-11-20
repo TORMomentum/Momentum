@@ -468,3 +468,23 @@ Next.js 16.3.x documentation, retrieved 2026-09-10:
 - [Caching](https://nextjs.org/docs/app/getting-started/caching) — Cache Components, `use cache`, `cacheLife`, Partial Prerendering, where cached content is stored
 - [How to think about data security](https://nextjs.org/docs/app/guides/data-security) — the three approaches, the Data Access Layer, server action authorisation
 - [Next.js 16](https://nextjs.org/blog/next-16) — `cacheComponents` replacing `dynamicIO` and `useCache`
+
+---
+
+## Revision 2026-11-20 — security headers and per-request rendering (TOR-321)
+
+`apps/web/proxy.ts` (Next 16's name for `middleware.ts`) now runs on every page and route response and sets a nonce-based
+`Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and, in
+production only, `Strict-Transport-Security`. The rules live in `src/shared/lib/security-headers.ts`.
+
+- **Rendering trade-off.** A CSP nonce exists only for a request, so no page can be prerendered at build time. This
+  changes nothing in practice: the root layout already reads the session cookie, which made every route dynamic; `next build`
+  lists none as static. Static assets under `/_next/static` are outside the proxy and stay cacheable.
+- **Framing.** `frame-ancestors 'none'` everywhere; `'self'` only on the three original-viewer routes the in-app iframe loads.
+- **Inline styles.** React `style={{…}}` renders `style=""` attributes (chart and bar positions), which a nonce cannot
+  cover, so `style-src-attr 'unsafe-inline'` is allowed; `<style>` elements and all scripts stay nonce-gated. Dev adds
+  `'unsafe-eval'` and `'unsafe-inline'` styles, as Next's guide requires.
+- **No `upgrade-insecure-requests`**, because the Compose stack is plain http and the directive would break it.
+- **Zod** is put in `jitless` mode on the client (`shared/lib/zod-no-eval.ts`) so its `new Function` probe does not
+  report a CSP violation.
+- HSTS is sent only when `NODE_ENV=production`; behind Cloud Run/IAP the origin is https. IAP's own pages are not ours.

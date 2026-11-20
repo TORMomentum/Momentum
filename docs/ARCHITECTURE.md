@@ -216,6 +216,7 @@ flowchart LR
 | `features/<screen>/` | That screen's components **and** its stylesheet — `dashboard`, `search`, `tor-detail`, `profile`, `notifications`, `admin`, `auth`, `app-shell`, `landing` |
 | `shared/ui/` | What genuinely crosses screens: `BudgetRange`, star/bookmark icons, section-title styles |
 | `shared/lib/` | Client state: `viewer` (prototype session), `notifications` (read state) |
+| `proxy.ts` (app root) · `shared/lib/security-headers.ts` | Next 16's `proxy` (ex-middleware) sets a per-request nonce CSP (`script-src 'nonce-…' 'strict-dynamic'`), `frame-ancestors 'none'` (`'self'` only for the original-viewer routes `/tors/:id/document`, `/admin/tors/:id/document`, `/admin/tors/:id/pages/:n`), `X-Frame-Options`, nosniff, `Referrer-Policy`, `Permissions-Policy`, and HSTS in production (TOR-321). Every page renders per request (nonces need it; the root layout already read the session cookie). `CSP_EXTRA_IMG_SRC` / `CSP_EXTRA_CONNECT_SRC` add sources |
 | `shared/styles/tokens.css` | Every colour, font stack, and rhythm value in the product |
 | `data/` | Sample records the screens render until the pipeline fills them |
 
