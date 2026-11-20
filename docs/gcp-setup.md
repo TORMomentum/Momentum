@@ -125,6 +125,11 @@ The code side — the three `deploy/cloudrun/*.yaml` service definitions and
 `.github/workflows/deploy.yml` — is already in the repo (TOR-140, TOR-142). Everything
 below is console-only: no `gcloud` needed, same as §1–§6.
 
+Deploys are automatic: when the **CI** workflow succeeds for a push to `main`, **Deploy to
+Cloud Run** starts by itself and ships exactly the commit CI tested (images are tagged with
+its SHA). If CI fails, nothing deploys. Only one deploy runs at a time; a second merge waits
+rather than cancelling a rollout. See §7.5 for redeploy and rollback.
+
 ### 7.1 Enable APIs (TOR-138)
 
 Same project as Vertex AI / GCS. **APIs & Services → Enable APIs & Services**, search for
@@ -225,16 +230,33 @@ Repo → **Settings → Secrets and variables → Actions**.
 | :--- | :--- |
 | `GCP_DEPLOY_SA_KEY` | the full JSON key downloaded in §7.2, pasted as-is |
 
-### 7.5 First deploy
+### 7.5 Deploys, redeploy and rollback
 
-Actions tab → **Deploy to Cloud Run** → **Run workflow**, type `deploy` to confirm. It
-builds and pushes both images, then deploys in three passes because `web` and `api` each
-need the other's URL: `web` first with placeholder `API_BASE_URL`/`APP_ORIGIN` values (just
-to make the service exist and get a real URL), then `api` and `worker` with `APP_ORIGIN` set
-to that URL, then `web` again with the real `API_BASE_URL` now that `api` exists and its own
-real `APP_ORIGIN` (`app/api/auth/[...path]/route.ts` needs it too, for the same-origin check
-on register/login), then re-asserts Identity-Aware Proxy on `web`
-(`.github/workflows/deploy.yml`).
+**Normal path:** merge to `main`. CI runs; if it passes, the **Deploy to Cloud Run**
+workflow starts (Actions tab) with no manual step. **Manual fallback / redeploy:** Actions
+tab → **Deploy to Cloud Run** → **Run workflow** on `main`, type `deploy`.
+
+**Rollback:** either revert the bad commit on `main` (the normal path redeploys the revert),
+or point traffic back at a previous revision right away:
+
+```
+gcloud run revisions list --service tor-radar-web --region <region>
+gcloud run services update-traffic tor-radar-web --region <region> --to-revisions <revision>=100
+```
+
+(Repeat for `tor-radar-api` / `tor-radar-worker` as needed. The next deploy puts the newest
+revision back in front.)
+
+The workflow builds and pushes both images, then deploys. `web` and `api` each need the
+other's URL, so the very first deploy creates `web` with placeholder `API_BASE_URL`/`APP_ORIGIN`
+values just to get a real URL; that pass is **skipped whenever `tor-radar-web` already exists**,
+so a routine deploy never rolls a placeholder revision into live traffic. Every deploy then
+deploys `api` and `worker` with `APP_ORIGIN` set to web's URL, then `web` with the real
+`API_BASE_URL` and its own real `APP_ORIGIN` (`app/api/auth/[...path]/route.ts` needs it too,
+for the same-origin check on register/login), then re-asserts Identity-Aware Proxy on `web`,
+and finally smoke-checks each service through `gcloud run services describe` (condition
+`Ready` is `True` and the latest created revision is the latest ready one; no request goes
+through IAP) (`.github/workflows/deploy.yml`).
 
 That last step exists because `gcloud run services replace` only ever applies
 `deploy/cloudrun/web.yaml`'s own spec, and IAP enablement isn't expressible in that Knative

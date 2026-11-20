@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,16 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — Continuous deployment to Cloud Run
+
+- [x] `deploy.yml` runs after CI succeeds on a push to `main` (`workflow_run`); manual `workflow_dispatch` kept
+- [x] Deploys the exact commit CI tested (checkout and image tags use the CI head SHA)
+- [x] `concurrency` group `deploy-cloud-run`, no cancel-in-progress
+- [x] Placeholder first pass only when `tor-radar-web` does not exist (no broken revision on routine deploys)
+- [x] Post-rollout smoke check (Ready condition, latest created == latest ready); workflow validated with action-validator
+- [x] `docs/gcp-setup.md` §7 describes auto-deploy, redeploy and rollback
+- [ ] Not verified live (needs GitHub secrets): after merge, confirm "Deploy to Cloud Run" starts in the Actions tab after CI on `main` and goes green
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
