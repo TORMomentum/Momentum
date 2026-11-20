@@ -4,6 +4,7 @@ import "../src/shared/styles/tokens.css";
 import { NotificationsProvider } from "../src/shared/lib/notifications";
 import { nameFromEmail, ViewerProvider, type Account } from "../src/shared/lib/viewer";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { apiRequest } from "../src/shared/api/api-client";
 
 // Self-hosted at build time: no render-blocking request, no layout shift.
@@ -36,6 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // never asked and never told the session id.
   const sessionId = (await cookies()).get("tor-radar-session")?.value;
   let account: Account | null = null;
+  let expired = false;
   if (sessionId) {
     try {
       const response = await apiRequest("/api/v1/me", {}, sessionId);
@@ -50,8 +52,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           role: me.role === "admin" ? "admin" : "vendor",
         };
       }
+      expired = response.status === 401;
     } catch { /* Public pages remain available if the API is unavailable. */ }
   }
+  // The API no longer accepts this cookie (idle or absolute timeout, signed in elsewhere, account disabled).
+  // The route clears it and sends the reader to sign in again, so a dead cookie is not retried on every page.
+  if (expired) redirect("/api/auth/expired");
   return (
     <html lang="th" className={`${display.variable} ${body.variable} ${data.variable}`}>
       <body>

@@ -31,6 +31,7 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The server does not say which part was wrong, and neither does this. */
 const AUTH_FAILURE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้ยืนยันอีเมล";
+const EXPIRED = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง";
 const COPY = {
   login: {
     kicker: "เข้าสู่ระบบผู้ประกอบการ",
@@ -93,7 +94,8 @@ export function LoginView() {
   const [consented, setConsented] = useState(false);
   // Separate and optional (TOR-259): never a condition of creating the account.
   const [behaviourConsented, setBehaviourConsented] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Sent here by the session timeout; replaced by the first attempt's own message.
+  const [error, setError] = useState<string | null>(params.get("reason") === "expired" ? EXPIRED : null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 

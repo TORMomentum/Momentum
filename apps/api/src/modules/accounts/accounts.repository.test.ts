@@ -16,7 +16,7 @@ let sessionsRepository: SessionsRepository;
 beforeAll(async () => {
   db = await connect(isolatedDbUrl(config.mongoUrl, "accounts-repository"));
   await ensureIndexes(db);
-  sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  sessionsRepository = new SessionsRepository(db, config.session);
   accountsRepository = new AccountsRepository(db, sessionsRepository);
 });
 
