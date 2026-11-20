@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import type { Db } from "mongodb";
 import { pathToFileURL } from "node:url";
 import { loadEnvFile } from "../core/env-file.js";
@@ -31,18 +32,29 @@ import { StatsRepository } from "../modules/stats/stats.repository.js";
 export type ExtractionHandler = (torId: string) => Promise<void>;
 
 /**
- * Does nothing and reports every record as published. Used by the seam tests
- * and by `--dry-run`, and as the fallback when no Vertex credential is
- * configured so the queue mechanics still run locally.
+ * Does nothing and reports every record as published. For the seam tests only:
+ * it must never stand in for extraction in a running worker, because a record
+ * it "extracts" is published with no fields and nothing on screen says so.
  */
 export const passThroughHandler: ExtractionHandler = async () => {};
 
-/** The real handler when a Vertex credential is present; the pass-through otherwise. */
-export function buildHandler(config: Config, db: Db): ExtractionHandler {
-  if (!config.vertex.project || !config.vertex.credentialsPath) {
-    console.warn(JSON.stringify({ event: "extraction_disabled", reason: "no Vertex credential; using pass-through" }));
-    return passThroughHandler;
-  }
+/**
+ * Why extraction cannot run here, or null when it can. The path is checked as well as set: a credential path
+ * that points at no file used to pass this check and fail every job at the first Vertex call instead.
+ */
+export function extractionBlocker(config: Config): string | null {
+  if (!config.vertex.project) return "GOOGLE_CLOUD_PROJECT is not set";
+  if (!config.vertex.credentialsPath) return "GOOGLE_APPLICATION_CREDENTIALS is not set";
+  if (!existsSync(config.vertex.credentialsPath)) return `the credential file does not exist: ${config.vertex.credentialsPath}`;
+  return null;
+}
+
+/**
+ * The real handler, or null when extraction cannot run. Null is not a cue to fake it: the worker then leaves
+ * every job queued (see `runCycle`), so an upload that was never read stays visibly unprocessed.
+ */
+export function buildHandler(config: Config, db: Db): ExtractionHandler | null {
+  if (extractionBlocker(config)) return null;
   const embedder = createEmbedder(config);
   const service = new ExtractionService({
     storage: createStorage(config, "worker"),
@@ -53,8 +65,8 @@ export function buildHandler(config: Config, db: Db): ExtractionHandler {
       ? {
           ocr: new DocumentAiOcr({
             location: config.ocr.location,
-            project: config.vertex.project,
-            credentialsPath: config.vertex.credentialsPath,
+            project: config.vertex.project!,
+            credentialsPath: config.vertex.credentialsPath!,
             processorId: config.ocr.processorId,
             maxPages: config.ocr.maxPages,
             timeoutMs: config.ocr.timeoutMs,
@@ -86,6 +98,11 @@ export interface RunOnceDeps {
 }
 
 export type RunOnceResult = "idle" | "published" | "retry" | "failed";
+
+/** One pass of the loop. With no handler it claims nothing: the jobs wait, queued, until extraction can run. */
+export async function runCycle(deps: Omit<RunOnceDeps, "handle">, handle: ExtractionHandler | null): Promise<RunOnceResult> {
+  return handle ? runOnce({ ...deps, handle }) : "idle";
+}
 
 /**
  * One claim-handle-resolve cycle. Pure orchestration over the injected ports,
@@ -166,7 +183,12 @@ export async function startWorker(
     backoffMs: config.jobBackoffMs,
     lockMs: config.jobLockMs,
   });
-  const deps: RunOnceDeps = { queue, handle: handle ?? buildHandler(config, db), ...torTransitions(db, { windowMonths: config.stats.peerWindowMonths }) };
+  const deps = { queue, ...torTransitions(db, { windowMonths: config.stats.peerWindowMonths }) };
+  const resolved = handle ?? buildHandler(config, db);
+  if (!resolved) {
+    // Loud on purpose: the housekeeping below still runs, but nothing is extracted and nothing is published.
+    console.error(JSON.stringify({ event: "extraction_disabled", reason: extractionBlocker(config), effect: "jobs stay queued; no record is published" }));
+  }
 
   let lastReconcile = 0;
   console.log(JSON.stringify({ event: "worker_started", pollMs: config.jobPollMs }));
@@ -192,7 +214,7 @@ export async function startWorker(
       lastReconcile = Date.now();
     }
 
-    const result = await runOnce(deps);
+    const result = await runCycle(deps, resolved);
     if (result === "idle") {
       await new Promise((resolve) => setTimeout(resolve, config.jobPollMs));
     } else {

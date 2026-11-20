@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-11_
+_last updated: 2026-11-12_
 
 ---
 
@@ -549,6 +549,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] The sample is the newest `PATH_SAMPLE_CAP` TORs of the field; a thin field says so but is not widened
 - [ ] The sample reads every classified TOR id of the field before capping (so the cap follows announcement date); not timed on a real-size corpus
 - [ ] Not seen in a browser
+
+## 2s. Admin upload reaches extraction (2026-11-12)
+
+- [x] **A worker with no usable Vertex credential no longer publishes.** It logs `extraction_disabled`, claims no
+      job, and leaves records `queued` (before: pass-through marked them `published` with no fields)
+- [x] A credential path that names no file counts as "no credential" (a typo used to fail every job at Vertex)
+- [x] `npm run dev` starts the extraction worker; before, a dev upload sat `queued` with no consumer
+- [ ] Not yet shown live: upload in the admin screen, watch the record reach `published` (needs Docker + Vertex)
+- [ ] The Cloud Run worker's credential and project were not checked in this change
+- [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
+      match-email arrow from the extraction worker — both to settle with the email check
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
