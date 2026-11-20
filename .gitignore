@@ -22,3 +22,4 @@ docs/corpus/_extra/
 
 # Python bytecode cache from tools/
 __pycache__/
+zap-reports/
