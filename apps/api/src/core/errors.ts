@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+import { logger } from "./logger.js";
 
 export class AppError extends Error {
   constructor(
@@ -77,7 +78,7 @@ export class DocumentUnreadableError extends Error {
  */
 export function errorMiddleware(
   error: Error,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
@@ -102,6 +103,6 @@ export function errorMiddleware(
     });
     return;
   }
-  console.error("unhandled_error", { name: error.name, message: error.message });
+  logger.error("unhandled_error", { requestId: req.id, name: error.name, error: error.message });
   res.status(500).json({ error: { code: "internal", message: "Internal server error" } });
 }

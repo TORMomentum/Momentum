@@ -4,6 +4,8 @@ import { sourcesRouter } from "./routes/sources";
 import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
 import { sessionContext } from "./core/session-context.js";
+import { configureLogger } from "./core/logger.js";
+import { securityLog } from "./core/security-log.js";
 import { createStorage, createVaultStorage } from "./adapters/storage.factory.js";
 import { createMailer } from "./adapters/mailer.factory.js";
 import { MongoQueue } from "./adapters/mongo.queue.js";
@@ -56,6 +58,7 @@ export const API_PREFIX = "/api/v1";
  * modules testable with fakes.
  */
 export function buildApp(config: Config, db: Db): Express {
+  configureLogger(config.logLevel);
   const app = express();
   const storage = createStorage(config, "api");
   // Feature services receive this port as they gain outbound email behaviour.
@@ -64,6 +67,8 @@ export function buildApp(config: Config, db: Db): Express {
   const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
   const statsRepository = new StatsRepository(db);
 
+  // First, so every refusal and rate-limit hit further down is seen and carries a request id.
+  app.use(securityLog());
   app.use(express.json());
   app.use(sessionContext(sessionsRepository));
 

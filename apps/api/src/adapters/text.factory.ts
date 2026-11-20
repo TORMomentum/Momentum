@@ -1,6 +1,7 @@
 import type { Config } from "../core/config.js";
 import { GenerationError, type TextGenerator } from "../ports/text-generator.port.js";
 import { VertexText } from "./vertex.text.js";
+import { logger } from "../core/logger.js";
 
 /**
  * The generator behind the cover-letter draft. Without a Vertex credential the draft is still offered when
@@ -9,7 +10,7 @@ import { VertexText } from "./vertex.text.js";
  */
 export function createTextGenerator(config: Config): TextGenerator {
   if (!config.vertex.project || !config.vertex.credentialsPath) {
-    if (config.draft.enabled) console.warn(JSON.stringify({ event: "draft_unavailable", reason: "no Vertex credential" }));
+    if (config.draft.enabled) logger.warn("draft_unavailable", { reason: "no Vertex credential" });
     return { generate: async () => { throw new GenerationError("no Vertex credential"); } };
   }
   return new VertexText({
