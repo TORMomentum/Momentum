@@ -31,7 +31,7 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Wording for a refused breached password (TOR-320); the API's `code` selects it, the text stays in the UI. */
 export const BREACHED_PASSWORD_CODE = "password_breached";
-export const BREACHED_PASSWORD_MESSAGE = "รหัสผ่านนี้เคยรั่วไหลในเหตุข้อมูลรั่วไหล กรุณาเลือกรหัสผ่านอื่น";
+export const BREACHED_PASSWORD_MESSAGE = "รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น";
 export async function readErrorCode(response: Response): Promise<string | undefined> {
   try {
     return ((await response.json()) as { error?: { code?: string } }).error?.code;

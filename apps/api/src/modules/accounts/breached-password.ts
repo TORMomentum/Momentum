@@ -3,7 +3,7 @@ import { AppError } from "../../core/errors.js";
 import type { Config } from "../../core/config.js";
 import type { BreachedPasswords } from "../../ports/breached-passwords.port.js";
 
-export const BREACHED_PASSWORD_MESSAGE = "รหัสผ่านนี้เคยรั่วไหลในเหตุข้อมูลรั่วไหล กรุณาเลือกรหัสผ่านอื่น";
+export const BREACHED_PASSWORD_MESSAGE = "รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น";
 
 /** A 422 the web forms recognise by `code`, so they can show the message beside the password field. */
 export class BreachedPasswordError extends AppError {
