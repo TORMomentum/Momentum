@@ -80,7 +80,11 @@ const TRUST_POINTS = [
   },
 ];
 
-export function LoginView() {
+/** The one message for every way a Google sign-in can end badly; the reason is in the API's log, not the URL. */
+const GOOGLE_FAILURE = "ไม่สามารถเข้าสู่ระบบด้วย Google ได้ กรุณาลองใหม่ หรือเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน";
+
+/** `googleEnabled` is read on the server from GOOGLE_OAUTH_ENABLED, so the button exists only where sign-in can work. */
+export function LoginView({ googleEnabled = false }: { googleEnabled?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const { signIn } = useViewer();
@@ -93,7 +97,7 @@ export function LoginView() {
   const [consented, setConsented] = useState(false);
   // Separate and optional (TOR-259): never a condition of creating the account.
   const [behaviourConsented, setBehaviourConsented] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(params.get("error") === "google" ? GOOGLE_FAILURE : null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -252,40 +256,41 @@ export function LoginView() {
           </button>
         </form>
 
-        <div className={styles.divider}>
-          <span className={styles.dividerLine} />
-          <span className={styles.dividerWord}>หรือ</span>
-          <span className={styles.dividerLine} />
-        </div>
+        {googleEnabled && (
+          <>
+            <div className={styles.divider}>
+              <span className={styles.dividerLine} />
+              <span className={styles.dividerWord}>หรือ</span>
+              <span className={styles.dividerLine} />
+            </div>
 
-        <div className={styles.alternatives}>
-          {/* Google is the only identity provider. ThaiD and an organisation
-              directory were dropped deliberately: this is a public platform for
-              vendors, so sign-in must not require a government identity, and no
-              national ID or tax ID is collected anywhere (SRS Appendix, TOR-156). */}
-          <button
-            type="button"
-            className={styles.alternative}
-            onClick={() => setError("การเข้าสู่ระบบด้วย Google จะเปิดใช้งานเมื่อเชื่อมต่อบัญชีแล้ว")}
-          >
-            <svg className={styles.providerMark} viewBox="0 0 48 48" aria-hidden="true">
-              <path
-                fill="#4285F4"
-                d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8a10 10 0 0 1-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"
-              />
-              <path
-                fill="#34A853"
-                d="M24 46c6 0 11-2 14.5-5.4l-7.1-5.5A13 13 0 0 1 24 37c-5.8 0-10.7-3.9-12.4-9.1H4.3v5.7A22 22 0 0 0 24 46z"
-              />
-              <path fill="#FBBC05" d="M11.6 27.9a13 13 0 0 1 0-8.4v-5.7H4.3a22 22 0 0 0 0 19.8l7.3-5.7z" />
-              <path
-                fill="#EA4335"
-                d="M24 11c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4.5 30 2.4 24 2.4A22 22 0 0 0 4.3 13.8l7.3 5.7C13.3 14.3 18.2 11 24 11z"
-              />
-            </svg>
-            ดำเนินการต่อด้วย Google
-          </button>
-        </div>
+            <div className={styles.alternatives}>
+              {/* Google is the only identity provider. ThaiD and an organisation
+                  directory were dropped deliberately: this is a public platform for
+                  vendors, so sign-in must not require a government identity, and no
+                  national ID or tax ID is collected anywhere (SRS Appendix, TOR-156).
+                  A plain link, not a fetch: the browser has to leave for Google. */}
+              <a className={styles.alternative} href="/api/auth/google/start">
+                <svg className={styles.providerMark} viewBox="0 0 48 48" aria-hidden="true">
+                  <path
+                    fill="#4285F4"
+                    d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8a10 10 0 0 1-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M24 46c6 0 11-2 14.5-5.4l-7.1-5.5A13 13 0 0 1 24 37c-5.8 0-10.7-3.9-12.4-9.1H4.3v5.7A22 22 0 0 0 24 46z"
+                  />
+                  <path fill="#FBBC05" d="M11.6 27.9a13 13 0 0 1 0-8.4v-5.7H4.3a22 22 0 0 0 0 19.8l7.3-5.7z" />
+                  <path
+                    fill="#EA4335"
+                    d="M24 11c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4.5 30 2.4 24 2.4A22 22 0 0 0 4.3 13.8l7.3 5.7C13.3 14.3 18.2 11 24 11z"
+                  />
+                </svg>
+                เข้าสู่ระบบด้วย Google
+              </a>
+            </div>
+          </>
+        )}
 
         <div className={styles.switch}>
           {copy.switchPrompt}{" "}
