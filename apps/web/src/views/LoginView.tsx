@@ -29,6 +29,17 @@ export const MIN_PASSWORD_LENGTH = 8;
 const behaviourEnabled = () => process.env.NEXT_PUBLIC_BEHAVIOUR_ENABLED === "true";
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Wording for a refused breached password (TOR-320); the API's `code` selects it, the text stays in the UI. */
+export const BREACHED_PASSWORD_CODE = "password_breached";
+export const BREACHED_PASSWORD_MESSAGE = "รหัสผ่านนี้เคยรั่วไหลในเหตุข้อมูลรั่วไหล กรุณาเลือกรหัสผ่านอื่น";
+export async function readErrorCode(response: Response): Promise<string | undefined> {
+  try {
+    return ((await response.json()) as { error?: { code?: string } }).error?.code;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The server does not say which part was wrong, and neither does this. */
 const AUTH_FAILURE = "อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้ยืนยันอีเมล";
 const COPY = {
@@ -135,7 +146,9 @@ export function LoginView() {
       setPassword("");
 
       if (!response.ok) {
-        setError(isSignup ? "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" : AUTH_FAILURE);
+        // A breached password is the one registration failure the server explains (TOR-320): the user can act on it.
+        const breached = isSignup && response.status === 422 && (await readErrorCode(response)) === BREACHED_PASSWORD_CODE;
+        setError(breached ? BREACHED_PASSWORD_MESSAGE : isSignup ? "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" : AUTH_FAILURE);
         return;
       }
 
