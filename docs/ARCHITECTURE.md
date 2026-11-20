@@ -166,6 +166,7 @@ flowchart LR
 | `core/config.ts` | Every threshold, host, port, credential, model name | No literal thresholds anywhere else |
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
+| `core/security-headers.ts` · `core/cors.ts` | Security headers on every response; CORS by allowlist (TOR-317) | Mounted first in `app.ts`; CORS never answers `*` |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
 | `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
 | `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers | Imported by `app.ts` only |
@@ -215,7 +216,7 @@ flowchart LR
 | `views/` | `DashboardView`, `SearchView`, `TorDetailView`, `VendorProfileView`, `LoginView`, `NotificationsView`, `AdminReviewView` |
 | `features/<screen>/` | That screen's components **and** its stylesheet — `dashboard`, `search`, `tor-detail`, `profile`, `notifications`, `admin`, `auth`, `app-shell`, `landing` |
 | `shared/ui/` | What genuinely crosses screens: `BudgetRange`, star/bookmark icons, section-title styles |
-| `shared/lib/` | Client state: `viewer` (prototype session), `notifications` (read state) |
+| `shared/lib/` | Client state: `viewer` (prototype session), `notifications` (read state); `security-headers` — the CSP and header set `next.config.ts` sends on every response (TOR-321) |
 | `shared/styles/tokens.css` | Every colour, font stack, and rhythm value in the product |
 | `data/` | Sample records the screens render until the pipeline fills them |
 

@@ -75,6 +75,10 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F4-0 | FR-E-3 | `GET /tors?q=` keyword | a Thai word inside an unspaced title; the agency; a word in no record | finds the record by word, matches the agency, returns nothing for a miss; index creation is idempotent | Pass | `tors.atlas-search.test.ts` (needs `mongodb-atlas-local`) |
 | UT-F4-1 | NFR-F2 | `GET /tors` search | 5,000-record corpus, every filter at once | answered within 2 s | Pass | `tors.search.timing.test.ts` |
 | UT-F4-2 | NFR-F2 | `GET /tors` search | deep pages of the same corpus | each page within 2 s (cursor, not skip) | Pass | `tors.search.timing.test.ts` |
+| UT-SEC-1 | NFR-S1 | `securityHeaders` (API) | a normal response; a 404; HTTP and HTTPS (`X-Forwarded-Proto`); HSTS set to 0 | every header on both; no `X-Powered-By`; HSTS only over HTTPS, none when 0 | Pass | `security-headers.test.ts` (api) |
+| UT-SEC-2 | NFR-S1 | `cors` (API) | allowed origin; `https://evil.example`; lookalikes (`…test.evil.example`, `http://`, `null`); preflights from both; no `Origin` | echoed with credentials, never `*`; no CORS header; none; `204` / `403`; untouched | Pass | `cors.test.ts` |
+| UT-SEC-3 | NFR-S1, NFR-S7 | `loadConfig` CORS and HSTS | no list, blank, two origins; `*`; an origin with a path; HSTS default and 0 | `APP_ORIGIN` alone; the two; startup refused for both; one year, then off | Pass | `config.test.ts` |
+| UT-SEC-4 | NFR-S1 | `securityHeaderRules` (web) | production and dev; HSTS 0; the document routes | CSP self-only with `frame-ancestors 'none'`, eval and websocket only in dev; HSTS omitted at 0; documents framable by this origin only, and listed after the page rule so they win | Pass | `security-headers.test.ts` (web) |
 | UT-F5-1 | FR-C-1 | `scoreMatch` | TOR asks "ISO 9001 และ/หรือ ISO 14001"; vendor A holds ISO 14001, vendor B holds both | equal scores; reason `qualification-held` | Pass | `match-scorer.test.ts` |
 | UT-F5-2 | FR-C-1 | `scoreMatch` (ว642) | road TOR ≥ ฿5M; vendor holds no กรมบัญชีกลาง road registration | score = registered vendor's × 0.5; first reason `registration-missing` | Pass | `match-scorer.test.ts` |
 | UT-F5-3 | FR-C-2 | `scoreMatch` | TOR budget 500, outside the vendor's range | still listed (not excluded), lower score | Pass | `match-scorer.test.ts` |
@@ -138,6 +142,8 @@ the last column.
 | TC-F10-1 | F10 | Admin → reject (takedown) a TOR with a reason | Public page refuses it; audit entry written; original in storage unchanged | |
 | TC-F10-2 | F10 | Vendor → export data, then delete account | Export downloads; account and its data are gone | |
 | TC-F11-1 | F11 | Export CSV with filters active | Not built — case stands for when FR-E-7 lands | |
+| TC-SEC-1 | NFR-S1 | `curl -D -` any API route; with `X-Forwarded-Proto: https`; with `Origin: https://evil.example`; a preflight from it; from `APP_ORIGIN` | Security headers on every response; HSTS only the second time; no `Access-Control-*`; `403`; origin echoed and `204` | Pass · API on :4100 against local Mongo · 2026-11-20 |
+| TC-SEC-2 | NFR-S1 | `next build && next start`; open `/`, `/search`, `/dashboard`, `/methodology`, `/login`, a TOR page in Chrome; read the response headers in DevTools | The CSP and header set on every page, no CSP violation in the console; document routes carry `frame-ancestors 'self'`; a page on another origin framing a document is blocked | Pass · headless Chrome, six pages, no violations; cross-origin frame blocked · 2026-11-20 |
 | TC-F12-1 | F12 | Run `tools/import_national_egp_tors.mts` twice | Second run adds no records. The SRS criterion — each adapter reports its last collection and health — is not built | |
 
 Wording check for every case: no screen says "suspicious", "corrupt" or "irregular" (NFR-F5).

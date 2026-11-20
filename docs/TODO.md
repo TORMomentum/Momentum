@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-11_
+_last updated: 2026-11-20_
 
 ---
 
@@ -549,6 +549,25 @@ Branch `feat/tor-224-company-path`._
 - [ ] The sample is the newest `PATH_SAMPLE_CAP` TORs of the field; a thin field says so but is not widened
 - [ ] The sample reads every classified TOR id of the field before capping (so the cap follows announcement date); not timed on a real-size corpus
 - [ ] Not seen in a browser
+
+## 2s. Sprint 6 — security (course assignment 01219325, due 2026-11-22)
+
+_Tickets TOR-315 … TOR-327. Spec: foundation design §5.6, revision 2026-11-20. Branch
+`feat/tor-317-321-security-headers`._
+
+- [x] **TOR-317 — API security headers and CORS** — `core/security-headers.ts`, `core/cors.ts`, mounted
+      first in `app.ts`; CORS an allowlist (default `APP_ORIGIN`), `*` refused at startup
+  - [x] Unit tests (UT-SEC-1…3) and a live check against the API on :4100 (TC-SEC-1)
+- [x] **TOR-321 — web security headers** — CSP and the header set from `src/shared/lib/security-headers.ts`
+      via `next.config.ts` `headers()`; document routes framable by this origin only
+  - [x] Unit tests (UT-SEC-4); `next start` + headless Chrome on six pages, no CSP violation (TC-SEC-2)
+  - [ ] DevTools screenshot of the headers for the assignment report
+  - [ ] PDF inside the in-app viewer not seen rendering locally: the GCS emulator kept exiting (137); the
+        same headers on a stand-in server render identically to no headers at all
+- [ ] `script-src 'unsafe-inline'` stays — a nonce would make every page dynamic (accepted risk, T05)
+- [ ] TOR-315 Google sign-in · TOR-316 logging · TOR-318 rate limits · TOR-319 sessions · TOR-320 breached
+      passwords · TOR-322 ZAP · TOR-323 SAST and audit · TOR-324 secrets and input · TOR-325 access-control
+      evidence · TOR-326 document · TOR-327 slides
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

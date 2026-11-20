@@ -114,6 +114,37 @@ Validation failures add the failing paths, so a caller can fix the request witho
 Every `/intake` route is limited to `INTAKE_RATE_LIMIT_PER_MINUTE` requests per minute per client,
 reported in the standard `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` headers.
 
+### Security headers (TOR-317)
+
+Every response, including errors and `404`s, carries these (`core/security-headers.ts`). The API serves
+JSON and documents, never a page, so the policy forbids everything:
+
+| Header | Value |
+| :--- | :--- |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `no-referrer` |
+| `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Permissions-Policy` | camera, microphone, geolocation, payment, usb all off |
+| `Strict-Transport-Security` | `max-age=HSTS_MAX_AGE_SECONDS; includeSubDomains`, only when the request arrived over HTTPS (`X-Forwarded-Proto` on Cloud Run) |
+
+`X-Powered-By` is not sent. Document routes keep their own `Content-Disposition`, `nosniff` and
+`no-store` (§4).
+
+### CORS (TOR-317)
+
+The browser never calls the API: every page talks to the Next server, which calls the API
+server-to-server. CORS (`core/cors.ts`) therefore only answers a browser on another origin:
+
+| Request | Answer |
+| :--- | :--- |
+| `Origin` in `CORS_ALLOWED_ORIGINS` (blank = `APP_ORIGIN` alone) | That origin echoed in `Access-Control-Allow-Origin`, with credentials; a preflight gets `204`, the methods, headers and `Access-Control-Max-Age: CORS_MAX_AGE_SECONDS` |
+| Any other `Origin` | No CORS header, so the browser blocks the read; a preflight gets `403` |
+| No `Origin` (server-to-server, scripts) | Untouched — not a CORS matter; authentication still applies |
+
+`*` is never sent, and a `*` or a non-origin in `CORS_ALLOWED_ORIGINS` stops the API at startup.
+
 ---
 
 ## 3. Intake ✅ (slice 1, `FR-A-1`)
@@ -297,7 +328,8 @@ and never opens the object. A restricted record answers **`404`**, the same as a
 | start beyond the end | `416`, `Content-Range: bytes */size` |
 
 The web app never calls this route directly — it goes through a Next route handler on the app's own
-origin, so the browser needs no CORS configuration (rendering spec §2.1).
+origin, so the browser needs no CORS configuration (rendering spec §2.1). Any other origin is refused
+by the allowlist in §2 CORS.
 
 ---
 
@@ -450,3 +482,5 @@ account writes to `admin_audit`, so who did what and when survives (`FR-E-5`, `N
    silently corrected (`NFR-F7`).
 6. **Every host, port, key, and limit comes from configuration.** `localhost` appears in no source
    file (`NFR-S7`).
+7. **Every response carries the security headers, and CORS is an allowlist, never `*`** (§2,
+   TOR-317).

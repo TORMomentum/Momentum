@@ -307,6 +307,21 @@ The fetch is performed by a single helper in `lib/http.ts`. No module issues an 
 
 **Configuration added by this section:** `FETCH_TIMEOUT_MS`, `FETCH_MAX_REDIRECTS`, `FETCH_MAX_BYTES`, `MULTIPART_MAX_FILES`, `MULTIPART_MAX_FIELD_BYTES`.
 
+#### Revision 2026-11-20 — security headers and CORS (TOR-317, TOR-321)
+
+Adds to this section; nothing above is superseded.
+
+**API.** Every response carries a fixed header set from `core/security-headers.ts`, mounted before any route so errors and 404s carry it too: a CSP of `default-src 'none'; frame-ancestors 'none'`, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, same-origin opener and resource policies, and a Permissions-Policy that switches off device features. HSTS is sent only when the request arrived over HTTPS. `X-Powered-By` is off. Written by hand rather than with a library, so the whole set is reviewable in one file.
+
+**CORS.** The browser never calls the API — the Next server does, server-to-server — so CORS (`core/cors.ts`) is an allowlist that by default holds `APP_ORIGIN` alone. A listed origin is echoed back, never `*`; an unlisted one gets no CORS header and its preflight a 403; a request without `Origin` is not a CORS matter. A `*` in the list stops the API at startup.
+
+**Web.** `next.config.ts` sends the set from `src/shared/lib/security-headers.ts` on every path: a CSP limiting every fetch to the app's own origin with `frame-ancestors 'none'`, `object-src 'none'`, `base-uri` and `form-action` `'self'`, plus `X-Frame-Options: DENY`, `nosniff`, a referrer policy, COOP, a Permissions-Policy and HSTS. Two exceptions, both deliberate:
+
+- `script-src` keeps `'unsafe-inline'`, because the App Router injects inline bootstrapping scripts and a nonce would make every page dynamic, including the prerendered landing and methodology pages. React escapes all rendered text and there is no `dangerouslySetInnerHTML`, so this is an accepted residual risk under threat T05.
+- The document routes (`/tors/:id/document`, `/admin/tors/:id/document`, `/admin/tors/:id/pages/:page`) replace the page CSP with `frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN`, because the in-app viewer frames them, and Chrome's PDF viewer does not render under a strict page policy. They keep `nosniff`, `no-store` and attachment-by-default.
+
+**Configuration added by this revision:** `CORS_ALLOWED_ORIGINS`, `CORS_MAX_AGE_SECONDS`, `HSTS_MAX_AGE_SECONDS` (shared by web and API).
+
 ### 5.7 Containers and the deployment shape
 
 NFR-S6 requires the system to run under Docker Compose. The skeleton's Dockerfiles predate the workspace layout in §3 and need reworking before `packages/shared` exists, because every problem below is silent rather than loud.
