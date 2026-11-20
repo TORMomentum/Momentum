@@ -14,7 +14,8 @@ import type { RequestHandler } from "express";
  */
 export function securityHeaders(): RequestHandler {
   return helmet({
-    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+    contentSecurityPolicy: { useDefaults: false, directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+    frameguard: { action: "deny" },
     // Nothing cross-origin embeds an API response (helmet's default, stated on purpose).
     crossOriginResourcePolicy: { policy: "same-origin" },
   });

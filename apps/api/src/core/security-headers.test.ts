@@ -22,7 +22,8 @@ describe("security headers (TOR-338)", () => {
     expect(res.headers["x-content-type-options"]).toBe("nosniff");
     expect(res.headers["content-security-policy"]).toContain("default-src 'none'");
     expect(res.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
-    expect(res.headers["x-frame-options"]).toBeDefined();
+    expect(res.headers["x-frame-options"]).toBe("DENY");
+    expect(res.headers["content-security-policy"]).toBe("default-src 'none';frame-ancestors 'none'");
     expect(res.headers["cross-origin-resource-policy"]).toBe("same-origin");
     expect(res.headers["x-powered-by"]).toBeUndefined();
   });
