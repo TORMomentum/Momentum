@@ -249,3 +249,17 @@ Every control above is a test, because a security control nobody tested is a cla
 14. Route names contradicted the `/me/*` contract already in `docs/API.md`.
 15. The staff cookie and admin API key were described as replaced; they are not.
 16. The tests named none of the security cases above.
+
+## Revision 2026-11-20 — session timeout and revocation (TOR-319, ASVS V7.2.4 / V7.4.1 / V14.3.1)
+
+- Idle timeout: `resolve` rejects a session whose `lastSeenAt` is older than `SESSION_IDLE_TIMEOUT_MS` (default 30 min); `touch` has the same
+  filter and never revives one. `lastSeenAt` had never been written outside creation; `resolve` now slides it, at most once per
+  `SESSION_TOUCH_INTERVAL_MS` (default 60 s, capped at half the idle timeout) so a page of requests is not a page of writes. The absolute
+  lifetime is the existing `SESSION_LIFETIME_MS`, enforced by the `expiresAt` check and the TTL index. No schema or index change.
+- Login: the session id the request carried is deleted whoever it belonged to (fixation; a shared machine), then, when
+  `SESSION_SINGLE_ACTIVE` is true (default), every other session of the account. A vendor using two devices is signed out of the first;
+  the switch exists for that case.
+- Logout deletes the row (unchanged). The web logout reply carries `Clear-Site-Data: "cache", "cookies", "storage"`: it is the reply the
+  browser receives, the API's is not.
+- A cookie the API rejects is dropped by `GET /api/auth/expired` and the reader lands on `/login?reason=expired` with a Thai message. The root
+  layout triggers this for any page, public ones included, since it already asks `/me` once per render.

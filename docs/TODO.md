@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-319 Session timeout and revocation
+
+- [x] TOR-344 Idle (`SESSION_IDLE_TIMEOUT_MS`, 30 min) and absolute (`SESSION_LIFETIME_MS`) timeout; `lastSeenAt` is now written by `resolve`, throttled
+- [x] TOR-345 Login revokes the session id it carried and, by default, the account's other sessions (`SESSION_SINGLE_ACTIVE`)
+- [x] TOR-346 Logout deletes the session row (test added; it already did)
+- [x] TOR-347 Rejected session cookie goes to `/login?reason=expired` with a Thai message
+- [x] TOR-348 `Clear-Site-Data` on the web logout reply
+- [x] Verified live in Compose: second login rejects the first cookie, idle 25 s past a 20 s timeout gives 401, logout headers
+- [x] Compose passes `APP_ORIGIN` to `web` (its account route handlers threw without it)
+- [ ] Single-active ends a vendor's other devices at sign-in; set `SESSION_SINGLE_ACTIVE=false` if the team prefers several devices
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
