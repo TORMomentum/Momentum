@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,14 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-317 API security headers and CORS
+
+- [x] TOR-338 helmet on the API (deny-all CSP, `frame-ancestors 'none'`, no `X-Powered-By`)
+- [x] TOR-339 CORS allowlist, `APP_ORIGIN` only, never `*`, credentials only for it (no new env var)
+- [x] TOR-340 Tests: foreign origin and its preflight get no `Access-Control-*` header
+- [x] Checked live with curl against the compose stack (see the PR)
+- [ ] The web app sets no security headers of its own yet (separate story)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
