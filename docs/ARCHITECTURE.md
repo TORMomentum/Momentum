@@ -224,6 +224,30 @@ feature it belongs to has not been given its folder yet.
 
 ---
 
+### Logging and security events (TOR-316)
+
+One logger, `core/logger.ts`: JSON lines on stdout with `severity` and `message` (the fields Cloud Logging
+parses), minimum level from `LOG_LEVEL` (default `info`). Every `console.*` in the API and the workers goes
+through it. All fields pass one sanitizer: values under keys matching password, token, secret, authorization,
+cookie, api key, session, credential, `body`, `content`, `bytes` or `text` become `[redacted]`; buffers are
+never written; strings are cut at 500 characters. (`lib/redact.ts` is the PDPA serializer for TOR contact
+fields and is unrelated.) Request bodies and document contents are never logged.
+
+`core/security-log.ts` gives each request an id (`X-Request-Id`, generated, never taken from the caller) and
+writes security events (`category: "security"`) from a fixed vocabulary. Each carries `requestId`, `method`,
+`path` (no query string), `ip`, `userAgent` (120 characters), and `accountId` when a session resolved.
+
+| Event | Severity | Where | Extra fields |
+| :--- | :--- | :--- | :--- |
+| `auth.login.success` | INFO | `POST /login` | `accountId` |
+| `auth.login.failure` | WARNING | `POST /login` | `reason`: `unknown_email`, `bad_password`, `disabled`, `unverified`; `accountId` if known. The response stays uniform |
+| `auth.logout` | INFO | `POST /logout` | `revoked` |
+| `auth.denied` | WARNING | any 401 or 403 (response hook) | `status` |
+| `ratelimit.hit` | WARNING | any 429 (response hook) | `keyType`: `ip`, `email`, `account`; the key itself is never logged |
+| `admin.action` | INFO | every non-GET request under `/admin/*` | `actor`, `authMethod: "staff-secret"`, `action` (route pattern), `target` (id), `status` |
+
+A failed login that already logged `auth.login.failure` does not also log `auth.denied`.
+
 ## 5. How a document travels
 
 ### 5.1 Intake ✅

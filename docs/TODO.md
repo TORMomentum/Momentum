@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,19 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-316 Security event logging
+
+- [x] TOR-333 One structured logger (`core/logger.ts`, `LOG_LEVEL`); every `console.*` in the API and workers replaced
+- [x] TOR-334 `auth.login.success` / `auth.login.failure` (reason in the log, uniform response) and `auth.logout`
+- [x] TOR-335 `auth.denied` (401/403) and `ratelimit.hit` (429) logged by one response hook
+- [x] TOR-336 `admin.action` with the acting identity, route pattern and target for every state-changing `/admin` request
+- [x] TOR-337 Tests: no password, email, session id, cookie, query token or API key in any captured log line
+- [x] Shown live in Compose: bad login, good login, 401 on an admin route, an admin action, 429 after the limit
+- [ ] No route returns 403 today (`requireRole` is not mounted), so `auth.denied` with 403 is tested but not shown live
+- [ ] `GET /me` without a session is a 401 and so logs `auth.denied`; watch the volume once the web app is live
+- [ ] Web (Next.js) handlers still use their own logging; only the API and workers are covered
+- [ ] Cloud Logging alerts on `auth.login.failure` bursts are not set up (GCP console step)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
