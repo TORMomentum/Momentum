@@ -198,4 +198,13 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...base, OCR_ENABLED: "true" })).toThrow(/DOCAI_PROCESSOR_ID/);
     expect(loadConfig({ ...base, OCR_ENABLED: "true", DOCAI_PROCESSOR_ID: "abc" }).ocr.processorId).toBe("abc");
   });
+
+  it("keeps Google sign-in off, derives its redirect from APP_ORIGIN, and refuses it enabled without a client", () => {
+    expect(loadConfig(base).googleOauth.enabled).toBe(false);
+    expect(loadConfig({ ...base, GOOGLE_OAUTH_ENABLED: "", GOOGLE_OAUTH_CLIENT_ID: "" }).googleOauth.enabled).toBe(false);
+    expect(loadConfig(base).googleOauth.redirectUri).toBe("https://app.example.test/api/auth/google/callback");
+    expect(() => loadConfig({ ...base, GOOGLE_OAUTH_ENABLED: "true" })).toThrow(/GOOGLE_OAUTH_CLIENT_ID/);
+    const on = loadConfig({ ...base, GOOGLE_OAUTH_ENABLED: "true", GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REDIRECT_URI: "https://other.example.test/cb" });
+    expect(on.googleOauth).toMatchObject({ enabled: true, clientId: "id", redirectUri: "https://other.example.test/cb", transactionTtlMs: 600_000 });
+  });
 });

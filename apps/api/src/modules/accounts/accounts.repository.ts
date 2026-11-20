@@ -10,6 +10,9 @@ export interface CreateAccountInput {
   consent: AccountDocument["consent"];
   /** Agreed at sign-up, separately from the consent above; absent when the box was left unticked. */
   behaviourConsent?: AccountDocument["behaviourConsent"];
+  /** A Google sign-up: Google has already proved the address, so the account starts verified. */
+  google?: { sub: string };
+  emailVerifiedAt?: Date;
 }
 
 export type StoredAccount = WithId<AccountDocument> & { id: string };
@@ -38,6 +41,8 @@ export class AccountsRepository {
       role: "vendor",
       consent: input.consent,
       ...(input.behaviourConsent ? { behaviourConsent: input.behaviourConsent } : {}),
+      ...(input.google ? { google: input.google } : {}),
+      ...(input.emailVerifiedAt ? { emailVerifiedAt: input.emailVerifiedAt } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -48,6 +53,28 @@ export class AccountsRepository {
   async findByEmail(email: string): Promise<StoredAccount | null> {
     const account = await accounts(this.db).findOne({ email: normalizeEmail(email) });
     return account ? withId(account) : null;
+  }
+
+  /** Soft-deleted accounts have their `google` removed, so a hit here is a live or disabled account. */
+  async findByGoogleSub(sub: string): Promise<StoredAccount | null> {
+    const account = await accounts(this.db).findOne({ "google.sub": sub, deletedAt: { $exists: false } });
+    return account ? withId(account) : null;
+  }
+
+  /** Links only an account that has no Google identity yet; the caller has already proved the address. */
+  async linkGoogle(accountId: string, sub: string): Promise<boolean> {
+    if (!ObjectId.isValid(accountId)) return false;
+    const result = await accounts(this.db).updateOne(
+      { _id: new ObjectId(accountId), deletedAt: { $exists: false }, google: { $exists: false } },
+      { $set: { google: { sub }, updatedAt: new Date() } },
+    );
+    return result.modifiedCount === 1;
+  }
+
+  /** An account whose address was never confirmed owns nothing (spec 2.5); Google proving the address replaces it. */
+  async removeUnverifiedByEmail(email: string): Promise<string | null> {
+    const removed = await accounts(this.db).findOneAndDelete({ email: normalizeEmail(email), emailVerifiedAt: { $exists: false }, deletedAt: { $exists: false } });
+    return removed ? removed._id.toString() : null;
   }
 
   async markVerified(accountId: string): Promise<void> {

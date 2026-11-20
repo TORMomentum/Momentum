@@ -111,6 +111,15 @@ const schema = z.object({
   CONSENT_NOTICE_VERSION: z.string().min(1).default("2026-10-06"),
   CONSENT_NOTICE_HASH: z.string().min(1).default("notice-not-published"),
 
+  // Sign in with Google (TOR-315, accounts spec revision 2026-11-21). Off until an OAuth client exists.
+  GOOGLE_OAUTH_ENABLED: flag(false),
+  GOOGLE_OAUTH_CLIENT_ID: blankAsAbsent(z.string().min(1)),
+  GOOGLE_OAUTH_CLIENT_SECRET: blankAsAbsent(z.string().min(1)),
+  // Defaults to `${APP_ORIGIN}/api/auth/google/callback`; it must equal the URI registered in the Google console.
+  GOOGLE_OAUTH_REDIRECT_URI: blankAsAbsent(z.url()),
+  // How long the user has at Google (and at the consent screen) before the sign-in attempt lapses.
+  OAUTH_TRANSACTION_TTL_MS: z.coerce.number().int().positive().default(600_000),
+
   // Outbound fetch, URL intake route
   FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative().default(3),
@@ -317,6 +326,8 @@ const schema = z.object({
 }).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GOOGLE_CLOUD_PROJECT), {
   message: "GOOGLE_CLOUD_PROJECT is required unless GCS_API_ENDPOINT points at the emulator",
   path: ["GOOGLE_CLOUD_PROJECT"],
+}).refine((v) => !v.GOOGLE_OAUTH_ENABLED || Boolean(v.GOOGLE_OAUTH_CLIENT_ID && v.GOOGLE_OAUTH_CLIENT_SECRET), {
+  message: "GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are required when GOOGLE_OAUTH_ENABLED is on",
 }).refine((v) => !v.OCR_ENABLED || Boolean(v.DOCAI_PROCESSOR_ID), {
   message: "DOCAI_PROCESSOR_ID is required when OCR_ENABLED is on",
   path: ["DOCAI_PROCESSOR_ID"],
@@ -367,6 +378,8 @@ export interface Config {
   verifyTokenTtlMs: number;
   resetTokenTtlMs: number;
   consentNotice: { version: string; hash: string };
+  /** Sign in with Google. `clientId`, `clientSecret` are present whenever `enabled` is true (checked at load). */
+  googleOauth: { enabled: boolean; clientId?: string; clientSecret?: string; redirectUri: string; transactionTtlMs: number };
   fetchTimeoutMs: number;
   fetchMaxRedirects: number;
   fetchMaxBytes: number;
@@ -498,6 +511,13 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,
     resetTokenTtlMs: parsed.RESET_TOKEN_TTL_MS,
     consentNotice: { version: parsed.CONSENT_NOTICE_VERSION, hash: parsed.CONSENT_NOTICE_HASH },
+    googleOauth: {
+      enabled: parsed.GOOGLE_OAUTH_ENABLED,
+      ...(parsed.GOOGLE_OAUTH_CLIENT_ID ? { clientId: parsed.GOOGLE_OAUTH_CLIENT_ID } : {}),
+      ...(parsed.GOOGLE_OAUTH_CLIENT_SECRET ? { clientSecret: parsed.GOOGLE_OAUTH_CLIENT_SECRET } : {}),
+      redirectUri: parsed.GOOGLE_OAUTH_REDIRECT_URI ?? new URL("/api/auth/google/callback", parsed.APP_ORIGIN).toString(),
+      transactionTtlMs: parsed.OAUTH_TRANSACTION_TTL_MS,
+    },
     fetchTimeoutMs: parsed.FETCH_TIMEOUT_MS,
     fetchMaxRedirects: parsed.FETCH_MAX_REDIRECTS,
     fetchMaxBytes: parsed.FETCH_MAX_BYTES,
