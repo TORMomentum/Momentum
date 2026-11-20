@@ -450,3 +450,6 @@ account writes to `admin_audit`, so who did what and when survives (`FR-E-5`, `N
    silently corrected (`NFR-F7`).
 6. **Every host, port, key, and limit comes from configuration.** `localhost` appears in no source
    file (`NFR-S7`).
+7. **Who may call what is written down in one place.** [security/access-control-matrix.md](security/access-control-matrix.md)
+   lists every route with its caller, its enforcing middleware and how a vendor is kept to its own data;
+   `apps/api/src/core/access-control.test.ts` fails when a route and the matrix disagree (`NFR-S1`).
