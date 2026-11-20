@@ -249,3 +249,36 @@ Every control above is a test, because a security control nobody tested is a cla
 14. Route names contradicted the `/me/*` contract already in `docs/API.md`.
 15. The staff cookie and admin API key were described as replaced; they are not.
 16. The tests named none of the security cases above.
+
+## Revision 2026-11-20 — the limiter sees the client, and search and downloads are limited (TOR-318)
+
+Section 2.8 keyed on "the source address", but the browser never calls the API: the Next server does,
+so every request arrived from the web server's address and the per-address limit was one global bucket
+(threat model T01, T11). Search and document downloads had no limit at all.
+
+**Scheme.** One header, `X-Forwarded-For`, honoured by the API only from configured proxy hops.
+
+1. The web server (`apps/web/src/shared/api/client-ip.ts`) derives the client from the `X-Forwarded-For`
+   it received: the entry just left of the `TRUSTED_PROXY_HOPS` entries (default 1) that infrastructure it
+   trusts appended. It must be an IP address. It then sends the API exactly one `X-Forwarded-For` holding
+   that address, **replacing** whatever arrived. With no trustworthy entry it sends none. Used by
+   `apiRequest`, the document proxy and the dashboard fetch.
+2. The API sets Express `trust proxy` from `TRUST_PROXY` (default `false`: nothing trusted; a hop count or
+   an address list). `true` is refused at load, because it would believe any caller. `req.ip` is then the
+   client, which the existing limiters key on (express-rate-limit v8 folds IPv6 into a /56 itself).
+3. `GET /tors`, `GET /tors/facets` (`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN`, 120) and `GET`/`HEAD
+   /tors/:id/document` (`DOCUMENT_RATE_LIMIT_PER_MIN`, 60) each have their own per-address bucket,
+   one minute window, empty `429`, no rate-limit headers (the same uniform answer as the login limiter;
+   advertising the allowance helps only the one probing it).
+
+**Spoofing analysis.**
+
+| Deployment | Chain the API sees | `TRUST_PROXY` | Why a forged header does not help |
+| :-- | :-- | :-- | :-- |
+| Cloud Run | socket = Google front end; `X-Forwarded-For: <client>, <web instance>` (front end appends the peer it saw) | 2 | `api` is IAM-restricted, so only the web service can reach it, and web overwrites the header. A client's forged entries sit left of the real one at web (`TRUSTED_PROXY_HOPS=1` takes the last entry, the one Google's front end appended), so they never reach the API |
+| Compose | socket = web container; `X-Forwarded-For: <client>` | 1 | The same. Residual risk, dev only: the API port is published to the host, so a caller on the host can reach it directly and choose its own bucket; and Compose has no proxy in front of web, so a browser's own header is believed. Neither applies to a deployment behind IAM / a real proxy |
+| Direct call with no header | socket address | any | Keyed on the socket, as before |
+
+Not verified here: the exact entries Google's front end appends on the web-to-api call. The hop counts
+(`TRUSTED_PROXY_HOPS=1` on web, `TRUST_PROXY=2` on api) are config precisely so they can be corrected
+after a look at a real request in the deployed environment.
