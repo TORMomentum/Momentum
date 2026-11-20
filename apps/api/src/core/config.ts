@@ -15,6 +15,28 @@ function blankAsAbsent<T extends z.ZodTypeAny>(inner: T) {
 }
 
 /**
+ * The CORS allowlist. Each entry must be a bare origin, and a wildcard is
+ * rejected outright: "*" with credentials is the misconfiguration this list
+ * exists to prevent (ASVS V3.4.2). Blank falls back to the one web origin.
+ */
+function parseCorsOrigins(raw: string | undefined, appOrigin: string): string[] {
+  if (raw === undefined) return [appOrigin];
+  const origins = raw.split(",").map((value) => value.trim()).filter(Boolean);
+  for (const origin of origins) {
+    let parsedOrigin: string;
+    try {
+      parsedOrigin = new URL(origin).origin;
+    } catch {
+      throw new Error(`CORS_ALLOWED_ORIGINS: "${origin}" is not an origin`);
+    }
+    if (origin === "*" || parsedOrigin !== origin) {
+      throw new Error(`CORS_ALLOWED_ORIGINS: "${origin}" must be an exact origin like https://example.org, never "*"`);
+    }
+  }
+  return origins.length > 0 ? origins : [appOrigin];
+}
+
+/**
  * Every threshold and tunable in the system (NFR-S7). Nothing below may appear
  * as a literal anywhere else in the codebase.
  */
@@ -101,6 +123,12 @@ const schema = z.object({
     message: "APP_ORIGIN must be an origin without a path",
   }),
   SESSION_LIFETIME_MS: z.coerce.number().int().positive().default(604_800_000),
+  // HTTP security headers and CORS (TOR-317, spec §5.6 revision 2026-11-20).
+  // Origins a browser may call the API from, comma-separated; blank means APP_ORIGIN alone.
+  CORS_ALLOWED_ORIGINS: blankAsAbsent(z.string()),
+  CORS_MAX_AGE_SECONDS: z.coerce.number().int().nonnegative().default(600),
+  // One year, the value HSTS preload lists expect; 0 turns the header off.
+  HSTS_MAX_AGE_SECONDS: z.coerce.number().int().nonnegative().default(31_536_000),
   ARGON2_MEMORY_KIB: z.coerce.number().int().positive().default(19_456),
   ARGON2_ITERATIONS: z.coerce.number().int().positive().default(2),
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
@@ -357,6 +385,10 @@ export interface Config {
   };
   /** The browser origin allowed to make state-changing account requests. */
   appOrigin: string;
+  /** CORS allowlist and preflight cache lifetime (core/cors.ts). Never "*". */
+  cors: { allowedOrigins: string[]; maxAgeSeconds: number };
+  /** Strict-Transport-Security lifetime; 0 disables it (core/security-headers.ts). */
+  hstsMaxAgeSeconds: number;
   argon2: {
     memoryKiB: number;
     iterations: number;
@@ -488,6 +520,11 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       lifetimeMs: parsed.SESSION_LIFETIME_MS,
     },
     appOrigin: parsed.APP_ORIGIN,
+    cors: {
+      allowedOrigins: parseCorsOrigins(parsed.CORS_ALLOWED_ORIGINS, parsed.APP_ORIGIN),
+      maxAgeSeconds: parsed.CORS_MAX_AGE_SECONDS,
+    },
+    hstsMaxAgeSeconds: parsed.HSTS_MAX_AGE_SECONDS,
     argon2: {
       memoryKiB: parsed.ARGON2_MEMORY_KIB,
       iterations: parsed.ARGON2_ITERATIONS,

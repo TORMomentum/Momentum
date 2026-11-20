@@ -26,6 +26,24 @@ describe("loadConfig", () => {
     expect(loadConfig({ ...base, WORKER_HEALTH_PORT: "8080" }).workerHealthPort).toBe(8080);
   });
 
+  it("allows only APP_ORIGIN through CORS unless a list is configured (TOR-317)", () => {
+    expect(loadConfig(base).cors.allowedOrigins).toEqual(["https://app.example.test"]);
+    expect(loadConfig({ ...base, CORS_ALLOWED_ORIGINS: "" }).cors.allowedOrigins).toEqual(["https://app.example.test"]);
+    expect(
+      loadConfig({ ...base, CORS_ALLOWED_ORIGINS: "https://a.example, https://b.example:8443" }).cors.allowedOrigins,
+    ).toEqual(["https://a.example", "https://b.example:8443"]);
+  });
+
+  it("rejects a wildcard or a non-origin in the CORS allowlist", () => {
+    expect(() => loadConfig({ ...base, CORS_ALLOWED_ORIGINS: "*" })).toThrow(/CORS_ALLOWED_ORIGINS/);
+    expect(() => loadConfig({ ...base, CORS_ALLOWED_ORIGINS: "https://a.example/path" })).toThrow(/CORS_ALLOWED_ORIGINS/);
+  });
+
+  it("defaults HSTS to one year and lets it be turned off", () => {
+    expect(loadConfig(base).hstsMaxAgeSeconds).toBe(31_536_000);
+    expect(loadConfig({ ...base, HSTS_MAX_AGE_SECONDS: "0" }).hstsMaxAgeSeconds).toBe(0);
+  });
+
   it("parses the API key list into individual keys", () => {
     const config = loadConfig({ ...base, INTAKE_API_KEYS: "a,b , c" });
     expect(config.intakeApiKeys).toEqual(["a", "b", "c"]);
