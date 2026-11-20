@@ -21,6 +21,9 @@ jobs:
       REGION: ${{ vars.GCP_REGION }}
       AR_REPO: ${{ vars.GCP_AR_REPO }}
       GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+      # Sign in with Google (TOR-315): optional; unset means off.
+      GOOGLE_OAUTH_ENABLED: ${{ vars.GOOGLE_OAUTH_ENABLED }}
+      GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
 

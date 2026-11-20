@@ -32,6 +32,9 @@ spec:
               value: ${API_SERVICE_URL}
             - name: APP_ORIGIN
               value: ${APP_ORIGIN}
+            # Shows the "Sign in with Google" button; the API holds the client id and secret.
+            - name: GOOGLE_OAUTH_ENABLED
+              value: "${GOOGLE_OAUTH_ENABLED}"
             - name: ADMIN_API_KEYS
               valueFrom:
                 secretKeyRef:

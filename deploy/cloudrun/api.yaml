@@ -39,6 +39,19 @@ spec:
             # (Origin header must match). Set by deploy.yml once tor-radar-web exists.
             - name: APP_ORIGIN
               value: ${APP_ORIGIN}
+            # Sign in with Google (TOR-315). Off unless the GitHub variable GOOGLE_OAUTH_ENABLED is "true"; the
+            # redirect URI is derived from APP_ORIGIN. The client SECRET is not mounted here, because a secretKeyRef
+            # to a secret that does not exist fails the whole deploy: when enabling, create the Secret Manager
+            # secret GOOGLE_OAUTH_CLIENT_SECRET and add the block below (docs/gcp-setup.md, "Sign in with Google").
+            - name: GOOGLE_OAUTH_ENABLED
+              value: "${GOOGLE_OAUTH_ENABLED}"
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              value: "${GOOGLE_OAUTH_CLIENT_ID}"
+            # - name: GOOGLE_OAUTH_CLIENT_SECRET
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: GOOGLE_OAUTH_CLIENT_SECRET
+            #       key: latest
             - name: MONGO_URL
               valueFrom:
                 secretKeyRef:
