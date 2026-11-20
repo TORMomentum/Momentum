@@ -103,6 +103,9 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F5-4 | FR-C-3 | `NotifyService.dispatch` | vendor with email preset `off`, a bookmarked TOR due soon | 0 emails, reminders included | Pass | `notify.service.test.ts` |
 | UT-F6-1 | FR-D-1 | `POST /api/v1/register` | `{ email, password }` with `consent` absent or `false` | 400; 0 accounts; 0 emails | Pass | `accounts.routes.test.ts` |
 | UT-F6-2 | NFR-S2 | `DELETE /me` | the correct current password | account tombstoned, sessions revoked, owned records removed, TORs untouched | Pass | `accounts.routes.test.ts` |
+| UT-F6-3 | NFR-S1 | `POST /register`, `/password/reset`, `/password/change` | a password the (faked) breach corpus has seen | 422 `password_breached` with the Thai message; 0 accounts, 0 emails; the reset link stays usable for a second try | Pass | `accounts.routes.test.ts` |
+| UT-F6-4 | NFR-S1 | `POST /register` with the breach corpus unreachable | a bundled common-list password; an unlisted passphrase | the common one is refused (422), the other accepted (fail open on the corpus only) | Pass | `accounts.routes.test.ts` |
+| UT-F6-5 | NFR-S1 | `HibpBreachedPasswords` | a password; a mocked range reply | only the 5-char SHA-1 prefix is in the URL, `Add-Padding: true` is set, suffix matched locally; padding rows count 0; non-2xx rejects | Pass | `hibp.breached-passwords.test.ts` |
 | UT-F7-1 | §4.5.1 | `verdictFor` (IQR, minN 8) | peers 10…80 (Q1 27.5, Q3 62.5, IQR 35); budget 200 | `anomaly`, side `high`, distance (200 − 62.5) / 35 | Pass | `anomaly.rule.test.ts` |
 | UT-F7-2 | §4.5.1 | `verdictFor` | budget exactly on the upper fence (115) | `normal` | Pass | `anomaly.rule.test.ts` |
 | UT-F7-3 | §4.5.1 | `verdictFor` | budget 999,999 with only 7 peers | `not-evaluated`, reason `insufficient-peers` | Pass | `anomaly.rule.test.ts` |

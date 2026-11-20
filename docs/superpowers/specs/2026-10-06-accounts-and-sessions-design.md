@@ -249,3 +249,17 @@ Every control above is a test, because a security control nobody tested is a cla
 14. Route names contradicted the `/me/*` contract already in `docs/API.md`.
 15. The staff cookie and admin API key were described as replaced; they are not.
 16. The tests named none of the security cases above.
+
+## Revision 2026-11-20 - breached passwords (TOR-320, ASVS V6.2.4)
+
+A new password is refused when it is on the bundled common-password list (SecLists top-10k, MIT, always checked) or
+the Have I Been Pwned range API has seen it (`HIBP_MIN_COUNT`, default 1). Applies to `POST /register`,
+`/password/reset` and `/password/change`; the refusal is 422 `password_breached` with a Thai message.
+
+- Only the first 5 hex characters of the SHA-1 leave the process (k-anonymity, `Add-Padding: true`); the suffix
+  comparison is local. The password, its hash and its prefix are never logged.
+- Fail open on the corpus: if HIBP is unreachable, slow (`HIBP_TIMEOUT_MS`) or answers non-2xx the password is
+  accepted unless the local list caught it, and `breached_password_check_unavailable` is logged. An outage of a
+  third party must not block registration or account recovery. `HIBP_ENABLED=false` skips HIBP entirely.
+- Register checks before the account lookup (no existence oracle); reset checks before consuming the token.
+- Wiring: port `ports/breached-passwords.port.ts`, adapter `adapters/hibp.breached-passwords.ts`, built in `app.ts`.

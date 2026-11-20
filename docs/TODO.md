@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-320 Block breached passwords
+
+- [x] TOR-349 HIBP range check (k-anonymity, `Add-Padding`, 3 s timeout) on register, reset and change-password
+- [x] TOR-350 Bundled SecLists top-10k list (MIT) checked always; HIBP outage fails open on the corpus only and logs
+      `breached_password_check_unavailable`
+- [x] TOR-351 Thai `password_breached` (422) shown by the register and reset forms
+- [x] Shown live in Compose: `password123` and `P@ssw0rd` refused, a long passphrase accepted, HIBP unreachable accepted
+- [ ] The web forms were not driven in a browser: Compose does not pass `APP_ORIGIN` to the web container, so
+      `/api/auth/*` returns 500 there (found while verifying; not changed here)
+- [ ] Change-password has no web screen yet; the API refuses a breached password there too
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
