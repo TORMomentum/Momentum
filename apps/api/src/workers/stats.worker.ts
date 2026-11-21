@@ -3,15 +3,17 @@ import { loadConfig } from "../core/config.js";
 import { loadEnvFile } from "../core/env-file.js";
 import { connect, ensureIndexes } from "../core/db.js";
 import { StatsService } from "../modules/stats/stats.service.js";
+import { configureLogger, logger } from "../core/logger.js";
 
 const pause = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 /** The dashboard cache worker is independent of extraction so stalled OCR cannot stall freshness. */
 export async function startStatsWorker(config: ReturnType<typeof loadConfig>): Promise<void> {
+  configureLogger(config.logLevel);
   const db = await connect(config.mongoUrl);
   await ensureIndexes(db);
   const service = new StatsService(db, config);
-  console.log(JSON.stringify({ event: "stats_worker_started", sweepIntervalMs: config.stats.sweepIntervalMs }));
+  logger.info("stats_worker_started", { sweepIntervalMs: config.stats.sweepIntervalMs });
 
   // Two cadences, deliberately different. Dirty cohorts are drained at the
   // queue poll interval, because freshness after an edit is what a reviewer
@@ -28,10 +30,10 @@ export async function startStatsWorker(config: ReturnType<typeof loadConfig>): P
       if (Date.now() - lastSweep >= config.stats.sweepIntervalMs) {
         lastSweep = Date.now();
         const swept = await service.sweepEveryCohort();
-        if (swept > 0) console.log(JSON.stringify({ event: "stats_swept", cohorts: swept }));
+        if (swept > 0) logger.info("stats_swept", { cohorts: swept });
       }
     } catch (error) {
-      console.error(JSON.stringify({ event: "stats_failed", message: error instanceof Error ? error.message : "unknown" }));
+      logger.error("stats_failed", { error: error instanceof Error ? error.message : "unknown" });
     }
     await pause(config.jobPollMs);
   }
@@ -41,7 +43,7 @@ const isEntry = process.argv[1] !== undefined && import.meta.url === pathToFileU
 if (isEntry) {
   loadEnvFile();
   startStatsWorker(loadConfig(process.env)).catch((error: Error) => {
-    console.error(JSON.stringify({ event: "stats_worker_crashed", message: error.message }));
+    logger.error("stats_worker_crashed", { error: error.message });
     process.exit(1);
   });
 }

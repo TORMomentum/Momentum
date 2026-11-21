@@ -10,6 +10,7 @@ import { renderMatchEmail, type MatchedTor } from "./match-email.template.js";
 import { NotifyRepository, type EligibleVendor } from "./notify.repository.js";
 import { DEFAULT_NOTIFY } from "../profile/profile.routes.js";
 import { BadRequestError } from "../../core/errors.js";
+import { logger } from "../../core/logger.js";
 
 type Pending = { tor: WithId<TorDocument>; score: number; reasons: string[]; reason: "match" | "deadline-reminder" };
 export type NotifyRunResult = { leased: boolean; vendors: number; claimed: number; sent: number; dryRun: boolean };
@@ -74,7 +75,7 @@ export class NotifyService {
         const outcome = await this.dispatchVendor(vendor);
         claimed += outcome.claimed; sent += outcome.sent;
         // Recipient address and message body are deliberately never logged.
-        console.log(JSON.stringify({ event: "notify_vendor_dispatched", accountId: vendor.account._id.toString(), claimed: outcome.claimed, sent: outcome.sent, dryRun: !this.config.notifications.dispatchEnabled }));
+        logger.info("notify_vendor_dispatched", { accountId: vendor.account._id.toString(), claimed: outcome.claimed, sent: outcome.sent, dryRun: !this.config.notifications.dispatchEnabled });
       }
       return { leased: true, vendors: vendors.length, claimed, sent, dryRun: !this.config.notifications.dispatchEnabled };
     } finally { await this.repository.releaseLease(owner); }

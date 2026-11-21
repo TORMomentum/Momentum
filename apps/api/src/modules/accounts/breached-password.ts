@@ -1,3 +1,4 @@
+import { logger } from "../../core/logger.js";
 import { readFileSync } from "node:fs";
 import { AppError } from "../../core/errors.js";
 import type { Config } from "../../core/config.js";
@@ -45,7 +46,7 @@ export async function assertPasswordNotBreached(
   try {
     seen = await checker.occurrences(password);
   } catch (error) {
-    console.warn("breached_password_check_unavailable", { reason: error instanceof Error ? error.name : "unknown" });
+    logger.warn("breached_password_check_unavailable", { reason: error instanceof Error ? error.name : "unknown" });
     return;
   }
   if (seen >= config.minCount) throw new BreachedPasswordError();

@@ -5,6 +5,7 @@ import { BadRequestError, NotFoundError } from "../../core/errors.js";
 import { parseDisposition } from "../../lib/content-disposition.js";
 import { streamDocument } from "../../lib/stream-document.js";
 import type { Storage } from "../../ports/storage.port.js";
+import { auditAdmin } from "../../core/security-log.js";
 import { requireKey } from "../intake/intake.auth.js";
 import type { ReviewFieldName } from "./admin.repository.js";
 import type { AdminService } from "./admin.service.js";
@@ -85,6 +86,7 @@ export function buildAdminRouter(deps: AdminRouterDeps): Router {
   const actorOf = (req: Request) => (req as Request & { actor?: string }).actor ?? "admin";
 
   router.use(requireKey(deps.adminKeys, "admin"));
+  router.use(auditAdmin(actorOf));
 
   router.get("/queue", async (req, res) => {
     const { limit, reason, view } = queueQuerySchema.parse(req.query);

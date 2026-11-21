@@ -3,11 +3,12 @@ import "../../test/env.js";
 import express from "express";
 import type { Db } from "mongodb";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { LogMailer } from "../../adapters/log.mailer.js";
 import { loadConfig } from "../../core/config.js";
 import { accounts, accountTokens, bookmarks, connect, disconnect, ensureIndexes, sessions, tors } from "../../core/db.js";
 import { errorMiddleware } from "../../core/errors.js";
+import { setLogSink } from "../../core/logger.js";
 import { sessionContext } from "../../core/session-context.js";
 import { isolatedDbUrl } from "../../test/mongo.js";
 import { AccountTokensRepository } from "./account-tokens.repository.js";
@@ -401,5 +402,44 @@ describe("account routes", () => {
     const retried = await write(request(app).delete("/api/v1/me")).set("x-session-id", signedIn.body.sessionId as string).send({ currentPassword: "correct-password" });
     expect(retried.status).toBe(200);
     expect(removed).toHaveLength(2);
+  });
+});
+
+describe("security logging", () => {
+  let lines: Record<string, unknown>[];
+  let raw: string;
+  beforeEach(() => {
+    lines = [];
+    raw = "";
+    setLogSink((line) => { raw += line; lines.push(JSON.parse(line) as Record<string, unknown>); });
+  });
+  afterEach(() => setLogSink());
+
+  it("a failed login logs auth.login.failure with the reason, and the log holds no password, email or session id", async () => {
+    await verifiedAccount();
+    lines.length = 0;
+    raw = "";
+
+    const wrong = await login("vendor@example.test", "wrong-password-xyz");
+    const unknown = await login("nobody@example.test", "other-password-xyz");
+
+    expect(wrong.status).toBe(401);
+    expect(unknown.body).toEqual(wrong.body);
+    const failures = lines.filter((line) => line.message === "auth.login.failure");
+    expect(failures.map((line) => line.reason)).toEqual(["bad_password", "unknown_email"]);
+    expect(lines.some((line) => line.message === "auth.denied")).toBe(false);
+    expect(raw).not.toMatch(/wrong-password-xyz|other-password-xyz|vendor@example\.test|nobody@example\.test/);
+  });
+
+  it("a successful login logs auth.login.success and logout logs auth.logout, never the session id", async () => {
+    await verifiedAccount();
+    const signedIn = await login();
+    const sessionId = signedIn.body.sessionId as string;
+    await write(request(app).post("/api/v1/logout")).set("x-session-id", sessionId).send({});
+
+    expect(lines.map((line) => line.message)).toEqual(expect.arrayContaining(["auth.login.success", "auth.logout"]));
+    expect(lines.find((line) => line.message === "auth.login.success")).toMatchObject({ accountId: expect.any(String) });
+    expect(raw).not.toContain(sessionId);
+    expect(raw).not.toContain("correct-password");
   });
 });

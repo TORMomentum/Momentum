@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { BadRequestError, UnauthorizedError } from "../../core/errors.js";
 import { authRateLimit } from "../../core/auth-rate-limit.js";
+import { logger } from "../../core/logger.js";
+import { markLogged, requestFields } from "../../core/security-log.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import type { Config } from "../../core/config.js";
 import type { Mailer } from "../../ports/mailer.port.js";
@@ -100,14 +102,22 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     const input = loginSchema.parse(req.body);
     const account = await deps.accounts.findByEmail(input.email);
     const valid = account?.passwordHash ? await verifyPassword(account.passwordHash, input.password) : await verifyAgainstDummy(input.password, deps.config);
-    if (!account || !account.passwordHash || !account.emailVerifiedAt || account.disabledAt || !valid) throw new UnauthorizedError(AUTH_FAILURE);
+    // The response stays uniform; the log may say why (never the email or the password).
+    const reason = !account || !account.passwordHash ? "unknown_email" : !valid ? "bad_password" : account.disabledAt ? "disabled" : !account.emailVerifiedAt ? "unverified" : undefined;
+    if (reason || !account) {
+      logger.security("auth.login.failure", { ...requestFields(req), reason, ...(account ? { accountId: account.id } : {}) });
+      markLogged(res);
+      throw new UnauthorizedError(AUTH_FAILURE);
+    }
     const session = await deps.sessions.create(account.id);
+    logger.security("auth.login.success", { ...requestFields(req), accountId: account.id });
     res.json({ sessionId: session.id, expiresAt: session.expiresAt.toISOString() });
   });
 
   router.post("/logout", ...writes, async (req, res) => {
     const id = req.get("x-session-id");
     if (id) await deps.sessions.revoke(id);
+    logger.security("auth.logout", { ...requestFields(req), revoked: Boolean(id) });
     res.json({ ok: true });
   });
 
