@@ -1,10 +1,13 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setLogSink } from "../core/logger.js";
 import { SmtpMailer } from "./smtp.mailer.js";
 
 vi.mock("nodemailer", () => ({ default: { createTransport: vi.fn() } }));
 
+beforeEach(() => setLogSink(() => {}));
 afterEach(() => {
+  setLogSink();
   vi.restoreAllMocks();
 });
 
@@ -12,7 +15,6 @@ describe("SmtpMailer", () => {
   it("uses the configured sender and SMTP deadlines without opening a connection", async () => {
     const sendMail = vi.fn().mockResolvedValue({ messageId: "smtp-message-1" });
     vi.mocked(nodemailer.createTransport).mockReturnValue({ sendMail } as unknown as Transporter);
-    vi.spyOn(console, "log").mockImplementation(() => {});
 
     const mailer = new SmtpMailer({
       url: "smtp://mail.example.test",

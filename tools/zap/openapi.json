@@ -1,0 +1,18 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "TOR Radar API - DAST seed", "version": "1" },
+  "servers": [{ "url": "http://api:4000" }],
+  "paths": {
+    "/health": { "get": { "responses": { "200": { "description": "ok" } } } },
+    "/api/v1/tors": { "get": { "responses": { "200": { "description": "search" } } } },
+    "/api/v1/tors/facets": { "get": { "responses": { "200": { "description": "facets" } } } },
+    "/api/v1/tors/{id}": {
+      "get": {
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "example": "000000000000000000000000" } }],
+        "responses": { "200": { "description": "one TOR" }, "404": { "description": "unknown" } }
+      }
+    },
+    "/api/v1/stats/dashboard": { "get": { "responses": { "200": { "description": "dashboard" } } } },
+    "/api/v1/me": { "get": { "responses": { "200": { "description": "own account" }, "401": { "description": "no session" } } } }
+  }
+}

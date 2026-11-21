@@ -3,6 +3,7 @@ import { ObjectId, type Db, type WithId } from "mongodb";
 import { WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
 import { torClassifications, tors, type TorDocument, type VendorProfileDocument } from "../../core/db.js";
 import type { Config } from "../../core/config.js";
+import { escapeRegExp } from "../../lib/escape-regexp.js";
 import { CURRENT_MAPPER_VERSION, classifyTor, type TorClassification } from "./tor-classifier.js";
 
 export type ClassifiedCandidate = { record: WithId<TorDocument>; classification: TorClassification };
@@ -59,7 +60,11 @@ function chosenLeafAndGroupIds(profile: VendorProfileDocument): { leaves: string
 function titleClauses(entries: string[]): Record<string, unknown>[] {
   return entries.flatMap((entry) => {
     const terms = [entry.trim(), ...entry.split(/[\s,;/|]+/u).filter((part) => part.length > 1)].filter(Boolean);
-    return terms.flatMap((term) => [{ "fields.title.value": { $regex: term, $options: "i" } }, { "fields.title.raw": { $regex: term, $options: "i" } }]);
+    return terms.flatMap((term) => {
+      // A vendor's own words, never regex syntax.
+      const $regex = escapeRegExp(term);
+      return [{ "fields.title.value": { $regex, $options: "i" } }, { "fields.title.raw": { $regex, $options: "i" } }];
+    });
   });
 }
 

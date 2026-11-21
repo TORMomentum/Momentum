@@ -1,5 +1,7 @@
 import "server-only";
 
+import { forwardedClientHeaders } from "./client-ip";
+
 /**
  * The one way the Next server calls the API's public routes (rendering spec §4).
  * Every call has a deadline and is never cached here; each data module decides
@@ -48,10 +50,12 @@ export async function apiRequest(path: string, init: RequestInit = {}, sessionId
   try {
     const base = apiBaseUrl();
     const token = await identityToken(base);
+    const client = await forwardedClientHeaders();
     return await fetch(`${base}${path}`, {
       ...init, cache: "no-store", signal: AbortSignal.timeout(deadlineMs ?? timeoutMs()),
       headers: {
         ...(init.headers ?? {}),
+        ...client,
         ...(sessionId ? { "x-session-id": sessionId } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
