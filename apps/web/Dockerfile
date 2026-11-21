@@ -27,7 +27,8 @@ RUN npm run build -w apps/web
 FROM node:22-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/apps/web/.next/standalone ./
+# node owns the app dir: Next writes its image and fetch cache under .next/cache at run time.
+COPY --chown=node:node --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
 # Not root: see apps/api/Dockerfile (TOR-323).
