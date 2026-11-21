@@ -390,9 +390,8 @@ export async function connect(mongoUrl: string): Promise<Db> {
   return client.db();
 }
 
-export async function withTransaction<T>(work: (session: import("mongodb").ClientSession) => Promise<T>): Promise<T> {
-  if (!client) throw new Error("Database is disconnected");
-  return client.withSession((session) => session.withTransaction(() => work(session)));
+export async function withTransaction<T>(db: Db, work: (session: import("mongodb").ClientSession) => Promise<T>): Promise<T> {
+  return db.client.withSession((session) => session.withTransaction(() => work(session)));
 }
 
 export async function disconnect(): Promise<void> {

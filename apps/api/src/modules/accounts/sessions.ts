@@ -19,7 +19,7 @@ export class SessionsRepository {
     const id = randomBytes(32).toString("hex");
     const document = { _id: id, accountId, createdAt, expiresAt, lastSeenAt: createdAt };
     if (this.timeouts.singleActive) {
-      await withTransaction(async (session) => {
+      await withTransaction(this.db, async (session) => {
         // Contending issuers write the same row even when there are no sessions to delete.
         const result = await accounts(this.db).updateOne({ _id: new ObjectId(accountId) }, { $inc: { sessionGeneration: 1 } }, { session });
         if (!result.matchedCount) throw new Error("Session account missing");
