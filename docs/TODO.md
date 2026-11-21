@@ -613,3 +613,5 @@ Branch `feat/tor-224-company-path`._
 TOR-319 review: single-active issuance is transactional in the shared repository.
 
 TOR-319: rejected cookies leave public email actions available and trigger expiry cleanup on vendor pages.
+
+A failed /me body read also renders public pages signed out.

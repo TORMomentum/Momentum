@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Anuphan, IBM_Plex_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import "../src/shared/styles/tokens.css";
 import { NotificationsProvider } from "../src/shared/lib/notifications";
-import { ViewerProvider, type Account } from "../src/shared/lib/viewer";
+import { ViewerProvider } from "../src/shared/lib/viewer";
 import { readViewerSession } from "../src/shared/api/viewer-session";
 
 // Self-hosted at build time: no render-blocking request, no layout shift.
@@ -33,16 +33,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Who is signed in is decided here, once, from the cookie — the browser is
   // never asked and never told the session id.
-  const response = await readViewerSession();
-  let account: Account | null = null;
-  if (response?.ok) {
-    const me = (await response.json()) as { email: string; displayName?: string; role: string };
-    account = {
-      email: me.email,
-      name: me.displayName ?? me.email.split("@")[0] ?? me.email,
-      role: me.role === "admin" ? "admin" : "vendor",
-    };
-  }
+  const { account } = await readViewerSession();
   return (
     <html lang="th" className={`${display.variable} ${body.variable} ${data.variable}`}>
       <body>
