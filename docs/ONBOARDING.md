@@ -76,6 +76,10 @@ Or the full stack in containers:
 docker compose up           # web · api · worker · mongo · gcs (emulator) · mail (Mailpit)
 ```
 
+Compose refuses to start unless `.env` sets `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS`,
+`STAFF_ACCESS_SECRET` and `APP_ORIGIN`: there are no default keys (TOR-324). `.env.example` shows how to
+generate each one.
+
 Production mode on your machine:
 
 ```bash

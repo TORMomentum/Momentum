@@ -34,6 +34,10 @@ local emulator, `gcs-storage-sa.json`. Ask the team for these files; never commi
 docker compose up             # web · api · worker · mongo · gcs (fake-gcs-server emulator)
 ```
 
+Compose refuses to start unless `.env` sets `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS`,
+`STAFF_ACCESS_SECRET` and `APP_ORIGIN`: there are no default keys (TOR-324). `.env.example` shows how to
+generate each one.
+
 The `web` and `api` Dockerfiles install from the workspace root, so `@tor-radar/shared` resolves
 inside the image the same way it does locally (TOR-140). `web`'s image prerenders `/` and
 `/methodology` at build time; without `API_BASE_URL` set as a build arg, those two pages bake in

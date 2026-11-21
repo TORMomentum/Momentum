@@ -57,6 +57,12 @@ flowchart LR
 
 ## 2. Conventions
 
+### Request id and security log
+
+Every response carries `X-Request-Id`, generated per request (an inbound value is ignored). Logins, 401/403 refusals,
+429 rate-limit hits and admin actions are written to the API log with that id; see ARCHITECTURE.md, "Logging and
+security events". Response bodies are unchanged.
+
 ### Authentication
 
 Two separate key lists, because the routes differ in blast radius (`NFR-S1`):
@@ -113,6 +119,21 @@ Validation failures add the failing paths, so a caller can fix the request witho
 
 Every `/intake` route is limited to `INTAKE_RATE_LIMIT_PER_MINUTE` requests per minute per client,
 reported in the standard `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` headers.
+
+### Security headers and CORS (TOR-317)
+
+Every response carries helmet's defaults (`X-Content-Type-Options: nosniff`, `X-Frame-Options`,
+`Cross-Origin-Resource-Policy: same-origin`, HSTS, …) and a CSP of
+`default-src 'none'; frame-ancestors 'none'`; `X-Powered-By` is removed. The document routes keep
+setting their own `nosniff`, `no-store` and `Content-Disposition`. The in-app PDF viewer is unaffected:
+the browser's frame loads the web server's proxy route, which forwards only content type, disposition
+and length from the API.
+
+CORS: the browser never calls this API directly (Next calls it server-to-server), so the only allowed
+origin is `APP_ORIGIN`, matched exactly. That origin gets `Access-Control-Allow-Origin` echoed with
+`Access-Control-Allow-Credentials: true` and `Vary: Origin`. Any other origin gets no `Access-Control-*`
+header, and its preflight is answered `204` without them, so the browser blocks the read. `*` is never sent.
+Code: `apps/api/src/core/security-headers.ts`.
 
 ---
 
@@ -239,6 +260,12 @@ last updated. Keyword matching (`q`) reads the title and agency through an Atlas
 `SEARCH_ATLAS_ENABLED` is on: it matches whole Thai words, best first, up to `SEARCH_MAX_HITS`. With the
 switch off (a plain `mongod`) it falls back to a substring match. The request and response do not change.
 
+**Rate limit (TOR-318).** `GET /tors` and `GET /tors/facets` share one allowance of
+`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` (default 120) per client address per minute; past it the answer is
+an empty `429` with no rate-limit headers (the same as the sign-in limiter). "Client address" is the
+real client only because of the proxy scheme in the 2026-11-20 revision of the accounts-and-sessions spec
+(`TRUST_PROXY` on the API, the web server forwarding one `X-Forwarded-For`).
+
 ### `GET /api/v1/tors/facets` ✅
 
 The filter options that occur in the published corpus, most frequent first, capped at
@@ -271,7 +298,8 @@ is a 404.
 ### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
 Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
-and never opens the object. A restricted record answers **`404`**, the same as an unknown id: a
+and never opens the object. Limited to `DOCUMENT_RATE_LIMIT_PER_MIN` (default 60) per client address per
+minute, `HEAD` and `GET` together, on a bucket of its own: past it, an empty `429` (TOR-318). A restricted record answers **`404`**, the same as an unknown id: a
 `403` would confirm both that the record exists and that it was taken down (`FR-B-6`).
 
 **Query:** `?disposition=inline` or `?disposition=attachment` (default). Any other value is `400`.

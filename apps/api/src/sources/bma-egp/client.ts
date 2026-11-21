@@ -1,5 +1,6 @@
 // Typed client for the BMA eGP source API. Everything the rest of the app needs from
 // egp2.bangkok.go.th goes through here, so the upstream's quirks stay in one file.
+import { logger } from "../../core/logger.js";
 import {
   API_BASE,
   FILE_BASE,
@@ -93,9 +94,7 @@ async function getJson<T>(url: string): Promise<T> {
     } catch (err) {
       lastError = err as BmaEgpSourceError;
       // Log every upstream failure: a bare 502 with no server-side trace is undebuggable.
-      console.warn(
-        `[bma-egp] attempt ${attempt}/${MAX_ATTEMPTS} failed for ${url} — ${lastError.message}`,
-      );
+      logger.warn("source_attempt_failed", { source: "bma-egp", attempt, maxAttempts: MAX_ATTEMPTS, url, error: lastError.message });
       if (attempt === MAX_ATTEMPTS || !isTransient(lastError)) break;
       await sleep(RETRY_DELAY_MS);
     }

@@ -15,12 +15,13 @@
   },
   "dependencies": {
     "@google-cloud/storage": "8.1.0",
-    "@tor-radar/seeds": "0.1.0",
     "@node-rs/argon2": "2.2.1",
+    "@tor-radar/seeds": "0.1.0",
     "busboy": "^1.6.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "google-auth-library": "^11.0.2",
+    "helmet": "^8.3.0",
     "mongodb": "^7.6.0",
     "nodemailer": "^10.0.15",
     "zod": "^4.5.4"
