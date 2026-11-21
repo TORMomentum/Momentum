@@ -561,6 +561,19 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-325 Access control evidence
+
+- [x] TOR-367 One access matrix for public, vendor, admin-key and intake-key callers, built from the routers, with the
+      enforcing middleware (file:line) and the scoping that keeps a vendor to its own data:
+      [security/access-control-matrix.md](security/access-control-matrix.md)
+- [x] TOR-368 Integration test, real Mongo and GCS emulator: vendor B cannot read or change vendor A's data, no session
+      is `401` on every `/me` route, a vendor session is refused on every admin and intake route, and the route list
+      is read from the matrix so a route added without a row fails (`core/access-control.test.ts`)
+- [x] Run live against Compose: vendor B asking for vendor A's vault item id gets `404`, A still has the file
+- [ ] Findings left for a decision, listed in the matrix section 5: F1 public `/sources/bma-egp/*` (no auth, no rate
+      limit, outside `/api/v1`); F2 admin API is one shared key with the actor `admin`, `requireRole` unused
+      (TOR-199)
+
 ## Sprint 6 — TOR-320 Block breached passwords
 
 - [x] TOR-349 HIBP range check (k-anonymity, `Add-Padding`, 3 s timeout) on register, reset and change-password
@@ -674,6 +687,8 @@ Branch `feat/tor-224-company-path`._
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-325 review: draft ownership is checked at the generator boundary.
 
 TOR-321 review: global Next headers cover static assets and prefetch responses. The proxy sets the nonce policy and path-dependent frame options.
 
