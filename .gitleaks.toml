@@ -1,0 +1,10 @@
+# Extends the default gitleaks ruleset; only verified false positives go here,
+# each with the reason (docs/security/secret-scan.md has the triage).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Slice-1 plan: curl examples use the placeholder dev key, not a credential"
+paths = ['''docs/superpowers/plans/2026-09-01-slice1-foundation-intake\.md''']
+regexTarget = "line"
+regexes = ['''authorization: Bearer dev-''']

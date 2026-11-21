@@ -65,7 +65,7 @@ function buildTestApp() {
     config,
     service: new GoogleSigninService({ config, mailer, oidc: google, repository: new GoogleSigninRepository(db), accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository }),
   }));
-  testApp.use("/auth", buildAccountsRouter({ config, accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository, mailer: new LogMailer(), vault: { removeAll: async () => undefined } }));
+  testApp.use("/auth", buildAccountsRouter({ config, accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository, mailer: new LogMailer(), breachedPasswords: { occurrences: async () => 0 }, vault: { removeAll: async () => undefined } }));
   testApp.use(errorMiddleware);
   return testApp;
 }

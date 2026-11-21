@@ -4,6 +4,7 @@ import { BadRequestError } from "../../core/errors.js";
 import { parseDisposition } from "../../lib/content-disposition.js";
 import { streamDocument } from "../../lib/stream-document.js";
 import type { Storage } from "../../ports/storage.port.js";
+import { publicRateLimit } from "../../core/public-rate-limit.js";
 import { parseSearchQuery } from "./tors.query.js";
 import type { TorsService } from "./tors.service.js";
 import type { Config } from "../../core/config.js";
@@ -29,11 +30,13 @@ export interface TorsRouterDeps {
 /** Public TOR reads. Authentication middleware must not be mounted here. */
 export function buildTorsRouter(deps: TorsRouterDeps): Router {
   const router = Router();
+  const searchLimit = publicRateLimit(deps.config.publicSearchRateLimitPerMin);
+  const documentLimit = publicRateLimit(deps.config.documentRateLimitPerMin);
 
   // FR-E-3. A malformed parameter is a ZodError, which the error middleware
   // answers with 400 — never an operator reaching the database. Each row carries
   // its statistical-anomaly verdict (dashboard spec §6.2).
-  router.get("/", async (req, res) => {
+  router.get("/", searchLimit, async (req, res) => {
     const search = parseSearchQuery(req.query, deps.search);
     const { minMatch, maxMatch } = search.filter;
     if (minMatch === undefined && maxMatch === undefined) {
@@ -55,7 +58,7 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
   });
 
   // Declared before "/:id", which would otherwise claim it.
-  router.get("/facets", async (_req, res) => {
+  router.get("/facets", searchLimit, async (_req, res) => {
     res.json(await deps.service.facets());
   });
 
@@ -68,8 +71,8 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
 
   // HEAD before GET: in Express 5 a GET route answers HEAD when no earlier HEAD
   // route matches, and the HEAD path must not open the object.
-  router.head("/:id/document", document);
-  router.get("/:id/document", document);
+  router.head("/:id/document", documentLimit, document);
+  router.get("/:id/document", documentLimit, document);
 
   router.get("/:id", async (req: Request<{ id: string }>, res) => {
     res.json(await deps.service.detail(req.params.id));

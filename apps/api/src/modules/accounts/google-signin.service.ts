@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Config } from "../../core/config.js";
+import { logger } from "../../core/logger.js";
 import { UnauthorizedError } from "../../core/errors.js";
 import type { Mailer } from "../../ports/mailer.port.js";
 import { verificationEmail } from "./account-email.template.js";
@@ -145,6 +146,7 @@ export class GoogleSigninService {
   private async signIn(account: { id: string; disabledAt?: Date; deletedAt?: Date }): Promise<GoogleSignedIn> {
     if (account.disabledAt || account.deletedAt) throw fail();
     const session = await this.deps.sessions.create(account.id);
+    logger.security("auth.login.success", { accountId: account.id, provider: "google" });
     return { status: "signed_in", sessionId: session.id, expiresAt: session.expiresAt.toISOString() };
   }
 }

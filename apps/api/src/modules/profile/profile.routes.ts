@@ -9,6 +9,7 @@ import { UnauthorizedError } from "../../core/errors.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import { ProfileRepository } from "./profile.repository.js";
 import type { NotifyPreferences, PastProject, PersonnelMember, VendorCertifications } from "../../core/db.js";
+import { logger } from "../../core/logger.js";
 
 const taxonomyIds = new Set([...WORK_CATEGORIES.map((group) => group.id), ...WORK_CATEGORY_LEAVES.map((leaf) => leaf.id)]);
 const areaIds = new Set([WHOLE_COUNTRY_AREA, ...PROVINCES.map((province) => province.id)]);
@@ -132,7 +133,7 @@ async function embedPhrases(embedder: Embedder | undefined, phrases: string[]) {
     const vectors = await embedder.embed(phrases);
     return phrases.map((text, i) => ({ text, model: embedder.model, vector: vectors[i]! }));
   } catch (error) {
-    console.warn(JSON.stringify({ event: "embedding_failed", where: "profile", reason: error instanceof Error ? error.message : "unknown" }));
+    logger.warn("embedding_failed", { where: "profile", reason: error instanceof Error ? error.message : "unknown" });
     return [];
   }
 }

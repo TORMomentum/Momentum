@@ -9,8 +9,8 @@ x-api-env: &api-env
   VAULT_MAX_FILE_BYTES: ${VAULT_MAX_FILE_BYTES:-10485760}
   VAULT_MAX_FILES: ${VAULT_MAX_FILES:-20}
   GCS_API_ENDPOINT: http://gcs:4443
-  INTAKE_API_KEYS: ${INTAKE_API_KEYS:-change-me-intake-key}
-  ADMIN_API_KEYS: ${ADMIN_API_KEYS:-change-me-admin-key}
+  INTAKE_API_KEYS: ${INTAKE_API_KEYS:?INTAKE_API_KEYS is required}
+  ADMIN_API_KEYS: ${ADMIN_API_KEYS:?ADMIN_API_KEYS is required}
   SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
   APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
   # Sign in with Google (TOR-315). Off unless .env turns it on; the id and secret come from the Google console.
@@ -28,11 +28,20 @@ x-api-env: &api-env
   MAIL_FROM: ${MAIL_FROM:-TOR Radar <noreply@tor-radar.example>}
   # Compose passes only what it lists, so a switch missing here is off in the container whatever .env says.
   MATCH_BEHAVIOUR_ENABLED: ${MATCH_BEHAVIOUR_ENABLED:-false}
+  HIBP_ENABLED: ${HIBP_ENABLED:-true}
+  HIBP_API_URL: ${HIBP_API_URL:-https://api.pwnedpasswords.com/range/}
+  HIBP_TIMEOUT_MS: ${HIBP_TIMEOUT_MS:-3000}
+  HIBP_MIN_COUNT: ${HIBP_MIN_COUNT:-1}
   DRAFT_ENABLED: ${DRAFT_ENABLED:-false}
   DRAFT_RATE_PER_HOUR: ${DRAFT_RATE_PER_HOUR:-10}
   DRAFT_TIMEOUT_MS: ${DRAFT_TIMEOUT_MS:-45000}
   DRAFT_MAX_OUTPUT_TOKENS: ${DRAFT_MAX_OUTPUT_TOKENS:-8192}
   DRAFT_TEMPERATURE: ${DRAFT_TEMPERATURE:-0.3}
+  # The published API port accepts direct connections.
+  TRUST_PROXY: ${TRUST_PROXY:-false}
+  PUBLIC_SEARCH_RATE_LIMIT_PER_MIN: ${PUBLIC_SEARCH_RATE_LIMIT_PER_MIN:-120}
+  DOCUMENT_RATE_LIMIT_PER_MIN: ${DOCUMENT_RATE_LIMIT_PER_MIN:-60}
+  AUTH_RATE_LIMIT_PER_IP: ${AUTH_RATE_LIMIT_PER_IP:-60}
 
 services:
   web:
@@ -48,14 +57,19 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:${API_PORT:-4000}
       # The Next server reaches the API over the compose network (rendering spec §2).
       - API_BASE_URL=http://api:4000
-      # The auth handler (app/api/auth/[...path]) checks every write's Origin against this, and the Google
-      # sign-in button shows only when GOOGLE_OAUTH_ENABLED is on; keep both equal to the API's.
+      # Read by the Next server only (never the browser): the origin its auth and upload
+      # handlers check, the key it presents to the admin API, and the staff login secret.
       - APP_ORIGIN=${APP_ORIGIN:?APP_ORIGIN is required}
+      - ADMIN_API_KEYS=${ADMIN_API_KEYS:?ADMIN_API_KEYS is required}
+      - STAFF_ACCESS_SECRET=${STAFF_ACCESS_SECRET:?STAFF_ACCESS_SECRET is required}
       - GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}
       # The vault upload handler refuses a body past this before reading it; keep it equal to the API's.
       - VAULT_MAX_FILE_BYTES=${VAULT_MAX_FILE_BYTES:-10485760}
       # The draft handler waits this long for the model (plus a few seconds); keep it equal to the API's.
       - DRAFT_TIMEOUT_MS=${DRAFT_TIMEOUT_MS:-45000}
+      # Entries of the incoming X-Forwarded-For that a trusted proxy appended (TOR-318). Compose has no proxy in
+      # front of web, so discard the incoming chain.
+      - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-0}
     depends_on:
       - api
 

@@ -61,6 +61,16 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...base, AUTH_RATE_LIMIT_PER_IP: "1.5" })).toThrow();
   });
 
+  it("reads the public-route limits and the proxy trust setting, and refuses to trust every caller", () => {
+    const config = loadConfig(base);
+    expect(config.publicSearchRateLimitPerMin).toBeGreaterThan(0);
+    expect(config.documentRateLimitPerMin).toBeGreaterThan(0);
+    expect(config.trustProxy).toBe(false);
+    expect(loadConfig({ ...base, TRUST_PROXY: "2" }).trustProxy).toBe(2);
+    expect(loadConfig({ ...base, TRUST_PROXY: "loopback, uniquelocal" }).trustProxy).toBe("loopback, uniquelocal");
+    expect(() => loadConfig({ ...base, TRUST_PROXY: "true" })).toThrow(/TRUST_PROXY/);
+  });
+
   it("requires the app origin used to defend state-changing browser requests", () => {
     const { APP_ORIGIN, ...withoutAppOrigin } = base;
     expect(() => loadConfig(withoutAppOrigin)).toThrow(/APP_ORIGIN/);
