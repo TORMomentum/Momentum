@@ -271,10 +271,10 @@ Updated 2026-11-21 after the Sprint 6 PRs. Closed gaps are listed so the history
 | Gap | Principle affected | Threat | Priority | Status |
 | :-- | :-- | :-- | :-- | :-- |
 | Admins share one secret; no per-person admin accounts or TOTP | Separation of Duties, Weakest Link | T02 | P1 | Open |
-| No dependency audit in CI | Defense in Depth | T12 | P1 | Open, TOR-323 pending (PR open) |
+| No dependency audit in CI | Defense in Depth | T12 | P1 | Closed by PR #54 (`npm audit` gate at high severity, CodeQL, Semgrep) |
 | No site-wide security headers (CSP, HSTS, frame-ancestors) | Defense in Depth, Secure Defaults | T05, T10 | P2 | Closed by PRs #45 and #48 |
 | Logins and 401/403 responses are not logged | Complete Mediation (accountability) | T15 | P2 | Closed by PR #46; actor is still "admin", no alerts |
-| Containers run as root | Least Privilege | T03 | P2 | Open |
+| Containers run as root | Least Privilege | T03 | P2 | Closed by PR #54 (`USER node` in both Dockerfiles) |
 | URL intake has no government-host allowlist | Least Privilege | T04 | P2 | Open |
 | One unescaped regex in `matching.repository.ts` | Zero Trust (input) | T07 | P3 | Closed by PR #51 |
 | Per-IP login limit saw the proxy; no limit on search and downloads | Defense in Depth | T01, T11 | P1 | Closed by PR #47 |

@@ -20,7 +20,9 @@ review backed by the tests named in section 6.
 | #50 | TOR-319 | Idle timeout, login revocation, `Clear-Site-Data` on logout |
 | #51 | TOR-324 | Secret and input gaps: no default keys, gitleaks, regex escaping |
 | #52 | TOR-325 | Access-control matrix and cross-vendor test |
-| pending (PR open) | TOR-323, TOR-322, TOR-315 | SAST and dependency audit, ZAP scan, Google OIDC sign-in |
+| #54 | TOR-323 | CodeQL, Semgrep, `npm audit` gate, pinned Actions, images run as `USER node` |
+| #55 | TOR-315 | Sign in with Google (OIDC, PKCE), off by default until an OAuth client exists |
+| #57 | TOR-322 | OWASP ZAP baseline and API scan tooling and the pre-freeze DAST report |
 
 ---
 
@@ -53,14 +55,13 @@ team process, three people, Scrum, but no names):
 | F1 | Intake | Admin upload, URL submission and a key-authenticated intake API | Key auth with constant-time compare (`modules/intake/intake.auth.ts`); SSRF helper (`lib/safe-fetch.ts`); magic-byte check (`lib/file-type.ts`); upload caps; immutable storage `putIfAbsent` (`adapters/gcs.storage.ts`) |
 | F2, F3 | OCR, field extraction, confidence tiering, review queue | Gemini extraction with a fixed schema; low confidence marked and queued | AI output is labelled and not trusted: schema-bound response, "unverified extraction" marking, human review queue |
 | F4 | Search and TOR detail | Thai keyword search with filters; every record links to its source | Zod primitives-only filters (no NoSQL operator reaches Mongo); regex escaping through `lib/escape-regexp.ts` (#51); search rate limit (#47); restricted TORs answer 404 |
-| F5, F6 | Accounts and vendor profiles | Registration with PDPA-aligned consent, email verification, login, profile, bookmarks, vault | argon2id (`modules/accounts/password.ts`); breached-password check (#49); login limits (`core/auth-rate-limit.ts`); server-side sessions with idle timeout and login revocation (#50); same-origin check on writes; every `/me` query scoped by account id |
+| F5, F6 | Accounts and vendor profiles | Registration with PDPA-aligned consent, email verification, login, profile, bookmarks, vault | argon2id (`modules/accounts/password.ts`); Google sign-in with PKCE, state, nonce and id_token checks (#55, off by default); breached-password check (#49); login limits (`core/auth-rate-limit.ts`); server-side sessions with idle timeout and login revocation (#50); same-origin check on writes; every `/me` query scoped by account id |
 | F7, F8 | Dashboard, anomaly rule, quality checklist | Public statistics with a published rule and wording constraints | Open design: `/methodology` page; coverage note and last-updated time on every figure |
 | F9, F10 | Matching, email notification, PDPA and takedown | Skill matching, email only, consent, export and delete, takedown | One redaction serializer (`lib/redact.ts`); email dispatch off by default; takedown restricts access and never removes the original; admin audit trail |
 | Admin | Review, vendor accounts, takedown | Staff area | Signed 8-hour staff cookie plus role check (`apps/web/src/shared/lib/staff-session.ts`); admin API key per route; `admin.action` log (#46) |
-| Platform | Deploy and operations | Cloud Run behind Google IAP, CD from `main` (#44) | Secrets in Google Secret Manager; no default keys (#51); gitleaks in CI (#51); headers (#45, #48) |
+| Platform | Deploy and operations | Cloud Run behind Google IAP, CD from `main` (#44) | Secrets in Google Secret Manager; no default keys (#51); gitleaks in CI (#51); headers (#45, #48); CodeQL, Semgrep and `npm audit` in CI and non-root images (#54) |
 
-Not built, so not claimed: CSV export (F11), per-adapter health reporting (F12), Google sign-in
-(TOR-315, pending), TOTP for admins.
+Not built, so not claimed: CSV export (F11), per-adapter health reporting (F12), TOTP for admins. Google sign-in is built (#55) but stays off until an OAuth client exists.
 
 ---
 
@@ -76,9 +77,9 @@ Status meanings. **Have now**: in the code, or in an open Sprint 6 PR (named in 
 **Partial**: some of the requirement is met, the rest is open. **Planned**: accepted, not built.
 Priority: P0 done, then P1 (Level 1 and top-risk threats), P2 (Level 2), P3 (Level 3).
 
-The Have-now column of the workbook was re-derived from evidence on 2026-11-21: 24 requirements changed
-from open to Have now because of PRs #45 to #52. Level coverage of planned requirements:
-Level 1 50 of 61 planned have-now, Level 2 66 of 133, Level 3 19 of 60.
+The Have-now column of the workbook was re-derived from evidence on 2026-11-21: 35 requirements changed
+from open to Have now because of PRs #45 to #55. Level coverage of planned requirements:
+Level 1 51 of 61 planned have-now, Level 2 75 of 133, Level 3 20 of 60.
 
 ### 3.1 Summary by chapter
 
@@ -89,19 +90,19 @@ Level 1 50 of 61 planned have-now, Level 2 66 of 133, Level 3 19 of 60.
 | V3 Web Frontend Security | 28 | 20 | 2 | 6 | 3 |
 | V4 API and Web Service | 8 | 5 | 0 | 3 | 8 |
 | V5 File Handling | 10 | 5 | 0 | 5 | 3 |
-| V6 Authentication | 38 | 17 | 0 | 21 | 9 |
+| V6 Authentication | 38 | 19 | 0 | 19 | 9 |
 | V7 Session Management | 19 | 12 | 1 | 6 | 0 |
 | V8 Authorization | 11 | 6 | 1 | 4 | 2 |
 | V9 Self-contained Tokens | 6 | 6 | 0 | 0 | 1 |
-| V10 OAuth and OIDC | 8 | 0 | 0 | 8 | 28 |
+| V10 OAuth and OIDC | 8 | 7 | 1 | 0 | 28 |
 | V11 Cryptography | 19 | 8 | 0 | 11 | 5 |
 | V12 Secure Communication | 8 | 5 | 0 | 3 | 4 |
 | V13 Configuration | 20 | 8 | 0 | 12 | 1 |
 | V14 Data Protection | 12 | 6 | 0 | 6 | 1 |
-| V15 Secure Coding and Architecture | 19 | 9 | 1 | 9 | 2 |
+| V15 Secure Coding and Architecture | 19 | 11 | 1 | 7 | 2 |
 | V16 Security Logging and Error Handling | 17 | 9 | 3 | 5 | 0 |
 | V17 WebRTC | 0 | 0 | 0 | 0 | 12 |
-| **Total** | **254** | **135** | **8** | **111** | **91** |
+| **Total** | **254** | **146** | **9** | **99** | **91** |
 
 ### 3.2 Requirement table
 
@@ -229,8 +230,8 @@ rows the last column says what is planned.
 | V6.5.5 | 2 | Planned | P2 | T02 | Use a 30-second TOTP step |
 | V6.5.6 | 3 | Planned | P3 | T02 | Let admins revoke and re-enroll TOTP after a lost device |
 | V6.5.8 | 3 | Planned | P3 | T02 | Validate TOTP against the server clock only |
-| V6.8.1 | 2 | Planned | P2 |  | When Google sign-in ships, link accounts by issuer and sub, so one identity cannot pose as another |
-| V6.8.2 | 2 | Planned | P2 |  | Validate the signature on every Google ID token and reject unsigned ones |
+| V6.8.1 | 2 | Have now | P0 |  | Google sign-in is a placeholder button today; the account schema has a google.sub field. [Sprint 6, PR #55, open until merged] accounts are linked by google.sub (partial unique index); a different sub on the account is refused; issuer checked by verifyIdToken, apps/api/src/adapters/google.oidc.ts and modules/accounts/google-signin.service.ts. |
+| V6.8.2 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] verifyIdToken checks the signature against Google keys; unsigned or badly signed tokens are rejected (google.oidc.test.ts), apps/api/src/adapters/google.oidc.ts and modules/accounts/google-signin.service.ts. |
 | V6.8.4 | 2 | Planned | P2 |  | Treat Google sign-in as single-factor unless Google's claims show stronger authentication |
 | **V7 Session Management** | | | | | |
 | V7.1.1 | 2 | Have now | P0 | T10 | Document the seven-day account and eight-hour staff limits, the planned idle timeout, and the rationale. [Sprint 6, PR #50, open until merged] idle 30 min, absolute lifetime documented in the 2026-11-20 revision of specs/2026-10-06-accounts-and-sessions-design.md. |
@@ -272,14 +273,14 @@ rows the last column says what is planned.
 | V9.2.2 | 2 | Have now | P0 |  | Version-tagged staff token; account tokens are bound to a purpose. |
 | V9.2.3 | 2 | Have now | P0 |  | Cloud Run identity token is audience-bound to the API URL; staff token is used only by web. |
 | **V10 OAuth and OIDC** | | | | | |
-| V10.1.1 | 2 | Planned | P2 |  | Keep Google tokens on the Next server only, never in browser JavaScript |
-| V10.1.2 | 2 | Planned | P2 |  | Bind state, nonce, and PKCE to the browser session that started the sign-in |
-| V10.2.1 | 2 | Planned | P2 |  | Use PKCE and check state on the Google sign-in, to stop forged sign-in requests |
-| V10.2.3 | 3 | Planned | P3 |  | Request only the openid and email scopes from Google |
-| V10.5.1 | 2 | Planned | P2 |  | Check the nonce in the Google ID token, to stop token replay |
-| V10.5.2 | 2 | Planned | P2 |  | Identify Google users by sub, which is never reassigned |
-| V10.5.3 | 2 | Planned | P2 |  | Accept only Google's exact issuer URL |
-| V10.5.4 | 2 | Planned | P2 |  | Check that the ID token's audience equals our client ID |
+| V10.1.1 | 2 | Have now | P0 |  | Google sign-in is not built yet. The Next server already holds the session token. [Sprint 6, PR #55, open until merged] code, id_token and PKCE verifier are handled only by the API; the Next handler passes code, state and a binding cookie, never a token to browser JavaScript. |
+| V10.1.2 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] single-use server-side transaction keyed by SHA-256 of state, plus an httpOnly SameSite=Lax binding cookie compared in constant time (google-signin.service.ts). |
+| V10.2.1 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] PKCE S256 and single-use state with a binding cookie (google.oidc.ts, google-signin.service.ts). |
+| V10.2.3 | 3 | Partial | P3 |  | Request only the openid and email scopes from Google |
+| V10.5.1 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] nonce in the id_token compared in constant time with the stored nonce (google-signin.service.ts). |
+| V10.5.2 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] user identified by sub; email_verified must be true (google-signin.service.ts). |
+| V10.5.3 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] issuer checked by google-auth-library verifyIdToken; endpoints are fixed in code, no metadata discovery. |
+| V10.5.4 | 2 | Have now | P0 |  | Google sign-in is not built yet. [Sprint 6, PR #55, open until merged] aud equals GOOGLE_OAUTH_CLIENT_ID and azp is checked (google.oidc.ts). |
 | **V11 Cryptography** | | | | | |
 | V11.1.1 | 2 | Planned | P2 | T13 | Write a key policy for session, staff, API, and service-account keys |
 | V11.1.2 | 2 | Planned | P2 | T13 | List every algorithm and key in use (Argon2id, SHA-256, HMAC-SHA256, TLS) |
@@ -349,11 +350,11 @@ rows the last column says what is planned.
 | V15.1.3 | 2 | Planned | P2 | T11 | Document slow or paid operations (OCR, Gemini) and their limits |
 | V15.1.4 | 3 | Planned | P3 | T12 | List risky packages for extra review |
 | V15.1.5 | 3 | Planned | P3 |  | List dangerous features: URL intake, document parsing, LLM calls |
-| V15.2.1 | 1 | Planned | P1 | T12 | Add npm audit to CI, failing on high severity, as NFR-S1 requires |
+| V15.2.1 | 1 | Have now | P0 | T12 | No npm audit in CI, though NFR-S1 requires one. Add it, failing on high severity. [Sprint 6, PR #54, open until merged] npm audit --audit-level=high in ci.yml; baseline vulnerabilities fixed by lockfile updates; one moderate (uuid via @google-cloud/storage) accepted (docs/security/sast-report.md). |
 | V15.2.2 | 2 | Partial | P2 | T11 | Add per-user limits on costly reads to the existing queue, timeouts, and caps |
 | V15.2.3 | 2 | Planned | P2 |  | Use a production-only install in the API image |
 | V15.2.4 | 3 | Planned | P3 | T12 | Reserve the @tor-radar npm scope, so nobody can publish a package under our names |
-| V15.2.5 | 3 | Planned | P3 | T03, T04 | Add a non-root USER to both Dockerfiles, to contain a compromise |
+| V15.2.5 | 3 | Have now | P0 | T03, T04 | Services are containerised and the API is IAM-restricted. Containers run as root: add a non-root USER. [Sprint 6, PR #54, open until merged] USER node in apps/api/Dockerfile and apps/web/Dockerfile (verified as uid 1000 on Compose). |
 | V15.3.1 | 1 | Have now | P0 | T09 | Explicit response shapes and the redaction serializer. |
 | V15.3.2 | 2 | Have now | P0 | T04 | safe-fetch handles redirects manually with re-checks and a cap. |
 | V15.3.3 | 2 | Have now | P0 | T07 | Zod strips unknown fields; repositories set named fields. |
@@ -462,12 +463,12 @@ section 8. Status was set on 2026-11-21.
 | T01 | P1 | 12 (4x3) | S | Credential stuffing, brute force on login | argon2id, per-IP and per-email limits, real client IP (#47), breached password check (#49), login logging (#46), uniform error | Mostly done |
 | T11 | P1 | 12 (3x4) | D | Abuse of costly operations | Upload caps, queue, timeouts, search and document limits (#47), escaped vendor regex (#51) | Mostly done |
 | T09 | P1 | 12 (3x4) | I | Personal data exposed | One redaction serializer, no trackers, export and delete, `Clear-Site-Data` (#50), Referrer-Policy (#48); planned tokens out of URLs, classification, retention | Partial |
-| T12 | P1 | 12 (3x4) | T | Vulnerable or malicious npm package | Lockfile and `npm ci`; planned `npm audit` and an SBOM in CI (TOR-323, pending) | Open |
+| T12 | P1 | 12 (3x4) | T | Vulnerable or malicious npm package | Lockfile and `npm ci`; `npm audit --audit-level=high` gate, CodeQL, Semgrep and SHA-pinned Actions (#54); gitleaks (#51); planned SBOM | Mostly done. One moderate advisory accepted |
 | T15 | P2 | 9 (3x3) | R | Admin actions unattributable, attacks unseen | Admin audit trail, JSON logger, `auth.*`, `auth.denied`, `ratelimit.hit`, `admin.action` events (#46) | Partial. Actor is "admin", no alerts |
 | T14 | P2 | 9 (3x3) | T | Hidden instructions in a TOR steer Gemini | Fixed response schema, confidence tiering, source link; planned "text is data only" prompt rule | Open |
 | T05 | P2 | 8 (2x4) | T | Script injected through TOR text or vendor input | React escaping, no raw HTML, nonce CSP (#48), deny-all CSP on API (#45), nosniff | Done (CSP style-src-attr remains) |
 | T10 | P2 | 8 (2x4) | S | Session stolen or left active | 256-bit ids, HttpOnly, SameSite, server-side revocation, HSTS (#48), idle timeout and login revocation (#50) | Mostly done. `__Host-` prefix open |
-| T03 | P2 | 8 (2x4) | T | Malicious file uploaded and served | Magic bytes, hash keys, nosniff, attachment by default; planned antivirus, non-root containers | Partial |
+| T03 | P2 | 8 (2x4) | T | Malicious file uploaded and served | Magic bytes, hash keys, nosniff, attachment by default; images run as `USER node` (#54); planned antivirus | Partial |
 | T04 | P2 | 8 (2x4) | I | URL intake reaches internal addresses | `lib/safe-fetch.ts`: scheme allowlist, range checks, redirect re-check, caps; planned host allowlist | Partial |
 | T13 | P2 | 8 (2x4) | I | Keys or secrets leaked or over-broad | Secret Manager, no default keys and gitleaks over full history, no finding (#51); planned key policy | Mostly done |
 | T08 | P2 | 8 (2x4) | I | Vendor reads another's data | Account-scoped queries, 404 for restricted, access matrix and test (#52), 401 and 403 logged (#46) | Done for vendor data |
@@ -506,23 +507,25 @@ PRs. Summary:
 
 ## 6. Security test process
 
-Security checks run in four layers. Where the report file is not yet in the repository, its row is
-marked "pending (PR open)" and its path is the intended one.
+Security checks run in several layers. Each report file lives on the branch of the PR named beside it and
+reaches `main` when that PR merges (rows marked "pending" below are not yet merged).
 
 | Layer | Tool and scope | When | Evidence |
 | :-- | :-- | :-- | :-- |
 | Unit and integration tests | Vitest: `security-headers.test.ts` (api #45, web #48), `logger.test.ts` and `security-log.test.ts` (#46), `client-ip.test.ts` and 429 tests in `tors.routes.test.ts` (#47), `hibp.breached-passwords.test.ts` and register/reset cases in `accounts.routes.test.ts` (#49), `sessions.test.ts` and `auth.routes.test.ts` (#50), `escape-regexp.test.ts` and a matching case (#51); on `main`: `safe-fetch.test.ts`, `file-type.test.ts`, `intake.routes.test.ts`, `redact.test.ts`, `gcs.storage.test.ts`, `accounts.routes.test.ts`. Every test is listed in [docs/test-report.md](../test-report.md); cases in [docs/TESTING.md](../TESTING.md) | Every pull request (CI) | `npm test` in CI; TESTING.md rows UT-F1-1 to UT-F1-5, UT-S1-1 |
 | Access control test | `apps/api/src/core/access-control.test.ts` (#52): compares the routers with the matrix, proves 401 and 403 for each caller class, and that vendor B never receives vendor A's data (77 tests, real Mongo and GCS emulator; mutation-checked) | Every pull request | `docs/security/access-control-matrix.md` (pending (PR open), #52) |
-| SAST | CodeQL (GitHub code scanning), Semgrep, `npm audit` failing on high severity, SBOM | Every pull request (planned in TOR-323) | `docs/security/sast-report.md` (pending (PR open), TOR-323). Until it merges, `npm audit` is not in CI (known gap, T12) |
+| SAST | CodeQL `security-and-quality` (`codeql.yml`, also Mondays 02:17 UTC), Semgrep 1.186.0 with `p/default`, `p/nodejs`, `p/typescript`, `p/secrets` (`semgrep.yml`, `--error`), `npm audit --audit-level=high` in `ci.yml` | Every pull request and push to `main` | `docs/security/sast-report.md` (#54): CodeQL 0 alerts; Semgrep baseline 26 findings, 17 fixed (Actions pinned, one shell-injection fix, `USER node`) and 9 triaged as false positives with inline reasons, 0 remaining; npm baseline 12 production vulnerabilities (2 critical, 4 high, 5 moderate, 1 low) fixed by lockfile updates, `uuid` moderate accepted. |
 | Secret scan | gitleaks v8.30.1 over the full history of every ref, run in CI with a pinned binary; `.gitleaks.toml` allowlists four false positives | Every pull request | `docs/security/secret-scan.md` (#51): 530 commits, 4 findings, all false positives, no rotation needed |
-| DAST | OWASP ZAP baseline and authenticated scan against the running Compose stack | Before release | `docs/security/dast-report.md` (pending (PR open), TOR-322) |
+| DAST | OWASP ZAP 2.17.0 (`tools/zap/run.sh`, `zap.yml`): baseline spider and passive rules on the web, passive API scan over an OpenAPI file, and a signed-in scan by cookie injection; active scan not run | Weekly or on demand in CI; before release by hand | `docs/security/dast-report.md` (#57). `main` at `c676387`: 0 High, 2 Medium (no CSP, no anti-clickjacking), 9 Low, 5 Info. With #45 to #51 merged locally: 0 High, 0 Medium, 5 Low, 5 Info (signed in: 0, 0, 6, 7). Both Mediums are fixed by #48. Accepted risks: no Cross-Origin-Resource-Policy on public static assets, and no COOP/COEP on the web app. Still open and low: `nosniff` and Permissions-Policy missing on `/_next/static` files. **The final scan on the merged `main` (TOR-358) is still to be run by a person after code freeze** |
 | Header capture | `curl -I` on `/`, `/search` and the viewer route against the production web image; headless Chromium reports zero CSP violations on six pages | Per change to headers | `docs/security/evidence/web-headers.txt` and `.png` (#48). A DevTools screenshot is still to be taken by a person |
 | Live verification | Each Sprint 6 PR was exercised against a running Compose stack: bad and good logins in the log (#46); 125 searches give 120 x 200 and 5 x 429 (#47); `password123` refused with 422 (#49); a second login ends the first session, idle 25 s gives 401 (#50); startup refuses missing keys (#51); vendor B gets 404 for vendor A's vault item (#52) | Per PR | Each PR description |
 | Manual checks | Cookie flags and `Clear-Site-Data` in DevTools; viewer iframe works and a foreign page cannot frame it; staff login and admin actions; TLS scan of the deployed site; review of the Cloud Run IAP binding after each deploy (#44 re-asserts it) | Before the demo | TESTING.md section 3 |
 | Pipeline | CI order: lint, Mermaid check, docs-drift check, build, test; continuous deploy after CI passes on `main`, deploying exactly the tested commit, with a readiness smoke check (#44) | Every merge | `.github/workflows/ci.yml`, `deploy.yml` |
 
 Open items. Antivirus scanning of uploads, the prompt-injection rule for Gemini, and individual admin
-accounts have no automated test because they are not built.
+accounts have no automated test because they are not built. Google sign-in is covered by tests with a
+stub verifier and a locally signed token (`google.oidc.test.ts`, `google-signin.routes.test.ts`, #55); a
+live run against a real OAuth client has not been done.
 
 ---
 
@@ -536,11 +539,11 @@ access control.
 | :-- | :-- | :-- | :-- | :-- |
 | A01 Broken Access Control | Account-scoped queries; `requireKey`; `requireSameOrigin`; staff gate; 404 for restricted; matrix and cross-vendor test (#52); SSRF helper `lib/safe-fetch.ts` (open: host allowlist) | V8, V4, V1.3.6 | T08, T02, T04, T06 | Mostly done |
 | A02 Security Misconfiguration | helmet and CORS allowlist (#45); nonce CSP, HSTS, frame-ancestors, no `X-Powered-By` (#48); no default keys, compose requires them (#51); `TRUST_PROXY` rejects `true` (#47) | V3, V13 | T05, T10, T13 | Mostly done |
-| A03 Software Supply Chain Failures | Lockfile and `npm ci`; gitleaks (#51); CD builds the CI-tested commit (#44); planned `npm audit`, CodeQL, SBOM (TOR-323, pending) | V15 | T12 | Open |
+| A03 Software Supply Chain Failures | Lockfile and `npm ci`; `npm audit` gate at high, CodeQL, Semgrep, Actions pinned by SHA (#54); gitleaks (#51); CD builds the CI-tested commit (#44); planned SBOM | V15 | T12 | Mostly done |
 | A04 Cryptographic Failures | argon2id; SHA-256 tokens and content hashes; HMAC-SHA256 staff cookie; HTTPS and HSTS; planned key policy and TLS scan | V11, V12, V6 | T10, T13 | Partial |
 | A05 Injection | Zod primitives-only filters; MongoDB driver; `lib/escape-regexp.ts` (#51); React escaping and `escapeHtml` in mail; no shell calls | V1, V2 | T07, T05 | Mostly done (CSV escaping when export ships) |
 | A06 Insecure Design | Threat model with priorities; principles document; immutable originals; confidence marks and review queue; wording rules | V15, V2 | all | Done |
-| A07 Authentication Failures | argon2id; login limits and real client IP (#47); breached passwords (#49); idle timeout, login revocation (#50); email verification; Google OIDC (TOR-315, pending); admin TOTP planned | V6, V7, V10 | T01, T02, T10 | Mostly done |
+| A07 Authentication Failures | argon2id; login limits and real client IP (#47); breached passwords (#49); idle timeout, login revocation (#50); email verification; Google OIDC with PKCE, nonce and id_token checks, off by default (#55); admin TOTP planned | V6, V7, V10 | T01, T02, T10 | Mostly done |
 | A08 Software or Data Integrity Failures | `putIfAbsent` originals; SHA-256 hashes; append-only history; magic-byte check; CD pins the tested SHA (#44) | V5, V15, V11 | T16, T03, T14 | Partial |
 | A09 Security Logging and Alerting Failures | JSON logger with a redacting sanitizer, `X-Request-Id`, `auth.*`, `auth.denied`, `ratelimit.hit`, `admin.action` (#46); Cloud Logging alerts are a console step, not done | V16 | T15, T01 | Partial |
 | A10 Mishandling of Exceptional Conditions | Central error handler: generic 500, no stack trace (`core/errors.ts`); config fails fast; storage fails closed; HIBP fails open only by design and logs it (#49); open: no process-level uncaught handler | V16.5, V2.3 | T11, T15 | Partial |
@@ -579,7 +582,8 @@ test cited.
 
 **T12 Vulnerable dependency (P1)**
 - [x] Lockfile and `npm ci`; gitleaks in CI (#51)
-- [ ] `npm audit`, CodeQL, Semgrep, SBOM in CI (TOR-323, pending (PR open))
+- [x] `npm audit` gate at high, CodeQL, Semgrep, SHA-pinned Actions (#54)
+- [ ] SBOM in CI; one moderate advisory (`uuid` via the storage client) accepted until that client's next major
 
 **T15 Repudiation and unseen attacks (P2)**
 - [x] Structured logs, request ids, `auth.denied`, `ratelimit.hit`, `admin.action` (#46)
@@ -595,11 +599,13 @@ test cited.
 
 **T10 Session theft (P2)**
 - [x] 256-bit ids, HttpOnly, SameSite, server-side revocation, HSTS (#48), idle timeout, login revocation (#50)
+- [x] Google sign-in binds the callback to the starting browser (single-use state, binding cookie, PKCE S256, nonce) (#55)
 - [ ] `__Host-` cookie prefix
 
 **T03 Malicious upload (P2)**
 - [x] Magic bytes, hash keys, nosniff, attachment by default
-- [ ] Antivirus scan; non-root containers
+- [x] Non-root containers, `USER node` (#54)
+- [ ] Antivirus scan
 
 **T04 SSRF (P2)**
 - [x] Scheme allowlist, resolved-address checks, redirect re-check, caps (`lib/safe-fetch.ts`)
@@ -630,7 +636,9 @@ test cited.
 
 - Workbook: [Momentum-OWASP-ASVS-5.0-Plan.xlsx](Momentum-OWASP-ASVS-5.0-Plan.xlsx), tabs "ASVS Requirements" and "Threat Model" (new column O, status).
 - Principles: [security-design-principles.md](security-design-principles.md).
-- Pending reports (PR open): `docs/security/sast-report.md`, `docs/security/dast-report.md`,
-  `docs/security/access-control-matrix.md` (#52), `docs/security/secret-scan.md` (#51),
-  `docs/security/evidence/web-headers.txt` (#48).
+- Reports, each on its PR branch until the PR merges: `docs/security/sast-report.md` (#54),
+  `docs/security/dast-report.md` (#57), `docs/security/access-control-matrix.md` (#52),
+  `docs/security/secret-scan.md` (#51), `docs/security/evidence/web-headers.txt` (#48).
+- Still to do by a person: the final ZAP scan on the merged `main` (TOR-358); a real Google sign-in once an
+  OAuth client exists (`docs/gcp-setup.md` 7.3b).
 - Assignment brief: `01219325 Project Assignment 2026.pdf` (course material, not committed).
