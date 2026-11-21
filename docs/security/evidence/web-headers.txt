@@ -1,0 +1,52 @@
+# TOR-321 web security headers, captured 2026-11-20 from the production web image (docker compose, web on :10400)
+
+$ curl -sI http://localhost:10400/
+HTTP/1.1 200 OK
+content-security-policy: default-src 'self'; script-src 'self' 'nonce-MWM4ZjAyODItYTZlOS00Njk5LWJjZmMtMzZjOGNmM2U5OTgw' 'strict-dynamic'; style-src 'self' 'nonce-MWM4ZjAyODItYTZlOS00Njk5LWJjZmMtMzZjOGNmM2U5OTgw'; style-src-attr 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+x-frame-options: DENY
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Fri, 20 Nov 2026 17:02:27 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl -sI http://localhost:10400/search
+HTTP/1.1 200 OK
+content-security-policy: default-src 'self'; script-src 'self' 'nonce-MjJjODM0NzMtZDUyMC00NDQ1LTg3MjctZTRkMTI2MWUyM2Jk' 'strict-dynamic'; style-src 'self' 'nonce-MjJjODM0NzMtZDUyMC00NDQ1LTg3MjctZTRkMTI2MWUyM2Jk'; style-src-attr 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+x-frame-options: DENY
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Fri, 20 Nov 2026 17:02:28 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl -sI http://localhost:10400/tors/6b007ba4fa1b44d583b28c5b/document?disposition=inline
+HTTP/1.1 200 OK
+content-security-policy: default-src 'self'; script-src 'self' 'nonce-NTIwYWEzZWMtZTBlMi00NzNhLTk2YTEtYjY3MjA5OWE0NzNk' 'strict-dynamic'; style-src 'self' 'nonce-NTIwYWEzZWMtZTBlMi00NzNhLTk2YTEtYjY3MjA5OWE0NzNk'; style-src-attr 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+accept-ranges: bytes
+cache-control: private, no-store
+content-disposition: inline
+content-length: 193
+content-type: application/pdf
+Date: Fri, 20 Nov 2026 17:02:28 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

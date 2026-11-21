@@ -1,6 +1,6 @@
 # Testing — TOR Radar
 
-_Last updated: 2026-11-03. Kept current by the rule in [CLAUDE.md](../CLAUDE.md) ("Docs stay
+_Last updated: 2026-11-20. Kept current by the rule in [CLAUDE.md](../CLAUDE.md) ("Docs stay
 current"); CI fails a pull request that adds or removes a test file without updating this one._
 
 The [SRS](SRS.md) states every requirement as a testable statement with a verification method (T
@@ -16,6 +16,8 @@ test, D demonstration, I inspection, A analysis) and gives each feature an accep
 | `npm run build && npm test` | The CI order. Packages ship compiled output, so testing before building tests a source tree the app never sees | as above |
 | `npm run test:report` | The whole suite, then regenerates [test-report.md](test-report.md): every test with its result, grouped by feature | as above |
 | `npx vitest run <path>` | One file | as above |
+| `npm audit --audit-level=high` | The CI dependency gate: fails on any high or critical advisory, dev tree included | network |
+| Semgrep (Docker, command in [security/sast-report.md](security/sast-report.md) §5) | The CI SAST gate: `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`; CodeQL runs only in CI (findings in the PR's code-scanning tab) | Docker |
 | `node tools/check_mermaid.mjs` | Parses every Mermaid block under `docs/` | nothing |
 | `node tools/check_docs_drift.mjs` | Fails when code changed without its doc (rules in `tools/docs_drift.mjs`) | `git fetch origin` |
 | `RUN_LIVE_VERTEX=1 npx vitest run apps/api/src/adapters/vertex.ai.test.ts` | One real Vertex AI extraction — **paid**, run deliberately | Vertex credentials |
@@ -48,6 +50,10 @@ the last run — is listed with its result in the generated [test-report.md](tes
 Result column: the run of 2026-11-03 at commit `81ad2ef` — full suite 771 passed · 0 failed · 10
 skipped (opt-in). `npm run test:report` refreshes the report.
 
+Security headers and CORS (TOR-317): `apps/api/src/core/security-headers.test.ts` covers helmet headers and a
+deny-all CSP, no `X-Powered-By`, the allowed origin echoed with credentials, and a foreign origin (`https://evil.example`)
+and a look-alike origin getting no `Access-Control-*` header on a request or a preflight.
+
 | ID | Req. | Function under test | Input | Expected | Result | Test file |
 | :---- | :---- | :---- | :---- | :---- | :---- | :---- |
 | UT-F1-1 | FR-A-1, NFR-S1 | `POST /api/v1/intake/upload` | PDF upload with no `x-api-key` | 401; nothing stored | Pass | `intake.routes.test.ts` |
@@ -74,6 +80,7 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F2-W1 | FR-A-1 | extraction worker without a credential | no project, no credential path, a path to no file, a real file; a cycle with no handler; a cycle with one | the blocker names what is missing; with no handler nothing is claimed and nothing is published | Pass | `extract.worker.test.ts` |
 | UT-F3-1 | FR-G-1 | `torStateOf` | `{ torStatus: "announced", deadline: "2026-10-05" }`, today later | `closed` — the date wins over the label | Pass | `tor-state.test.ts` |
 | UT-F3-2 | FR-B-6 | `POST /admin/tors/bulk` | `{ action: "reject", ids: [id] }` with no reason | 400; the TOR stays public | Pass | `admin.routes.test.ts` |
+| UT-S-1 | NFR-S1 | `escapeRegExp` and `GET /me/matches` (TOR-366) | vendor terms `a.*(`, `(a+)+$`, `[x`, `a\|b`; a nested quantifier on 40 characters | matched as literal text only; no regex error (200, not 500); no backtracking blow-up | Pass | `escape-regexp.test.ts`, `matching.routes.test.ts` |
 | UT-F4-0 | FR-E-3 | `GET /tors?q=` keyword | a Thai word inside an unspaced title; the agency; a word in no record | finds the record by word, matches the agency, returns nothing for a miss; index creation is idempotent | Pass | `tors.atlas-search.test.ts` (needs `mongodb-atlas-local`) |
 | UT-F4-1 | NFR-F2 | `GET /tors` search | 5,000-record corpus, every filter at once | answered within 2 s | Pass | `tors.search.timing.test.ts` |
 | UT-F4-2 | NFR-F2 | `GET /tors` search | deep pages of the same corpus | each page within 2 s (cursor, not skip) | Pass | `tors.search.timing.test.ts` |
@@ -102,8 +109,14 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F5-20 | FR-D-3 | `readinessOf` and `ReadinessPanel` on the TOR detail page (TOR-219) | a listed certification with and without a matching certificate; a file of another kind or certificate; a document naming no listed certification; one naming several ("and" and "or"), whichever the vault holds; the list unconfirmed; no vault, no required documents | there / missing / "check it yourself", never guessed from the words; counts split between what can and cannot be checked; the block absent otherwise | Pass | `ReadinessPanel.test.tsx` |
 | UT-F5-18 | FR-D-3 | `VaultPanel` and its web handlers | the list; a vault that cannot be read; an upload with its type and certificate; over the size limit; a refusal; delete with and without confirming; a full vault; bytes through the handler; a foreign origin; no session or a declared 64 MB; an endless body; 401/404/502 | listed with download links; unreadable says so; the form data sent; nothing sent over the limit; delete only after confirming; bytes unchanged; foreign origin `403`, no session `401` and a declared or streamed excess `413`, each without reading past the limit and before the API is called | Pass | `VaultPanel.test.tsx`, `app/api/vault/vault.routes.test.ts` |
 | UT-F5-4 | FR-C-3 | `NotifyService.dispatch` | vendor with email preset `off`, a bookmarked TOR due soon | 0 emails, reminders included | Pass | `notify.service.test.ts` |
+| UT-F6-4 | NFR-S1 | Public read rate limits and proxy trust (TOR-318) | tiny limits of 2: `GET /tors` and `GET /tors/:id/document` from one forwarded client; a second forwarded client; `X-Forwarded-For` from a peer outside `trust proxy`; `TRUST_PROXY` values | the third request is `429`, another client's first is `200`; search and document buckets are separate; a spoofed header from an untrusted peer shares one bucket; `TRUST_PROXY=true` refuses to load | Pass | `tors.routes.test.ts`, `config.test.ts` |
+| UT-F6-5 | NFR-S1 | `clientIpFrom`, `forwardedClientHeaders` (web, TOR-318) | a chain with a client-prepended entry; `TRUSTED_PROXY_HOPS` 0, 2, too large; no header; outside a request | the entry left of the trusted hops, a single replaced header; nothing when none can be vouched for | Pass | `client-ip.test.ts` |
 | UT-F6-1 | FR-D-1 | `POST /api/v1/register` | `{ email, password }` with `consent` absent or `false` | 400; 0 accounts; 0 emails | Pass | `accounts.routes.test.ts` |
 | UT-F6-2 | NFR-S2 | `DELETE /me` | the correct current password | account tombstoned, sessions revoked, owned records removed, TORs untouched | Pass | `accounts.routes.test.ts` |
+| UT-F6-3 | NFR-S1 | `POST /register`, `/password/reset`, `/password/change` | a password the (faked) breach corpus has seen | 422 `password_breached` with the Thai message; 0 accounts, 0 emails; the reset link stays usable for a second try | Pass | `accounts.routes.test.ts` |
+| UT-F6-4 | NFR-S1 | `POST /register` with the breach corpus unreachable | a bundled common-list password; an unlisted passphrase | the common one is refused (422), the other accepted (fail open on the corpus only) | Pass | `accounts.routes.test.ts` |
+| UT-F6-5 | NFR-S1 | `HibpBreachedPasswords` | a password; a mocked range reply | only the 5-char SHA-1 prefix is in the URL, `Add-Padding: true` is set, suffix matched locally; padding rows count 0; non-2xx rejects | Pass | `hibp.breached-passwords.test.ts` |
+| UT-F6-3 | NFR-S1, ASVS V16.3 | `logger`, `securityLog`, `auditAdmin`, `POST /login`, `/logout` | a failed login (wrong password, unknown email), a good login and logout, a 403, a wrong admin key, a rate-limit hit, an admin action, a request carrying a password, cookie, session id and API key | `auth.login.failure` with `reason`; `auth.login.success`; `auth.denied`; `ratelimit.hit` with `keyType`; `admin.action` with the actor and target; no log line contains the password, email, session id, cookie, query token or API key; secret keys masked at any depth | Pass | `logger.test.ts`, `security-log.test.ts`, `accounts.routes.test.ts` |
 | UT-F7-1 | §4.5.1 | `verdictFor` (IQR, minN 8) | peers 10…80 (Q1 27.5, Q3 62.5, IQR 35); budget 200 | `anomaly`, side `high`, distance (200 − 62.5) / 35 | Pass | `anomaly.rule.test.ts` |
 | UT-F7-2 | §4.5.1 | `verdictFor` | budget exactly on the upper fence (115) | `normal` | Pass | `anomaly.rule.test.ts` |
 | UT-F7-3 | §4.5.1 | `verdictFor` | budget 999,999 with only 7 peers | `not-evaluated`, reason `insufficient-peers` | Pass | `anomaly.rule.test.ts` |
@@ -111,6 +124,9 @@ skipped (opt-in). `npm run test:report` refreshes the report.
 | UT-F8-2 | FR-F-1 | `evaluateChecklist` | budget extracted but not verified | C1 fails | Pass | `checklist.test.ts` |
 | UT-F10-1 | FR-B-5 | `redactContactString` | `"ติดต่อ โทร 02-246-1551 มือถือ 081-234-5678"` | office line kept, mobile removed | Pass | `redact.test.ts` |
 | UT-F10-2 | FR-B-6, NFR-S3 | takedown and restore routes | reject (reason "ไม่ใช่เอกสาร TOR"), then restore, a TOR | restricted with the reason, then public again; both logged; same storage key — the original is kept | Pass | `admin.routes.test.ts` |
+| UT-S1-1 | NFR-S1, ASVS V3.4 | `securityHeaders`, `buildCsp` | `/search` vs `/tors/abc/document` vs `/admin/tors/abc/pages/2`; production vs development; two nonces | nonce differs per call and sits in `script-src`; `frame-ancestors 'none'` + `DENY` except the viewer routes (`'self'` + `SAMEORIGIN`); `unsafe-eval` and missing HSTS only outside production; env extra sources appended | Not in the 2026-11-03 run | `security-headers.test.ts` |
+
+Live check (TOR-321, 2026-11-20, headless Chromium against the production web image): zero CSP violations on `/`, `/search`, `/dashboard`, `/login`, `/tors/:id`, `/tors/:id/original`; the viewer document loads in a same-origin iframe and is blocked in a foreign-origin one; `/search` is blocked in any iframe. Evidence: `docs/security/evidence/web-headers.{txt,png}`.
 
 F11 (CSV export) has no test because it is not built. F12's automated tests cover collection only;
 per-adapter health reporting is not built.
@@ -145,3 +161,7 @@ the last column.
 Wording check for every case: no screen says "suspicious", "corrupt" or "irregular" (NFR-F5).
 
 The access matrix draft case enables generation, requires a successful POST and checks the captured prompt for vendor B’s project and absence of all vendor A markers.
+
+The web headers suite checks the global path rule and the viewer framing exception.
+
+The unexpected-error route test inspects the emitted JSON for correlation metadata and exclusion of request-derived exception text.

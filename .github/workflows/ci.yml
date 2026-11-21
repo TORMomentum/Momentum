@@ -21,16 +21,39 @@ jobs:
       # signs nothing that outlives the run.
       SESSION_SECRET: ci-session-secret-not-used-outside-this-run
       APP_ORIGIN: http://web:3000
+      # Compose requires it for the web service; a throwaway value, like the others.
+      STAFF_ACCESS_SECRET: ci-staff-secret-not-used-outside-this-run
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # The docs-drift check diffs the branch against its base.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The whole history, not just the diff (TOR-365). The binary is pinned and
+      # run directly: gitleaks-action needs a paid licence for organisations.
+      # Config and allowlist: .gitleaks.toml; triage: docs/security/secret-scan.md.
+      - name: Secret scan
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          # From the release checksums file; bump both together.
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact -v --log-opts="--all"
+      # Dependency audit (TOR-323, NFR-S1, ASVS V15.2.1). Fails the build on a
+      # high or critical advisory. All dependencies, not only production: the
+      # dev tree (vite, eslint, concurrently) runs on CI runners and developer
+      # machines, so it is part of the supply chain. Moderate and low advisories
+      # are reported by `npm audit` locally and triaged in
+      # docs/security/sast-report.md; they do not break the build.
+      - name: Dependency audit (fails on high)
+        run: npm audit --audit-level=high
       - run: npm run lint
       - run: node tools/check_mermaid.mjs
       # A code change must carry the doc that describes it (CLAUDE.md, "Docs stay
@@ -39,7 +62,10 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           DOCS_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'docs-not-needed') }}
-        run: node tools/check_docs_drift.mjs origin/${{ github.base_ref }}
+          # Through env, never interpolated into the script: a branch name is
+          # attacker-controlled text (Semgrep run-shell-injection, TOR-323).
+          BASE_REF: ${{ github.base_ref }}
+        run: node tools/check_docs_drift.mjs "origin/$BASE_REF"
       # The integration tests (mongo.queue, gcs.storage, intake.repository) hit a
       # real stack, so CI brings up the same containers the compose file defines.
       - run: docker compose up -d mongo gcs

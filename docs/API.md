@@ -57,6 +57,12 @@ flowchart LR
 
 ## 2. Conventions
 
+### Request id and security log
+
+Every response carries `X-Request-Id`, generated per request (an inbound value is ignored). Logins, 401/403 refusals,
+429 rate-limit hits and admin actions are written to the API log with that id; see ARCHITECTURE.md, "Logging and
+security events". Response bodies are unchanged.
+
 ### Authentication
 
 Two separate key lists, because the routes differ in blast radius (`NFR-S1`):
@@ -113,6 +119,21 @@ Validation failures add the failing paths, so a caller can fix the request witho
 
 Every `/intake` route is limited to `INTAKE_RATE_LIMIT_PER_MINUTE` requests per minute per client,
 reported in the standard `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` headers.
+
+### Security headers and CORS (TOR-317)
+
+Every response carries helmet's defaults (`X-Content-Type-Options: nosniff`, `X-Frame-Options`,
+`Cross-Origin-Resource-Policy: same-origin`, HSTS, …) and a CSP of
+`default-src 'none'; frame-ancestors 'none'`; `X-Powered-By` is removed. The document routes keep
+setting their own `nosniff`, `no-store` and `Content-Disposition`. The in-app PDF viewer is unaffected:
+the browser's frame loads the web server's proxy route, which forwards only content type, disposition
+and length from the API.
+
+CORS: the browser never calls this API directly (Next calls it server-to-server), so the only allowed
+origin is `APP_ORIGIN`, matched exactly. That origin gets `Access-Control-Allow-Origin` echoed with
+`Access-Control-Allow-Credentials: true` and `Vary: Origin`. Any other origin gets no `Access-Control-*`
+header, and its preflight is answered `204` without them, so the browser blocks the read. `*` is never sent.
+Code: `apps/api/src/core/security-headers.ts`.
 
 ---
 
@@ -239,6 +260,12 @@ last updated. Keyword matching (`q`) reads the title and agency through an Atlas
 `SEARCH_ATLAS_ENABLED` is on: it matches whole Thai words, best first, up to `SEARCH_MAX_HITS`. With the
 switch off (a plain `mongod`) it falls back to a substring match. The request and response do not change.
 
+**Rate limit (TOR-318).** `GET /tors` and `GET /tors/facets` share one allowance of
+`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` (default 120) per client address per minute; past it the answer is
+an empty `429` with no rate-limit headers (the same as the sign-in limiter). "Client address" is the
+real client only because of the proxy scheme in the 2026-11-20 revision of the accounts-and-sessions spec
+(`TRUST_PROXY` on the API, the web server forwarding one `X-Forwarded-For`).
+
 ### `GET /api/v1/tors/facets` ✅
 
 The filter options that occur in the published corpus, most frequent first, capped at
@@ -271,7 +298,8 @@ is a 404.
 ### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
 Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
-and never opens the object. A restricted record answers **`404`**, the same as an unknown id: a
+and never opens the object. Limited to `DOCUMENT_RATE_LIMIT_PER_MIN` (default 60) per client address per
+minute, `HEAD` and `GET` together, on a bucket of its own: past it, an empty `429` (TOR-318). A restricted record answers **`404`**, the same as an unknown id: a
 `403` would confirm both that the record exists and that it was taken down (`FR-B-6`).
 
 **Query:** `?disposition=inline` or `?disposition=attachment` (default). Any other value is `400`.
@@ -374,7 +402,7 @@ The current filter as CSV, with the same PII minimisation as the API.
 | Route | Purpose |
 | :--- | :--- |
 | `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration |
-| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change |
+| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change. A new password (`POST /register`, `/password/reset`, `/password/change`) is refused with **422** `password_breached` (Thai message รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น) when it is on the bundled common-password list or seen in Have I Been Pwned (TOR-320). Reset checks before it consumes the token, so the link stays usable |
 | `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, `behaviourEnabled` and `draftEnabled`); withdrawing consent |
 | `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |
 | `POST /me/events` | `{ torId, type: view \| save \| dismiss \| prepare }`, one event, `204`. `403` unless `MATCH_BEHAVIOUR_ENABLED` is on and the vendor consented; `404` for an unknown TOR. A bookmark is recorded as `save` by the server |

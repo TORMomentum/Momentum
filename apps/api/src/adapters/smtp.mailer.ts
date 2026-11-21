@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import type { MailMessage, Mailer } from "../ports/mailer.port.js";
+import { logger } from "../core/logger.js";
 
 export interface SmtpMailerSettings {
   url: string;
@@ -35,10 +36,10 @@ export class SmtpMailer implements Mailer {
         html: message.html,
         text: message.text,
       });
-      console.log(JSON.stringify({ event: "mail_sent", outcome: "sent", messageId: result.messageId }));
+      logger.info("mail_sent", { outcome: "sent", messageId: result.messageId });
       return { messageId: result.messageId };
     } catch (error) {
-      console.error(JSON.stringify({ event: "mail_sent", outcome: "failed" }));
+      logger.error("mail_sent", { outcome: "failed" });
       throw error;
     }
   }
