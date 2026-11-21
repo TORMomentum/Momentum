@@ -14,34 +14,107 @@ original.
 
 ---
 
-## Quick start
+## Install and run
+
+This section describes `main` once the secrets change (PR #51, TOR-324) is merged: Compose then refuses to
+start without `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET`. Before that
+merge only `SESSION_SECRET` is required, and the other keys fall back to `change-me-*` defaults.
+
+### Prerequisites
+
+- Docker with Compose v2 (`docker compose version`)
+- Node.js 22 or newer and npm (only for the tests, the seed script and `npm run dev`; the containers carry their own)
+- `openssl` (or Node, below) to generate secrets
+- Optional, for real AI extraction: a Google Cloud project with Vertex AI and its service-account key in
+  `secrets/gcp-sa.json` (see [docs/gcp-setup.md](docs/gcp-setup.md)). Without it everything runs except
+  extraction: uploaded documents stay `queued` and nothing is published that was not extracted.
+
+### 1. Configure
 
 ```bash
-mkdir secrets                 # then drop in the service-account key files the team gives you
-cp .env.example .env          # fill in the secrets; nothing is committed
-npm install
-npm run dev                   # web :3000 · api :4000 · extraction worker
-npm test                      # vitest
-npm run lint                  # eslint
-npm run build                 # all workspaces
+cp .env.example .env
 ```
 
-`secrets/` is gitignored and holds the Google service-account keys `.env` points at —
-`gcp-sa.json` (Vertex AI) and, if you're testing against real Google Cloud Storage rather than the
-local emulator, `gcs-storage-sa.json`. Ask the team for these files; never commit them.
+Fill in the required values in `.env`. Generate each secret on your machine, never reuse one, never commit `.env`:
 
 ```bash
-docker compose up             # web · api · worker · mongo · gcs (fake-gcs-server emulator)
+openssl rand -base64 48     # SESSION_SECRET (32+ characters)
+openssl rand -hex 32        # INTAKE_API_KEYS, ADMIN_API_KEYS, STAFF_ACCESS_SECRET (one run each)
+# without openssl:  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-The `web` and `api` Dockerfiles install from the workspace root, so `@tor-radar/shared` resolves
-inside the image the same way it does locally (TOR-140). `web`'s image prerenders `/` and
-`/methodology` at build time; without `API_BASE_URL` set as a build arg, those two pages bake in
-their no-data fallback rather than live figures — worth fixing before either page ships behind
-Cloud Run.
+`APP_ORIGIN` must be the address you open the web app at (`http://localhost:3000` with the default port):
+account routes refuse any other `Origin`. Every other setting has a working default; the rest of `.env.example`
+documents them. To run on other ports (for example next to another stack) set `COMPOSE_PROJECT_NAME`,
+`WEB_PORT`, `API_PORT`, `MONGO_PORT`, `GCS_EMULATOR_PORT`, `MAIL_SMTP_PORT`, `MAIL_UI_PORT` and change `APP_ORIGIN` to match.
 
-Node 22 or newer. CI runs lint, test, and build on every pull request
-([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+### 2. Start
+
+```bash
+docker compose up --build -d
+docker compose ps           # web, api, worker, mongo, gcs, mail should all be Up (mongo: healthy)
+```
+
+| What | Where (default ports) |
+| :--- | :--- |
+| Web app | http://localhost:3000 |
+| API | http://localhost:4000, health check at `/health` |
+| Mailpit, the inbox for every email the app sends (verification links) | http://localhost:8025 |
+| MongoDB / GCS emulator | `localhost:27017` / `localhost:4443` |
+
+Logs: `docker compose logs -f api` (the API writes JSON lines). Without a Vertex credential the worker logs
+`extraction_disabled`; that is expected.
+
+### 3. Seed demo data (optional)
+
+```bash
+echo "DEMO_VENDOR_PASSWORD=choose-a-long-unique-password" >> .env
+node tools/demo-seed.mjs
+```
+
+Creates the two storage buckets the emulator does not create by itself, two verified vendor accounts
+(`vendor-a@demo.example`, `vendor-b@demo.example`), one private file in vendor A's vault, and two sample TORs
+from `docs/corpus` through the intake API. It is safe to run again. Uploading a document before the buckets
+exist returns `500`, so run it (or create `tor-raw` and `tor-vault` yourself) before using intake.
+The security demo built on it is [docs/security/demo-script.md](docs/security/demo-script.md).
+
+### 4. Run the tests
+
+The integration tests use the Compose MongoDB and GCS emulator, so keep them up and install dependencies once:
+
+```bash
+npm ci
+docker compose up -d mongo gcs
+npm test                    # vitest; add TEST_MONGO_URL / TEST_GCS_API_ENDPOINT if you changed ports
+npm run lint                # eslint
+npm run build               # all workspaces
+```
+
+### 5. Stop
+
+```bash
+docker compose down         # stop, keep the data
+docker compose down -v      # stop and delete the database, stored files and mail
+```
+
+### Without containers
+
+```bash
+npm ci
+npm run dev                 # web :3000 · api :4000 · extraction worker; needs MongoDB, GCS and SMTP reachable
+                            # (e.g. `docker compose up -d mongo gcs mail`) and API_BASE_URL=http://localhost:4000
+```
+
+`secrets/` is gitignored and holds the Google service-account keys `.env` points at: `gcp-sa.json` (Vertex AI)
+and, only when testing against real Google Cloud Storage instead of the emulator, `gcs-storage-sa.json`. Ask the
+team for them; never commit them.
+
+The `web` and `api` Dockerfiles install from the workspace root, so `@tor-radar/shared` resolves inside the image
+the same way it does locally (TOR-140). `web`'s image prerenders `/` and `/methodology` at build time; without
+`API_BASE_URL` set as a build arg, those two pages bake in their no-data fallback rather than live figures — worth
+fixing before either page ships behind Cloud Run.
+
+CI runs lint, test, and build on every pull request ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ---
 
