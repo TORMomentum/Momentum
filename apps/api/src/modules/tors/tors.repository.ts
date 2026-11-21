@@ -5,6 +5,7 @@ import { SEARCH_PATHS, torPeerStats, tors, type TorDocument } from "../../core/d
 import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
 import { stateFilter } from "../../lib/tor-state.js";
+import { escapeRegExp } from "../../lib/escape-regexp.js";
 
 export interface PublicTorDocumentRecord {
   storage: { key: string; contentType: string; bytes: number };
@@ -132,10 +133,6 @@ const LIST_PROJECTION = {
   "access.restricted": 1,
   "pipeline.state": 1,
 } as const;
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 /** The day after a `YYYY-MM-DD`, so an inclusive "to" bound becomes an exclusive `$lt`. */
 function dayAfter(isoDate: string): Date {

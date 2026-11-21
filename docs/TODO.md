@@ -561,6 +561,15 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-324 Close secret and input gaps
+
+- [x] TOR-364 Compose has no default keys: `INTAKE_API_KEYS`, `ADMIN_API_KEYS` are required like `SESSION_SECRET` (verified: `docker compose config` fails with the variable named, then starts once set)
+- [x] `web` now receives `APP_ORIGIN`, `ADMIN_API_KEYS`, `STAFF_ACCESS_SECRET` (required); before, `/api/auth/*` returned 500 under Compose (found in TOR-318 review). Verified: register and login through `:10900/api/auth`, staff review page renders
+- [x] TOR-365 Git history scanned with gitleaks (530 commits): 4 false positives, no real credential; `.gitleaks.toml` and a CI step added — see `docs/security/secret-scan.md`
+- [x] TOR-366 Vendor terms escaped in the matching `$regex` through one `lib/escape-regexp.ts` (the three other private copies now use it)
+- [ ] Not done: weak-key rejection at startup (min length) — CI and tests use short throwaway keys; revisit with a production-only rule
+- [ ] Staff sign-in form itself (server action) not driven by a script; the staff cookie was forged with the secret to prove the web container reads it
+
 ## Sprint 6 — TOR-323 SAST and dependency audit in CI
 
 - [x] TOR-360 CodeQL workflow (`codeql.yml`: PR, push to main, weekly; `security-and-quality`)
