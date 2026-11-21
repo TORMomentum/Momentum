@@ -7,6 +7,8 @@ import { markLogged, requestFields } from "../../core/security-log.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import type { Config } from "../../core/config.js";
 import type { Mailer } from "../../ports/mailer.port.js";
+import type { BreachedPasswords } from "../../ports/breached-passwords.port.js";
+import { assertPasswordNotBreached } from "./breached-password.js";
 import { AccountsRepository, normalizeEmail } from "./accounts.repository.js";
 import { AccountTokensRepository } from "./account-tokens.repository.js";
 import { SessionsRepository } from "./sessions.js";
@@ -28,6 +30,8 @@ export interface AccountsRouterDeps {
   tokens: AccountTokensRepository;
   sessions: SessionsRepository;
   mailer: Mailer;
+  /** Refuses leaked passwords wherever a new one is set (TOR-320). */
+  breachedPasswords: BreachedPasswords;
   /** The vendor's kept files (TOR-218): deleting the account deletes them, and a failure stops the deletion. */
   vault: { removeAll(accountId: string): Promise<void> };
 }
@@ -41,6 +45,7 @@ export function tokenUrl(origin: string, path: string, token: string): string {
 export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   const router = Router();
   const writes = [requireSameOrigin(deps.config.appOrigin), ...authRateLimit(deps.config)];
+  const assertNotBreached = (password: string) => assertPasswordNotBreached(password, deps.breachedPasswords, deps.config.hibp);
 
   /**
    * Whether the address is already registered is not disclosed — and that has
@@ -53,6 +58,8 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.post("/register", ...writes, async (req, res) => {
     const input = registerSchema.parse(req.body);
     const email = normalizeEmail(input.email);
+    // Before the account lookup, so the answer says nothing about whether the address is registered.
+    await assertNotBreached(input.password);
     const passwordHash = await hashPassword(input.password, deps.config);
     const existing = await deps.accounts.findByEmail(email);
 
@@ -126,6 +133,8 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
 
   router.post("/password/reset", ...writes, async (req, res) => {
     const input = tokenSchema.extend({ password: z.string().min(8).max(1024) }).parse(req.body);
+    // Before the token is consumed, so a refused password leaves the link usable for another try.
+    await assertNotBreached(input.password);
     const consumed = await deps.tokens.consume(input.token, "reset");
     if (!consumed) throw new UnauthorizedError(AUTH_FAILURE);
     await deps.accounts.setPassword(consumed.accountId, await hashPassword(input.password, deps.config));
@@ -140,6 +149,7 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     if (!account.passwordHash || !await verifyPassword(account.passwordHash, input.currentPassword)) throw new UnauthorizedError(AUTH_FAILURE);
     const sessionId = req.get("x-session-id");
     if (!sessionId) throw new UnauthorizedError();
+    await assertNotBreached(input.password);
     await deps.accounts.setPassword(account._id.toString(), await hashPassword(input.password, deps.config));
     await deps.sessions.revokeAllForAccountExcept(account._id.toString(), sessionId);
     res.json({ ok: true });

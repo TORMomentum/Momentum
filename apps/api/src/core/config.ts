@@ -52,6 +52,14 @@ const schema = z.object({
   MAIL_FROM: z.string().min(1).default("TOR Radar <noreply@tor-radar.example>"),
   MAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
+  // Breached-password check (TOR-320, ASVS V6.2.4). Only the first 5 hex characters of the password's SHA-1 are sent
+  // to the range API; the bundled common-password list is checked whatever these say.
+  HIBP_ENABLED: flag(true),
+  HIBP_API_URL: z.string().url().default("https://api.pwnedpasswords.com/range/"),
+  HIBP_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
+  /** A password seen in at least this many breaches/dumps is refused. */
+  HIBP_MIN_COUNT: z.coerce.number().int().positive().default(1),
+
   // Storage — Google Cloud Storage (spec §6)
   GCS_BUCKET: z.string().min(1),
   /**
@@ -343,6 +351,7 @@ export interface Config {
     from: string;
     timeoutMs: number;
   };
+  hibp: { enabled: boolean; apiUrl: string; timeoutMs: number; minCount: number };
   gcs: {
     bucket: string;
     vaultBucket: string;
@@ -485,6 +494,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       from: parsed.MAIL_FROM,
       timeoutMs: parsed.MAIL_TIMEOUT_MS,
     },
+    hibp: { enabled: parsed.HIBP_ENABLED, apiUrl: parsed.HIBP_API_URL, timeoutMs: parsed.HIBP_TIMEOUT_MS, minCount: parsed.HIBP_MIN_COUNT },
     gcs: {
       bucket: parsed.GCS_BUCKET,
       vaultBucket: parsed.GCS_VAULT_BUCKET,

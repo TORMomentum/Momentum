@@ -167,8 +167,8 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF), `escape-regexp` (user text as a literal `$regex`/`RegExp`) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
-| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers | Imported by `app.ts` only |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
 

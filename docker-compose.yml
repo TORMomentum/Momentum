@@ -19,6 +19,10 @@ x-api-env: &api-env
   MAIL_FROM: ${MAIL_FROM:-TOR Radar <noreply@tor-radar.example>}
   # Compose passes only what it lists, so a switch missing here is off in the container whatever .env says.
   MATCH_BEHAVIOUR_ENABLED: ${MATCH_BEHAVIOUR_ENABLED:-false}
+  HIBP_ENABLED: ${HIBP_ENABLED:-true}
+  HIBP_API_URL: ${HIBP_API_URL:-https://api.pwnedpasswords.com/range/}
+  HIBP_TIMEOUT_MS: ${HIBP_TIMEOUT_MS:-3000}
+  HIBP_MIN_COUNT: ${HIBP_MIN_COUNT:-1}
   DRAFT_ENABLED: ${DRAFT_ENABLED:-false}
   DRAFT_RATE_PER_HOUR: ${DRAFT_RATE_PER_HOUR:-10}
   DRAFT_TIMEOUT_MS: ${DRAFT_TIMEOUT_MS:-45000}

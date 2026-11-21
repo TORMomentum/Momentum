@@ -561,6 +561,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-320 Block breached passwords
+
+- [x] TOR-349 HIBP range check (k-anonymity, `Add-Padding`, 3 s timeout) on register, reset and change-password
+- [x] TOR-350 Bundled SecLists top-10k list (MIT) checked always; HIBP outage fails open on the corpus only and logs
+      `breached_password_check_unavailable`
+- [x] TOR-351 Thai `password_breached` (422) shown by the register and reset forms
+- [x] Shown live in Compose: `password123` and `P@ssw0rd` refused, a long passphrase accepted, HIBP unreachable accepted
+- [ ] The web forms were not driven in a browser: Compose does not pass `APP_ORIGIN` to the web container, so
+      `/api/auth/*` returns 500 there (found while verifying; not changed here)
+- [ ] Change-password has no web screen yet; the API refuses a breached password there too
+
 ## Sprint 6 — TOR-321 Web security headers
 
 - [x] TOR-352 Nonce-based CSP in `apps/web/proxy.ts` (`script-src 'nonce-…' 'strict-dynamic'`; no `unsafe-eval` in production)
