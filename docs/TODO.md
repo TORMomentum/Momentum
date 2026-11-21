@@ -561,6 +561,16 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-322 DAST scan with OWASP ZAP
+
+- [x] TOR-356 Repeatable baseline: `tools/zap/run.sh` (web spider + API scan, passive), `zap-rules.tsv`, weekly `ZAP DAST` workflow
+- [x] Baseline run on `main`: 0 High, 2 Medium, 9 Low, 5 Info
+- [x] Run on the open security PRs merged locally (#45-#51), also signed in as a vendor: 0 High, 0 Medium, 5-6 Low
+- [x] TOR-357 No High or Medium finding remains once those PRs merge, so no code fix was needed here
+- [x] TOR-359 Report and accepted risks: [security/dast-report.md](security/dast-report.md)
+- [ ] TOR-358 Final full scan after code freeze (Sun 22 Nov 12:00): a human re-runs `tools/zap/run.sh` on the merged `main`, with and without a session cookie, and updates the report
+- [ ] Optional: raise the Low header findings on static assets (Permissions-Policy, nosniff, CORP) if the team wants a zero-warning baseline
+
 ## Sprint 6 — TOR-325 Access control evidence
 
 - [x] TOR-367 One access matrix for public, vendor, admin-key and intake-key callers, built from the routers, with the
@@ -687,6 +697,8 @@ Branch `feat/tor-224-company-path`._
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-322 review: each run allocates a fresh report directory and preserves earlier evidence.
 
 TOR-325 review: draft ownership is checked at the generator boundary.
 

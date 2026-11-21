@@ -20,6 +20,7 @@ test, D demonstration, I inspection, A analysis) and gives each feature an accep
 | Semgrep (Docker, command in [security/sast-report.md](security/sast-report.md) §5) | The CI SAST gate: `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`; CodeQL runs only in CI (findings in the PR's code-scanning tab) | Docker |
 | `node tools/check_mermaid.mjs` | Parses every Mermaid block under `docs/` | nothing |
 | `node tools/check_docs_drift.mjs` | Fails when code changed without its doc (rules in `tools/docs_drift.mjs`) | `git fetch origin` |
+| `tools/zap/run.sh` | DAST: OWASP ZAP passive scan of the running Compose stack (web and API), reports in `zap-reports/`; the `ZAP DAST` workflow runs it weekly. Results and re-run steps: [security/dast-report.md](security/dast-report.md) | `docker compose up -d --build`, Docker |
 | `RUN_LIVE_VERTEX=1 npx vitest run apps/api/src/adapters/vertex.ai.test.ts` | One real Vertex AI extraction — **paid**, run deliberately | Vertex credentials |
 | `GCS_REAL_TEST_BUCKET=… GCS_CREDENTIALS=… npx vitest run apps/api/src/adapters/gcs.storage.real.test.ts` | Storage contract against a real, disposable bucket (also the `gcs-real` workflow) | a throwaway bucket |
 
