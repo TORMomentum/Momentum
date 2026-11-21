@@ -110,6 +110,7 @@ and a look-alike origin getting no `Access-Control-*` header on a request or a p
 | UT-F5-4 | FR-C-3 | `NotifyService.dispatch` | vendor with email preset `off`, a bookmarked TOR due soon | 0 emails, reminders included | Pass | `notify.service.test.ts` |
 | UT-F6-1 | FR-D-1 | `POST /api/v1/register` | `{ email, password }` with `consent` absent or `false` | 400; 0 accounts; 0 emails | Pass | `accounts.routes.test.ts` |
 | UT-F6-2 | NFR-S2 | `DELETE /me` | the correct current password | account tombstoned, sessions revoked, owned records removed, TORs untouched | Pass | `accounts.routes.test.ts` |
+| UT-F6-3 | NFR-S1, ASVS V16.3 | `logger`, `securityLog`, `auditAdmin`, `POST /login`, `/logout` | a failed login (wrong password, unknown email), a good login and logout, a 403, a wrong admin key, a rate-limit hit, an admin action, a request carrying a password, cookie, session id and API key | `auth.login.failure` with `reason`; `auth.login.success`; `auth.denied`; `ratelimit.hit` with `keyType`; `admin.action` with the actor and target; no log line contains the password, email, session id, cookie, query token or API key; secret keys masked at any depth | Pass | `logger.test.ts`, `security-log.test.ts`, `accounts.routes.test.ts` |
 | UT-F7-1 | §4.5.1 | `verdictFor` (IQR, minN 8) | peers 10…80 (Q1 27.5, Q3 62.5, IQR 35); budget 200 | `anomaly`, side `high`, distance (200 − 62.5) / 35 | Pass | `anomaly.rule.test.ts` |
 | UT-F7-2 | §4.5.1 | `verdictFor` | budget exactly on the upper fence (115) | `normal` | Pass | `anomaly.rule.test.ts` |
 | UT-F7-3 | §4.5.1 | `verdictFor` | budget 999,999 with only 7 peers | `not-evaluated`, reason `insufficient-peers` | Pass | `anomaly.rule.test.ts` |
@@ -149,3 +150,5 @@ the last column.
 | TC-F12-1 | F12 | Run `tools/import_national_egp_tors.mts` twice | Second run adds no records. The SRS criterion — each adapter reports its last collection and health — is not built | |
 
 Wording check for every case: no screen says "suspicious", "corrupt" or "irregular" (NFR-F5).
+
+The unexpected-error route test inspects the emitted JSON for correlation metadata and exclusion of request-derived exception text.

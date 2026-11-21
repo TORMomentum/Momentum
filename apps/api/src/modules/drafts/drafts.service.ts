@@ -6,6 +6,7 @@ import { GenerationError, type TextGenerator } from "../../ports/text-generator.
 import type { ProfileRepository } from "../profile/profile.repository.js";
 import type { VaultRepository } from "../vault/vault.repository.js";
 import { buildDraftPrompt, DRAFT_SYSTEM_PROMPT, type DraftFacts } from "./drafts.prompt.js";
+import { logger } from "../../core/logger.js";
 
 type PublicField = { raw: string; value: unknown } | undefined;
 /** What `TorsService.detail` gives: the redacted public record, and NotFoundError when there is none. */
@@ -89,7 +90,7 @@ export class DraftsService {
     } catch (error) {
       if (!(error instanceof GenerationError)) throw error;
       // The reason, never the prompt: it holds the vendor's data.
-      console.warn(JSON.stringify({ event: "draft_failed", reason: error.message }));
+      logger.warn("draft_failed", { reason: error.message });
       throw new AppError(502, "draft_failed", "AI ร่างจดหมายไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     }
   }

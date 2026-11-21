@@ -57,6 +57,12 @@ flowchart LR
 
 ## 2. Conventions
 
+### Request id and security log
+
+Every response carries `X-Request-Id`, generated per request (an inbound value is ignored). Logins, 401/403 refusals,
+429 rate-limit hits and admin actions are written to the API log with that id; see ARCHITECTURE.md, "Logging and
+security events". Response bodies are unchanged.
+
 ### Authentication
 
 Two separate key lists, because the routes differ in blast radius (`NFR-S1`):

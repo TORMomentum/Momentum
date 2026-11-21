@@ -249,3 +249,11 @@ Every control above is a test, because a security control nobody tested is a cla
 14. Route names contradicted the `/me/*` contract already in `docs/API.md`.
 15. The staff cookie and admin API key were described as replaced; they are not.
 16. The tests named none of the security cases above.
+
+## 10. Revision 2026-11-20 - security event logging (TOR-316)
+
+Logins, refusals and admin actions are now logged (ASVS V16.3; threats T01, T15). `POST /login` logs
+`auth.login.success`, or `auth.login.failure` with a `reason` (`unknown_email`, `bad_password`, `disabled`,
+`unverified`); `POST /logout` logs `auth.logout`. The HTTP response to a failed login is unchanged and uniform
+(section 2); only the log distinguishes the reasons. No log line holds a password, an email address, a session
+id or a cookie. The event vocabulary and fields are in `docs/ARCHITECTURE.md`, "Logging and security events".

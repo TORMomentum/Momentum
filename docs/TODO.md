@@ -561,6 +561,19 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-316 Security event logging
+
+- [x] TOR-333 One structured logger (`core/logger.ts`, `LOG_LEVEL`); every `console.*` in the API and workers replaced
+- [x] TOR-334 `auth.login.success` / `auth.login.failure` (reason in the log, uniform response) and `auth.logout`
+- [x] TOR-335 `auth.denied` (401/403) and `ratelimit.hit` (429) logged by one response hook
+- [x] TOR-336 `admin.action` with the acting identity, route pattern and target for every state-changing `/admin` request
+- [x] TOR-337 Tests: no password, email, session id, cookie, query token or API key in any captured log line
+- [x] Shown live in Compose: bad login, good login, 401 on an admin route, an admin action, 429 after the limit
+- [ ] No route returns 403 today (`requireRole` is not mounted), so `auth.denied` with 403 is tested but not shown live
+- [ ] `GET /me` without a session is a 401 and so logs `auth.denied`; watch the volume once the web app is live
+- [ ] Web (Next.js) handlers still use their own logging; only the API and workers are covered
+- [ ] Cloud Logging alerts on `auth.login.failure` bursts are not set up (GCP console step)
+
 ## Sprint 6 — TOR-317 API security headers and CORS
 
 - [x] TOR-338 helmet on the API (deny-all CSP, `frame-ancestors 'none'`, no `X-Powered-By`)
@@ -626,3 +639,5 @@ Branch `feat/tor-224-company-path`._
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-316 review: unexpected errors log only a classified type, internal code and request ID.
