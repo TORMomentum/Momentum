@@ -1,0 +1,52 @@
+name: Semgrep
+
+# SAST with Semgrep OSS rulesets (TOR-323, ASVS V15.2.1, threat T12).
+# Runs the open-source CLI in the official container. No Semgrep Cloud token:
+# the rulesets are fetched anonymously from the registry.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.186.0
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to code scanning
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # SARIF first and without --error so the report is always produced; the
+      # second scan is the gate. --error exits non-zero on any finding.
+      # .semgrepignore (repo root) keeps mockups/ and build output out.
+      - name: Scan (SARIF report)
+        run: >
+          semgrep scan
+          --config p/default --config p/nodejs --config p/typescript --config p/secrets
+          --sarif --output semgrep.sarif
+        env:
+          SEMGREP_SEND_METRICS: "off"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+      # Fork pull requests get a read-only token; the upload is best-effort.
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        if: always() && hashFiles('semgrep.sarif') != ''
+        continue-on-error: true
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      - name: Gate (fail on any finding)
+        run: >
+          semgrep scan
+          --config p/default --config p/nodejs --config p/typescript --config p/secrets
+          --error
+        env:
+          SEMGREP_SEND_METRICS: "off"
