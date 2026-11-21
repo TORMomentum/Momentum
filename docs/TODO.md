@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,21 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-327 Security presentation and submission
+
+Slides, a scripted demo on Docker Compose, a README install guide, a team dry-run and the Classroom submission.
+Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 Nov 13:00.
+
+- [x] TOR-374 Slides: `docs/security/security-slides.html`, 15 slides, keyboard navigation, renders offline
+- [ ] TOR-374 Slide 12 (results): fill in SAST and ZAP counts once TOR-322 and TOR-323 merge; refresh the ASVS "have now" figures; add member names to slide 1
+- [ ] TOR-374 Slide status tags (merged / open PR / TODO) re-checked against `main` the morning of the presentation
+- [x] TOR-375 Demo script `docs/security/demo-script.md` and seed `tools/demo-seed.mjs` (buckets, two verified vendors, a vault file, two TORs through the intake API); seed run twice on `main`
+- [x] TOR-375 Verified live on `main`: headers (before picture), login burst 5x401 then 429, vendor B gets 404 for vendor A's file
+- [ ] TOR-375 Steps that need unmerged PRs (#44 to #51, TOR-315, TOR-322, TOR-323) run end to end once they merge: web CSP, API headers and CORS, breached password, session idle expiry, Google sign-in, `admin.action` log, ZAP and SAST reports
+- [x] TOR-376 README "Install and run": prerequisites, secrets, `docker compose up --build`, URLs, seeding, tests, stop (written for the state after PR #51)
+- [ ] TOR-377 Dry-run with the team (human)
+- [ ] TOR-378 Submit repository (private, collaborator usa.sa@ku.th), project document and slides to Google Classroom (human)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
