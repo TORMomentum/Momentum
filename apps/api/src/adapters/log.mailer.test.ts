@@ -1,13 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setLogSink } from "../core/logger.js";
 import { LogMailer } from "./log.mailer.js";
 
+beforeEach(() => setLogSink(() => {}));
 afterEach(() => {
+  setLogSink();
   vi.restoreAllMocks();
 });
 
 describe("LogMailer", () => {
   it("records a message that a local flow would have sent", async () => {
-    vi.spyOn(console, "log").mockImplementation(() => {});
     const mailer = new LogMailer();
     const message = { to: "vendor@example.test", subject: "ยืนยันอีเมล", html: "<p>ยืนยัน</p>", text: "ยืนยัน" };
 

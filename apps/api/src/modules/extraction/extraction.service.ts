@@ -10,6 +10,7 @@ import { hasTextLayer } from "../../lib/pdf-text.js";
 import { grade } from "./extraction.grading.js";
 import { IMPLAUSIBLE_DEADLINE, type ExtractionRepository } from "./extraction.repository.js";
 import { cohortFor } from "../stats/cohort.js";
+import { logger } from "../../core/logger.js";
 
 export interface ExtractionConfig {
   model: string;
@@ -126,12 +127,12 @@ export class ExtractionService {
             await this.deps.storage.putIfAbsent(pageImageKey(contentHash, page.number), page.image!.bytes, page.image!.contentType);
             stored.add(page.number);
           } catch (error) {
-            console.warn(JSON.stringify({ event: "page_image_failed", torId, page: page.number, reason: error instanceof Error ? error.message : "unknown" }));
+            logger.warn("page_image_failed", { torId, page: page.number, reason: error instanceof Error ? error.message : "unknown" });
           }
         }
         located = keepAnchorsOn(anchored.fields, stored);
       } catch (error) {
-        console.warn(JSON.stringify({ event: "ocr_failed", torId, reason: error instanceof Error ? error.message : "unknown" }));
+        logger.warn("ocr_failed", { torId, reason: error instanceof Error ? error.message : "unknown" });
       }
     }
 
@@ -143,7 +144,7 @@ export class ExtractionService {
       try {
         if (text) embedding = { model: this.deps.embedder.model, vector: (await this.deps.embedder.embed([text]))[0]! };
       } catch (error) {
-        console.warn(JSON.stringify({ event: "embedding_failed", where: "extraction", torId, reason: error instanceof Error ? error.message : "unknown" }));
+        logger.warn("embedding_failed", { where: "extraction", torId, reason: error instanceof Error ? error.message : "unknown" });
       }
     }
 

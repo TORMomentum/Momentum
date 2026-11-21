@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { MailMessage, Mailer } from "../ports/mailer.port.js";
+import { logger } from "../core/logger.js";
 
 /**
  * Captures local delivery instead of pretending an unconfigured SMTP service
@@ -12,7 +13,7 @@ export class LogMailer implements Mailer {
   async send(message: MailMessage): Promise<{ messageId: string }> {
     this.messages.push({ ...message });
     const messageId = randomUUID();
-    console.log(JSON.stringify({ event: "mail_recorded", outcome: "recorded", subject: message.subject, recipient: "[redacted]" }));
+    logger.info("mail_recorded", { outcome: "recorded", subject: message.subject, recipient: "[redacted]" });
     return { messageId };
   }
 }

@@ -5,6 +5,7 @@ import { SEARCH_PATHS, torPeerStats, tors, type TorDocument } from "../../core/d
 import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
 import { stateFilter } from "../../lib/tor-state.js";
+import { escapeRegExp } from "../../lib/escape-regexp.js";
 
 export interface PublicTorDocumentRecord {
   storage: { key: string; contentType: string; bytes: number };
@@ -133,10 +134,6 @@ const LIST_PROJECTION = {
   "pipeline.state": 1,
 } as const;
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /** The day after a `YYYY-MM-DD`, so an inclusive "to" bound becomes an exclusive `$lt`. */
 function dayAfter(isoDate: string): Date {
   const date = new Date(`${isoDate}T00:00:00Z`);
@@ -165,6 +162,7 @@ function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filt
   } else if (criteria.q) {
     // Fallback for a mongod without Atlas Search (search spec §5): a substring,
     // which Thai needs and $text cannot do.
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- escapeRegExp neutralises every metacharacter in the user term
     const pattern = new RegExp(escapeRegExp(criteria.q), "i");
     clauses.push({
       $or: [

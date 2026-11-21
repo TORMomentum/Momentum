@@ -17,6 +17,7 @@ import type {
   ReviewFieldName,
   ReviewRecord,
 } from "./admin.repository.js";
+import { logger } from "../../core/logger.js";
 
 export interface AdminDeps {
   repo: AdminRepository;
@@ -290,7 +291,7 @@ export class AdminService {
         done.push(id);
       } catch (error) {
         // An AppError is a refusal worded for a person; anything else is ours.
-        if (!(error instanceof AppError)) console.error(JSON.stringify({ event: "admin_bulk_item_failed", action, id, error: String(error) }));
+        if (!(error instanceof AppError)) logger.error("admin_bulk_item_failed", { action, id, error: String(error) });
         failed.push({ id, reason: error instanceof AppError ? error.message : "ทำรายการไม่สำเร็จ" });
       }
     }

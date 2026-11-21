@@ -21,6 +21,7 @@ import { VaultRepository } from "../modules/vault/vault.repository.js";
 import { VaultService } from "../modules/vault/vault.service.js";
 import { createVaultStorage } from "../adapters/storage.factory.js";
 import { StatsRepository } from "../modules/stats/stats.repository.js";
+import { configureLogger, logger } from "../core/logger.js";
 
 /**
  * Given a TOR id, read the stored document, OCR + extract the nine fields,
@@ -176,6 +177,7 @@ export async function startWorker(
   config: Config,
   handle?: ExtractionHandler,
 ): Promise<void> {
+  configureLogger(config.logLevel);
   const db = await connect(config.mongoUrl);
   await ensureIndexes(db);
   const queue = new MongoQueue(db, {
@@ -187,29 +189,29 @@ export async function startWorker(
   const resolved = handle ?? buildHandler(config, db);
   if (!resolved) {
     // Loud on purpose: the housekeeping below still runs, but nothing is extracted and nothing is published.
-    console.error(JSON.stringify({ event: "extraction_disabled", reason: extractionBlocker(config), effect: "jobs stay queued; no record is published" }));
+    logger.error("extraction_disabled", { reason: extractionBlocker(config), effect: "jobs stay queued; no record is published" });
   }
 
   let lastReconcile = 0;
-  console.log(JSON.stringify({ event: "worker_started", pollMs: config.jobPollMs }));
+  logger.info("worker_started", { pollMs: config.jobPollMs });
 
   for (;;) {
     if (Date.now() - lastReconcile > config.reconcileIntervalMs) {
       const requeued = await reconcileOrphanedRecords(db, queue, config.reconcileMinAgeMs);
-      if (requeued > 0) console.log(JSON.stringify({ event: "reconciled", requeued }));
+      if (requeued > 0) logger.info("reconciled", { requeued });
       // A housekeeping failure here must not stop extraction.
       try {
         const purged = await new BehaviourRepository(db, config).purgeUnconsented();
-        if (purged > 0) console.log(JSON.stringify({ event: "behaviour_purged", purged }));
+        if (purged > 0) logger.info("behaviour_purged", { purged });
       } catch (error) {
-        console.error(JSON.stringify({ event: "behaviour_purge_failed", message: error instanceof Error ? error.message : "unknown" }));
+        logger.error("behaviour_purge_failed", { error: error instanceof Error ? error.message : "unknown" });
       }
       // Files an unfinished vault upload left behind (a crash, or a clean-up that failed at the time).
       try {
         const cleared = await new VaultService(new VaultRepository(db), createVaultStorage(config, "worker")).sweep(new Date(Date.now() - config.vault.pendingTtlMs));
-        if (cleared > 0) console.log(JSON.stringify({ event: "vault_swept", cleared }));
+        if (cleared > 0) logger.info("vault_swept", { cleared });
       } catch (error) {
-        console.error(JSON.stringify({ event: "vault_sweep_failed", message: error instanceof Error ? error.message : "unknown" }));
+        logger.error("vault_sweep_failed", { error: error instanceof Error ? error.message : "unknown" });
       }
       lastReconcile = Date.now();
     }
@@ -218,7 +220,7 @@ export async function startWorker(
     if (result === "idle") {
       await new Promise((resolve) => setTimeout(resolve, config.jobPollMs));
     } else {
-      console.log(JSON.stringify({ event: "job_" + result }));
+      logger.info("job_" + result);
     }
   }
 }
@@ -236,7 +238,7 @@ if (isEntry) {
   // Only where a probe port is configured (Cloud Run). Locally the API already owns API_PORT.
   if (config.workerHealthPort !== undefined) startHealthServer(config.workerHealthPort);
   startWorker(config).catch((error: Error) => {
-    console.error(JSON.stringify({ event: "worker_crashed", message: error.message }));
+    logger.error("worker_crashed", { error: error.message });
     process.exit(1);
   });
 }

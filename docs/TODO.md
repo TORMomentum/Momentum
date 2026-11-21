@@ -572,6 +572,133 @@ Branch `feat/tor-224-company-path`._
 - [x] Compose passes `APP_ORIGIN` to `web` (its account route handlers threw without it)
 - [ ] Single-active ends a vendor's other devices at sign-in; set `SESSION_SINGLE_ACTIVE=false` if the team prefers several devices
 
+## Sprint 6 — TOR-326 Security project document
+
+- [x] TOR-369 Team, features and design principles sections: [security-project-document.md](security/security-project-document.md) §1, §2, §5; principles note revised for the Sprint 6 PRs
+- [x] TOR-370 ASVS workbook "Have now" re-derived from the PRs (24 requirements changed, each with its PR in the evidence column); Threat Model tab has a status column
+- [x] TOR-371 Threat model: Mermaid DFD with trust boundaries, STRIDE per element, T01 to T16 with priority, mitigation checklist (§4, §8)
+- [x] TOR-372 OWASP Top 10:2025 mapping (§7), category list checked against top10.owasp.org/2025
+- [x] TOR-373 Security test process (§6)
+- [ ] The document describes the system as it will be after PRs #44 to #52 merge; re-read its evidence column after each merge
+- [x] SAST (#54), ZAP (#57) and Google OIDC (#55) added to the document and the workbook (11 more requirements Have now); counts taken from the reports on their branches
+- [ ] Final ZAP scan on the merged `main` (TOR-358) is run by a person; update §6 of the document from it
+- [ ] A person takes the DevTools header screenshot (TOR-355) and exports the final PDF
+
+## Sprint 6 — TOR-327 Security presentation and submission
+
+Slides, a scripted demo on Docker Compose, a README install guide, a team dry-run and the Classroom submission.
+Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 Nov 13:00.
+
+- [x] TOR-374 Slides: `docs/security/security-slides.html`, 15 slides, keyboard navigation, renders offline
+- [x] TOR-374 Slide 12 results filled from the SAST report (#54) and the DAST report (#57), pre-freeze numbers
+- [ ] TOR-374 After the final ZAP scan on merged `main` (TOR-358) update slide 12; add member names to slide 1
+- [ ] TOR-374 Slide status tags (merged / open PR / TODO) re-checked against `main` the morning of the presentation
+- [x] TOR-375 Demo script `docs/security/demo-script.md` and seed `tools/demo-seed.mjs` (buckets, two verified vendors, a vault file, two TORs through the intake API); seed run twice on `main`
+- [x] TOR-375 Verified live on `main`: headers (before picture), login burst 5x401 then 429, vendor B gets 404 for vendor A's file
+- [ ] TOR-375 Steps that need unmerged PRs (#44 to #51, #54, #55, #57) run end to end once they merge: web CSP, API headers and CORS, breached password, session idle expiry, Google sign-in start and refusals, `admin.action` log, ZAP and SAST reports
+- [x] TOR-376 README "Install and run": prerequisites, secrets, `docker compose up --build`, URLs, seeding, tests, stop (written for the state after PR #51)
+- [ ] TOR-377 Dry-run with the team (human)
+- [ ] TOR-378 Submit repository (private, collaborator usa.sa@ku.th), project document and slides to Google Classroom (human)
+
+## Sprint 6 — TOR-322 DAST scan with OWASP ZAP
+
+- [x] TOR-356 Repeatable baseline: `tools/zap/run.sh` (web spider + API scan, passive), `zap-rules.tsv`, weekly `ZAP DAST` workflow
+- [x] Baseline run on `main`: 0 High, 2 Medium, 9 Low, 5 Info
+- [x] Run on the open security PRs merged locally (#45-#51), also signed in as a vendor: 0 High, 0 Medium, 5-6 Low
+- [x] TOR-357 No High or Medium finding remains once those PRs merge, so no code fix was needed here
+- [x] TOR-359 Report and accepted risks: [security/dast-report.md](security/dast-report.md)
+- [ ] TOR-358 Final full scan after code freeze (Sun 22 Nov 12:00): a human re-runs `tools/zap/run.sh` on the merged `main`, with and without a session cookie, and updates the report
+- [ ] Optional: raise the Low header findings on static assets (Permissions-Policy, nosniff, CORP) if the team wants a zero-warning baseline
+
+## Sprint 6 — TOR-325 Access control evidence
+
+- [x] TOR-367 One access matrix for public, vendor, admin-key and intake-key callers, built from the routers, with the
+      enforcing middleware (file:line) and the scoping that keeps a vendor to its own data:
+      [security/access-control-matrix.md](security/access-control-matrix.md)
+- [x] TOR-368 Integration test, real Mongo and GCS emulator: vendor B cannot read or change vendor A's data, no session
+      is `401` on every `/me` route, a vendor session is refused on every admin and intake route, and the route list
+      is read from the matrix so a route added without a row fails (`core/access-control.test.ts`)
+- [x] Run live against Compose: vendor B asking for vendor A's vault item id gets `404`, A still has the file
+- [ ] Findings left for a decision, listed in the matrix section 5: F1 public `/sources/bma-egp/*` (no auth, no rate
+      limit, outside `/api/v1`); F2 admin API is one shared key with the actor `admin`, `requireRole` unused
+      (TOR-199)
+
+## Sprint 6 — TOR-320 Block breached passwords
+
+- [x] TOR-349 HIBP range check (k-anonymity, `Add-Padding`, 3 s timeout) on register, reset and change-password
+- [x] TOR-350 Bundled SecLists top-10k list (MIT) checked always; HIBP outage fails open on the corpus only and logs
+      `breached_password_check_unavailable`
+- [x] TOR-351 Thai `password_breached` (422) shown by the register and reset forms
+- [x] Shown live in Compose: `password123` and `P@ssw0rd` refused, a long passphrase accepted, HIBP unreachable accepted
+- [ ] The web forms were not driven in a browser: Compose does not pass `APP_ORIGIN` to the web container, so
+      `/api/auth/*` returns 500 there (found while verifying; not changed here)
+- [ ] Change-password has no web screen yet; the API refuses a breached password there too
+
+## Sprint 6 — TOR-321 Web security headers
+
+- [x] TOR-352 Nonce-based CSP in `apps/web/proxy.ts` (`script-src 'nonce-…' 'strict-dynamic'`; no `unsafe-eval` in production)
+- [x] TOR-353 HSTS (production only), `Referrer-Policy`, `nosniff`, `Permissions-Policy`, `poweredByHeader: false`
+- [x] TOR-354 `frame-ancestors 'none'`, `'self'` for the original-viewer routes; `X-Frame-Options` to match
+- [x] Verified live: zero CSP violations on landing, search, dashboard, login, TOR detail, original; framing blocked from a foreign origin
+- [x] TOR-355 header capture saved as `docs/security/evidence/web-headers.txt` and `.png` (a rendered `curl -I`)
+- [ ] TOR-355 a human still takes the real DevTools Network screenshot for the report
+- [ ] Not run: a deployed Cloud Run + IAP check (HSTS and IAP's own pages); the TOR detail page was checked with a queued record only
+- [ ] `style-src-attr 'unsafe-inline'` stays while components use `style={{…}}`; removing it means moving those to CSS classes or custom properties
+
+## Sprint 6 — TOR-318 Rate limits for login and public APIs
+
+- [x] TOR-341: the web server forwards one client `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`); the API trusts proxy hops
+      from `TRUST_PROXY` (default off, `true` refused) — the login limiter now sees the client (live: client A limited
+      at 60, client B not; a forged prefix still lands in A's bucket)
+- [x] TOR-342: `GET /tors`, `/tors/facets` and `GET`/`HEAD /tors/:id/document` limited per client address
+      (`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` 120, `DOCUMENT_RATE_LIMIT_PER_MIN` 60); live 429 shown directly and via the web page
+- [x] TOR-343: supertest cases for separate buckets, spoofed header from an untrusted peer, 429 on search and download
+- [ ] Not verified: the entries Google's front end really appends on the web-to-api call in Cloud Run; confirm
+      `TRUST_PROXY=2` / `TRUSTED_PROXY_HOPS=1` against a request log after the next deploy
+- [ ] The dashboard `/stats` routes and `GET /tors/:id` are not limited (cheap, cached reads); revisit if abused
+- [ ] Compose web has no `APP_ORIGIN`, so `/api/auth/*` returns 500 there until it is set (found while testing; not changed here)
+
+## Sprint 6 — TOR-316 Security event logging
+
+- [x] TOR-333 One structured logger (`core/logger.ts`, `LOG_LEVEL`); every `console.*` in the API and workers replaced
+- [x] TOR-334 `auth.login.success` / `auth.login.failure` (reason in the log, uniform response) and `auth.logout`
+- [x] TOR-335 `auth.denied` (401/403) and `ratelimit.hit` (429) logged by one response hook
+- [x] TOR-336 `admin.action` with the acting identity, route pattern and target for every state-changing `/admin` request
+- [x] TOR-337 Tests: no password, email, session id, cookie, query token or API key in any captured log line
+- [x] Shown live in Compose: bad login, good login, 401 on an admin route, an admin action, 429 after the limit
+- [ ] No route returns 403 today (`requireRole` is not mounted), so `auth.denied` with 403 is tested but not shown live
+- [ ] `GET /me` without a session is a 401 and so logs `auth.denied`; watch the volume once the web app is live
+- [ ] Web (Next.js) handlers still use their own logging; only the API and workers are covered
+- [ ] Cloud Logging alerts on `auth.login.failure` bursts are not set up (GCP console step)
+
+## Sprint 6 — TOR-317 API security headers and CORS
+
+- [x] TOR-338 helmet on the API (deny-all CSP, `frame-ancestors 'none'`, no `X-Powered-By`)
+- [x] TOR-339 CORS allowlist, `APP_ORIGIN` only, never `*`, credentials only for it (no new env var)
+- [x] TOR-340 Tests: foreign origin and its preflight get no `Access-Control-*` header
+- [x] Checked live with curl against the compose stack (see the PR)
+- [ ] The web app sets no security headers of its own yet (separate story)
+
+## Sprint 6 — TOR-324 Close secret and input gaps
+
+- [x] TOR-364 Compose has no default keys: `INTAKE_API_KEYS`, `ADMIN_API_KEYS` are required like `SESSION_SECRET` (verified: `docker compose config` fails with the variable named, then starts once set)
+- [x] `web` now receives `APP_ORIGIN`, `ADMIN_API_KEYS`, `STAFF_ACCESS_SECRET` (required); before, `/api/auth/*` returned 500 under Compose (found in TOR-318 review). Verified: register and login through `:10900/api/auth`, staff review page renders
+- [x] TOR-365 Git history scanned with gitleaks (530 commits): 4 false positives, no real credential; `.gitleaks.toml` and a CI step added — see `docs/security/secret-scan.md`
+- [x] TOR-366 Vendor terms escaped in the matching `$regex` through one `lib/escape-regexp.ts` (the three other private copies now use it)
+- [ ] Not done: weak-key rejection at startup (min length) — CI and tests use short throwaway keys; revisit with a production-only rule
+- [ ] Staff sign-in form itself (server action) not driven by a script; the staff cookie was forged with the secret to prove the web container reads it
+
+## Sprint 6 — TOR-323 SAST and dependency audit in CI
+
+- [x] TOR-360 CodeQL workflow (`codeql.yml`: PR, push to main, weekly; `security-and-quality`)
+- [x] TOR-361 Semgrep workflow (`semgrep.yml`: four rulesets, `--error`, SARIF artifact and code-scanning upload)
+- [x] TOR-362 `npm audit --audit-level=high` in `ci.yml`; today's high and critical advisories fixed by lockfile bumps
+- [x] TOR-363 Findings triaged and exported to [security/sast-report.md](security/sast-report.md)
+- [x] Semgrep findings fixed: actions pinned to commit SHAs, shell injection in `ci.yml`, containers run as `node`
+- [x] CodeQL alerts from the first PR run folded into the report (none)
+- [ ] Two moderate `uuid` advisories (via `@google-cloud/storage`) accepted until that package's next major is adopted
+- [ ] Running the images as `node` verified against the deployed Cloud Run services (checked on Compose only)
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
@@ -615,3 +742,13 @@ TOR-319 review: single-active issuance is transactional in the shared repository
 TOR-319: rejected cookies leave public email actions available and trigger expiry cleanup on vendor pages.
 
 A failed /me body read also renders public pages signed out.
+
+TOR-322 review: each run allocates a fresh report directory and preserves earlier evidence.
+
+TOR-325 review: draft ownership is checked at the generator boundary.
+
+TOR-321 review: global Next headers cover static assets and prefetch responses. The proxy sets the nonce policy and path-dependent frame options.
+
+TOR-318 review: Compose uses the socket peer for its published API port. Cloud Run sets trusted hop counts explicitly.
+
+TOR-316 review: unexpected errors log only a classified type, internal code and request ID.
