@@ -284,3 +284,5 @@ in `apps/web/src/shared/api/api-client.ts`, not by a browser directly.
 | The deploy service account's key | GitHub Actions **secrets** | never |
 | Mongo URL, API keys, staff passphrase, the two SA key files | GCP **Secret Manager** | never |
 | Who can call the deployed services | Cloud Run IAM (`run.invoker`) | n/a |
+
+Automatic rollout compares the tested SHA to the remote main ref immediately before rollout. A superseded run skips every Cloud Run mutation. Bootstrap requires a successful region-scoped service list with no web service.

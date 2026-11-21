@@ -78,9 +78,20 @@ jobs:
       # URL is stable, and a placeholder pass would roll a broken revision into
       # live traffic on every deploy - so it is skipped and api/worker and then
       # web go straight out with real values.
-      - name: Create web once (first deploy only, establishes its URL)
+      - name: Verify automatic rollout still targets main
+        if: github.event_name == 'workflow_run'
         run: |
-          if gcloud run services describe tor-radar-web --region "$REGION" >/dev/null 2>&1; then
+          current=$(git ls-remote --exit-code origin refs/heads/main)
+          if [[ "${current%%[[:space:]]*}" != "$DEPLOY_SHA" ]]; then
+            echo "Skipping superseded deployment of $DEPLOY_SHA"
+            echo "SKIP_ROLLOUT=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create web once (first deploy only, establishes its URL)
+        if: env.SKIP_ROLLOUT != 'true'
+        run: |
+          services=$(gcloud run services list --project "$PROJECT_ID" --region "$REGION" --filter='metadata.name=tor-radar-web' --format='value(metadata.name)')
+          if [[ -n "$services" ]]; then
             echo "tor-radar-web already exists; skipping the placeholder pass."
             exit 0
           fi
@@ -93,6 +104,7 @@ jobs:
       # api and worker share the api image but are separate services (different
       # scaling, different command) — see deploy/cloudrun/worker.yaml.
       - name: Deploy api and worker
+        if: env.SKIP_ROLLOUT != 'true'
         run: |
           APP_ORIGIN=$(gcloud run services describe tor-radar-web --region "$REGION" --format='value(status.url)')
           export APP_ORIGIN
@@ -102,6 +114,7 @@ jobs:
           gcloud run services replace /tmp/worker.yaml --region "$REGION"
 
       - name: Deploy web with api's real URL
+        if: env.SKIP_ROLLOUT != 'true'
         run: |
           API_SERVICE_URL=$(gcloud run services describe tor-radar-api --region "$REGION" --format='value(status.url)')
           export API_SERVICE_URL
@@ -122,11 +135,13 @@ jobs:
       # (cloudresourcemanager.googleapis.com, to look up the project number). Idempotent:
       # safe to repeat against a service that's already IAP-enabled.
       - name: Re-assert IAP on web (services replace doesn't carry it)
+        if: env.SKIP_ROLLOUT != 'true'
         run: gcloud run services update tor-radar-web --region "$REGION" --iap
 
       # No public access needed (everything is IAM/IAP-gated): ask Cloud Run itself
       # whether each service's newest revision became ready and is the one serving.
       - name: Smoke check (services Ready, latest revision serving)
+        if: env.SKIP_ROLLOUT != 'true'
         run: |
           fail=0
           for svc in tor-radar-api tor-radar-worker tor-radar-web; do
