@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-326 Security project document
+
+- [x] TOR-369 Team, features and design principles sections: [security-project-document.md](security/security-project-document.md) §1, §2, §5; principles note revised for the Sprint 6 PRs
+- [x] TOR-370 ASVS workbook "Have now" re-derived from the PRs (24 requirements changed, each with its PR in the evidence column); Threat Model tab has a status column
+- [x] TOR-371 Threat model: Mermaid DFD with trust boundaries, STRIDE per element, T01 to T16 with priority, mitigation checklist (§4, §8)
+- [x] TOR-372 OWASP Top 10:2025 mapping (§7), category list checked against top10.owasp.org/2025
+- [x] TOR-373 Security test process (§6)
+- [ ] The document describes the system as it will be after PRs #44 to #52 merge; re-read its evidence column after each merge
+- [ ] Reports still to link when their PRs land: `sast-report.md` (TOR-323), `dast-report.md` (TOR-322); Google OIDC (TOR-315)
+- [ ] A person takes the DevTools header screenshot (TOR-355) and exports the final PDF
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 

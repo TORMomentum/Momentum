@@ -77,6 +77,7 @@ Start with whichever question you have:
 | **What delegated agents built, and how it was verified** (slice 1 only so far) | [docs/work-log.md](docs/work-log.md) |
 | **Where the TORs come from** — the BMA eGP API, document formats, taxonomy seeds | [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md) |
 | **How accurate the extraction is** | [docs/corpus/BENCHMARK.md](docs/corpus/BENCHMARK.md) |
+| **How it is secured** — ASVS mapping, threat model, principles, test process | [docs/security/security-project-document.md](docs/security/security-project-document.md) |
 | **How to set up Vertex AI** | [docs/gcp-setup.md](docs/gcp-setup.md) |
 
 Working in this repo with an AI agent: [CLAUDE.md](CLAUDE.md) (Claude Code) or
