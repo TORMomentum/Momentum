@@ -24,8 +24,8 @@ x-api-env: &api-env
   DRAFT_TIMEOUT_MS: ${DRAFT_TIMEOUT_MS:-45000}
   DRAFT_MAX_OUTPUT_TOKENS: ${DRAFT_MAX_OUTPUT_TOKENS:-8192}
   DRAFT_TEMPERATURE: ${DRAFT_TEMPERATURE:-0.3}
-  # One hop: the web container is the only proxy in front of the api here (TOR-318). Not "true" - see .env.example.
-  TRUST_PROXY: ${TRUST_PROXY:-1}
+  # The published API port accepts direct connections.
+  TRUST_PROXY: ${TRUST_PROXY:-false}
   PUBLIC_SEARCH_RATE_LIMIT_PER_MIN: ${PUBLIC_SEARCH_RATE_LIMIT_PER_MIN:-120}
   DOCUMENT_RATE_LIMIT_PER_MIN: ${DOCUMENT_RATE_LIMIT_PER_MIN:-60}
   AUTH_RATE_LIMIT_PER_IP: ${AUTH_RATE_LIMIT_PER_IP:-60}
@@ -49,8 +49,8 @@ services:
       # The draft handler waits this long for the model (plus a few seconds); keep it equal to the API's.
       - DRAFT_TIMEOUT_MS=${DRAFT_TIMEOUT_MS:-45000}
       # Entries of the incoming X-Forwarded-For that a trusted proxy appended (TOR-318). Compose has no proxy in
-      # front of web, so a browser's own header would be believed: fine on a laptop, not on an exposed host.
-      - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
+      # front of web, so discard the incoming chain.
+      - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-0}
     depends_on:
       - api
 

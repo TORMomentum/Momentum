@@ -9,7 +9,7 @@ import { headers } from "next/headers";
  * so the entry just left of them is the real client; anything further left is client-supplied.
  * 1 suits Cloud Run behind Google's front end; 0 disables forwarding altogether.
  */
-const DEFAULT_TRUSTED_PROXY_HOPS = 1;
+const DEFAULT_TRUSTED_PROXY_HOPS = 0;
 
 function trustedHops(): number {
   const configured = process.env.TRUSTED_PROXY_HOPS;

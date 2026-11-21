@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe("clientIpFrom", () => {
   it("takes the entry just left of the trusted hops, ignoring whatever the client prepended", () => {
-    delete process.env.TRUSTED_PROXY_HOPS;
+    process.env.TRUSTED_PROXY_HOPS = "1";
     expect(clientIpFrom("198.51.100.9, 203.0.113.7")).toBe("203.0.113.7");
     process.env.TRUSTED_PROXY_HOPS = "2";
     expect(clientIpFrom("198.51.100.9, 203.0.113.7, 10.1.1.1")).toBe("203.0.113.7");
@@ -23,6 +23,7 @@ describe("clientIpFrom", () => {
     process.env.TRUSTED_PROXY_HOPS = "0";
     expect(clientIpFrom("203.0.113.7")).toBeNull();
     delete process.env.TRUSTED_PROXY_HOPS;
+    expect(clientIpFrom("203.0.113.7")).toBeNull();
     expect(clientIpFrom(null)).toBeNull();
     expect(clientIpFrom("not-an-ip")).toBeNull();
     process.env.TRUSTED_PROXY_HOPS = "3";
@@ -32,7 +33,7 @@ describe("clientIpFrom", () => {
 
 describe("forwardedClientHeaders", () => {
   it("replaces the incoming chain with the single derived address", async () => {
-    delete process.env.TRUSTED_PROXY_HOPS;
+    process.env.TRUSTED_PROXY_HOPS = "1";
     const incoming = new Headers({ "x-forwarded-for": "198.51.100.9, 203.0.113.7" });
     expect(await forwardedClientHeaders(incoming)).toEqual({ "x-forwarded-for": "203.0.113.7" });
   });
