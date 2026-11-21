@@ -52,6 +52,14 @@ const schema = z.object({
   MAIL_FROM: z.string().min(1).default("TOR Radar <noreply@tor-radar.example>"),
   MAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
+  // Breached-password check (TOR-320, ASVS V6.2.4). Only the first 5 hex characters of the password's SHA-1 are sent
+  // to the range API; the bundled common-password list is checked whatever these say.
+  HIBP_ENABLED: flag(true),
+  HIBP_API_URL: z.string().url().default("https://api.pwnedpasswords.com/range/"),
+  HIBP_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
+  /** A password seen in at least this many breaches/dumps is refused. */
+  HIBP_MIN_COUNT: z.coerce.number().int().positive().default(1),
+
   // Storage — Google Cloud Storage (spec §6)
   GCS_BUCKET: z.string().min(1),
   /**
@@ -100,16 +108,40 @@ const schema = z.object({
   APP_ORIGIN: z.url().refine((value) => new URL(value).origin === value, {
     message: "APP_ORIGIN must be an origin without a path",
   }),
+  /** Absolute lifetime: a session ends this long after sign-in, however active it is (ASVS V7.3.2). */
   SESSION_LIFETIME_MS: z.coerce.number().int().positive().default(604_800_000),
+  /** Idle timeout: a session unused for this long is rejected and cannot be revived (ASVS V7.3.1). */
+  SESSION_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(1_800_000),
+  /** lastSeenAt is written at most this often per session, so a busy page is not a write per request. */
+  SESSION_TOUCH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  /** Signing in ends the account's other sessions (ASVS V7.4.1). Set false to allow several devices at once. */
+  SESSION_SINGLE_ACTIVE: z.enum(["true", "false"]).default("true"),
   ARGON2_MEMORY_KIB: z.coerce.number().int().positive().default(19_456),
   ARGON2_ITERATIONS: z.coerce.number().int().positive().default(2),
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
   AUTH_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(60),
   AUTH_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().positive().default(10),
+  // Per client address, per minute, on the costly public reads (TOR-318). Generous for the demo.
+  PUBLIC_SEARCH_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(120),
+  DOCUMENT_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
+  // Express `trust proxy`: "false" (nothing trusted), a hop count, or an address list/names such as
+  // "loopback, uniquelocal". "true" is refused - it would trust any X-Forwarded-For a caller sends.
+  TRUST_PROXY: z.string().trim().min(1).default("false").refine((v) => v.toLowerCase() !== "true", {
+    message: "TRUST_PROXY=true trusts every caller's X-Forwarded-For; use a hop count or an address list",
+  }),
   VERIFY_TOKEN_TTL_MS: z.coerce.number().int().positive().default(86_400_000),
   RESET_TOKEN_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
   CONSENT_NOTICE_VERSION: z.string().min(1).default("2026-10-06"),
   CONSENT_NOTICE_HASH: z.string().min(1).default("notice-not-published"),
+
+  // Sign in with Google (TOR-315, accounts spec revision 2026-11-21). Off until an OAuth client exists.
+  GOOGLE_OAUTH_ENABLED: flag(false),
+  GOOGLE_OAUTH_CLIENT_ID: blankAsAbsent(z.string().min(1)),
+  GOOGLE_OAUTH_CLIENT_SECRET: blankAsAbsent(z.string().min(1)),
+  // Defaults to `${APP_ORIGIN}/api/auth/google/callback`; it must equal the URI registered in the Google console.
+  GOOGLE_OAUTH_REDIRECT_URI: blankAsAbsent(z.url()),
+  // How long the user has at Google (and at the consent screen) before the sign-in attempt lapses.
+  OAUTH_TRANSACTION_TTL_MS: z.coerce.number().int().positive().default(600_000),
 
   // Outbound fetch, URL intake route
   FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
@@ -124,6 +156,8 @@ const schema = z.object({
   // overview. Unset: STUCK_LOCK_MULTIPLE job locks, i.e. a lease that has
   // expired several times over with no worker finishing it.
   ADMIN_STUCK_AFTER_MS: blankAsAbsent(z.coerce.number().int().positive()),
+  // Minimum severity written to stdout: debug < info < warn < error.
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   JOB_POLL_MS: z.coerce.number().int().positive().default(2_000),
   RECONCILE_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   RECONCILE_MIN_AGE_MS: z.coerce.number().int().positive().default(120_000),
@@ -317,6 +351,8 @@ const schema = z.object({
 }).refine((v) => Boolean(v.GCS_API_ENDPOINT) || Boolean(v.GOOGLE_CLOUD_PROJECT), {
   message: "GOOGLE_CLOUD_PROJECT is required unless GCS_API_ENDPOINT points at the emulator",
   path: ["GOOGLE_CLOUD_PROJECT"],
+}).refine((v) => !v.GOOGLE_OAUTH_ENABLED || Boolean(v.GOOGLE_OAUTH_CLIENT_ID && v.GOOGLE_OAUTH_CLIENT_SECRET), {
+  message: "GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are required when GOOGLE_OAUTH_ENABLED is on",
 }).refine((v) => !v.OCR_ENABLED || Boolean(v.DOCAI_PROCESSOR_ID), {
   message: "DOCAI_PROCESSOR_ID is required when OCR_ENABLED is on",
   path: ["DOCAI_PROCESSOR_ID"],
@@ -333,6 +369,7 @@ export interface Config {
     from: string;
     timeoutMs: number;
   };
+  hibp: { enabled: boolean; apiUrl: string; timeoutMs: number; minCount: number };
   gcs: {
     bucket: string;
     vaultBucket: string;
@@ -354,6 +391,9 @@ export interface Config {
   session: {
     secret: string;
     lifetimeMs: number;
+    idleTimeoutMs: number;
+    touchIntervalMs: number;
+    singleActive: boolean;
   };
   /** The browser origin allowed to make state-changing account requests. */
   appOrigin: string;
@@ -364,15 +404,22 @@ export interface Config {
   };
   authRateLimitPerIp: number;
   authRateLimitPerEmail: number;
+  publicSearchRateLimitPerMin: number;
+  documentRateLimitPerMin: number;
+  /** Value for Express `trust proxy`; `false` leaves it unset. */
+  trustProxy: false | number | string;
   verifyTokenTtlMs: number;
   resetTokenTtlMs: number;
   consentNotice: { version: string; hash: string };
+  /** Sign in with Google. `clientId`, `clientSecret` are present whenever `enabled` is true (checked at load). */
+  googleOauth: { enabled: boolean; clientId?: string; clientSecret?: string; redirectUri: string; transactionTtlMs: number };
   fetchTimeoutMs: number;
   fetchMaxRedirects: number;
   fetchMaxBytes: number;
   jobMaxAttempts: number;
   jobBackoffMs: number;
   jobLockMs: number;
+  logLevel: "debug" | "info" | "warn" | "error";
   jobPollMs: number;
   reconcileIntervalMs: number;
   reconcileMinAgeMs: number;
@@ -455,6 +502,11 @@ export const OPEN_VALUES = [
   "ANOMALY_METHOD",
 ] as const;
 
+function parseTrustProxy(value: string): false | number | string {
+  if (value.toLowerCase() === "false") return false;
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | undefined>): Config {
   const parsed = schema.parse(env);
   return {
@@ -465,6 +517,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       from: parsed.MAIL_FROM,
       timeoutMs: parsed.MAIL_TIMEOUT_MS,
     },
+    hibp: { enabled: parsed.HIBP_ENABLED, apiUrl: parsed.HIBP_API_URL, timeoutMs: parsed.HIBP_TIMEOUT_MS, minCount: parsed.HIBP_MIN_COUNT },
     gcs: {
       bucket: parsed.GCS_BUCKET,
       vaultBucket: parsed.GCS_VAULT_BUCKET,
@@ -486,6 +539,10 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     session: {
       secret: parsed.SESSION_SECRET,
       lifetimeMs: parsed.SESSION_LIFETIME_MS,
+      idleTimeoutMs: parsed.SESSION_IDLE_TIMEOUT_MS,
+      // Never longer than half the idle window, or an active session could be written too rarely to stay alive.
+      touchIntervalMs: Math.min(parsed.SESSION_TOUCH_INTERVAL_MS, Math.floor(parsed.SESSION_IDLE_TIMEOUT_MS / 2)),
+      singleActive: parsed.SESSION_SINGLE_ACTIVE === "true",
     },
     appOrigin: parsed.APP_ORIGIN,
     argon2: {
@@ -495,15 +552,26 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     authRateLimitPerIp: parsed.AUTH_RATE_LIMIT_PER_IP,
     authRateLimitPerEmail: parsed.AUTH_RATE_LIMIT_PER_EMAIL,
+    publicSearchRateLimitPerMin: parsed.PUBLIC_SEARCH_RATE_LIMIT_PER_MIN,
+    documentRateLimitPerMin: parsed.DOCUMENT_RATE_LIMIT_PER_MIN,
+    trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,
     resetTokenTtlMs: parsed.RESET_TOKEN_TTL_MS,
     consentNotice: { version: parsed.CONSENT_NOTICE_VERSION, hash: parsed.CONSENT_NOTICE_HASH },
+    googleOauth: {
+      enabled: parsed.GOOGLE_OAUTH_ENABLED,
+      ...(parsed.GOOGLE_OAUTH_CLIENT_ID ? { clientId: parsed.GOOGLE_OAUTH_CLIENT_ID } : {}),
+      ...(parsed.GOOGLE_OAUTH_CLIENT_SECRET ? { clientSecret: parsed.GOOGLE_OAUTH_CLIENT_SECRET } : {}),
+      redirectUri: parsed.GOOGLE_OAUTH_REDIRECT_URI ?? new URL("/api/auth/google/callback", parsed.APP_ORIGIN).toString(),
+      transactionTtlMs: parsed.OAUTH_TRANSACTION_TTL_MS,
+    },
     fetchTimeoutMs: parsed.FETCH_TIMEOUT_MS,
     fetchMaxRedirects: parsed.FETCH_MAX_REDIRECTS,
     fetchMaxBytes: parsed.FETCH_MAX_BYTES,
     jobMaxAttempts: parsed.JOB_MAX_ATTEMPTS,
     jobBackoffMs: parsed.JOB_BACKOFF_MS,
     jobLockMs: parsed.JOB_LOCK_MS,
+    logLevel: parsed.LOG_LEVEL,
     jobPollMs: parsed.JOB_POLL_MS,
     reconcileIntervalMs: parsed.RECONCILE_INTERVAL_MS,
     reconcileMinAgeMs: parsed.RECONCILE_MIN_AGE_MS,

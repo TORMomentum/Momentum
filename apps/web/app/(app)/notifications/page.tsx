@@ -1,7 +1,9 @@
+import { redirectExpiredVendor } from "../../../src/shared/api/viewer-session";
 import { VendorOnly } from "../../../src/features/app-shell/VendorOnly";
 import { NotificationsView } from "../../../src/views/NotificationsView";
 
-export default function NotificationsPage() {
+export default async function NotificationsPage() {
+  await redirectExpiredVendor();
   return (
     <VendorOnly
       title="การแจ้งเตือนของคุณ"

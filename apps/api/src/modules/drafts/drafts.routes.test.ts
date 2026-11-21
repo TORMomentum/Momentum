@@ -1,4 +1,5 @@
 import "../../test/env.js";
+import { setLogSink } from "../../core/logger.js";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
@@ -100,7 +101,7 @@ const draftFor = (who: { session: string }, torId: string) =>
 beforeAll(async () => {
   db = await connect(isolatedDbUrl(baseConfig.mongoUrl, "drafts-routes"));
   await ensureIndexes(db);
-  sessionsRepository = new SessionsRepository(db, baseConfig.session.lifetimeMs);
+  sessionsRepository = new SessionsRepository(db, baseConfig.session);
   accountsRepository = new AccountsRepository(db, sessionsRepository);
 });
 beforeEach(async () => {
@@ -206,14 +207,16 @@ describe("AI draft of a cover letter (TOR-220)", () => {
     const me = await sessionFor("one@example.test");
     await seedProfile(me.accountId);
     generate.mockRejectedValueOnce(new GenerationError("vertex generateContent failed: 503"));
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const logged: string[] = [];
+    setLogSink((line) => logged.push(line));
 
     const response = await draftFor(me, await seedTor());
 
     expect(response.status).toBe(502);
     expect(response.body.error.code).toBe("draft_failed");
-    expect(JSON.stringify(warn.mock.calls)).toContain("503");
-    expect(JSON.stringify(warn.mock.calls)).not.toContain("จ้างก่อสร้าง");
+    setLogSink();
+    expect(logged.join(" ")).toContain("503");
+    expect(logged.join(" ")).not.toContain("จ้างก่อสร้าง");
   });
 
   it("limits each account per hour, and one account's drafts do not use up another's", async () => {

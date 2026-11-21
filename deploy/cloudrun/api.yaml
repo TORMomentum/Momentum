@@ -17,6 +17,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "2"
+    # nosemgrep: yaml.kubernetes.security.run-as-non-root.run-as-non-root -- Cloud Run has no runAsNonRoot field; the image sets USER node (Dockerfile) and so never starts as root
     spec:
       containers:
         - image: ${AR_IMAGE_API}
@@ -27,6 +28,13 @@ spec:
               value: production
             - name: API_PORT
               value: "8080"
+            # TOR-318: hops between the API and the real client - Google's front end, then the web
+            # service. The web service overwrites X-Forwarded-For with the one client address it
+            # derived, and the front end appends the web instance's address, so the API reads the
+            # client from the third address from the right. api is IAM-restricted, so only web can
+            # reach it; see docs/superpowers/specs for the spoofing analysis.
+            - name: TRUST_PROXY
+              value: "2"
             - name: GCS_BUCKET
               value: ${GCS_BUCKET}
             - name: GOOGLE_CLOUD_PROJECT
@@ -39,6 +47,19 @@ spec:
             # (Origin header must match). Set by deploy.yml once tor-radar-web exists.
             - name: APP_ORIGIN
               value: ${APP_ORIGIN}
+            # Sign in with Google (TOR-315). Off unless the GitHub variable GOOGLE_OAUTH_ENABLED is "true"; the
+            # redirect URI is derived from APP_ORIGIN. The client SECRET is not mounted here, because a secretKeyRef
+            # to a secret that does not exist fails the whole deploy: when enabling, create the Secret Manager
+            # secret GOOGLE_OAUTH_CLIENT_SECRET and add the block below (docs/gcp-setup.md, "Sign in with Google").
+            - name: GOOGLE_OAUTH_ENABLED
+              value: "${GOOGLE_OAUTH_ENABLED}"
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              value: "${GOOGLE_OAUTH_CLIENT_ID}"
+            # - name: GOOGLE_OAUTH_CLIENT_SECRET
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: GOOGLE_OAUTH_CLIENT_SECRET
+            #       key: latest
             - name: MONGO_URL
               valueFrom:
                 secretKeyRef:

@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { Anuphan, IBM_Plex_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import "../src/shared/styles/tokens.css";
 import { NotificationsProvider } from "../src/shared/lib/notifications";
-import { nameFromEmail, ViewerProvider, type Account } from "../src/shared/lib/viewer";
-import { cookies } from "next/headers";
-import { apiRequest } from "../src/shared/api/api-client";
+import { ViewerProvider } from "../src/shared/lib/viewer";
+import { readViewerSession } from "../src/shared/api/viewer-session";
 
 // Self-hosted at build time: no render-blocking request, no layout shift.
 const display = Anuphan({
@@ -34,24 +33,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Who is signed in is decided here, once, from the cookie — the browser is
   // never asked and never told the session id.
-  const sessionId = (await cookies()).get("tor-radar-session")?.value;
-  let account: Account | null = null;
-  if (sessionId) {
-    try {
-      const response = await apiRequest("/api/v1/me", {}, sessionId);
-      if (response.ok) {
-        const me = (await response.json()) as { email: string; displayName?: string; role: string };
-        // An unrecognised role is treated as the least privileged one rather
-        // than passed through: this value reaches no authorization decision,
-        // but it must never become one by accident either.
-        account = {
-          email: me.email,
-          name: me.displayName ?? nameFromEmail(me.email),
-          role: me.role === "admin" ? "admin" : "vendor",
-        };
-      }
-    } catch { /* Public pages remain available if the API is unavailable. */ }
-  }
+  const { account } = await readViewerSession();
   return (
     <html lang="th" className={`${display.variable} ${body.variable} ${data.variable}`}>
       <body>

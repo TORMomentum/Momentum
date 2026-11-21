@@ -20,6 +20,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "2"
+    # nosemgrep: yaml.kubernetes.security.run-as-non-root.run-as-non-root -- Cloud Run has no runAsNonRoot field; the image sets USER node (Dockerfile) and so never starts as root
     spec:
       containers:
         - image: ${AR_IMAGE_WEB}
@@ -30,8 +31,14 @@ spec:
               value: production
             - name: API_BASE_URL
               value: ${API_SERVICE_URL}
+            # TOR-318: entries of X-Forwarded-For appended by Google's front end (one hop, in front of IAP).
+            - name: TRUSTED_PROXY_HOPS
+              value: "1"
             - name: APP_ORIGIN
               value: ${APP_ORIGIN}
+            # Shows the "Sign in with Google" button; the API holds the client id and secret.
+            - name: GOOGLE_OAUTH_ENABLED
+              value: "${GOOGLE_OAUTH_ENABLED}"
             - name: ADMIN_API_KEYS
               valueFrom:
                 secretKeyRef:

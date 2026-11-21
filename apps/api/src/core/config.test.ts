@@ -52,8 +52,23 @@ describe("loadConfig", () => {
     expect(config.authRateLimitPerIp).toBeGreaterThan(0);
     expect(config.authRateLimitPerEmail).toBeGreaterThan(0);
     expect(() => loadConfig({ ...base, SESSION_LIFETIME_MS: "0" })).toThrow();
+    expect(() => loadConfig({ ...base, SESSION_IDLE_TIMEOUT_MS: "0" })).toThrow();
+    // The write interval can never exceed half the idle window, or an active session could be written too rarely.
+    const tight = loadConfig({ ...base, SESSION_IDLE_TIMEOUT_MS: "10000", SESSION_TOUCH_INTERVAL_MS: "60000" });
+    expect(tight.session.touchIntervalMs).toBe(5_000);
+    expect(tight.session.singleActive).toBe(true);
     expect(() => loadConfig({ ...base, ARGON2_MEMORY_KIB: "memory" })).toThrow();
     expect(() => loadConfig({ ...base, AUTH_RATE_LIMIT_PER_IP: "1.5" })).toThrow();
+  });
+
+  it("reads the public-route limits and the proxy trust setting, and refuses to trust every caller", () => {
+    const config = loadConfig(base);
+    expect(config.publicSearchRateLimitPerMin).toBeGreaterThan(0);
+    expect(config.documentRateLimitPerMin).toBeGreaterThan(0);
+    expect(config.trustProxy).toBe(false);
+    expect(loadConfig({ ...base, TRUST_PROXY: "2" }).trustProxy).toBe(2);
+    expect(loadConfig({ ...base, TRUST_PROXY: "loopback, uniquelocal" }).trustProxy).toBe("loopback, uniquelocal");
+    expect(() => loadConfig({ ...base, TRUST_PROXY: "true" })).toThrow(/TRUST_PROXY/);
   });
 
   it("requires the app origin used to defend state-changing browser requests", () => {
@@ -197,5 +212,14 @@ describe("loadConfig", () => {
     expect(loadConfig({ ...base, EXTRACT_BIDDING_FIELDS_ENABLED: "true" }).extraction.biddingFields).toBe(true);
     expect(() => loadConfig({ ...base, OCR_ENABLED: "true" })).toThrow(/DOCAI_PROCESSOR_ID/);
     expect(loadConfig({ ...base, OCR_ENABLED: "true", DOCAI_PROCESSOR_ID: "abc" }).ocr.processorId).toBe("abc");
+  });
+
+  it("keeps Google sign-in off, derives its redirect from APP_ORIGIN, and refuses it enabled without a client", () => {
+    expect(loadConfig(base).googleOauth.enabled).toBe(false);
+    expect(loadConfig({ ...base, GOOGLE_OAUTH_ENABLED: "", GOOGLE_OAUTH_CLIENT_ID: "" }).googleOauth.enabled).toBe(false);
+    expect(loadConfig(base).googleOauth.redirectUri).toBe("https://app.example.test/api/auth/google/callback");
+    expect(() => loadConfig({ ...base, GOOGLE_OAUTH_ENABLED: "true" })).toThrow(/GOOGLE_OAUTH_CLIENT_ID/);
+    const on = loadConfig({ ...base, GOOGLE_OAUTH_ENABLED: "true", GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REDIRECT_URI: "https://other.example.test/cb" });
+    expect(on.googleOauth).toMatchObject({ enabled: true, clientId: "id", redirectUri: "https://other.example.test/cb", transactionTtlMs: 600_000 });
   });
 });

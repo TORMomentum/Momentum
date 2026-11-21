@@ -211,6 +211,30 @@ Leave replication at **Automatic** for all eight, and **Create secret** each tim
 from `tor-radar-web`'s own Cloud Run URL once that service exists (§7.5). Nothing to create
 here for it.
 
+### 7.3b Sign in with Google (TOR-315)
+
+Off until a Google OAuth client exists. Nothing in §7.3 changes if you skip this. Do it once, as the project owner:
+
+1. Google Cloud console → **APIs & Services → OAuth consent screen**. User type **External**, app name, support email,
+   authorised domain (the web service's domain, once it has one). Scopes: `openid`, `email`, `profile` only. While the
+   app is in **Testing**, only the test users you list can sign in; **Publish** it to let any Google account in.
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**.
+   **Authorised redirect URIs:** exactly `<APP_ORIGIN>/api/auth/google/callback` (for Cloud Run, the `tor-radar-web` URL,
+   e.g. `https://tor-radar-web-xxxx.a.run.app/api/auth/google/callback`; locally
+   `http://localhost:3000/api/auth/google/callback`). It must equal `GOOGLE_OAUTH_REDIRECT_URI`, which defaults to that.
+   No authorised JavaScript origin is needed.
+3. Copy the **Client ID** (not secret) into the GitHub **Variables** tab as `GOOGLE_OAUTH_CLIENT_ID`, and set the variable
+   `GOOGLE_OAUTH_ENABLED` to `true`. `deploy.yml` passes both to `api` (and the flag to `web`).
+4. Create the Secret Manager secret **`GOOGLE_OAUTH_CLIENT_SECRET`** with the client secret as its value, grant the compute
+   service account **Secret Manager Secret Accessor** on it (as in §7.3), then uncomment the `GOOGLE_OAUTH_CLIENT_SECRET`
+   block in `deploy/cloudrun/api.yaml`. The block is commented out on purpose: a `secretKeyRef` to a secret that does
+   not exist fails the whole deploy.
+5. Redeploy. `web` shows the "เข้าสู่ระบบด้วย Google" button only when `GOOGLE_OAUTH_ENABLED` is on; `api` refuses to start
+   if it is on without a client id and secret.
+
+`web` is behind IAP, and the Google callback is a browser navigation, so it carries the IAP cookie; no change to IAP is
+needed. Locally: set the three `GOOGLE_OAUTH_*` values in `.env`, `docker compose up -d --build`.
+
 ### 7.4 GitHub repository configuration (TOR-142)
 
 Repo → **Settings → Secrets and variables → Actions**.
@@ -223,6 +247,7 @@ Repo → **Settings → Secrets and variables → Actions**.
 | `GCP_REGION` | the region you picked for the Artifact Registry repo in §7.2 |
 | `GCP_AR_REPO` | `tor-radar` (the repo name from §7.2) |
 | `GCS_BUCKET` | the originals bucket name |
+| `GOOGLE_OAUTH_ENABLED`, `GOOGLE_OAUTH_CLIENT_ID` | optional, only for Sign in with Google (§7.3b); unset means off |
 
 **Secrets** tab:
 

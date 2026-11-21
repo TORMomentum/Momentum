@@ -166,9 +166,9 @@ flowchart LR
 | `core/config.ts` | Every threshold, host, port, credential, model name | No literal thresholds anywhere else |
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
-| `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
-| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers | Imported by `app.ts` only |
+| `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF), `escape-regexp` (user text as a literal `$regex`/`RegExp`) | No I/O beyond what the helper is for |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords`, `GoogleOidc` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
 
@@ -180,7 +180,7 @@ The feature modules, as of Sprint 4:
 | `extraction/` | OCR and field extraction, confidence grading |
 | `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter |
 | `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
-| `accounts/` | Registration, sign-in, sessions, password reset, PDPA export and deletion |
+| `accounts/` | Registration, sign-in (password, and Google through `google-signin.*`), sessions, password reset, PDPA export and deletion |
 | `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
@@ -216,6 +216,7 @@ flowchart LR
 | `features/<screen>/` | That screen's components **and** its stylesheet — `dashboard`, `search`, `tor-detail`, `profile`, `notifications`, `admin`, `auth`, `app-shell`, `landing` |
 | `shared/ui/` | What genuinely crosses screens: `BudgetRange`, star/bookmark icons, section-title styles |
 | `shared/lib/` | Client state: `viewer` (prototype session), `notifications` (read state) |
+| `proxy.ts` (app root) · `shared/lib/security-headers.ts` | Next 16's `proxy` (ex-middleware) sets a per-request nonce CSP (`script-src 'nonce-…' 'strict-dynamic'`), `frame-ancestors 'none'` (`'self'` only for the original-viewer routes `/tors/:id/document`, `/admin/tors/:id/document`, `/admin/tors/:id/pages/:n`), `X-Frame-Options`, nosniff, `Referrer-Policy`, `Permissions-Policy`, and HSTS in production (TOR-321). Every page renders per request (nonces need it; the root layout already read the session cookie). `CSP_EXTRA_IMG_SRC` / `CSP_EXTRA_CONNECT_SRC` add sources |
 | `shared/styles/tokens.css` | Every colour, font stack, and rhythm value in the product |
 | `data/` | Sample records the screens render until the pipeline fills them |
 
@@ -223,6 +224,30 @@ A feature is one folder, so deleting it is one operation. When a stylesheet need
 feature it belongs to has not been given its folder yet.
 
 ---
+
+### Logging and security events (TOR-316)
+
+One logger, `core/logger.ts`: JSON lines on stdout with `severity` and `message` (the fields Cloud Logging
+parses), minimum level from `LOG_LEVEL` (default `info`). Every `console.*` in the API and the workers goes
+through it. All fields pass one sanitizer: values under keys matching password, token, secret, authorization,
+cookie, api key, session, credential, `body`, `content`, `bytes` or `text` become `[redacted]`; buffers are
+never written; strings are cut at 500 characters. (`lib/redact.ts` is the PDPA serializer for TOR contact
+fields and is unrelated.) Request bodies and document contents are never logged.
+
+`core/security-log.ts` gives each request an id (`X-Request-Id`, generated, never taken from the caller) and
+writes security events (`category: "security"`) from a fixed vocabulary. Each carries `requestId`, `method`,
+`path` (no query string), `ip`, `userAgent` (120 characters), and `accountId` when a session resolved.
+
+| Event | Severity | Where | Extra fields |
+| :--- | :--- | :--- | :--- |
+| `auth.login.success` | INFO | `POST /login` | `accountId` |
+| `auth.login.failure` | WARNING | `POST /login` | `reason`: `unknown_email`, `bad_password`, `disabled`, `unverified`; `accountId` if known. The response stays uniform |
+| `auth.logout` | INFO | `POST /logout` | `revoked` |
+| `auth.denied` | WARNING | any 401 or 403 (response hook) | `status` |
+| `ratelimit.hit` | WARNING | any 429 (response hook) | `keyType`: `ip`, `email`, `account`; the key itself is never logged |
+| `admin.action` | INFO | every non-GET request under `/admin/*` | `actor`, `authMethod: "staff-secret"`, `action` (route pattern), `target` (id), `status` |
+
+A failed login that already logged `auth.login.failure` does not also log `auth.denied`.
 
 ## 5. How a document travels
 
@@ -431,6 +456,7 @@ erDiagram
         objectId _id PK
         string email UK
         string role "vendor | admin"
+        object google "sub, Google's stable subject · unique when present · set by linking or by a Google sign-up"
         object consent "notice version and hash, agreedAt, withdrawnAt"
         date disabledAt "set by staff; revokes every session"
     }
@@ -536,6 +562,9 @@ Three shapes are load-bearing:
 
 | Index | Exists for |
 | :--- | :--- |
+| `accounts.google.sub` **unique, partial** | One Google subject, one account (TOR-315). Partial on `google.sub` existing, so password-only accounts do not collide; a deleted account's `google` is removed, so its sub can sign up again |
+| `oauth_transactions.expiresAt` TTL (`_id` = SHA-256 of the `state`) | A Google sign-in attempt in flight: nonce, PKCE verifier, digest of the browser binding. Consumed once by `findOneAndDelete`; `OAUTH_TRANSACTION_TTL_MS` |
+| `google_signups.expiresAt` TTL (`_id` = SHA-256 of a ticket) | A Google identity waiting for PDPA consent: `sub`, address, name. Not an account; consumed once; same lifetime |
 | `tors.contentHash` **unique** | Dedupe under concurrency (FR-A-3) — the guarantee, not the optimisation |
 | `tors.pipeline.state + createdAt` | Queue and admin views |
 | `tors.fields.category.value + announcedAt` | Peer-group selection for the anomaly rule |
@@ -602,7 +631,7 @@ Decided; not substituted without a design change.
 | Notifications | SMTP email behind a `Mailer` port; Mailpit in Compose | — | The only channel in scope. Dispatch is off (`NOTIFY_DISPATCH_ENABLED`) until the match benchmark exists |
 | Runtime | Node | ≥ 22 | Native `fetch`, `process.loadEnvFile` |
 | Tests | Vitest, Supertest | 4 · 7 | Same runner across workspaces |
-| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. The dependency audit is not in CI yet (slice 1 task 15) |
+| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. CodeQL, Semgrep and `npm audit --audit-level=high` run on every PR (TOR-323; [security/sast-report.md](security/sast-report.md)) |
 
 **Why Mongo is also the queue (D5):** the alternative is a second infrastructure service for a
 workload of a few thousand documents. An atomic `findOneAndUpdate` claim with a lock expiry gives
@@ -702,3 +731,7 @@ not a shortcut. The full register, including the design questions that block sli
 | How good is the extraction? | [corpus/BENCHMARK.md](corpus/BENCHMARK.md) — measured accuracy, every wrong prediction |
 | How do I set up Vertex AI? | [gcp-setup.md](gcp-setup.md) |
 | How do I run it? | [../README.md](../README.md) |
+
+Single-active issuance increments accounts.sessionGeneration to serialize competing transactions before replacing account sessions. The configured MongoDB deployment must support transactions.
+
+google_signups.mailboxProofHash is null for Google-hosted mailboxes or a digest for an external address. Tickets from before this field was introduced expire closed.

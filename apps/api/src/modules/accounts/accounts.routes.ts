@@ -2,9 +2,13 @@ import { Router } from "express";
 import { z } from "zod";
 import { BadRequestError, UnauthorizedError } from "../../core/errors.js";
 import { authRateLimit } from "../../core/auth-rate-limit.js";
+import { logger } from "../../core/logger.js";
+import { markLogged, requestFields } from "../../core/security-log.js";
 import { requireSameOrigin } from "../../core/require-same-origin.js";
 import type { Config } from "../../core/config.js";
 import type { Mailer } from "../../ports/mailer.port.js";
+import type { BreachedPasswords } from "../../ports/breached-passwords.port.js";
+import { assertPasswordNotBreached } from "./breached-password.js";
 import { AccountsRepository, normalizeEmail } from "./accounts.repository.js";
 import { AccountTokensRepository } from "./account-tokens.repository.js";
 import { SessionsRepository } from "./sessions.js";
@@ -26,6 +30,8 @@ export interface AccountsRouterDeps {
   tokens: AccountTokensRepository;
   sessions: SessionsRepository;
   mailer: Mailer;
+  /** Refuses leaked passwords wherever a new one is set (TOR-320). */
+  breachedPasswords: BreachedPasswords;
   /** The vendor's kept files (TOR-218): deleting the account deletes them, and a failure stops the deletion. */
   vault: { removeAll(accountId: string): Promise<void> };
 }
@@ -39,6 +45,7 @@ export function tokenUrl(origin: string, path: string, token: string): string {
 export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   const router = Router();
   const writes = [requireSameOrigin(deps.config.appOrigin), ...authRateLimit(deps.config)];
+  const assertNotBreached = (password: string) => assertPasswordNotBreached(password, deps.breachedPasswords, deps.config.hibp);
 
   /**
    * Whether the address is already registered is not disclosed — and that has
@@ -51,6 +58,8 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.post("/register", ...writes, async (req, res) => {
     const input = registerSchema.parse(req.body);
     const email = normalizeEmail(input.email);
+    // Before the account lookup, so the answer says nothing about whether the address is registered.
+    await assertNotBreached(input.password);
     const passwordHash = await hashPassword(input.password, deps.config);
     const existing = await deps.accounts.findByEmail(email);
 
@@ -93,21 +102,35 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     const input = loginSchema.parse(req.body);
     const account = await deps.accounts.findByEmail(input.email);
     const valid = account?.passwordHash ? await verifyPassword(account.passwordHash, input.password) : await verifyAgainstDummy(input.password, deps.config);
-    if (!account || !account.passwordHash || !account.emailVerifiedAt || account.disabledAt || !valid) throw new UnauthorizedError(AUTH_FAILURE);
+    // The response stays uniform; the log may say why (never the email or the password).
+    const reason = !account || !account.passwordHash ? "unknown_email" : !valid ? "bad_password" : account.disabledAt ? "disabled" : !account.emailVerifiedAt ? "unverified" : undefined;
+    if (reason || !account) {
+      logger.security("auth.login.failure", { ...requestFields(req), reason, ...(account ? { accountId: account.id } : {}) });
+      markLogged(res);
+      throw new UnauthorizedError(AUTH_FAILURE);
+    }
+    // A session id the request carried is retired whoever it belonged to (fixation, and a shared machine), and
+    // the account's other sessions go with it unless several devices are allowed (ASVS V7.4.1).
+    const previous = req.get("x-session-id");
+    if (previous) await deps.sessions.revoke(previous);
     const session = await deps.sessions.create(account.id);
+    logger.security("auth.login.success", { ...requestFields(req), accountId: account.id });
     res.json({ sessionId: session.id, expiresAt: session.expiresAt.toISOString() });
   });
 
   router.post("/logout", ...writes, async (req, res) => {
     const id = req.get("x-session-id");
     if (id) await deps.sessions.revoke(id);
+    logger.security("auth.logout", { ...requestFields(req), revoked: Boolean(id) });
     res.json({ ok: true });
   });
 
   router.post("/password/forgot", ...writes, async (req, res) => {
     const { email } = z.object({ email: z.string().email().max(320) }).parse(req.body);
     const account = await deps.accounts.findByEmail(email);
-    if (account?.passwordHash && account.emailVerifiedAt && !account.disabledAt) {
+    // A Google-only account (no password yet) may also ask: the link goes to the verified address, and setting a
+    // password is how such a vendor gains a way to confirm a deletion (FR-D-3) without a second Google round trip.
+    if (account?.emailVerifiedAt && !account.disabledAt) {
       const token = await deps.tokens.create(account.id, "reset", deps.config.resetTokenTtlMs);
       await deps.mailer.send(passwordResetEmail(account.email, tokenUrl(deps.config.appOrigin, "/reset-password", token)));
     }
@@ -116,6 +139,8 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
 
   router.post("/password/reset", ...writes, async (req, res) => {
     const input = tokenSchema.extend({ password: z.string().min(8).max(1024) }).parse(req.body);
+    // Before the token is consumed, so a refused password leaves the link usable for another try.
+    await assertNotBreached(input.password);
     const consumed = await deps.tokens.consume(input.token, "reset");
     if (!consumed) throw new UnauthorizedError(AUTH_FAILURE);
     await deps.accounts.setPassword(consumed.accountId, await hashPassword(input.password, deps.config));
@@ -130,6 +155,7 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     if (!account.passwordHash || !await verifyPassword(account.passwordHash, input.currentPassword)) throw new UnauthorizedError(AUTH_FAILURE);
     const sessionId = req.get("x-session-id");
     if (!sessionId) throw new UnauthorizedError();
+    await assertNotBreached(input.password);
     await deps.accounts.setPassword(account._id.toString(), await hashPassword(input.password, deps.config));
     await deps.sessions.revokeAllForAccountExcept(account._id.toString(), sessionId);
     res.json({ ok: true });
@@ -174,9 +200,9 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     if (!req.auth) throw new UnauthorizedError();
     const input = deleteSchema.parse(req.body);
     const account = req.auth.account;
-    // Google-only accounts cannot prove possession with this endpoint.
+    // A Google-only account has no password to confirm with until it sets one through "forgot password".
     if (!account.passwordHash) {
-      throw new BadRequestError("บัญชีนี้ไม่มีรหัสผ่านสำหรับยืนยันการลบ");
+      throw new BadRequestError("บัญชีนี้ยังไม่มีรหัสผ่าน กรุณาตั้งรหัสผ่านผ่านลิงก์ \"ลืมรหัสผ่าน\" ก่อน แล้วจึงลบบัญชี");
     }
     if (!await verifyPassword(account.passwordHash, input.currentPassword)) {
       throw new UnauthorizedError(AUTH_FAILURE);

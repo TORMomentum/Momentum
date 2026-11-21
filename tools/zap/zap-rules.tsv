@@ -1,0 +1,10 @@
+# ZAP rule configuration for tools/zap/run.sh (zap-baseline.py / zap-api-scan.py -c).
+# Columns, TAB-separated: <rule id> <IGNORE|INFO|WARN|FAIL> <rule name; reason>
+# IGNORE = accepted risk or false positive, and the reason MUST follow the name.
+# FAIL breaks the run. A rule not listed stays at WARN (reported, never fails).
+# Every IGNORE here is also explained in docs/security/dast-report.md.
+#
+# FAIL: passive rules that mean High-impact exposure if they ever fire. (Any High
+# alert also fails the run; see run.sh.)
+10062	FAIL	PII Disclosure
+10003	FAIL	Vulnerable JS Library

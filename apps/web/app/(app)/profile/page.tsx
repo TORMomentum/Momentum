@@ -1,3 +1,4 @@
+import { redirectExpiredVendor } from "../../../src/shared/api/viewer-session";
 import { VendorOnly } from "../../../src/features/app-shell/VendorOnly";
 import { VendorProfileView } from "../../../src/views/VendorProfileView";
 import { fetchOwnProfile } from "../../../src/shared/api/profile.api";
@@ -12,6 +13,7 @@ import { PathLink } from "../../../src/features/path/PathLink";
  * vendor's own answers arrived a round trip later.
  */
 export default async function ProfilePage() {
+  await redirectExpiredVendor();
   const [profile, bookmarks, vault] = await Promise.all([fetchOwnProfile(), fetchOwnBookmarks(), fetchOwnVault()]);
   return (
     <VendorOnly

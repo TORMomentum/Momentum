@@ -57,6 +57,12 @@ flowchart LR
 
 ## 2. Conventions
 
+### Request id and security log
+
+Every response carries `X-Request-Id`, generated per request (an inbound value is ignored). Logins, 401/403 refusals,
+429 rate-limit hits and admin actions are written to the API log with that id; see ARCHITECTURE.md, "Logging and
+security events". Response bodies are unchanged.
+
 ### Authentication
 
 Two separate key lists, because the routes differ in blast radius (`NFR-S1`):
@@ -113,6 +119,21 @@ Validation failures add the failing paths, so a caller can fix the request witho
 
 Every `/intake` route is limited to `INTAKE_RATE_LIMIT_PER_MINUTE` requests per minute per client,
 reported in the standard `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` headers.
+
+### Security headers and CORS (TOR-317)
+
+Every response carries helmet's defaults (`X-Content-Type-Options: nosniff`, `X-Frame-Options`,
+`Cross-Origin-Resource-Policy: same-origin`, HSTS, …) and a CSP of
+`default-src 'none'; frame-ancestors 'none'`; `X-Powered-By` is removed. The document routes keep
+setting their own `nosniff`, `no-store` and `Content-Disposition`. The in-app PDF viewer is unaffected:
+the browser's frame loads the web server's proxy route, which forwards only content type, disposition
+and length from the API.
+
+CORS: the browser never calls this API directly (Next calls it server-to-server), so the only allowed
+origin is `APP_ORIGIN`, matched exactly. That origin gets `Access-Control-Allow-Origin` echoed with
+`Access-Control-Allow-Credentials: true` and `Vary: Origin`. Any other origin gets no `Access-Control-*`
+header, and its preflight is answered `204` without them, so the browser blocks the read. `*` is never sent.
+Code: `apps/api/src/core/security-headers.ts`.
 
 ---
 
@@ -239,6 +260,12 @@ last updated. Keyword matching (`q`) reads the title and agency through an Atlas
 `SEARCH_ATLAS_ENABLED` is on: it matches whole Thai words, best first, up to `SEARCH_MAX_HITS`. With the
 switch off (a plain `mongod`) it falls back to a substring match. The request and response do not change.
 
+**Rate limit (TOR-318).** `GET /tors` and `GET /tors/facets` share one allowance of
+`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` (default 120) per client address per minute; past it the answer is
+an empty `429` with no rate-limit headers (the same as the sign-in limiter). "Client address" is the
+real client only because of the proxy scheme in the 2026-11-20 revision of the accounts-and-sessions spec
+(`TRUST_PROXY` on the API, the web server forwarding one `X-Forwarded-For`).
+
 ### `GET /api/v1/tors/facets` ✅
 
 The filter options that occur in the published corpus, most frequent first, capped at
@@ -271,7 +298,8 @@ is a 404.
 ### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
 Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
-and never opens the object. A restricted record answers **`404`**, the same as an unknown id: a
+and never opens the object. Limited to `DOCUMENT_RATE_LIMIT_PER_MIN` (default 60) per client address per
+minute, `HEAD` and `GET` together, on a bucket of its own: past it, an empty `429` (TOR-318). A restricted record answers **`404`**, the same as an unknown id: a
 `403` would confirm both that the record exists and that it was taken down (`FR-B-6`).
 
 **Query:** `?disposition=inline` or `?disposition=attachment` (default). Any other value is `400`.
@@ -371,10 +399,19 @@ The current filter as CSV, with the same PII minimisation as the API.
 
 ## 6. Vendor ✅ (slice 4)
 
+**Session lifetime (TOR-319).** A session ends at the first of: `SESSION_LIFETIME_MS` after sign-in (absolute, default 7 days), or
+`SESSION_IDLE_TIMEOUT_MS` without use (default 30 minutes). A rejected session is answered `401` on `/me` and every account route; an idle
+one is never revived by later use. Use slides the idle window, written at most every `SESSION_TOUCH_INTERVAL_MS` (default 60 s, capped at half
+the idle timeout). The web app, on a `401` for a cookie it holds, drops the cookie through `GET /api/auth/expired` and redirects to
+`/login?reason=expired`, which shows "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง".
+
 | Route | Purpose |
 | :--- | :--- |
-| `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration |
-| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change |
+| `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration. `/login` ends the session id the request carried (`x-session-id`) and, while `SESSION_SINGLE_ACTIVE` is on (default), every other session of the account. `/logout` deletes the session row. Through the web route `/api/auth/logout` the reply also carries `Clear-Site-Data: "cache", "cookies", "storage"` and drops the cookie (TOR-319) |
+| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change. `forgot` also serves a Google-only account (verified address, no password yet): the reset link is how such a vendor sets a password, which `DELETE /me` needs  A new password (`POST /register`, `/password/reset`, `/password/change`) is refused with **422** `password_breached` (Thai message รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น) when it is on the bundled common-password list or seen in Have I Been Pwned (TOR-320). Reset checks before it consumes the token, so the link stays usable |
+| `GET /auth/google/start` | Sign in with Google (TOR-315). `404` unless `GOOGLE_OAUTH_ENABLED`. Rate-limited. Stores one single-use transaction (state, nonce, PKCE verifier, browser binding; kept as digests where it matters) for `OAUTH_TRANSACTION_TTL_MS`, and answers `{ url, binding }`: `url` is Google's authorization URL (`response_type=code`, scopes `openid email profile`, `code_challenge_method=S256`, `state`, `nonce`, `prompt=select_account`); `binding` is for the web handler to put in an httpOnly cookie. `no-store`. **`/auth` only, not mounted under `/api/v1`** |
+| `POST /auth/google/callback` | `{ code, state, binding }`, same-origin only, rate-limited. Consumes the transaction (so a replay or a forged `state` finds nothing), checks `binding` against its digest in constant time, exchanges the code with the stored verifier, and accepts the ID token only when signature, issuer, audience, `azp`, expiry and `nonce` all match **and** Google says `email_verified`. Then: a linked `google.sub` signs in; a **verified** account with the same address is linked only when the same account authenticated both the start and callback of an explicit link from the account screen; otherwise nothing is created and the reply is `{ status: "consent_required", ticket }`. Success is `{ status: "signed_in", sessionId, expiresAt }`. Every failure, a disabled account included, is `401` with the one message `ไม่สามารถเข้าสู่ระบบด้วย Google ได้` |
+| `POST /auth/google/complete` | `{ ticket, consent: true, behaviourConsent? }`, same-origin only. Consumes the ticket, records the same consent a password registration records, creates the account (verified, no password, `google.sub`) and answers `{ status: "signed_in", sessionId, expiresAt }`. An existing unverified password account for the address is removed first. `400` without `consent: true`; `401` for an unknown, used or expired ticket |
 | `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, `behaviourEnabled` and `draftEnabled`); withdrawing consent |
 | `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |
 | `POST /me/events` | `{ torId, type: view \| save \| dismiss \| prepare }`, one event, `204`. `403` unless `MATCH_BEHAVIOUR_ENABLED` is on and the vendor consented; `404` for an unknown TOR. A bookmark is recorded as `save` by the server |
@@ -393,6 +430,15 @@ The current filter as CSV, with the same PII minimisation as the API.
 
 Each route is mounted twice, under `/api/v1` and under `/auth`: the browser reaches its own account
 through the Next handler that owns the cookie, which forwards under `/auth`.
+
+**Sign in with Google through the web (TOR-315).** The browser never calls the API for this; the Next handler
+`app/api/auth/[...path]` owns the redirects and the cookies:
+
+| Web route | Does |
+| :--- | :--- |
+| `GET /api/auth/google/start` | Calls the API's start, sets `tor-radar-google-binding` (httpOnly, `SameSite=Lax`, `Secure` outside development, path `/api/auth/google`, 10 minutes) and redirects to Google. Any failure, including the feature being off, redirects to `/login?error=google` |
+| `GET /api/auth/google/callback` | The redirect URI registered at Google (`GOOGLE_OAUTH_REDIRECT_URI`, default `APP_ORIGIN` + this path). Without the binding cookie, or with Google's `error`, it never calls the API. Success sets the normal `tor-radar-session` cookie (and drops the staff cookie, as password sign-in does) and redirects to `/dashboard`; a first sign-in sets `tor-radar-google-ticket` and redirects to `/google-consent`; any failure redirects to `/login?error=google` |
+| `POST /api/auth/google/complete` | The consent page's submit: `{ consent: true, behaviourConsent? }`; the ticket comes from its cookie. Same-origin only. `{ ok: true }` and the session cookie on success |
 
 `GET /tors` accepts `minMatch` and `maxMatch` (whole percentages, `MATCH_RANGE` in
 `@tor-radar/shared`) only from a signed-in caller — without a session the request is refused with
@@ -450,3 +496,9 @@ account writes to `admin_audit`, so who did what and when survives (`FR-E-5`, `N
    silently corrected (`NFR-F7`).
 6. **Every host, port, key, and limit comes from configuration.** `localhost` appears in no source
    file (`NFR-S7`).
+7. **Who may call what is written down in one place.** [security/access-control-matrix.md](security/access-control-matrix.md)
+   lists every route with its caller, its enforcing middleware and how a vendor is kept to its own data;
+   `apps/api/src/core/access-control.test.ts` fails when a route and the matrix disagree (`NFR-S1`).
+
+
+Google callback includes checkMailbox=true with the consent ticket for an external signup. The web sends the browser to the email instructions. /auth/google/complete also requires the proof from the emailed consent link for that ticket.

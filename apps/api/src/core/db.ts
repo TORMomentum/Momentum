@@ -149,6 +149,7 @@ export interface TorMetaDocument {
 export type AccountRole = "vendor" | "admin";
 
 export interface AccountDocument {
+  sessionGeneration?: number;
   email: string;
   displayName?: string;
   passwordHash?: string;
@@ -389,6 +390,10 @@ export async function connect(mongoUrl: string): Promise<Db> {
   return client.db();
 }
 
+export async function withTransaction<T>(db: Db, work: (session: import("mongodb").ClientSession) => Promise<T>): Promise<T> {
+  return db.client.withSession((session) => session.withTransaction(() => work(session)));
+}
+
 export async function disconnect(): Promise<void> {
   await client?.close();
   client = null;
@@ -432,6 +437,41 @@ export function sessions(db: Db): Collection<SessionDocument> {
 
 export function accountTokens(db: Db): Collection<AccountTokenDocument> {
   return db.collection<AccountTokenDocument>("auth_tokens");
+}
+
+/**
+ * One Google sign-in attempt in flight (TOR-315): what the callback must find, consumed once. `_id` is the SHA-256
+ * of the `state` sent to Google, so a forged or replayed state finds nothing. `bindingHash` ties the attempt to the
+ * browser that started it (a cookie), which is what stops login CSRF.
+ */
+export interface OauthTransactionDocument {
+  linkAccountId?: string;
+  _id: string;
+  bindingHash: string;
+  nonce: string;
+  codeVerifier: string;
+  expiresAt: Date;
+}
+
+/**
+ * A Google identity that has signed in but has no account yet, waiting for the PDPA consent step. `_id` is the
+ * SHA-256 of a one-time ticket held in an httpOnly cookie. Nothing is an account until consent is recorded.
+ */
+export interface GoogleSignupDocument {
+  mailboxProofHash: string | null;
+  _id: string;
+  sub: string;
+  email: string;
+  displayName?: string;
+  expiresAt: Date;
+}
+
+export function oauthTransactions(db: Db): Collection<OauthTransactionDocument> {
+  return db.collection<OauthTransactionDocument>("oauth_transactions");
+}
+
+export function googleSignups(db: Db): Collection<GoogleSignupDocument> {
+  return db.collection<GoogleSignupDocument>("google_signups");
 }
 
 export function bookmarks(db: Db): Collection<BookmarkDocument> {
@@ -524,6 +564,10 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await accounts(db).createIndex({ email: 1 }, { unique: true });
   await sessions(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await sessions(db).createIndex({ accountId: 1 });
+  // One Google subject, one account. Partial, so the many password-only accounts (no `google`) do not collide.
+  await accounts(db).createIndex({ "google.sub": 1 }, { unique: true, partialFilterExpression: { "google.sub": { $exists: true } } });
+  await oauthTransactions(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await googleSignups(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await accountTokens(db).createIndex({ tokenHash: 1 }, { unique: true });
   await accountTokens(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await bookmarks(db).createIndex({ accountId: 1, torId: 1 }, { unique: true });

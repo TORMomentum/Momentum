@@ -21,7 +21,7 @@ const config = { ...baseConfig, authRateLimitPerIp: 1_000, authRateLimitPerEmail
 let db: Db; let app: express.Express; let sessionsRepository: SessionsRepository;
 
 function testApp() {
-  sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  sessionsRepository = new SessionsRepository(db, config.session);
   const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository));
   result.use("/api/v1", buildBookmarksRouter({ config, bookmarks: new BookmarksRepository(db), tors: new TorsRepository(db) }));
   result.use(errorMiddleware); return result;

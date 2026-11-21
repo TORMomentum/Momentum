@@ -22,7 +22,7 @@ import { TorsService } from "../tors/tors.service.js";
 
 const config = loadConfig(process.env);
 let db: Db; let app: express.Express; let sessionsRepository: SessionsRepository;
-function testApp() { sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs); const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository)); result.use("/api/v1", buildMatchingRouter({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config) })); result.use(errorMiddleware); return result; }
+function testApp() { sessionsRepository = new SessionsRepository(db, config.session); const result = express(); result.use(express.json()); result.use(sessionContext(sessionsRepository)); result.use("/api/v1", buildMatchingRouter({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config) })); result.use(errorMiddleware); return result; }
 async function vendor(email: string) { const account = await new AccountsRepository(db, sessionsRepository).create({ email, displayName: "ผู้ขาย", passwordHash: await hashPassword("correct-password", config), consent: { noticeVersion: "test", noticeHash: "test", agreedAt: new Date(), action: "checkbox" } }); return { accountId: account.id, sessionId: (await sessionsRepository.create(account.id)).id }; }
 async function seed(title: string, budget: number, over: Record<string, unknown> = {}) {
   const category = title.includes("คอมพิวเตอร์") ? "ซื้อคอมพิวเตอร์และอุปกรณ์ไอที" : "งานก่อสร้าง-ทาง สะพาน";
@@ -126,6 +126,15 @@ describe("matching routes", () => {
     await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], otherCategories: ["คอมพิวเตอร์"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
     const id = await seed("จัดซื้อคอมพิวเตอร์", 100);
     expect((await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId)).body.items.map((item: { id: string }) => item.id)).toContain(id);
+  });
+
+  it("reads a vendor's own words literally: regex characters neither throw nor match everything (TOR-366)", async () => {
+    const current = await vendor("regex@example.test");
+    await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], otherCategories: ["a.*(", "(a+)+$", "[x"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
+    const id = await seed("จัดซื้อคอมพิวเตอร์", 100);
+    const response = await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId);
+    expect(response.status).toBe(200);
+    expect(response.body.items.map((item: { id: string }) => item.id)).not.toContain(id);
   });
 
   it("finds a TOR by the meaning of a vendor's own words when none of them appears in its title (TOR-202)", async () => {

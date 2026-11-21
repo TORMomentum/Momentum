@@ -3,11 +3,12 @@ import "../../test/env.js";
 import express from "express";
 import type { Db } from "mongodb";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { LogMailer } from "../../adapters/log.mailer.js";
 import { loadConfig } from "../../core/config.js";
 import { accounts, accountTokens, bookmarks, connect, disconnect, ensureIndexes, sessions, tors } from "../../core/db.js";
 import { errorMiddleware } from "../../core/errors.js";
+import { setLogSink } from "../../core/logger.js";
 import { sessionContext } from "../../core/session-context.js";
 import { isolatedDbUrl } from "../../test/mongo.js";
 import { AccountTokensRepository } from "./account-tokens.repository.js";
@@ -20,14 +21,20 @@ const config = {
   ...baseConfig,
   authRateLimitPerIp: Math.max(baseConfig.authRateLimitPerIp, 1_000),
   authRateLimitPerEmail: Math.max(baseConfig.authRateLimitPerEmail, 1_000),
+  // Most tests hold several sessions at once; the single-session tests switch it on for themselves.
+  session: { ...baseConfig.session, singleActive: false },
 };
 let db: Db;
 let mailer: LogMailer;
 let app: express.Express;
+/** The breach corpus, faked: passwords listed here are "seen"; `corpusDown` makes it unreachable. */
+const leaked = new Set<string>();
+let corpusDown = false;
+const breachedPasswords = { occurrences: async (password: string) => { if (corpusDown) throw new Error("down"); return leaked.has(password) ? 5 : 0; } };
 let vaultRemoveAll: (accountId: string) => Promise<void> = async () => undefined;
 
 function buildTestApp() {
-  const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  const sessionsRepository = new SessionsRepository(db, config.session);
   const accountsRepository = new AccountsRepository(db, sessionsRepository);
   const tokensRepository = new AccountTokensRepository(db);
   const testApp = express();
@@ -39,6 +46,7 @@ function buildTestApp() {
     tokens: tokensRepository,
     sessions: sessionsRepository,
     mailer,
+    breachedPasswords,
     vault: { removeAll: (accountId: string) => vaultRemoveAll(accountId) },
   }));
   testApp.use(errorMiddleware);
@@ -95,6 +103,8 @@ beforeEach(async () => {
     tors(db).deleteMany({}),
   ]);
   mailer = new LogMailer();
+  leaked.clear();
+  corpusDown = false;
   vaultRemoveAll = async () => undefined;
   app = buildTestApp();
 });
@@ -104,6 +114,42 @@ afterAll(async () => {
 });
 
 describe("account routes", () => {
+  it("register refuses a password the breach corpus has seen, with the Thai message, and creates nothing (TOR-320)", async () => {
+    leaked.add("leaked-passphrase-1");
+    const response = await register("vendor@example.test", "leaked-passphrase-1");
+
+    expect(response.status).toBe(422);
+    expect(response.body.error).toMatchObject({ code: "password_breached", message: expect.stringContaining("รั่วไหล") });
+    expect(await accounts(db).countDocuments({})).toBe(0);
+    expect(mailer.messages).toHaveLength(0);
+  });
+
+  it("register refuses a password on the bundled common list even when the corpus is unreachable, and accepts others (TOR-320)", async () => {
+    corpusDown = true;
+    const common = await register("a@example.test", "Password");
+    const other = await register("b@example.test", "a-long-unlisted-passphrase");
+
+    expect(common.status).toBe(422);
+    expect(common.body.error.code).toBe("password_breached");
+    expect(other.status).toBe(202);
+  });
+
+  it("password reset refuses a breached password and leaves the link usable; change refuses it too (TOR-320)", async () => {
+    await verifiedAccount();
+    const session = (await login()).body.sessionId as string;
+    leaked.add("leaked-passphrase-2");
+    const changeRefused = await write(request(app).post("/api/v1/password/change")).set("x-session-id", session).send({ currentPassword: "correct-password", password: "leaked-passphrase-2" });
+
+    await write(request(app).post("/api/v1/password/forgot")).send({ email: "vendor@example.test" });
+    const token = tokenFromLastEmail();
+    const refused = await write(request(app).post("/api/v1/password/reset")).send({ token, password: "leaked-passphrase-2" });
+    const retry = await write(request(app).post("/api/v1/password/reset")).send({ token, password: "fresh-unlisted-passphrase" });
+
+    expect(changeRefused.status).toBe(422);
+    expect(refused.status).toBe(422);
+    expect(retry.status).toBe(200);
+  });
+
   it("register creates an account that is not yet verified, records consent, and sends one email", async () => {
     const response = await register();
     const stored = await accounts(db).findOne({ email: "vendor@example.test" });
@@ -199,6 +245,48 @@ describe("account routes", () => {
     expect(me.status).toBe(200);
     expect(loggedOut.status).toBe(200);
     expect(afterLogout.status).toBe(401);
+  });
+
+  it("login retires the session the request carried and, by default, every other session of the account", async () => {
+    await verifiedAccount();
+    config.session.singleActive = true;
+    try {
+      const concurrent = await Promise.all([login(), login()]);
+      expect(concurrent.map((response) => response.status)).toEqual([200, 200]);
+      const states = await Promise.all(concurrent.map((response) => request(app).get("/api/v1/me").set("x-session-id", response.body.sessionId)));
+      expect(states.map((response) => response.status).sort()).toEqual([200, 401]);
+      const first = (await login()).body.sessionId as string;
+      const second = (await login()).body.sessionId as string;
+      const third = (await write(request(app).post("/api/v1/login")).set("x-session-id", second).send({ email: "vendor@example.test", password: "correct-password" })).body.sessionId as string;
+      const me = (id: string) => request(app).get("/api/v1/me").set("x-session-id", id);
+
+      expect((await me(first)).status).toBe(401);
+      expect((await me(second)).status).toBe(401);
+      expect((await me(third)).status).toBe(200);
+      expect(await sessions(db).countDocuments({})).toBe(1);
+    } finally {
+      config.session.singleActive = false;
+    }
+  });
+
+  it("login keeps the account's other sessions when single-active is off, but still retires the one it carried", async () => {
+    await verifiedAccount();
+    const first = (await login()).body.sessionId as string;
+    const second = (await login()).body.sessionId as string;
+    const third = (await write(request(app).post("/api/v1/login")).set("x-session-id", second).send({ email: "vendor@example.test", password: "correct-password" })).body.sessionId as string;
+    const me = (id: string) => request(app).get("/api/v1/me").set("x-session-id", id);
+
+    expect((await me(first)).status).toBe(200);
+    expect((await me(second)).status).toBe(401);
+    expect((await me(third)).status).toBe(200);
+  });
+
+  it("logout deletes the session row", async () => {
+    await verifiedAccount();
+    const sessionId = (await login()).body.sessionId as string;
+    expect(await sessions(db).countDocuments({ _id: sessionId })).toBe(1);
+    await write(request(app).post("/api/v1/logout")).set("x-session-id", sessionId).send({});
+    expect(await sessions(db).countDocuments({ _id: sessionId })).toBe(0);
   });
 
   it("password forgot gives known and unknown addresses the same reply but emails only the known address", async () => {
@@ -358,5 +446,44 @@ describe("account routes", () => {
     const retried = await write(request(app).delete("/api/v1/me")).set("x-session-id", signedIn.body.sessionId as string).send({ currentPassword: "correct-password" });
     expect(retried.status).toBe(200);
     expect(removed).toHaveLength(2);
+  });
+});
+
+describe("security logging", () => {
+  let lines: Record<string, unknown>[];
+  let raw: string;
+  beforeEach(() => {
+    lines = [];
+    raw = "";
+    setLogSink((line) => { raw += line; lines.push(JSON.parse(line) as Record<string, unknown>); });
+  });
+  afterEach(() => setLogSink());
+
+  it("a failed login logs auth.login.failure with the reason, and the log holds no password, email or session id", async () => {
+    await verifiedAccount();
+    lines.length = 0;
+    raw = "";
+
+    const wrong = await login("vendor@example.test", "wrong-password-xyz");
+    const unknown = await login("nobody@example.test", "other-password-xyz");
+
+    expect(wrong.status).toBe(401);
+    expect(unknown.body).toEqual(wrong.body);
+    const failures = lines.filter((line) => line.message === "auth.login.failure");
+    expect(failures.map((line) => line.reason)).toEqual(["bad_password", "unknown_email"]);
+    expect(lines.some((line) => line.message === "auth.denied")).toBe(false);
+    expect(raw).not.toMatch(/wrong-password-xyz|other-password-xyz|vendor@example\.test|nobody@example\.test/);
+  });
+
+  it("a successful login logs auth.login.success and logout logs auth.logout, never the session id", async () => {
+    await verifiedAccount();
+    const signedIn = await login();
+    const sessionId = signedIn.body.sessionId as string;
+    await write(request(app).post("/api/v1/logout")).set("x-session-id", sessionId).send({});
+
+    expect(lines.map((line) => line.message)).toEqual(expect.arrayContaining(["auth.login.success", "auth.logout"]));
+    expect(lines.find((line) => line.message === "auth.login.success")).toMatchObject({ accountId: expect.any(String) });
+    expect(raw).not.toContain(sessionId);
+    expect(raw).not.toContain("correct-password");
   });
 });

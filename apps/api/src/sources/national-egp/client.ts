@@ -1,6 +1,7 @@
 // Typed client for Thailand's national e-GP. Everything the app needs from gprocurement.go.th goes
 // through here, so the upstream's quirks — a Windows-874 feed, ZIP packages, its response envelope —
 // stay in one file. Every request goes through safeFetchDocument (spec §5.6).
+import { logger } from "../../core/logger.js";
 import { safeFetchDocument } from "../../lib/safe-fetch.js";
 import { parseAnnouncementList, type ListItem } from "./announcements.js";
 import {
@@ -56,7 +57,7 @@ async function getBytes(url: string, maxBytes: number): Promise<Buffer> {
     } catch (err) {
       lastError = err as Error;
       // Log every upstream failure: a bare error with no server-side trace is undebuggable.
-      console.warn(`[national-egp] attempt ${attempt}/${MAX_ATTEMPTS} failed for ${url} — ${lastError.message}`);
+      logger.warn("source_attempt_failed", { source: "national-egp", attempt, maxAttempts: MAX_ATTEMPTS, url, error: lastError.message });
       if (attempt < MAX_ATTEMPTS) await sleep(RETRY_DELAY_MS);
     }
   }
@@ -76,6 +77,7 @@ function decodeXmlText(text: string): string {
 }
 
 function tag(block: string, name: string): string | undefined {
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- name is only ever a fixed tag literal from the callers below, never user input
   const match = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(block);
   return match ? decodeXmlText(match[1]) : undefined;
 }
