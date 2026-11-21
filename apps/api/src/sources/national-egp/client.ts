@@ -77,6 +77,7 @@ function decodeXmlText(text: string): string {
 }
 
 function tag(block: string, name: string): string | undefined {
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- name is only ever a fixed tag literal from the callers below, never user input
   const match = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(block);
   return match ? decodeXmlText(match[1]) : undefined;
 }

@@ -3,6 +3,7 @@ import type { Db } from "mongodb";
 import { sourcesRouter } from "./routes/sources";
 import { type Config } from "./core/config.js";
 import { errorMiddleware } from "./core/errors.js";
+import { corsAllowlist, securityHeaders } from "./core/security-headers.js";
 import { sessionContext } from "./core/session-context.js";
 import { configureLogger } from "./core/logger.js";
 import { securityLog } from "./core/security-log.js";
@@ -69,6 +70,8 @@ export function buildApp(config: Config, db: Db): Express {
 
   // First, so every refusal and rate-limit hit further down is seen and carries a request id.
   app.use(securityLog());
+  app.use(securityHeaders());
+  app.use(corsAllowlist(config.appOrigin));
   app.use(express.json());
   app.use(sessionContext(sessionsRepository));
 
@@ -240,6 +243,7 @@ export function buildApp(config: Config, db: Db): Express {
  * worse than one that fails to start.
  */
 export const app = express();
+app.use(securityHeaders());
 app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "tor-radar-api" });

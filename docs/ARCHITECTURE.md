@@ -166,7 +166,7 @@ flowchart LR
 | `core/config.ts` | Every threshold, host, port, credential, model name | No literal thresholds anywhere else |
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
-| `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
+| `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF), `escape-regexp` (user text as a literal `$regex`/`RegExp`) | No I/O beyond what the helper is for |
 | `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
 | `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
@@ -626,7 +626,7 @@ Decided; not substituted without a design change.
 | Notifications | SMTP email behind a `Mailer` port; Mailpit in Compose | — | The only channel in scope. Dispatch is off (`NOTIFY_DISPATCH_ENABLED`) until the match benchmark exists |
 | Runtime | Node | ≥ 22 | Native `fetch`, `process.loadEnvFile` |
 | Tests | Vitest, Supertest | 4 · 7 | Same runner across workspaces |
-| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. The dependency audit is not in CI yet (slice 1 task 15) |
+| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. CodeQL, Semgrep and `npm audit --audit-level=high` run on every PR (TOR-323; [security/sast-report.md](security/sast-report.md)) |
 
 **Why Mongo is also the queue (D5):** the alternative is a second infrastructure service for a
 workload of a few thousand documents. An atomic `findOneAndUpdate` claim with a lock expiry gives

@@ -120,6 +120,21 @@ Validation failures add the failing paths, so a caller can fix the request witho
 Every `/intake` route is limited to `INTAKE_RATE_LIMIT_PER_MINUTE` requests per minute per client,
 reported in the standard `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` headers.
 
+### Security headers and CORS (TOR-317)
+
+Every response carries helmet's defaults (`X-Content-Type-Options: nosniff`, `X-Frame-Options`,
+`Cross-Origin-Resource-Policy: same-origin`, HSTS, …) and a CSP of
+`default-src 'none'; frame-ancestors 'none'`; `X-Powered-By` is removed. The document routes keep
+setting their own `nosniff`, `no-store` and `Content-Disposition`. The in-app PDF viewer is unaffected:
+the browser's frame loads the web server's proxy route, which forwards only content type, disposition
+and length from the API.
+
+CORS: the browser never calls this API directly (Next calls it server-to-server), so the only allowed
+origin is `APP_ORIGIN`, matched exactly. That origin gets `Access-Control-Allow-Origin` echoed with
+`Access-Control-Allow-Credentials: true` and `Vary: Origin`. Any other origin gets no `Access-Control-*`
+header, and its preflight is answered `204` without them, so the browser blocks the read. `*` is never sent.
+Code: `apps/api/src/core/security-headers.ts`.
+
 ---
 
 ## 3. Intake ✅ (slice 1, `FR-A-1`)
