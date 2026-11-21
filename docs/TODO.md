@@ -568,7 +568,7 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 
 - [x] TOR-374 Slides: `docs/security/security-slides.html`, 15 slides, keyboard navigation, renders offline
 - [x] TOR-374 Slide 12 results filled from the SAST report (#54) and the DAST report (#57), pre-freeze numbers
-- [ ] TOR-374 After the final ZAP scan on merged `main` (TOR-358) update slide 12; refresh the ASVS "have now" figures; add member names to slide 1
+- [ ] TOR-374 After the final ZAP scan on merged `main` (TOR-358) update slide 12; add member names to slide 1
 - [ ] TOR-374 Slide status tags (merged / open PR / TODO) re-checked against `main` the morning of the presentation
 - [x] TOR-375 Demo script `docs/security/demo-script.md` and seed `tools/demo-seed.mjs` (buckets, two verified vendors, a vault file, two TORs through the intake API); seed run twice on `main`
 - [x] TOR-375 Verified live on `main`: headers (before picture), login burst 5x401 then 429, vendor B gets 404 for vendor A's file

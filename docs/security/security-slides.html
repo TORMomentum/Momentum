@@ -158,22 +158,21 @@
   <div class="cols">
     <div>
       <table>
-        <tr><th>Level</th><th class="n">Total</th><th class="n">Planned</th><th class="n">Had at plan time</th></tr>
-        <tr><td>L1 baseline</td><td class="n">70</td><td class="n">61 (87%)</td><td class="n">44</td></tr>
-        <tr><td>L2 standard</td><td class="n">183</td><td class="n">133 (73%)</td><td class="n">49</td></tr>
-        <tr><td>L3 advanced</td><td class="n">92</td><td class="n">60 (65%)</td><td class="n">18</td></tr>
-        <tr><td><b>All</b></td><td class="n"><b>345</b></td><td class="n"><b>254 (74%)</b></td><td class="n"><b>111</b></td></tr>
+        <tr><th>Level</th><th class="n">Total</th><th class="n">Planned</th><th class="n">Have now</th></tr>
+        <tr><td>L1 baseline</td><td class="n">70</td><td class="n">61 (87%)</td><td class="n">51 of 61</td></tr>
+        <tr><td>L2 standard</td><td class="n">183</td><td class="n">133 (73%)</td><td class="n">75 of 133</td></tr>
+        <tr><td>L3 advanced</td><td class="n">92</td><td class="n">60 (65%)</td><td class="n">20 of 60</td></tr>
+        <tr><td><b>All</b></td><td class="n"><b>345</b></td><td class="n"><b>254 (74%)</b></td><td class="n"><b>146 of 254</b></td></tr>
       </table>
-      <p class="muted" style="font-size:.8rem">Source: Momentum-OWASP-ASVS-5.0-Plan.xlsx (Summary tab) at plan time, before the Sprint 6 hardening.
-      <span class="tag warn">TODO</span> refresh "have now" after the open PRs merge.</p>
+      <p class="muted" style="font-size:.8rem">Source: security project document, ASVS section (PR #58). "Have now" means in the code or in an
+      open Sprint 6 PR, so these figures assume #44&ndash;#58 merge. Before Sprint 6 the plan counted 111.</p>
     </div>
-    <div class="card"><p class="stat-label">Priorities</p>
-      <ul class="tight"><li><b>P0</b> already built: 111</li><li><b>P1</b> Level 1 and top-risk controls: 26</li>
-      <li><b>P2</b> Level 2: 75</li><li><b>P3</b> Level 3: 42</li></ul>
+    <div class="card"><p class="stat-label">Status of the 254 planned requirements</p>
+      <ul class="tight"><li><b>Have now</b>: 146</li><li><b>Partial</b>: 9</li><li><b>Planned</b>, not built: 99</li></ul>
       <p class="stat-label" style="margin-top:.8rem">Deliberately not planned (91)</p>
       <p class="muted" style="font-size:.85rem">WebRTC (V17), most of OAuth server-side requirements (V10: we are an OIDC <i>client</i>), and L3 items with no matching feature.</p></div>
   </div>
-  <div class="foot"><span>Grading criteria 1 and 17</span><span>Per-requirement mapping: ASVS plan workbook</span></div>
+  <div class="foot"><span>Grading criteria 1 and 17</span><span>Per-requirement mapping: security project document</span></div>
 </section>
 
 <!-- 5 · THREAT MODEL -->
