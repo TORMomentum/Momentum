@@ -561,6 +561,16 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — Continuous deployment to Cloud Run
+
+- [x] `deploy.yml` runs after CI succeeds on a push to `main` (`workflow_run`); manual `workflow_dispatch` kept
+- [x] Deploys the exact commit CI tested (checkout and image tags use the CI head SHA)
+- [x] `concurrency` group `deploy-cloud-run`, no cancel-in-progress
+- [x] Placeholder first pass only when `tor-radar-web` does not exist (no broken revision on routine deploys)
+- [x] Post-rollout smoke check (Ready condition, latest created == latest ready); workflow validated with action-validator
+- [x] `docs/gcp-setup.md` §7 describes auto-deploy, redeploy and rollback
+- [ ] Not verified live (needs GitHub secrets): after merge, confirm "Deploy to Cloud Run" starts in the Actions tab after CI on `main` and goes green
+
 ## Sprint 6 — TOR-315 Sign in with Google (OIDC)
 
 _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/2026-10-06-accounts-and-sessions-design.md) section 10. Branch `feat/tor-315-google-oidc`._
@@ -751,6 +761,10 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+CD review: stale automatic rollouts skip deployment and a failed service lookup aborts bootstrap.
+
+CD queue review: concurrency is scoped to the eligible deploy job.
 
 TOR-319 review: single-active issuance is transactional in the shared repository.
 

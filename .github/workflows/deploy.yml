@@ -1,9 +1,15 @@
 name: Deploy to Cloud Run
 
-# TOR-142. Manually triggered only — the app isn't feature-complete yet, and every
+# TOR-142. Deploys to Cloud Run automatically after the CI workflow passes on a push
+# to main (the owner's Sprint 6 decision: Cloud Run, not Watchtower - there is no host
+# to run Watchtower on). A failed CI run deploys nothing. workflow_dispatch stays as
+# the manual fallback: redeploy, or re-run after fixing a GCP-side problem. Every
 # service stays IAM-restricted (--no-allow-unauthenticated) regardless of who
-# deploys it. Auto-deploy-on-merge is Sprint 6's decision, not this workflow's.
+# deploys it, and `web` sits behind IAP (re-asserted at the end).
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
     inputs:
       confirm:
@@ -12,7 +18,20 @@ on:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event.inputs.confirm == 'deploy'
+    if: >-
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.event == 'push'
+        && github.event.workflow_run.head_branch == 'main')
+      || (github.event_name == 'workflow_dispatch'
+        && github.ref == 'refs/heads/main'
+        && github.event.inputs.confirm == 'deploy')
+    # Only eligible deploy jobs participate in the rollout queue.
+    concurrency:
+      group: deploy-cloud-run
+      # An older eligible CI rerun must not evict the newer commit waiting for its SHA check.
+      queue: max
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,11 +40,15 @@ jobs:
       REGION: ${{ vars.GCP_REGION }}
       AR_REPO: ${{ vars.GCP_AR_REPO }}
       GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+      # Exactly the commit CI tested (workflow_run), or the dispatched commit.
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       # Sign in with Google (TOR-315): optional; unset means off.
       GOOGLE_OAUTH_ENABLED: ${{ vars.GOOGLE_OAUTH_ENABLED }}
       GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
@@ -38,38 +61,53 @@ jobs:
 
       - name: Build and push the api image
         run: |
-          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/api:${{ github.sha }}"
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/api:${DEPLOY_SHA}"
           docker build -f apps/api/Dockerfile -t "$IMAGE" .
           docker push "$IMAGE"
           echo "AR_IMAGE_API=$IMAGE" >> "$GITHUB_ENV"
 
       - name: Build and push the web image
         run: |
-          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:${{ github.sha }}"
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:${DEPLOY_SHA}"
           docker build -f apps/web/Dockerfile -t "$IMAGE" .
           docker push "$IMAGE"
           echo "AR_IMAGE_WEB=$IMAGE" >> "$GITHUB_ENV"
 
       # web needs api's URL (API_BASE_URL) and api needs web's URL (APP_ORIGIN,
-      # the accounts feature's CSRF check) — each needs the other's, and Cloud
-      # Run only assigns a URL once a service exists. First pass creates web
-      # with a placeholder API_BASE_URL just to get its real URL; the second
-      # pass (after api and worker deploy) redeploys web with the real one.
-      - name: Deploy web (first pass, establishes its URL)
+      # the accounts feature's CSRF check) - each needs the other's, and Cloud
+      # Run only assigns a URL once a service exists. So this pass runs ONLY when
+      # tor-radar-web does not exist yet (the one-time first deploy): it creates
+      # web with placeholder values just to get its real URL. Once web exists its
+      # URL is stable, and a placeholder pass would roll a broken revision into
+      # live traffic on every deploy - so it is skipped and api/worker and then
+      # web go straight out with real values.
+      - name: Verify automatic rollout still targets main
+        if: github.event_name == 'workflow_run'
         run: |
+          current=$(git ls-remote --exit-code origin refs/heads/main)
+          if [[ "${current%%[[:space:]]*}" != "$DEPLOY_SHA" ]]; then
+            echo "Skipping superseded deployment of $DEPLOY_SHA"
+            echo "SKIP_ROLLOUT=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create web once (first deploy only, establishes its URL)
+        if: env.SKIP_ROLLOUT != 'true'
+        run: |
+          services=$(gcloud run services list --project "$PROJECT_ID" --region "$REGION" --filter='metadata.name=tor-radar-web' --format='value(metadata.name)')
+          if [[ -n "$services" ]]; then
+            echo "tor-radar-web already exists; skipping the placeholder pass."
+            exit 0
+          fi
           API_SERVICE_URL="https://placeholder.invalid"
-          export API_SERVICE_URL
-          # web's own APP_ORIGIN (app/api/auth/[...path]/route.ts's same-origin check)
-          # isn't known until this pass creates the service — the third pass below
-          # redeploys with the real value once it exists.
           APP_ORIGIN="https://placeholder.invalid"
-          export APP_ORIGIN
+          export API_SERVICE_URL APP_ORIGIN
           envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
           gcloud run services replace /tmp/web.yaml --region "$REGION"
 
       # api and worker share the api image but are separate services (different
       # scaling, different command) — see deploy/cloudrun/worker.yaml.
       - name: Deploy api and worker
+        if: env.SKIP_ROLLOUT != 'true'
         run: |
           APP_ORIGIN=$(gcloud run services describe tor-radar-web --region "$REGION" --format='value(status.url)')
           export APP_ORIGIN
@@ -78,12 +116,13 @@ jobs:
           envsubst < deploy/cloudrun/worker.yaml > /tmp/worker.yaml
           gcloud run services replace /tmp/worker.yaml --region "$REGION"
 
-      - name: Redeploy web with api's real URL
+      - name: Deploy web with api's real URL
+        if: env.SKIP_ROLLOUT != 'true'
         run: |
           API_SERVICE_URL=$(gcloud run services describe tor-radar-api --region "$REGION" --format='value(status.url)')
           export API_SERVICE_URL
-          # web's URL is stable across revisions once the first pass creates it, so
-          # this is the real value from here on, not another placeholder.
+          # web's URL is stable across revisions once it exists, so this is the
+          # real value, not a placeholder.
           APP_ORIGIN=$(gcloud run services describe tor-radar-web --region "$REGION" --format='value(status.url)')
           export APP_ORIGIN
           envsubst < deploy/cloudrun/web.yaml > /tmp/web.yaml
@@ -99,4 +138,21 @@ jobs:
       # (cloudresourcemanager.googleapis.com, to look up the project number). Idempotent:
       # safe to repeat against a service that's already IAP-enabled.
       - name: Re-assert IAP on web (services replace doesn't carry it)
+        if: env.SKIP_ROLLOUT != 'true'
         run: gcloud run services update tor-radar-web --region "$REGION" --iap
+
+      # No public access needed (everything is IAM/IAP-gated): ask Cloud Run itself
+      # whether each service's newest revision became ready and is the one serving.
+      - name: Smoke check (services Ready, latest revision serving)
+        if: env.SKIP_ROLLOUT != 'true'
+        run: |
+          fail=0
+          for svc in tor-radar-api tor-radar-worker tor-radar-web; do
+            json=$(gcloud run services describe "$svc" --region "$REGION" --format=json)
+            ready=$(echo "$json" | jq -r '[.status.conditions[] | select(.type=="Ready")][0].status')
+            created=$(echo "$json" | jq -r '.status.latestCreatedRevisionName')
+            latest=$(echo "$json" | jq -r '.status.latestReadyRevisionName')
+            echo "$svc: Ready=$ready latestCreated=$created latestReady=$latest"
+            if [ "$ready" != "True" ] || [ "$created" != "$latest" ]; then fail=1; fi
+          done
+          exit $fail
