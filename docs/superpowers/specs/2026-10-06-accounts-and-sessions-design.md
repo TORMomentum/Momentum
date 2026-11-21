@@ -265,3 +265,5 @@ Every control above is a test, because a security control nobody tested is a cla
   layout triggers this for any page, public ones included, since it already asks `/me` once per render.
 
 2026-11-21 revision: single-active session issuance serializes on the account in a MongoDB transaction. Every authentication provider calls SessionsRepository.create.
+
+2026-11-21 revision: public pages render signed out after a rejected cookie. Only vendor account, profile, path and notification pages invoke the expired-session redirect. Email action URLs stay in the original browser navigation.
