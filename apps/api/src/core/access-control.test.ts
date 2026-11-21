@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Storage as GcsClient } from "@google-cloud/storage";
 import { WORK_CATEGORIES } from "@tor-radar/seeds";
 import { GcsVaultStorage } from "../adapters/gcs.vault.storage.js";
+import { createTextGenerator } from "../adapters/text.factory.js";
 import { API_PREFIX, buildApp } from "../app.js";
 import { AccountsRepository } from "../modules/accounts/accounts.repository.js";
 import { hashPassword } from "../modules/accounts/password.js";
@@ -55,10 +56,14 @@ function mountedRoutes(mounts: Array<{ prefix: string; router: { stack: Array<{ 
   return found;
 }
 
+vi.mock("../adapters/text.factory.js");
+const generate = vi.fn(async (_input: { system: string; prompt: string }) => ({ text: "Draft", modelVersion: "test" }));
+
 const baseConfig = loadConfig(process.env);
 // Sign-in throttling is not under test; behaviour recording is switched on so A has events to protect.
 const config: Config = {
   ...baseConfig,
+  draft: { ...baseConfig.draft, enabled: true },
   authRateLimitPerIp: 10_000,
   authRateLimitPerEmail: 10_000,
   mail: { ...baseConfig.mail, smtpUrl: undefined },
@@ -121,6 +126,7 @@ beforeAll(async () => {
   const get = vi.spyOn(express.application, "get");
   db = await connect(isolatedDbUrl(config.mongoUrl, "access-control"));
   await ensureIndexes(db);
+  vi.mocked(createTextGenerator).mockReturnValue({ generate });
   app = buildApp(config, db);
   for (const [first, second] of use.mock.calls as unknown[][]) if (typeof first === "string" && second && typeof second === "function" && "stack" in second) mounts.push({ prefix: first, router: second as never });
   for (const [first, second] of get.mock.calls as unknown[][]) if (typeof first === "string" && typeof second === "function" && !("stack" in second)) mounts.push({ prefix: "", router: { stack: [{ route: { path: first, methods: { get: true } } }] } as never });
@@ -265,7 +271,14 @@ describe("vendor B cannot read or change vendor A's data", () => {
   });
 
   it("a draft request is bound to the caller's own data and never names another account", async () => {
-    const res = await as(b, "POST", `${API_PREFIX}/me/tors/${torId}/draft`).send({});
+    const project = "B-own-project";
+    await as(b, "PUT", `${API_PREFIX}/me/profile`).send({ categories: [WORK_CATEGORIES[0]!.id], areas: ["thailand"], budget: null }).expect(200);
+    await as(b, "PUT", `${API_PREFIX}/me/profile/extras`).send({ pastProjects: [{ title: project, year: 2567, valueThb: 123 }] }).expect(200);
+    const res = await as(b, "POST", `${API_PREFIX}/me/tors/${torId}/draft`).send({}).expect(200);
+    expect(generate).toHaveBeenCalledTimes(1);
+    const prompt = generate.mock.calls[0]![0].prompt;
+    expect(prompt).toContain(project);
+    for (const marker of markers) expect(prompt).not.toContain(marker);
     for (const marker of markers) expect(res.text).not.toContain(marker);
   });
 
