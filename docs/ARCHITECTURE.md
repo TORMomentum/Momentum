@@ -167,8 +167,8 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
-| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers | Imported by `app.ts` only |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `GoogleOidc` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC (`google-auth-library`) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
 
@@ -180,7 +180,7 @@ The feature modules, as of Sprint 4:
 | `extraction/` | OCR and field extraction, confidence grading |
 | `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter |
 | `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
-| `accounts/` | Registration, sign-in, sessions, password reset, PDPA export and deletion |
+| `accounts/` | Registration, sign-in (password, and Google through `google-signin.*`), sessions, password reset, PDPA export and deletion |
 | `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
 | `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
@@ -431,6 +431,7 @@ erDiagram
         objectId _id PK
         string email UK
         string role "vendor | admin"
+        object google "sub, Google's stable subject · unique when present · set by linking or by a Google sign-up"
         object consent "notice version and hash, agreedAt, withdrawnAt"
         date disabledAt "set by staff; revokes every session"
     }
@@ -536,6 +537,9 @@ Three shapes are load-bearing:
 
 | Index | Exists for |
 | :--- | :--- |
+| `accounts.google.sub` **unique, partial** | One Google subject, one account (TOR-315). Partial on `google.sub` existing, so password-only accounts do not collide; a deleted account's `google` is removed, so its sub can sign up again |
+| `oauth_transactions.expiresAt` TTL (`_id` = SHA-256 of the `state`) | A Google sign-in attempt in flight: nonce, PKCE verifier, digest of the browser binding. Consumed once by `findOneAndDelete`; `OAUTH_TRANSACTION_TTL_MS` |
+| `google_signups.expiresAt` TTL (`_id` = SHA-256 of a ticket) | A Google identity waiting for PDPA consent: `sub`, address, name. Not an account; consumed once; same lifetime |
 | `tors.contentHash` **unique** | Dedupe under concurrency (FR-A-3) — the guarantee, not the optimisation |
 | `tors.pipeline.state + createdAt` | Queue and admin views |
 | `tors.fields.category.value + announcedAt` | Peer-group selection for the anomaly rule |

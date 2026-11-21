@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -390,7 +390,7 @@ Routes: [API.md §6–7](API.md)._
       account writes an audit entry to the shared Atlas, so a person does this
 - [ ] **Label enough pairs to read the benchmark**, then decide on `NOTIFY_DISPATCH_ENABLED`
 - [ ] **Re-extract the 178 failed TORs** — one paid Vertex call each; a cost decision
-- [ ] **Google sign-in** — designed, not built
+- [x] **Google sign-in** — built in Sprint 6 (TOR-315); needs the owner's OAuth client to run for real, see the Sprint 6 section
 - [ ] **Rotate the GCS key that was pasted into chat** — security, not optional
 
 ## 2k. Sprint 5 — OCR, provenance, work location, embeddings (TOR-128, TOR-202)
@@ -560,6 +560,21 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-315 Sign in with Google (OIDC)
+
+_Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/2026-10-06-accounts-and-sessions-design.md) section 10. Branch `feat/tor-315-google-oidc`._
+
+- [x] TOR-328 start and callback routes: code flow, PKCE S256, `state`, `nonce`, single-use server-side transaction, browser-binding cookie
+- [x] TOR-329 id_token validation: signature, issuer, audience, expiry (library), `azp`, `nonce`, `email_verified`
+- [x] TOR-330 linking: verified account plus verified address links and is matched by `google.sub`; unverified password account replaced after consent; disabled and deleted refused
+- [x] TOR-331 `GOOGLE_OAUTH_*` in `.env.example`, Compose and Cloud Run; Secret Manager steps in `gcp-setup.md` 7.3b
+- [x] TOR-332 button (only when enabled), `/google-consent` page, Thai error on `/login?error=google`
+- [x] PDPA consent required before a Google-only account exists
+- [x] Tests: routes and service, adapter with a locally signed JWT, config, web handler and button
+- [ ] **Owner, Google Cloud console:** create the OAuth client and register the redirect URI, set the GitHub variables and the Secret Manager secret, uncomment the secret block in `deploy/cloudrun/api.yaml` (`gcp-setup.md` 7.3b)
+- [ ] **A real Google sign-in in a browser** — not run; no client existed. Run it once after the console step
+- [ ] Deleting an account without a password could re-authenticate by a fresh Google sign-in (`prompt=login`) instead of "set a password first"
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
