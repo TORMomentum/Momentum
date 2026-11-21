@@ -561,6 +561,14 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-317 API security headers and CORS
+
+- [x] TOR-338 helmet on the API (deny-all CSP, `frame-ancestors 'none'`, no `X-Powered-By`)
+- [x] TOR-339 CORS allowlist, `APP_ORIGIN` only, never `*`, credentials only for it (no new env var)
+- [x] TOR-340 Tests: foreign origin and its preflight get no `Access-Control-*` header
+- [x] Checked live with curl against the compose stack (see the PR)
+- [ ] The web app sets no security headers of its own yet (separate story)
+
 ## Sprint 6 — TOR-324 Close secret and input gaps
 
 - [x] TOR-364 Compose has no default keys: `INTAKE_API_KEYS`, `ADMIN_API_KEYS` are required like `SESSION_SECRET` (verified: `docker compose config` fails with the variable named, then starts once set)

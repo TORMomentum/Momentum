@@ -50,6 +50,10 @@ the last run — is listed with its result in the generated [test-report.md](tes
 Result column: the run of 2026-11-03 at commit `81ad2ef` — full suite 771 passed · 0 failed · 10
 skipped (opt-in). `npm run test:report` refreshes the report.
 
+Security headers and CORS (TOR-317): `apps/api/src/core/security-headers.test.ts` covers helmet headers and a
+deny-all CSP, no `X-Powered-By`, the allowed origin echoed with credentials, and a foreign origin (`https://evil.example`)
+and a look-alike origin getting no `Access-Control-*` header on a request or a preflight.
+
 | ID | Req. | Function under test | Input | Expected | Result | Test file |
 | :---- | :---- | :---- | :---- | :---- | :---- | :---- |
 | UT-F1-1 | FR-A-1, NFR-S1 | `POST /api/v1/intake/upload` | PDF upload with no `x-api-key` | 401; nothing stored | Pass | `intake.routes.test.ts` |
