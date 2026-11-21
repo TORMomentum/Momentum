@@ -97,7 +97,7 @@ ZAP_SESSION_COOKIE=<cookie value> ZAP_LABEL=final-auth tools/zap/run.sh
 docker compose down -v
 ```
 
-Reports (HTML, JSON, Markdown for web and API) are written to `zap-reports/<label>/` and are gitignored.
+Reports (HTML, JSON, Markdown for web and API) are written to `zap-reports/<label>.<run>/` and are gitignored.
 Update the tables above from `*.json` and attach the HTML reports to TOR-359. In CI the same scan runs
 from the `ZAP DAST` workflow (weekly, or Actions, "Run workflow"); the reports are the `zap-reports`
 artifact of that run.

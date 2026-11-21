@@ -7,7 +7,7 @@
 # Two scans, both PASSIVE (no attack traffic): zap-baseline.py spiders the web
 # app; zap-api-scan.py -S imports tools/zap/openapi.json for the API. ZAP runs in
 # a container on the Compose network and reaches the services by name, so no host
-# port or localhost is involved. Reports land in zap-reports/<label>/ (gitignored).
+# port or localhost is involved. Reports land in zap-reports/<label>.<run>/ (gitignored).
 #
 # Exit: 0 = no FAIL rule and no High alert, 1 = a FAIL rule fired or a High alert
 # exists, 3 = a scan did not run. WARN-level alerts never fail the run.
@@ -36,9 +36,12 @@ label="${ZAP_LABEL:-run}"
 minutes="${ZAP_SPIDER_MINUTES:-2}"
 image="${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:2.17.0}"
 
-out="$root/zap-reports/$label"
-rm -rf "$out"
-mkdir -p "$out"
+if [[ ! "$label" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "ZAP_LABEL must contain only letters, digits, underscores or hyphens" >&2
+  exit 3
+fi
+mkdir -p "$root/zap-reports"
+out="$(mktemp -d "$root/zap-reports/$label.XXXXXXXX")"
 # ZAP reads its -c / -f inputs from, and writes reports to, /zap/wrk.
 cp "$here/zap-rules.tsv" "$here/openapi.json" "$out/"
 chmod 777 "$out"

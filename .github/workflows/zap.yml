@@ -51,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: zap-reports
-          path: zap-reports/ci/
+          path: zap-reports/ci.*/
           if-no-files-found: warn
       - name: Stack logs on failure
         if: failure()
