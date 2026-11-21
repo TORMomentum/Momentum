@@ -610,3 +610,5 @@ Branch `feat/tor-224-company-path`._
 - [ ] Decide whether Fable goes back as the architect model
 
 CD review: stale automatic rollouts skip deployment and a failed service lookup aborts bootstrap.
+
+CD queue review: concurrency is scoped to the eligible deploy job.

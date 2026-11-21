@@ -16,12 +16,6 @@ on:
         description: 'Type "deploy" to confirm'
         required: true
 
-# One deploy at a time; a second merge waits instead of cancelling a rollout
-# half-way through.
-concurrency:
-  group: deploy-cloud-run
-  cancel-in-progress: false
-
 jobs:
   deploy:
     if: >-
@@ -32,6 +26,10 @@ jobs:
       || (github.event_name == 'workflow_dispatch'
         && github.ref == 'refs/heads/main'
         && github.event.inputs.confirm == 'deploy')
+    # Only eligible deploy jobs participate in the rollout queue.
+    concurrency:
+      group: deploy-cloud-run
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
