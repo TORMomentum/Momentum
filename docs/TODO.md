@@ -567,7 +567,7 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 
 - [x] TOR-328 start and callback routes: code flow, PKCE S256, `state`, `nonce`, single-use server-side transaction, browser-binding cookie
 - [x] TOR-329 id_token validation: signature, issuer, audience, expiry (library), `azp`, `nonce`, `email_verified`
-- [x] TOR-330 linking: verified account plus verified address links and is matched by `google.sub`; unverified password account replaced after consent; disabled and deleted refused
+- [x] TOR-330 linking: authenticated account plus matching verified address links and is matched by `google.sub`; unverified password account replaced after consent; disabled and deleted refused
 - [x] TOR-331 `GOOGLE_OAUTH_*` in `.env.example`, Compose and Cloud Run; Secret Manager steps in `gcp-setup.md` 7.3b
 - [x] TOR-332 button (only when enabled), `/google-consent` page, Thai error on `/login?error=google`
 - [x] PDPA consent required before a Google-only account exists
@@ -575,6 +575,17 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 - [ ] **Owner, Google Cloud console:** create the OAuth client and register the redirect URI, set the GitHub variables and the Secret Manager secret, uncomment the secret block in `deploy/cloudrun/api.yaml` (`gcp-setup.md` 7.3b)
 - [ ] **A real Google sign-in in a browser** — not run; no client existed. Run it once after the console step
 - [ ] Deleting an account without a password could re-authenticate by a fresh Google sign-in (`prompt=login`) instead of "set a password first"
+
+## Sprint 6 — TOR-319 Session timeout and revocation
+
+- [x] TOR-344 Idle (`SESSION_IDLE_TIMEOUT_MS`, 30 min) and absolute (`SESSION_LIFETIME_MS`) timeout; `lastSeenAt` is now written by `resolve`, throttled
+- [x] TOR-345 Login revokes the session id it carried and, by default, the account's other sessions (`SESSION_SINGLE_ACTIVE`)
+- [x] TOR-346 Logout deletes the session row (test added; it already did)
+- [x] TOR-347 Rejected session cookie goes to `/login?reason=expired` with a Thai message
+- [x] TOR-348 `Clear-Site-Data` on the web logout reply
+- [x] Verified live in Compose: second login rejects the first cookie, idle 25 s past a 20 s timeout gives 401, logout headers
+- [x] Compose passes `APP_ORIGIN` to `web` (its account route handlers threw without it)
+- [ ] Single-active ends a vendor's other devices at sign-in; set `SESSION_SINGLE_ACTIVE=false` if the team prefers several devices
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
@@ -613,3 +624,7 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-319 review: single-active issuance is transactional in the shared repository.
+
+TOR-315 review: first linking requires the existing authenticated account at start and callback. Password and Google issue through the shared transactional session repository.

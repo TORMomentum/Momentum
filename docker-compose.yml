@@ -18,6 +18,10 @@ x-api-env: &api-env
   GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
   GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
   GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
+  SESSION_LIFETIME_MS: ${SESSION_LIFETIME_MS:-604800000}
+  SESSION_IDLE_TIMEOUT_MS: ${SESSION_IDLE_TIMEOUT_MS:-1800000}
+  SESSION_TOUCH_INTERVAL_MS: ${SESSION_TOUCH_INTERVAL_MS:-60000}
+  SESSION_SINGLE_ACTIVE: ${SESSION_SINGLE_ACTIVE:-true}
   # Inside Compose the mail container is reached by service name, whatever the
   # host's own .env says — a host port is meaningless from another container.
   SMTP_URL: smtp://mail:1025

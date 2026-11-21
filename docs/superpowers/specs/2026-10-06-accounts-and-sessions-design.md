@@ -216,7 +216,7 @@ Every control above is a test, because a security control nobody tested is a cla
 | :--- | :--- |
 | Enumeration | Unknown address, wrong password and unverified account return the identical status and body; the unknown path performs a dummy verification |
 | CSRF | Register, sign in, sign out, password change and delete are refused with a foreign or absent `Origin` |
-| Takeover | Google does NOT link to an unverified account; it does link to a verified one; an unverified Google address never links |
+| Takeover | Google does NOT link to an unverified account; it links a verified account after the existing owner authenticates; an unverified Google address never links |
 | OAuth | Mismatched `state`, replayed transaction, wrong `aud`/`azp`/issuer, expired token, and a redirect URI that is not the registered one are each refused |
 | Sessions | Expired session rejected; cookie attributes exactly as §2.2; password change, role change and deletion revoke every session |
 | Deletion | Re-authentication required; a second account with the same address can register afterwards; the first account's profile and bookmarks are gone |
@@ -312,7 +312,7 @@ sequenceDiagram
 - A linked account is found by **`google.sub`** from then on, never by address. A renamed address at Google still
   reaches the same account.
 - A first sign-in with an address that belongs to an existing, **verified** account links it (stores `google.sub`)
-  because both parties proved the address. The account keeps its password. An account already linked to a different
+  only through a linking transaction started and completed with that account’s active TOR Radar session. The account keeps its password. An account already linked to a different
   `sub` is refused.
 - `email_verified` must be true on the token for any of this, including the sub match: an address Google does not
   vouch for is not used to find, link or create anything.
@@ -365,3 +365,21 @@ A real Google login needs an OAuth client and a person at a browser. What ran li
 a declined consent and a wrong binding are each refused. The callback-to-session path is covered end to end by tests
 with a stub verifier and by a local-key token for the adapter. The first run with a real client is the owner's
 (docs/gcp-setup.md, 7.3b).
+
+## Revision 2026-11-20 — session timeout and revocation (TOR-319, ASVS V7.2.4 / V7.4.1 / V14.3.1)
+
+- Idle timeout: `resolve` rejects a session whose `lastSeenAt` is older than `SESSION_IDLE_TIMEOUT_MS` (default 30 min); `touch` has the same
+  filter and never revives one. `lastSeenAt` had never been written outside creation; `resolve` now slides it, at most once per
+  `SESSION_TOUCH_INTERVAL_MS` (default 60 s, capped at half the idle timeout) so a page of requests is not a page of writes. The absolute
+  lifetime is the existing `SESSION_LIFETIME_MS`, enforced by the `expiresAt` check and the TTL index. No schema or index change.
+- Login: the session id the request carried is deleted whoever it belonged to (fixation; a shared machine), then, when
+  `SESSION_SINGLE_ACTIVE` is true (default), every other session of the account. A vendor using two devices is signed out of the first;
+  the switch exists for that case.
+- Logout deletes the row (unchanged). The web logout reply carries `Clear-Site-Data: "cache", "cookies", "storage"`: it is the reply the
+  browser receives, the API's is not.
+- A cookie the API rejects is dropped by `GET /api/auth/expired` and the reader lands on `/login?reason=expired` with a Thai message. The root
+  layout triggers this for any page, public ones included, since it already asks `/me` once per render.
+
+2026-11-21 revision: single-active session issuance serializes on the account in a MongoDB transaction. Every authentication provider calls SessionsRepository.create.
+
+2026-11-21 linking revision: a matching verified address alone is refused. The account screen starts a browser-bound transaction with its authenticated account ID. Callback requires the same active account and matching email before storing a first Google subject. An ordinary returning login uses the linked subject.

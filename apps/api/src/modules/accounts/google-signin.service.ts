@@ -41,20 +41,20 @@ export class GoogleSigninService {
   constructor(private readonly deps: GoogleSigninDeps) {}
 
   /** `binding` goes to the browser in an httpOnly cookie; only its digest is kept, so the callback can prove it is the same browser. */
-  async start(): Promise<{ url: string; binding: string }> {
+  async start(linkAccountId?: string): Promise<{ url: string; binding: string }> {
     const state = randomBytes(32).toString("base64url");
     const nonce = randomBytes(32).toString("base64url");
     const binding = randomBytes(32).toString("base64url");
     const codeVerifier = randomBytes(48).toString("base64url");
     const codeChallenge = createHash("sha256").update(codeVerifier).digest("base64url");
     await this.deps.repository.saveTransaction(
-      { _id: sha256Hex(state), bindingHash: sha256Hex(binding), nonce, codeVerifier },
+      { _id: sha256Hex(state), bindingHash: sha256Hex(binding), nonce, codeVerifier, ...(linkAccountId ? { linkAccountId } : {}) },
       this.deps.config.googleOauth.transactionTtlMs,
     );
     return { url: this.deps.oidc.authorizationUrl({ state, nonce, codeChallenge }), binding };
   }
 
-  async callback(input: { code: string; state: string; binding: string }): Promise<GoogleCallbackResult> {
+  async callback(input: { code: string; state: string; binding: string }, currentAccountId?: string): Promise<GoogleCallbackResult> {
     // Consumed first and unconditionally: a transaction can be tried once, so a wrong guess burns it.
     const transaction = await this.deps.repository.consumeTransaction(sha256Hex(input.state));
     if (!transaction) throw fail();
@@ -72,16 +72,19 @@ export class GoogleSigninService {
     const email = normalizeEmail(identity.email);
 
     const bySub = await this.deps.accounts.findByGoogleSub(identity.sub);
+    if (transaction.linkAccountId && (transaction.linkAccountId !== currentAccountId || (bySub && bySub.id !== currentAccountId))) throw fail();
     if (bySub) return this.signIn(bySub);
 
     const byEmail = await this.deps.accounts.findByEmail(email);
     if (byEmail?.emailVerifiedAt && !byEmail.deletedAt) {
       // Only a verified account is linked: otherwise whoever registered the address first, with a password of their
       // own choosing, would be handed the real owner's Google sign-in. A different Google identity is refused.
-      if (byEmail.google || byEmail.disabledAt) throw fail();
+      if (transaction.linkAccountId !== byEmail.id || byEmail.google || byEmail.disabledAt) throw fail();
       if (!await this.deps.accounts.linkGoogle(byEmail.id, identity.sub)) throw fail();
       return this.signIn(byEmail);
     }
+
+    if (transaction.linkAccountId) throw fail();
 
     // No account, or one that never confirmed its address: a new account, but only after consent.
     const ticket = randomBytes(32).toString("base64url");

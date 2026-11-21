@@ -33,6 +33,12 @@ describe("Google sign-in handler", () => {
     expect(cookie).toContain("Path=/api/auth/google");
   });
 
+  it("forwards the existing session for an explicit link request", async () => {
+    apiRequest.mockResolvedValue(json({ url: "https://accounts.google.com/", binding: "binding" }));
+    await GET(new NextRequest(`${ORIGIN}/api/auth/google/start?link=1`, { headers: { cookie: "tor-radar-session=existing" } }), ctx("google", "start"));
+    expect(apiRequest).toHaveBeenCalledWith("/auth/google/start", { method: "GET" }, "existing");
+  });
+
   it("start lands on the login page with an error when the API is unreachable or Google sign-in is off", async () => {
     apiRequest.mockResolvedValue(json({}, 404));
     const off = await GET(new NextRequest(`${ORIGIN}/api/auth/google/start`), ctx("google", "start"));

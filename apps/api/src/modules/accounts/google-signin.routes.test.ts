@@ -18,6 +18,7 @@ import { buildAccountsRouter } from "./accounts.routes.js";
 import { GoogleSigninRepository } from "./google-signin.repository.js";
 import { buildGoogleSigninRouter } from "./google-signin.routes.js";
 import { GoogleSigninService, GOOGLE_FAILURE } from "./google-signin.service.js";
+import { hashPassword } from "./password.js";
 import { SessionsRepository } from "./sessions.js";
 
 const baseConfig = loadConfig(process.env);
@@ -53,7 +54,7 @@ let google: StubGoogle;
 let app: express.Express;
 
 function buildTestApp() {
-  const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  const sessionsRepository = new SessionsRepository(db, config.session);
   const accountsRepository = new AccountsRepository(db, sessionsRepository);
   const tokensRepository = new AccountTokensRepository(db);
   const testApp = express();
@@ -137,7 +138,7 @@ describe("Google sign-in: callback validation", () => {
   });
 
   it("rejects a replayed callback: a transaction is single use", async () => {
-    await existingAccount();
+    await existingAccount({ google: { sub: "google-sub-1" } });
     const started = await start();
     const body = { code: "c", state: started.state, binding: started.binding };
 
@@ -177,11 +178,21 @@ describe("Google sign-in: callback validation", () => {
 
 describe("Google sign-in: accounts", () => {
   it("links to an existing VERIFIED account with the same address, stores the sub, and issues a session", async () => {
-    await existingAccount();
-    const response = await callbackWith();
-
-    expect(response.body).toMatchObject({ status: "signed_in", sessionId: expect.any(String) });
-    expect(await accounts(db).findOne({ email: "vendor@example.test" })).toMatchObject({ google: { sub: "google-sub-1" }, passwordHash: "x" });
+    const passwordHash = await hashPassword("correct-password", config);
+    await existingAccount({ passwordHash });
+    expect((await callbackWith()).status).toBe(401);
+    expect((await accounts(db).findOne({}))?.google).toBeUndefined();
+    expect(await sessions(db).countDocuments({})).toBe(0);
+    const login = await post("/auth/login").send({ email: "vendor@example.test", password: "correct-password" }).expect(200);
+    const oldSession = login.body.sessionId;
+    const started = await request(app).get("/auth/google/start").set("x-session-id", oldSession).expect(200);
+    await post("/auth/google/callback").send({ code: "auth-code", state: google.sent!.state, binding: started.body.binding }).expect(401);
+    expect((await accounts(db).findOne({}))?.google).toBeUndefined();
+    const retry = await request(app).get("/auth/google/start").set("x-session-id", oldSession).expect(200);
+    const response = await post("/auth/google/callback").set("x-session-id", oldSession)
+      .send({ code: "auth-code", state: google.sent!.state, binding: retry.body.binding }).expect(200);
+    expect(await accounts(db).findOne({ email: "vendor@example.test" })).toMatchObject({ google: { sub: "google-sub-1" }, passwordHash });
+    await request(app).get("/auth/me").set("x-session-id", oldSession).expect(401);
     const me = await request(app).get("/auth/me").set("x-session-id", response.body.sessionId);
     expect(me.body.email).toBe("vendor@example.test");
   });
@@ -238,7 +249,7 @@ describe("Google sign-in: accounts", () => {
 
   it("does not sign in a deleted account: its sub is gone and its address is a tombstone", async () => {
     await existingAccount({ google: { sub: "google-sub-1" } });
-    const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+    const sessionsRepository = new SessionsRepository(db, config.session);
     const stored = await accounts(db).findOne({});
     await new AccountsRepository(db, sessionsRepository).softDelete(stored!._id.toString());
 

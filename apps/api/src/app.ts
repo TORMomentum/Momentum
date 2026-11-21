@@ -65,7 +65,7 @@ export function buildApp(config: Config, db: Db): Express {
   // Feature services receive this port as they gain outbound email behaviour.
   // Constructing it here makes a production SMTP omission fail during startup.
   const mailer = createMailer(config);
-  const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  const sessionsRepository = new SessionsRepository(db, config.session);
   const statsRepository = new StatsRepository(db);
 
   app.use(express.json());

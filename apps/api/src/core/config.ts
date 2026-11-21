@@ -100,7 +100,14 @@ const schema = z.object({
   APP_ORIGIN: z.url().refine((value) => new URL(value).origin === value, {
     message: "APP_ORIGIN must be an origin without a path",
   }),
+  /** Absolute lifetime: a session ends this long after sign-in, however active it is (ASVS V7.3.2). */
   SESSION_LIFETIME_MS: z.coerce.number().int().positive().default(604_800_000),
+  /** Idle timeout: a session unused for this long is rejected and cannot be revived (ASVS V7.3.1). */
+  SESSION_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(1_800_000),
+  /** lastSeenAt is written at most this often per session, so a busy page is not a write per request. */
+  SESSION_TOUCH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  /** Signing in ends the account's other sessions (ASVS V7.4.1). Set false to allow several devices at once. */
+  SESSION_SINGLE_ACTIVE: z.enum(["true", "false"]).default("true"),
   ARGON2_MEMORY_KIB: z.coerce.number().int().positive().default(19_456),
   ARGON2_ITERATIONS: z.coerce.number().int().positive().default(2),
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
@@ -365,6 +372,9 @@ export interface Config {
   session: {
     secret: string;
     lifetimeMs: number;
+    idleTimeoutMs: number;
+    touchIntervalMs: number;
+    singleActive: boolean;
   };
   /** The browser origin allowed to make state-changing account requests. */
   appOrigin: string;
@@ -499,6 +509,10 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     session: {
       secret: parsed.SESSION_SECRET,
       lifetimeMs: parsed.SESSION_LIFETIME_MS,
+      idleTimeoutMs: parsed.SESSION_IDLE_TIMEOUT_MS,
+      // Never longer than half the idle window, or an active session could be written too rarely to stay alive.
+      touchIntervalMs: Math.min(parsed.SESSION_TOUCH_INTERVAL_MS, Math.floor(parsed.SESSION_IDLE_TIMEOUT_MS / 2)),
+      singleActive: parsed.SESSION_SINGLE_ACTIVE === "true",
     },
     appOrigin: parsed.APP_ORIGIN,
     argon2: {

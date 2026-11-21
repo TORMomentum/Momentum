@@ -149,6 +149,7 @@ export interface TorMetaDocument {
 export type AccountRole = "vendor" | "admin";
 
 export interface AccountDocument {
+  sessionGeneration?: number;
   email: string;
   displayName?: string;
   passwordHash?: string;
@@ -389,6 +390,10 @@ export async function connect(mongoUrl: string): Promise<Db> {
   return client.db();
 }
 
+export async function withTransaction<T>(db: Db, work: (session: import("mongodb").ClientSession) => Promise<T>): Promise<T> {
+  return db.client.withSession((session) => session.withTransaction(() => work(session)));
+}
+
 export async function disconnect(): Promise<void> {
   await client?.close();
   client = null;
@@ -440,6 +445,7 @@ export function accountTokens(db: Db): Collection<AccountTokenDocument> {
  * browser that started it (a cookie), which is what stops login CSRF.
  */
 export interface OauthTransactionDocument {
+  linkAccountId?: string;
   _id: string;
   bindingHash: string;
   nonce: string;

@@ -19,12 +19,12 @@ export function buildGoogleSigninRouter(deps: { config: Config; service: GoogleS
   const limits = authRateLimit(deps.config);
   const writes = [requireSameOrigin(deps.config.appOrigin), ...limits];
 
-  router.get("/google/start", ...limits, async (_req, res) => {
-    res.set("cache-control", "no-store").json(await deps.service.start());
+  router.get("/google/start", ...limits, async (req, res) => {
+    res.set("cache-control", "no-store").json(await deps.service.start(req.auth?.account._id.toString()));
   });
 
   router.post("/google/callback", ...writes, async (req, res) => {
-    const result = await deps.service.callback(callbackSchema.parse(req.body));
+    const result = await deps.service.callback(callbackSchema.parse(req.body), req.auth?.account._id.toString());
     res.set("cache-control", "no-store").json(result);
   });
 

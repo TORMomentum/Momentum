@@ -20,6 +20,8 @@ const config = {
   ...baseConfig,
   authRateLimitPerIp: Math.max(baseConfig.authRateLimitPerIp, 1_000),
   authRateLimitPerEmail: Math.max(baseConfig.authRateLimitPerEmail, 1_000),
+  // Most tests hold several sessions at once; the single-session tests switch it on for themselves.
+  session: { ...baseConfig.session, singleActive: false },
 };
 let db: Db;
 let mailer: LogMailer;
@@ -27,7 +29,7 @@ let app: express.Express;
 let vaultRemoveAll: (accountId: string) => Promise<void> = async () => undefined;
 
 function buildTestApp() {
-  const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  const sessionsRepository = new SessionsRepository(db, config.session);
   const accountsRepository = new AccountsRepository(db, sessionsRepository);
   const tokensRepository = new AccountTokensRepository(db);
   const testApp = express();
@@ -199,6 +201,48 @@ describe("account routes", () => {
     expect(me.status).toBe(200);
     expect(loggedOut.status).toBe(200);
     expect(afterLogout.status).toBe(401);
+  });
+
+  it("login retires the session the request carried and, by default, every other session of the account", async () => {
+    await verifiedAccount();
+    config.session.singleActive = true;
+    try {
+      const concurrent = await Promise.all([login(), login()]);
+      expect(concurrent.map((response) => response.status)).toEqual([200, 200]);
+      const states = await Promise.all(concurrent.map((response) => request(app).get("/api/v1/me").set("x-session-id", response.body.sessionId)));
+      expect(states.map((response) => response.status).sort()).toEqual([200, 401]);
+      const first = (await login()).body.sessionId as string;
+      const second = (await login()).body.sessionId as string;
+      const third = (await write(request(app).post("/api/v1/login")).set("x-session-id", second).send({ email: "vendor@example.test", password: "correct-password" })).body.sessionId as string;
+      const me = (id: string) => request(app).get("/api/v1/me").set("x-session-id", id);
+
+      expect((await me(first)).status).toBe(401);
+      expect((await me(second)).status).toBe(401);
+      expect((await me(third)).status).toBe(200);
+      expect(await sessions(db).countDocuments({})).toBe(1);
+    } finally {
+      config.session.singleActive = false;
+    }
+  });
+
+  it("login keeps the account's other sessions when single-active is off, but still retires the one it carried", async () => {
+    await verifiedAccount();
+    const first = (await login()).body.sessionId as string;
+    const second = (await login()).body.sessionId as string;
+    const third = (await write(request(app).post("/api/v1/login")).set("x-session-id", second).send({ email: "vendor@example.test", password: "correct-password" })).body.sessionId as string;
+    const me = (id: string) => request(app).get("/api/v1/me").set("x-session-id", id);
+
+    expect((await me(first)).status).toBe(200);
+    expect((await me(second)).status).toBe(401);
+    expect((await me(third)).status).toBe(200);
+  });
+
+  it("logout deletes the session row", async () => {
+    await verifiedAccount();
+    const sessionId = (await login()).body.sessionId as string;
+    expect(await sessions(db).countDocuments({ _id: sessionId })).toBe(1);
+    await write(request(app).post("/api/v1/logout")).set("x-session-id", sessionId).send({});
+    expect(await sessions(db).countDocuments({ _id: sessionId })).toBe(0);
   });
 
   it("password forgot gives known and unknown addresses the same reply but emails only the known address", async () => {

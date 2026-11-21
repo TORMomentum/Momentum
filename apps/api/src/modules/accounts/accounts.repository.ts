@@ -65,7 +65,7 @@ export class AccountsRepository {
   async linkGoogle(accountId: string, sub: string): Promise<boolean> {
     if (!ObjectId.isValid(accountId)) return false;
     const result = await accounts(this.db).updateOne(
-      { _id: new ObjectId(accountId), deletedAt: { $exists: false }, google: { $exists: false } },
+      { _id: new ObjectId(accountId), deletedAt: { $exists: false }, disabledAt: { $exists: false }, google: { $exists: false } },
       { $set: { google: { sub }, updatedAt: new Date() } },
     );
     return result.modifiedCount === 1;

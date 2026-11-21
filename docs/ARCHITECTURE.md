@@ -706,3 +706,5 @@ not a shortcut. The full register, including the design questions that block sli
 | How good is the extraction? | [corpus/BENCHMARK.md](corpus/BENCHMARK.md) — measured accuracy, every wrong prediction |
 | How do I set up Vertex AI? | [gcp-setup.md](gcp-setup.md) |
 | How do I run it? | [../README.md](../README.md) |
+
+Single-active issuance increments accounts.sessionGeneration to serialize competing transactions before replacing account sessions. The configured MongoDB deployment must support transactions.

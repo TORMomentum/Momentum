@@ -19,7 +19,7 @@ const config = loadConfig(process.env);
 let db: Db; let app: express.Express; let sessionsRepository: SessionsRepository;
 
 function testApp() {
-  sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  sessionsRepository = new SessionsRepository(db, config.session);
   const result = express();
   result.use(express.json());
   result.use(sessionContext(sessionsRepository));

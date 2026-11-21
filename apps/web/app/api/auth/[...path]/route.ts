@@ -60,7 +60,10 @@ function googleFailure(): NextResponse {
  */
 async function googleFlow(request: NextRequest, route: string): Promise<NextResponse> {
   if (route === "google/start" && request.method === "GET") {
-    const reply = await apiRequest("/auth/google/start", { method: "GET" }).catch(() => null);
+    const link = request.nextUrl.searchParams.get("link") === "1";
+    const currentSession = link ? request.cookies.get(COOKIE)?.value : undefined;
+    if (link && !currentSession) return googleFailure();
+    const reply = await apiRequest("/auth/google/start", { method: "GET" }, currentSession).catch(() => null);
     if (!reply?.ok) return googleFailure();
     const { url, binding } = (await reply.json()) as { url: string; binding: string };
     const output = NextResponse.redirect(url);
@@ -80,7 +83,7 @@ async function googleFlow(request: NextRequest, route: string): Promise<NextResp
       method: "POST",
       body: JSON.stringify({ code, state, binding }),
       headers: { "content-type": "application/json", Origin: appOrigin() },
-    }).catch(() => null);
+    }, request.cookies.get(COOKIE)?.value).catch(() => null);
     if (!reply?.ok) return googleFailure();
     const result = (await reply.json()) as { status: "signed_in"; sessionId: string; expiresAt: string } | { status: "consent_required"; ticket: string };
     if (result.status === "consent_required") {
@@ -172,6 +175,9 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
     },
   });
   if (route === "logout" || (route === "me" && request.method === "DELETE" && response.ok)) output.cookies.delete(COOKIE);
+  // Sign-out also empties what the browser kept for this origin (ASVS V14.3.1). It has to be on the reply the
+  // browser receives, which is this one, not the API's.
+  if (route === "logout") output.headers.set("clear-site-data", '"cache", "cookies", "storage"');
   return output;
 }
 
