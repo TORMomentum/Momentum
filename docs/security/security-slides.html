@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOR Radar — Security Presentation</title>
+<style>
+  :root{
+    --paper:#FBFAF6; --ink:#1E242C; --soft:#5A6472; --line:#E3E0D6;
+    --gold:#A87E2F; --teal:#216A63; --risk:#9E4A3C;
+    --card:#FFFFFF; --tint:#F3F0E7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --paper:#14181E; --ink:#E8E6DE; --soft:#98A0AC; --line:#2A313B;
+      --gold:#C79A45; --teal:#4FA79D; --risk:#C4715F; --card:#1B2129; --tint:#1F2630; }
+  }
+  :root[data-theme="dark"]{ --paper:#14181E; --ink:#E8E6DE; --soft:#98A0AC; --line:#2A313B;
+    --gold:#C79A45; --teal:#4FA79D; --risk:#C4715F; --card:#1B2129; --tint:#1F2630; }
+  :root[data-theme="light"]{ --paper:#FBFAF6; --ink:#1E242C; --soft:#5A6472; --line:#E3E0D6;
+    --gold:#A87E2F; --teal:#216A63; --risk:#9E4A3C; --card:#FFFFFF; --tint:#F3F0E7; }
+
+  html{scroll-snap-type:y mandatory;}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font:16px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif;}
+  .slide{min-height:100vh; box-sizing:border-box; padding:5.5vh 7vw 9vh;
+    display:flex; flex-direction:column; justify-content:center;
+    scroll-snap-align:start; position:relative; border-bottom:1px solid var(--line);}
+  .eyebrow{position:absolute; top:4vh; left:7vw; right:7vw; display:flex;
+    justify-content:space-between; font-size:.72rem; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--soft);}
+  .eyebrow b{color:var(--gold); font-weight:600;}
+  .foot{position:absolute; bottom:3.2vh; left:7vw; right:7vw; display:flex;
+    justify-content:space-between; font-size:.7rem; color:var(--soft);
+    border-top:1px solid var(--line); padding-top:.6rem;}
+  h1,h2{font-family:"Palatino Linotype", Palatino, Georgia, serif; text-wrap:balance; margin:0 0 1.1rem;}
+  h1{font-size:clamp(2.6rem,6vw,4.6rem); line-height:1.05; font-weight:500;}
+  h2{font-size:clamp(1.6rem,3.2vw,2.35rem); line-height:1.12; font-weight:500;}
+  h2 .tick{color:var(--gold);}
+  p.lede{font-size:1.1rem; max-width:64ch;}
+  .muted{color:var(--soft);}
+  .num, td.n{font-family:Consolas,"Courier New",monospace; font-variant-numeric:tabular-nums;}
+  .cols{display:flex; gap:1.8rem; flex-wrap:wrap; align-items:stretch;}
+  .cols>*{flex:1 1 260px; min-width:0;}
+  table{border-collapse:collapse; width:100%; font-size:.92rem;}
+  th{font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--soft);
+    text-align:left; font-weight:600; padding:.4rem .7rem .4rem 0; border-bottom:1.5px solid var(--ink);}
+  td{padding:.5rem .7rem .5rem 0; border-bottom:1px solid var(--line); vertical-align:top;}
+  td.n{text-align:right; white-space:nowrap;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:4px; padding:1rem 1.2rem;}
+  .tag{display:inline-block; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase;
+    padding:.14rem .5rem; border-radius:2px; font-weight:600;}
+  .tag.gold{background:var(--gold); color:var(--paper);}
+  .tag.teal{background:var(--teal); color:var(--paper);}
+  .tag.ghost{border:1px solid var(--soft); color:var(--soft);}
+  .tag.warn{background:var(--risk); color:var(--paper);}
+  .big{font-family:Consolas,monospace; font-size:clamp(1.9rem,4.2vw,3.2rem); color:var(--gold);
+    font-variant-numeric:tabular-nums; line-height:1.1;}
+  .stat-label{font-size:.76rem; letter-spacing:.1em; text-transform:uppercase; color:var(--soft); margin-top:.3rem;}
+  .callout{border-left:3px solid var(--gold); background:var(--tint); padding:.85rem 1.1rem; max-width:72ch;}
+  ul.tight{margin:.4rem 0; padding-left:1.2rem;} ul.tight li{margin:.32rem 0;}
+  .flow{display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; font-size:.86rem;}
+  .flow .step{background:var(--card); border:1px solid var(--line); border-radius:4px; padding:.5rem .8rem; text-align:center;}
+  .flow .step small{display:block; color:var(--soft); font-size:.7rem;}
+  .flow .arr{color:var(--gold); font-weight:700;}
+  .mock{background:var(--card); border:1px solid var(--line); border-radius:6px; overflow:hidden;
+    box-shadow:0 8px 22px rgba(0,0,0,.10); font-size:.74rem;}
+  .mock .bar{display:flex; gap:.3rem; align-items:center; background:var(--tint);
+    border-bottom:1px solid var(--line); padding:.4rem .6rem; color:var(--soft); font-size:.66rem;}
+  .mock .dot{width:.5rem; height:.5rem; border-radius:50%; background:var(--line);}
+  .mock .body{padding:.75rem .85rem;}
+  .wire{background:var(--tint); border:1px dashed var(--line); border-radius:3px; color:var(--soft);
+    padding:.35rem .55rem; margin:.3rem 0; font-size:.68rem;}
+  .sprint-row{display:flex; gap:.5rem; margin:1.2rem 0;}
+  .sprint{flex:1; border-top:6px solid var(--teal); background:var(--card); border-left:1px solid var(--line);
+    border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:.75rem .85rem; font-size:.83rem;}
+  .sprint.gate{border-top-color:var(--gold);}
+  .sprint.cut{border-top-color:var(--soft); border-top-style:dashed;}
+  .sprint b{display:block; margin-bottom:.2rem;}
+  .sprint small{color:var(--soft); display:block; font-size:.72rem;}
+  .roles{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.9rem;}
+  a{color:var(--teal);}
+  @media print{
+    html{scroll-snap-type:none;}
+    .slide{break-after:page; min-height:auto; padding:2.2rem 2.6rem 3.2rem; border-bottom:none;}
+    .eyebrow,.foot{position:static; margin:0 0 1rem;} .foot{margin-top:1.4rem;}
+    body{font-size:12px;}
+  }
+  @media (prefers-reduced-motion: no-preference){ html{scroll-behavior:smooth;} }
+  code{font-family:Consolas,"Courier New",monospace; font-size:.88em; background:var(--tint); padding:0 .25em; border-radius:2px;}
+  td,th{font-size:.84rem;} .slide{padding-top:7vh;}
+  @media screen{ html{scroll-snap-type:none;} .slide{display:none;} .slide.on{display:flex;} }
+</style>
+</head>
+<body>
+<!-- 1 · TITLE -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Team Momentum</b> · 01219325 Software Development Security</span><span>1 / 15</span></div>
+  <p class="stat-label" style="margin-bottom:1rem">Making an existing web application more secure</p>
+  <h1>TOR Radar — security presentation</h1>
+  <p class="lede">A Thai-language platform for published government procurement TORs, hardened against the
+  OWASP ASVS: what we built, how we verified it, and what we accepted.</p>
+  <p class="muted">Monday 23 November 2026 · 13:00 · Members: <i>[TODO: names]</i></p>
+  <p class="muted" style="font-size:.8rem">Keys: &rarr; / Space next · &larr; back · Home / End · Print gives one slide per page.
+  Status tags reflect the repository on 2026-11-21: <span class="tag teal">merged</span> <span class="tag gold">open PR</span> <span class="tag warn">TODO</span></p>
+  <div class="foot"><span>TOR Radar — security</span><span>docs/security/</span></div>
+</section>
+
+<!-- 2 · PROBLEM + SYSTEM -->
+<section class="slide">
+  <div class="eyebrow"><span><b>The system</b> · functional features</span><span>2 / 15</span></div>
+  <h2>Procurement documents in, <span class="tick">public and vendor data out.</span></h2>
+  <div class="cols">
+    <div class="card"><p class="stat-label">Problem</p>
+      <p>Agencies publish TORs on dozens of sites as PDFs and scans. A small vendor cannot watch them all and a citizen cannot compare them.</p></div>
+    <div class="card"><p class="stat-label">What it does</p>
+      <ul class="tight"><li>Collects TORs; stores each original immutably</li>
+      <li>AI extraction (Document AI + Gemini) with confidence tiers</li>
+      <li>Search, TOR detail, public dashboard, anomaly rule</li>
+      <li>Vendor accounts, profiles, matching, private document vault</li>
+      <li>Admin review queue, takedown with audit trail</li></ul></div>
+    <div class="card"><p class="stat-label">Why security matters here</p>
+      <ul class="tight"><li>Accounts and vendor-private files (PDPA-aligned)</li>
+      <li>Admin power over what the public sees</li>
+      <li>Untrusted uploads and URLs; AI processes them</li>
+      <li>Paid cloud calls an attacker could run up</li></ul></div>
+  </div>
+  <div class="foot"><span>Project document §2</span><span>Next.js 16 · Express 5 · MongoDB · GCS · Vertex AI · Docker Compose</span></div>
+</section>
+
+<!-- 3 · ARCHITECTURE -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Architecture</b> · trust boundaries</span><span>3 / 15</span></div>
+  <h2>Only the API touches data. <span class="tick">The browser holds one cookie.</span></h2>
+  <div class="flow">
+    <div class="step">Browser<small>untrusted</small></div><span class="arr">&rarr;</span>
+    <div class="step">Next.js web<small>CSP nonce · session cookie · staff pass</small></div><span class="arr">&rarr;</span>
+    <div class="step">Express API<small>keys · rate limits · Zod · helmet · CORS</small></div><span class="arr">&rarr;</span>
+    <div class="step">MongoDB<small>only *.repository.ts</small></div>
+  </div>
+  <div class="flow" style="margin-top:.7rem">
+    <div class="step">Partner scripts<small>untrusted, intake key</small></div><span class="arr">&rarr;</span>
+    <div class="step">Express API</div><span class="arr">&rarr;</span>
+    <div class="step">GCS originals<small>putIfAbsent, never overwrite</small></div><span class="arr">&rarr;</span>
+    <div class="step">Worker &rarr; Vertex AI<small>keys, not file paths</small></div>
+  </div>
+  <div class="cols" style="margin-top:1.2rem">
+    <div class="callout"><b>Boundaries.</b> (1) internet &rarr; web/API, (2) web &rarr; API with an admin key the browser never sees,
+    (3) API &rarr; storage and database, (4) uploads, URLs and AI output are all untrusted input.</div>
+    <div class="callout"><b>Documents</b> are streamed through the API with <code>nosniff</code> and <code>no-store</code>; no signed URLs.</div>
+  </div>
+  <div class="foot"><span>docs/ARCHITECTURE.md</span><span>Principles: least privilege, complete mediation, least common mechanism</span></div>
+</section>
+
+<!-- 4 · ASVS -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Requirements</b> · OWASP ASVS 5.0</span><span>4 / 15</span></div>
+  <h2>We planned 254 of 345 requirements, <span class="tick">starting with Level 1.</span></h2>
+  <div class="cols">
+    <div>
+      <table>
+        <tr><th>Level</th><th class="n">Total</th><th class="n">Planned</th><th class="n">Had at plan time</th></tr>
+        <tr><td>L1 baseline</td><td class="n">70</td><td class="n">61 (87%)</td><td class="n">44</td></tr>
+        <tr><td>L2 standard</td><td class="n">183</td><td class="n">133 (73%)</td><td class="n">49</td></tr>
+        <tr><td>L3 advanced</td><td class="n">92</td><td class="n">60 (65%)</td><td class="n">18</td></tr>
+        <tr><td><b>All</b></td><td class="n"><b>345</b></td><td class="n"><b>254 (74%)</b></td><td class="n"><b>111</b></td></tr>
+      </table>
+      <p class="muted" style="font-size:.8rem">Source: Momentum-OWASP-ASVS-5.0-Plan.xlsx (Summary tab) at plan time, before the Sprint 6 hardening.
+      <span class="tag warn">TODO</span> refresh "have now" after the open PRs merge.</p>
+    </div>
+    <div class="card"><p class="stat-label">Priorities</p>
+      <ul class="tight"><li><b>P0</b> already built: 111</li><li><b>P1</b> Level 1 and top-risk controls: 26</li>
+      <li><b>P2</b> Level 2: 75</li><li><b>P3</b> Level 3: 42</li></ul>
+      <p class="stat-label" style="margin-top:.8rem">Deliberately not planned (91)</p>
+      <p class="muted" style="font-size:.85rem">WebRTC (V17), most of OAuth server-side requirements (V10: we are an OIDC <i>client</i>), and L3 items with no matching feature.</p></div>
+  </div>
+  <div class="foot"><span>Grading criteria 1 and 17</span><span>Per-requirement mapping: ASVS plan workbook</span></div>
+</section>
+
+<!-- 5 · THREAT MODEL -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Threat model</b> · STRIDE, 16 threats</span><span>5 / 15</span></div>
+  <h2>Risk = likelihood &times; impact. <span class="tick">We built from the top down.</span></h2>
+  <table>
+    <tr><th>ID</th><th>Threat</th><th>STRIDE</th><th class="n">Risk</th><th>Addressed by</th></tr>
+    <tr><td>T02</td><td>Staff pass or admin API key stolen</td><td>Elevation</td><td class="n">15</td><td>Secrets hygiene, audit log; shared key is an accepted risk</td></tr>
+    <tr><td>T01</td><td>Credential stuffing on vendor login</td><td>Spoofing</td><td class="n">12</td><td>argon2id, rate limits with real client IP, breached-password check</td></tr>
+    <tr><td>T11</td><td>Abuse of costly operations</td><td>DoS</td><td class="n">12</td><td>Caps and per-route rate limits</td></tr>
+    <tr><td>T09</td><td>Personal data exposure</td><td>Info disclosure</td><td class="n">12</td><td>One redaction serializer, log sanitizer</td></tr>
+    <tr><td>T12</td><td>Malicious npm package</td><td>Tampering</td><td class="n">12</td><td>Lockfile, <code>npm ci</code>, dependency audit, SAST</td></tr>
+    <tr><td>T10</td><td>Session stolen or left open</td><td>Spoofing</td><td class="n">8</td><td>Idle and absolute timeout, revocation on login</td></tr>
+    <tr><td>T08</td><td>Vendor reads another's data</td><td>Info disclosure</td><td class="n">8</td><td>Account-scoped queries, access-control matrix test</td></tr>
+  </table>
+  <p class="muted" style="font-size:.82rem">Full table T01&ndash;T16 and the done / not-done checklist (criterion 16) are in the project document.</p>
+  <div class="foot"><span>Grading criteria 2 and 16</span><span>Threat IDs refer to the Threat Model tab of the ASVS plan</span></div>
+</section>
+
+<!-- 6 · AUTH -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Controls</b> · authentication and sessions</span><span>6 / 15</span></div>
+  <h2>Who you are, <span class="tick">and for how long.</span></h2>
+  <table>
+    <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
+    <tr><td>Password login</td><td>argon2id hash; uniform failure message; dummy hash for unknown emails; email verification first</td><td>Demo: login; <code>accounts.routes.ts</code></td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Breached passwords</td><td>Bundled top-10k list plus HIBP k-anonymity (only a 5-char SHA-1 prefix leaves)</td><td>Demo: <code>password123</code> refused with the Thai message &middot; PR #49</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Session idle + absolute timeout</td><td>30 min idle (<code>SESSION_IDLE_TIMEOUT_MS</code>), absolute lifetime; new login revokes other sessions; <code>Clear-Site-Data</code> on logout</td><td>Demo: short idle env, 401 after silence &middot; PR #50</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Google sign-in (OIDC)</td><td>Authorization-code flow with PKCE, state and nonce, ID token verified</td><td>Demo: the Google button</td><td><span class="tag warn">TODO</span> no PR yet (TOR-315)</td></tr>
+  </table>
+  <div class="foot"><span>Grading criteria 4, 5 and 18 (breached passwords, login timeout)</span><span>ASVS V6, V7, V10</span></div>
+</section>
+
+<!-- 7 · BROWSER / API HARDENING -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Controls</b> · HTTP headers, CSP, CORS</span><span>7 / 15</span></div>
+  <h2>Headers set in our code, <span class="tick">shown in DevTools.</span></h2>
+  <table>
+    <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
+    <tr><td>Web CSP</td><td>Per-request nonce, <code>strict-dynamic</code>, <code>object-src 'none'</code>, <code>frame-ancestors 'none'</code> (self for the document viewer); HSTS, nosniff, Referrer-Policy, Permissions-Policy; no <code>X-Powered-By</code></td><td>DevTools &rarr; Network &rarr; Headers &middot; PR #48 (<code>docs/security/evidence/</code>)</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>API headers</td><td>helmet with deny-all CSP, nosniff, no <code>X-Powered-By</code></td><td><code>curl -I</code> on the API &middot; PR #45</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>CORS</td><td>Single allowed origin (<code>APP_ORIGIN</code>), exact match, never <code>*</code>; foreign preflight gets no CORS headers</td><td>Tests; <code>curl -H "Origin: https://evil.example"</code> &middot; PR #45</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>CSRF</td><td>Server-side Origin check on every account write; SameSite cookies</td><td><code>requireSameOrigin</code></td><td><span class="tag teal">merged</span></td></tr>
+  </table>
+  <p class="muted" style="font-size:.82rem">On <code>main</code> today both servers still send <code>X-Powered-By</code> and no CSP: the demo shows the before and after.</p>
+  <div class="foot"><span>Grading criteria 10 and 13</span><span>ASVS V3.4, V4, V12</span></div>
+</section>
+
+<!-- 8 · ABUSE AND LOGGING -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Controls</b> · rate limits and logging</span><span>8 / 15</span></div>
+  <h2>Slow the attacker, <span class="tick">and see them.</span></h2>
+  <table>
+    <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
+    <tr><td>Login rate limit</td><td>Per IP and per email (<code>express-rate-limit</code>); empty 429</td><td>Demo: 14 bad logins &rarr; 5&times;401 then 429 (run on <code>main</code>)</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Real client IP; search and download limits</td><td>Web forwards one <code>X-Forwarded-For</code>; API trusts a configured number of hops; 120/min search, 60/min documents</td><td>Two clients, separate buckets &middot; PR #47</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Security logging</td><td>JSON lines; <code>auth.login.failure</code>, <code>auth.denied</code>, <code>ratelimit.hit</code>, <code>admin.action</code>; one sanitizer masks secrets</td><td>Demo: <code>docker compose logs api | grep admin.action</code> &middot; PR #46</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Error handling</td><td>Central handler: generic 500, no stack trace; Zod failures return paths, never input</td><td>Any bad request in the demo</td><td><span class="tag teal">merged</span></td></tr>
+  </table>
+  <div class="foot"><span>Grading criteria 11, 12 and 18 (rate limits)</span><span>ASVS V16, V2.4</span></div>
+</section>
+
+<!-- 9 · ACCESS CONTROL + INPUT -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Controls</b> · access control and input</span><span>9 / 15</span></div>
+  <h2>Vendor B cannot read <span class="tick">vendor A's file.</span></h2>
+  <table>
+    <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
+    <tr><td>Roles</td><td>Separate intake and admin keys (constant-time compare); vendor sessions; admin area needs staff pass and, if signed in, the admin role</td><td>401/403 matrix</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Own-data access</td><td><code>/me</code> routes take the account from the session, never from an id in the request; other account's id returns 404</td><td>Demo: curl B &rarr; A's file id = 404 (run on <code>main</code>) &middot; matrix and test, PR #52</td><td><span class="tag teal">merged</span> <span class="tag gold">test: open PR</span></td></tr>
+    <tr><td>Input validation, NoSQL injection</td><td>Zod on every body; primitives-only filters so no operator object reaches Mongo; magic-byte check; escaped regexes (matching fixed in PR #51)</td><td>Tests</td><td><span class="tag teal">merged</span> <span class="tag gold">regex fix: PR #51</span></td></tr>
+    <tr><td>SSRF on URL intake</td><td>Scheme allowlist, every resolved address checked, re-check after redirects, size and time caps</td><td>Unit tests</td><td><span class="tag teal">merged</span></td></tr>
+  </table>
+  <div class="foot"><span>Grading criteria 6, 7 and 8</span><span>ASVS V1, V2, V5, V8</span></div>
+</section>
+
+<!-- 10 · SECRETS AND PIPELINE -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Controls</b> · secrets, CI/CD, scanning</span><span>10 / 15</span></div>
+  <h2>Nothing secret in git. <span class="tick">Every merge is checked, then deployed.</span></h2>
+  <table>
+    <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
+    <tr><td>Environment and credentials</td><td>Every credential from <code>.env</code> (ignored); Compose refuses to start without the secrets; production uses Secret Manager</td><td>Demo: <code>docker compose config</code> without a key fails &middot; PR #51</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Secret scan</td><td>gitleaks over all 530 commits: 4 findings, all documentation placeholders; no rotation needed; CI re-runs it</td><td><code>docs/security/secret-scan.md</code> &middot; PR #51</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>SAST</td><td>Static analysis in CI on every PR</td><td>Report on slide 12</td><td><span class="tag warn">TODO</span> no PR yet (TOR-323)</td></tr>
+    <tr><td>DAST</td><td>OWASP ZAP baseline against the running stack</td><td>Report on slide 12</td><td><span class="tag warn">TODO</span> no PR yet (TOR-322)</td></tr>
+    <tr><td>CI/CD</td><td>Lint, tests, docs check on each PR; auto-deploy to Cloud Run only after CI passes on <code>main</code>; smoke check requires each service Ready</td><td>Actions tab &middot; PR #44</td><td><span class="tag gold">open PR</span></td></tr>
+  </table>
+  <div class="foot"><span>Grading criteria 9, 14 and 15</span><span>ASVS V13, V15</span></div>
+</section>
+
+<!-- 11 · PRINCIPLES -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Design principles</b> · Lecture 7</span><span>11 / 15</span></div>
+  <h2>Fourteen of fifteen followed. <span class="tick">One is still planned.</span></h2>
+  <div class="cols">
+    <div class="card"><ul class="tight">
+      <li><b>Least privilege</b>: separate keys, vendor scope</li>
+      <li><b>Defense in depth</b>: five layers on every upload</li>
+      <li><b>Fail securely</b>: errors deny; config fails fast</li>
+      <li><b>Secure defaults</b>: risky features ship off</li>
+      <li><b>Separation of privilege</b>: staff pass + role</li></ul></div>
+    <div class="card"><ul class="tight">
+      <li><b>Complete mediation</b>: no signed URLs</li>
+      <li><b>Open design</b>: public anomaly method</li>
+      <li><b>Zero trust</b>: files, URLs, AI output verified</li>
+      <li><b>Privacy by design</b>: one redaction point</li>
+      <li><b>Never assume secrets are safe</b>: hashed, gitignored</li></ul></div>
+    <div class="callout"><b>Partly / planned:</b> separation of duties (admins still share one key) and securing the weakest link
+    (that shared key is the top-risk threat, T02).</div>
+  </div>
+  <div class="foot"><span>Grading criterion 3</span><span>docs/security/security-design-principles.md</span></div>
+</section>
+
+<!-- 12 · RESULTS -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Results</b> · SAST, DAST, tests</span><span>12 / 15</span></div>
+  <h2>What the tools found, <span class="tick">and what we did about it.</span></h2>
+  <div class="cols">
+    <div class="card"><p class="stat-label">SAST (CodeQL or Semgrep)</p>
+      <span class="big">TODO</span><p class="muted">Counts by severity and the fixed / accepted split. <span class="tag warn">placeholder</span> fill from the report once TOR-323 merges.</p></div>
+    <div class="card"><p class="stat-label">DAST (ZAP baseline)</p>
+      <span class="big">TODO</span><p class="muted">Alerts by risk level, with the accepted ones explained. <span class="tag warn">placeholder</span> fill from the report once TOR-322 merges.</p></div>
+    <div class="card"><p class="stat-label">Secret scan (gitleaks)</p>
+      <span class="big">0 real</span><p class="muted">530 commits scanned; 4 false positives (curl examples), allowlisted line by line. PR #51.</p></div>
+    <div class="card"><p class="stat-label">Automated tests</p>
+      <span class="big">1035</span><p class="muted">passing on the access-control branch (PR #52), 10 skipped; includes 77 access-control cases.</p></div>
+  </div>
+  <div class="foot"><span>Grading criteria 14 and 15</span><span>Update this slide before presenting</span></div>
+</section>
+
+<!-- 13 · ACCEPTED RISKS -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Honest gaps</b> · accepted risks</span><span>13 / 15</span></div>
+  <h2>What we did not do, <span class="tick">and why that is acceptable for now.</span></h2>
+  <table>
+    <tr><th>Risk</th><th>Why accepted</th></tr>
+    <tr><td>One shared admin key; every admin action is attributed to "admin" (T02, T15)</td><td>Per-admin accounts are a separate story (TOR-199); logging and the constant-time compare reduce exposure meanwhile</td></tr>
+    <tr><td><code>/sources/bma-egp/*</code> is public and unlimited (finding F1 in the access matrix)</td><td>No vendor data behind it; awaiting a decision to protect or remove it</td></tr>
+    <tr><td>CSP still allows <code>style-src-attr 'unsafe-inline'</code></td><td>React inline <code>style</code> attributes; scripts stay nonce-only</td></tr>
+    <tr><td>Breached-password check fails open if HIBP is down</td><td>Availability over a perfect check; the local list is always applied</td></tr>
+    <tr><td>No multi-factor authentication; Google sign-in only if TOR-315 lands</td><td>We chose four other advanced features (rate limits, login timeout, breached passwords, session management)</td></tr>
+    <tr><td>Unverified on the deployed Cloud Run + IAP stack</td><td>Verified on Docker Compose only</td></tr>
+  </table>
+  <div class="foot"><span>Grading criterion 16</span><span>Done / not-done checklist is in the project document</span></div>
+</section>
+
+<!-- 14 · DEMO AGENDA -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Demo</b> · about 9 minutes on Docker Compose</span><span>14 / 15</span></div>
+  <h2>What you will see.</h2>
+  <table>
+    <tr><th class="n">Min</th><th>Step</th></tr>
+    <tr><td class="n">0:00</td><td>Stack up, two vendor accounts, sample TORs seeded</td></tr>
+    <tr><td class="n">1:30</td><td>Security headers and CSP in DevTools; CORS refuses a foreign origin</td></tr>
+    <tr><td class="n">3:00</td><td>Login burst &rarr; 429; breached password refused in Thai</td></tr>
+    <tr><td class="n">4:30</td><td>Session idle expiry (short timeout); Google sign-in button</td></tr>
+    <tr><td class="n">6:00</td><td>Vendor B cannot read vendor A's file (curl)</td></tr>
+    <tr><td class="n">7:00</td><td>Admin action in the security log; secrets refuse to start without keys</td></tr>
+    <tr><td class="n">8:00</td><td>SAST and ZAP reports, CI and deploy run</td></tr>
+  </table>
+  <div class="foot"><span>docs/security/demo-script.md</span><span>Grading: application demo</span></div>
+</section>
+
+<!-- 15 · QA -->
+<section class="slide">
+  <div class="eyebrow"><span><b>Questions</b></span><span>15 / 15</span></div>
+  <h1>Questions?</h1>
+  <p class="lede">Repository, project document and these slides are in the Google Classroom submission.</p>
+  <div class="callout">Backup: ASVS plan workbook (345 requirements), threat model T01&ndash;T16, access-control matrix,
+  secret-scan triage, design-principles mapping.</div>
+  <div class="foot"><span>TOR Radar — Team Momentum</span><span>Thank you</span></div>
+</section>
+
+<script>
+  // Keyboard navigation: one slide on screen at a time; print shows all.
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var i = 0;
+    var m = /^#(\d+)$/.exec(location.hash);
+    if (m) i = Math.min(slides.length, Math.max(1, +m[1])) - 1;
+    function show(n) {
+      i = Math.min(slides.length - 1, Math.max(0, n));
+      slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+      history.replaceState(null, '', '#' + (i + 1));
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (['ArrowRight', 'PageDown', ' ', 'Enter'].indexOf(e.key) >= 0) { e.preventDefault(); show(i + 1); }
+      else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(e.key) >= 0) { e.preventDefault(); show(i - 1); }
+      else if (e.key === 'Home') show(0);
+      else if (e.key === 'End') show(slides.length - 1);
+    });
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('a')) return;
+      show(e.clientX < innerWidth / 3 ? i - 1 : i + 1);
+    });
+    show(i);
+  })();
+</script>
+</body>
+</html>
