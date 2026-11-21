@@ -288,3 +288,5 @@ in `apps/web/src/shared/api/api-client.ts`, not by a browser directly.
 Automatic rollout compares the tested SHA to the remote main ref immediately before rollout. A superseded run skips every Cloud Run mutation. Bootstrap requires a successful region-scoped service list with no web service.
 
 Only eligible deploy jobs enter the Cloud Run concurrency group. Completion of PR checks does not reserve a rollout slot.
+
+The job uses queue: max so a later retry of an older successful main run cannot replace the newest pending rollout. The SHA check still skips superseded revisions when they reach the front.

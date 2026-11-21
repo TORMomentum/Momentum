@@ -29,6 +29,8 @@ jobs:
     # Only eligible deploy jobs participate in the rollout queue.
     concurrency:
       group: deploy-cloud-run
+      # An older eligible CI rerun must not evict the newer commit waiting for its SHA check.
+      queue: max
       cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
