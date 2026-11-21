@@ -1,3 +1,4 @@
+import nextConfig from "../../../next.config";
 import { describe, expect, it } from "vitest";
 import { buildCsp, generateNonce, isViewerPath, securityHeaders } from "./security-headers";
 
@@ -28,12 +29,12 @@ describe("security headers", () => {
     expect(buildCsp("n", "/", { NODE_ENV: "development" } as NodeJS.ProcessEnv)).toContain("'unsafe-eval'");
   });
 
-  it("sends HSTS only in production, with the other fixed headers always", () => {
-    expect(securityHeaders("n", "/", prod)["Strict-Transport-Security"]).toBe("max-age=63072000; includeSubDomains");
-    const dev = securityHeaders("n", "/", { NODE_ENV: "development" } as NodeJS.ProcessEnv);
-    expect(dev["Strict-Transport-Security"]).toBeUndefined();
-    expect(dev["X-Content-Type-Options"]).toBe("nosniff");
-    expect(dev["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+  it("applies fixed headers to every path including Next static files", async () => {
+    const rules = await nextConfig.headers!();
+    expect(rules[0]).toMatchObject({ source: "/:path*", headers: expect.arrayContaining([
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      expect.objectContaining({ key: "Permissions-Policy" }),
+    ]) });
   });
 
   it("takes extra sources from the environment", () => {

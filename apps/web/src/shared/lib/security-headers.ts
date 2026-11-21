@@ -58,19 +58,9 @@ export function securityHeaders(
   pathname: string,
   env: NodeJS.ProcessEnv = process.env,
 ): Record<string, string> {
-  const headers: Record<string, string> = {
+  return {
     "Content-Security-Policy": buildCsp(nonce, pathname, env),
     // Legacy twin of frame-ancestors for browsers that ignore CSP3.
     "X-Frame-Options": isViewerPath(pathname) ? "SAMEORIGIN" : "DENY",
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    // Nothing here needs a sensor; they stay off even for our own origin.
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   };
-  // HSTS only where HTTPS is real: Cloud Run serves https; browsers ignore it over plain http,
-  // and a header that pins a developer's localhost to https is noise.
-  if (env.NODE_ENV === "production") {
-    headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains";
-  }
-  return headers;
 }
