@@ -632,3 +632,5 @@ TOR-315 review: first linking requires the existing authenticated account at sta
 TOR-315: first signup with an external Google address verifies the current mailbox before enabling recovery.
 
 TOR-319: rejected cookies leave public email actions available and trigger expiry cleanup on vendor pages.
+
+A failed /me body read also renders public pages signed out.

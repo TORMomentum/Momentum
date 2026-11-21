@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * renders the page without figures rather than with plausible placeholders.
  */
 export default async function HomePage() {
-  if ((await readViewerSession())?.ok) redirect("/dashboard");
+  if ((await readViewerSession()).account) redirect("/dashboard");
   let figures: LandingFigures | null = null;
   try {
     const dashboard = await fetchDashboard({});

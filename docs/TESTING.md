@@ -161,3 +161,5 @@ The external Google signup case checks that email_verified without hd creates ne
 Public email action smoke check: open /verify and /reset-password with a token and a stale vendor cookie against the running web and API. Both must render their action form without redirecting. Check /account with the same cookie for expiry cleanup.
 
 Run node tools/check_email_action_pages.mjs with APP_ORIGIN pointing at the running web service to repeat this regression check.
+
+viewer-session.test.ts covers truncated JSON, aborted body reads and a rejected session.
