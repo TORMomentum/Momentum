@@ -113,6 +113,9 @@ and a look-alike origin getting no `Access-Control-*` header on a request or a p
 | UT-F6-4 | NFR-S1 | Public read rate limits and proxy trust (TOR-318) | tiny limits of 2: `GET /tors` and `GET /tors/:id/document` from one forwarded client; a second forwarded client; `X-Forwarded-For` from a peer outside `trust proxy`; `TRUST_PROXY` values | the third request is `429`, another client's first is `200`; search and document buckets are separate; a spoofed header from an untrusted peer shares one bucket; `TRUST_PROXY=true` refuses to load | Pass | `tors.routes.test.ts`, `config.test.ts` |
 | UT-F6-5 | NFR-S1 | `clientIpFrom`, `forwardedClientHeaders` (web, TOR-318) | a chain with a client-prepended entry; `TRUSTED_PROXY_HOPS` 0, 2, too large; no header; outside a request | the entry left of the trusted hops, a single replaced header; nothing when none can be vouched for | Pass | `client-ip.test.ts` |
 | UT-F6-1 | FR-D-1 | `POST /api/v1/register` | `{ email, password }` with `consent` absent or `false` | 400; 0 accounts; 0 emails | Pass | `accounts.routes.test.ts` |
+| UT-F6-3 | NFR-S1 | `SessionsRepository.resolve` / `touch` | a session idle past `SESSION_IDLE_TIMEOUT_MS`; a session used within the touch interval and one past it | idle session resolves to null and `touch` leaves `lastSeenAt` alone; use inside the interval writes nothing, past it slides the window | Pass | `sessions.test.ts` |
+| UT-F6-4 | NFR-S1 | `POST /api/v1/login`, `/logout` | login carrying a session id, with single-active on and off; logout | the carried id is rejected either way; other sessions survive only when single-active is off; logout removes the row | Pass | `accounts.routes.test.ts` |
+| UT-F6-5 | NFR-S1 | web `POST /api/auth/logout`, `GET /api/auth/expired` | logout; a rejected session | `Clear-Site-Data: "cache", "cookies", "storage"` and the cookie dropped; redirect to `/login?reason=expired` | Pass | `apps/web/app/api/auth/auth.routes.test.ts` |
 | UT-F6-2 | NFR-S2 | `DELETE /me` | the correct current password | account tombstoned, sessions revoked, owned records removed, TORs untouched | Pass | `accounts.routes.test.ts` |
 | UT-F6-3 | NFR-S1 | `POST /register`, `/password/reset`, `/password/change` | a password the (faked) breach corpus has seen | 422 `password_breached` with the Thai message; 0 accounts, 0 emails; the reset link stays usable for a second try | Pass | `accounts.routes.test.ts` |
 | UT-F6-4 | NFR-S1 | `POST /register` with the breach corpus unreachable | a bundled common-list password; an unlisted passphrase | the common one is refused (422), the other accepted (fail open on the corpus only) | Pass | `accounts.routes.test.ts` |
@@ -160,6 +163,14 @@ the last column.
 | TC-F12-1 | F12 | Run `tools/import_national_egp_tors.mts` twice | Second run adds no records. The SRS criterion — each adapter reports its last collection and health — is not built | |
 
 Wording check for every case: no screen says "suspicious", "corrupt" or "irregular" (NFR-F5).
+
+The password login integration test races two successful requests and probes /me with both returned IDs.
+
+Public email action smoke check: open /verify and /reset-password with a token and a stale vendor cookie against the running web and API. Both must render their action form without redirecting. Check /account with the same cookie for expiry cleanup.
+
+Run node tools/check_email_action_pages.mjs with APP_ORIGIN pointing at the running web service to repeat this regression check.
+
+viewer-session.test.ts covers truncated JSON, aborted body reads and a rejected session.
 
 The access matrix draft case enables generation, requires a successful POST and checks the captured prompt for vendor B’s project and absence of all vendor A markers.
 

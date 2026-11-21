@@ -399,9 +399,15 @@ The current filter as CSV, with the same PII minimisation as the API.
 
 ## 6. Vendor ✅ (slice 4)
 
+**Session lifetime (TOR-319).** A session ends at the first of: `SESSION_LIFETIME_MS` after sign-in (absolute, default 7 days), or
+`SESSION_IDLE_TIMEOUT_MS` without use (default 30 minutes). A rejected session is answered `401` on `/me` and every account route; an idle
+one is never revived by later use. Use slides the idle window, written at most every `SESSION_TOUCH_INTERVAL_MS` (default 60 s, capped at half
+the idle timeout). The web app, on a `401` for a cookie it holds, drops the cookie through `GET /api/auth/expired` and redirects to
+`/login?reason=expired`, which shows "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง".
+
 | Route | Purpose |
 | :--- | :--- |
-| `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration |
+| `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration. `/login` ends the session id the request carried (`x-session-id`) and, while `SESSION_SINGLE_ACTIVE` is on (default), every other session of the account. `/logout` deletes the session row. Through the web route `/api/auth/logout` the reply also carries `Clear-Site-Data: "cache", "cookies", "storage"` and drops the cookie (TOR-319) |
 | `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change. A new password (`POST /register`, `/password/reset`, `/password/change`) is refused with **422** `password_breached` (Thai message รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น) when it is on the bundled common-password list or seen in Have I Been Pwned (TOR-320). Reset checks before it consumes the token, so the link stays usable |
 | `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, `behaviourEnabled` and `draftEnabled`); withdrawing consent |
 | `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |

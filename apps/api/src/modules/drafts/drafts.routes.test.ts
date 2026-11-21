@@ -101,7 +101,7 @@ const draftFor = (who: { session: string }, torId: string) =>
 beforeAll(async () => {
   db = await connect(isolatedDbUrl(baseConfig.mongoUrl, "drafts-routes"));
   await ensureIndexes(db);
-  sessionsRepository = new SessionsRepository(db, baseConfig.session.lifetimeMs);
+  sessionsRepository = new SessionsRepository(db, baseConfig.session);
   accountsRepository = new AccountsRepository(db, sessionsRepository);
 });
 beforeEach(async () => {

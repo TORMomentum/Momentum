@@ -29,7 +29,7 @@ let matchSends: string[] = [];
 const matchEmails = { sendMatchesNow: async (accountId: string) => { matchSends.push(accountId); return { sent: 3 }; } };
 
 function buildTestApp() {
-  const sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
+  const sessionsRepository = new SessionsRepository(db, config.session);
   const app = express();
   app.use(express.json());
   app.use("/api/v1/admin", buildAdminAccountsRouter({

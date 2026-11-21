@@ -149,6 +149,7 @@ export interface TorMetaDocument {
 export type AccountRole = "vendor" | "admin";
 
 export interface AccountDocument {
+  sessionGeneration?: number;
   email: string;
   displayName?: string;
   passwordHash?: string;
@@ -387,6 +388,10 @@ export async function connect(mongoUrl: string): Promise<Db> {
   client = new MongoClient(mongoUrl);
   await client.connect();
   return client.db();
+}
+
+export async function withTransaction<T>(db: Db, work: (session: import("mongodb").ClientSession) => Promise<T>): Promise<T> {
+  return db.client.withSession((session) => session.withTransaction(() => work(session)));
 }
 
 export async function disconnect(): Promise<void> {

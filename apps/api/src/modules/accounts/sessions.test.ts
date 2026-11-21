@@ -14,7 +14,7 @@ let repository: SessionsRepository;
 beforeAll(async () => {
   db = await connect(isolatedDbUrl(config.mongoUrl, "accounts-sessions"));
   await ensureIndexes(db);
-  repository = new SessionsRepository(db, config.session.lifetimeMs);
+  repository = new SessionsRepository(db, config.session);
 });
 
 beforeEach(async () => {
@@ -50,6 +50,32 @@ describe("SessionsRepository", () => {
     });
 
     await expect(repository.resolve("expired-session")).resolves.toBeNull();
+  });
+
+  it("does not resolve a session idle longer than the idle timeout, and touch does not revive it", async () => {
+    const accountId = await createAccount();
+    const { id } = await repository.create(accountId);
+    const idleSince = new Date(Date.now() - config.session.idleTimeoutMs - 1_000);
+    await sessions(db).updateOne({ _id: id }, { $set: { lastSeenAt: idleSince } });
+
+    await expect(repository.resolve(id)).resolves.toBeNull();
+    await repository.touch(id);
+    expect((await sessions(db).findOne({ _id: id }))?.lastSeenAt).toEqual(idleSince);
+    await expect(repository.resolve(id)).resolves.toBeNull();
+  });
+
+  it("slides the idle window on use, but writes lastSeenAt no more often than the touch interval", async () => {
+    const accountId = await createAccount();
+    const { id } = await repository.create(accountId);
+    const recent = new Date(Date.now() - config.session.touchIntervalMs / 2);
+    await sessions(db).updateOne({ _id: id }, { $set: { lastSeenAt: recent } });
+    await repository.resolve(id);
+    expect((await sessions(db).findOne({ _id: id }))?.lastSeenAt).toEqual(recent);
+
+    const stale = new Date(Date.now() - config.session.touchIntervalMs - 1_000);
+    await sessions(db).updateOne({ _id: id }, { $set: { lastSeenAt: stale } });
+    await repository.resolve(id);
+    expect((await sessions(db).findOne({ _id: id }))!.lastSeenAt.getTime()).toBeGreaterThan(stale.getTime());
   });
 
   it("revokes every session belonging to an account", async () => {

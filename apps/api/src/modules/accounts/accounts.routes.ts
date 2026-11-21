@@ -109,6 +109,10 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
       markLogged(res);
       throw new UnauthorizedError(AUTH_FAILURE);
     }
+    // A session id the request carried is retired whoever it belonged to (fixation, and a shared machine), and
+    // the account's other sessions go with it unless several devices are allowed (ASVS V7.4.1).
+    const previous = req.get("x-session-id");
+    if (previous) await deps.sessions.revoke(previous);
     const session = await deps.sessions.create(account.id);
     logger.security("auth.login.success", { ...requestFields(req), accountId: account.id });
     res.json({ sessionId: session.id, expiresAt: session.expiresAt.toISOString() });

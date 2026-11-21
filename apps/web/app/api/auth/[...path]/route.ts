@@ -87,6 +87,9 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
     },
   });
   if (route === "logout" || (route === "me" && request.method === "DELETE" && response.ok)) output.cookies.delete(COOKIE);
+  // Sign-out also empties what the browser kept for this origin (ASVS V14.3.1). It has to be on the reply the
+  // browser receives, which is this one, not the API's.
+  if (route === "logout") output.headers.set("clear-site-data", '"cache", "cookies", "storage"');
   return output;
 }
 

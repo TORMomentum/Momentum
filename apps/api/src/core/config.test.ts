@@ -52,6 +52,11 @@ describe("loadConfig", () => {
     expect(config.authRateLimitPerIp).toBeGreaterThan(0);
     expect(config.authRateLimitPerEmail).toBeGreaterThan(0);
     expect(() => loadConfig({ ...base, SESSION_LIFETIME_MS: "0" })).toThrow();
+    expect(() => loadConfig({ ...base, SESSION_IDLE_TIMEOUT_MS: "0" })).toThrow();
+    // The write interval can never exceed half the idle window, or an active session could be written too rarely.
+    const tight = loadConfig({ ...base, SESSION_IDLE_TIMEOUT_MS: "10000", SESSION_TOUCH_INTERVAL_MS: "60000" });
+    expect(tight.session.touchIntervalMs).toBe(5_000);
+    expect(tight.session.singleActive).toBe(true);
     expect(() => loadConfig({ ...base, ARGON2_MEMORY_KIB: "memory" })).toThrow();
     expect(() => loadConfig({ ...base, AUTH_RATE_LIMIT_PER_IP: "1.5" })).toThrow();
   });

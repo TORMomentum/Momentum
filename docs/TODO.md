@@ -561,6 +561,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-319 Session timeout and revocation
+
+- [x] TOR-344 Idle (`SESSION_IDLE_TIMEOUT_MS`, 30 min) and absolute (`SESSION_LIFETIME_MS`) timeout; `lastSeenAt` is now written by `resolve`, throttled
+- [x] TOR-345 Login revokes the session id it carried and, by default, the account's other sessions (`SESSION_SINGLE_ACTIVE`)
+- [x] TOR-346 Logout deletes the session row (test added; it already did)
+- [x] TOR-347 Rejected session cookie goes to `/login?reason=expired` with a Thai message
+- [x] TOR-348 `Clear-Site-Data` on the web logout reply
+- [x] Verified live in Compose: second login rejects the first cookie, idle 25 s past a 20 s timeout gives 401, logout headers
+- [x] Compose passes `APP_ORIGIN` to `web` (its account route handlers threw without it)
+- [ ] Single-active ends a vendor's other devices at sign-in; set `SESSION_SINGLE_ACTIVE=false` if the team prefers several devices
+
 ## Sprint 6 — TOR-326 Security project document
 
 - [x] TOR-369 Team, features and design principles sections: [security-project-document.md](security/security-project-document.md) §1, §2, §5; principles note revised for the Sprint 6 PRs
@@ -725,6 +736,12 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-319 review: single-active issuance is transactional in the shared repository.
+
+TOR-319: rejected cookies leave public email actions available and trigger expiry cleanup on vendor pages.
+
+A failed /me body read also renders public pages signed out.
 
 TOR-322 review: each run allocates a fresh report directory and preserves earlier evidence.
 

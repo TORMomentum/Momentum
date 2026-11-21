@@ -1,3 +1,4 @@
+import { redirectExpiredVendor } from "../../../src/shared/api/viewer-session";
 import { AccountView } from "../../../src/views/AccountActionViews";
 import { fetchOwnAccount } from "../../../src/shared/api/profile.api";
 
@@ -7,6 +8,7 @@ import { fetchOwnAccount } from "../../../src/shared/api/profile.api";
  * whole consent section was absent from the rendered page.
  */
 export default async function AccountPage() {
+  await redirectExpiredVendor();
   const account = await fetchOwnAccount();
   return (
     <AccountView
