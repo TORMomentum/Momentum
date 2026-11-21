@@ -53,7 +53,7 @@ Path exclusions are in `.semgrepignore` (`mockups/`, build output, `package-lock
 
 ## 3. CodeQL
 
-See section 6.
+First PR run (PR 54, `security-and-quality`, javascript-typescript): **0 alerts**. See section 6.
 
 ## 4. npm audit
 
@@ -101,7 +101,13 @@ and was not done here.
 
 ## 6. CodeQL alerts from the first PR run
 
-_To be filled from the code-scanning API once the PR's first run has finished._
+Pulled with `gh api "repos/TORMomentum/Momentum/code-scanning/alerts?ref=refs/pull/54/merge"` after the first run:
+
+- CodeQL: **0 alerts.**
+- Semgrep (uploaded as SARIF): 9 alerts, exactly findings 18 to 26 of section 2. Semgrep still emits
+  results that carry an inline `nosemgrep`, with a suppression marker, and code scanning lists them as open.
+  They were dismissed in code scanning as "false positive" with a pointer to this report. The `--error`
+  gate honours the inline comments and passes.
 
 ## 7. Not verified
 

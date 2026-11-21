@@ -568,7 +568,7 @@ Branch `feat/tor-224-company-path`._
 - [x] TOR-362 `npm audit --audit-level=high` in `ci.yml`; today's high and critical advisories fixed by lockfile bumps
 - [x] TOR-363 Findings triaged and exported to [security/sast-report.md](security/sast-report.md)
 - [x] Semgrep findings fixed: actions pinned to commit SHAs, shell injection in `ci.yml`, containers run as `node`
-- [ ] CodeQL alerts from the first PR run folded into the report
+- [x] CodeQL alerts from the first PR run folded into the report (none)
 - [ ] Two moderate `uuid` advisories (via `@google-cloud/storage`) accepted until that package's next major is adopted
 - [ ] Running the images as `node` verified against the deployed Cloud Run services (checked on Compose only)
 
