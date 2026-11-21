@@ -20,7 +20,7 @@
 #   ZAP_LABEL             report sub-folder, default "run"
 #   ZAP_SESSION_COOKIE    value of the tor-radar-session cookie: scan as a signed-in vendor
 #   ZAP_SPIDER_MINUTES    spider time box, default 2
-#   ZAP_IMAGE             default ghcr.io/zaproxy/zaproxy:stable
+#   ZAP_IMAGE             default ghcr.io/zaproxy/zaproxy:2.17.0
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,7 +34,7 @@ web_url="${ZAP_WEB_URL:-http://web:3000}"
 api_url="${ZAP_API_URL:-http://api:4000}"
 label="${ZAP_LABEL:-run}"
 minutes="${ZAP_SPIDER_MINUTES:-2}"
-image="${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:stable}"
+image="${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:2.17.0}"
 
 out="$root/zap-reports/$label"
 rm -rf "$out"

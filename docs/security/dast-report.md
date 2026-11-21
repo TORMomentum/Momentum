@@ -13,7 +13,7 @@ merged `main` and update the tables** (exact command in [Re-running](#re-running
 
 | | |
 | :---- | :---- |
-| Tool | OWASP ZAP 2.17.0, image `ghcr.io/zaproxy/zaproxy:stable` (digest `sha256:9624669d…`) |
+| Tool | OWASP ZAP 2.17.0, image `ghcr.io/zaproxy/zaproxy:2.17.0` (pinned in tools/zap/run.sh) (digest `sha256:9624669d…`) |
 | Target | the Docker Compose stack, reached from the ZAP container over the Compose network: web `http://web:3000`, API `http://api:4000` |
 | Web scan | `zap-baseline.py`: spider (2 minutes) plus passive rules. About 88 URLs, including the seeded TOR detail pages |
 | API scan | `zap-api-scan.py -S` (passive only) over [tools/zap/openapi.json](../../tools/zap/openapi.json): `/health`, `/api/v1/tors`, `/tors/facets`, `/tors/{id}`, `/stats/dashboard`, `/me` |

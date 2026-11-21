@@ -25,10 +25,11 @@ jobs:
       APP_ORIGIN: http://web:3000
       INTAKE_API_KEYS: zap-intake-key
       ADMIN_API_KEYS: zap-admin-key
+      STAFF_ACCESS_SECRET: zap-staff-secret-not-used-outside-this-run
       WEB_PORT: 3000
       API_PORT: 4000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: docker compose up -d --build
       - name: Wait for web and api
         run: |
@@ -47,7 +48,7 @@ jobs:
           ZAP_LABEL: ci
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: zap-reports
           path: zap-reports/ci/
