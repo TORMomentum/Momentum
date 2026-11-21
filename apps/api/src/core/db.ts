@@ -458,6 +458,7 @@ export interface OauthTransactionDocument {
  * SHA-256 of a one-time ticket held in an httpOnly cookie. Nothing is an account until consent is recorded.
  */
 export interface GoogleSignupDocument {
+  mailboxProofHash: string | null;
   _id: string;
   sub: string;
   email: string;

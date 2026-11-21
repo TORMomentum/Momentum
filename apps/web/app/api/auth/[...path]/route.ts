@@ -85,9 +85,9 @@ async function googleFlow(request: NextRequest, route: string): Promise<NextResp
       headers: { "content-type": "application/json", Origin: appOrigin() },
     }, request.cookies.get(COOKIE)?.value).catch(() => null);
     if (!reply?.ok) return googleFailure();
-    const result = (await reply.json()) as { status: "signed_in"; sessionId: string; expiresAt: string } | { status: "consent_required"; ticket: string };
+    const result = (await reply.json()) as { status: "signed_in"; sessionId: string; expiresAt: string } | { status: "consent_required"; ticket: string; checkMailbox?: boolean };
     if (result.status === "consent_required") {
-      const output = clearGoogleCookies(NextResponse.redirect(new URL("/google-consent", appOrigin())));
+      const output = clearGoogleCookies(NextResponse.redirect(new URL(result.checkMailbox ? "/google-consent?check=mail" : "/google-consent", appOrigin())));
       googleCookie(output, GOOGLE_TICKET_COOKIE, result.ticket);
       return output;
     }
@@ -99,10 +99,10 @@ async function googleFlow(request: NextRequest, route: string): Promise<NextResp
   if (route === "google/complete" && request.method === "POST") {
     const ticket = request.cookies.get(GOOGLE_TICKET_COOKIE)?.value;
     if (!ticket) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    const body = (await request.json().catch(() => ({}))) as { consent?: unknown; behaviourConsent?: unknown };
+    const body = (await request.json().catch(() => ({}))) as { consent?: unknown; behaviourConsent?: unknown; proof?: unknown };
     const reply = await apiRequest("/auth/google/complete", {
       method: "POST",
-      body: JSON.stringify({ ticket, consent: body.consent, ...(body.behaviourConsent === true ? { behaviourConsent: true } : {}) }),
+      body: JSON.stringify({ ticket, consent: body.consent, proof: body.proof, ...(body.behaviourConsent === true ? { behaviourConsent: true } : {}) }),
       headers: { "content-type": "application/json", Origin: appOrigin() },
     }).catch(() => null);
     if (!reply?.ok) return clearGoogleCookies(NextResponse.json({ error: "failed" }, { status: reply?.status === 400 ? 400 : 401 }));

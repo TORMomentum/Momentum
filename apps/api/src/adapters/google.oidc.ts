@@ -44,6 +44,7 @@ export class GoogleOidcAdapter implements GoogleOidc {
     return {
       sub: payload.sub,
       email: payload.email,
+      ...(payload.hd ? { hostedDomain: payload.hd } : {}),
       emailVerified: payload.email_verified === true,
       ...(payload.name ? { name: payload.name } : {}),
       ...(payload.nonce ? { nonce: payload.nonce } : {}),

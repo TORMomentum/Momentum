@@ -39,8 +39,8 @@ describe("GoogleOidcAdapter", () => {
   });
 
   it("returns the claims of a valid token", async () => {
-    await expect(adapterReturning(idToken({ name: "Vendor", azp: CLIENT_ID })).exchange({ code: "c", codeVerifier: "v" })).resolves.toEqual({
-      sub: "sub-1", email: "v@example.test", emailVerified: true, name: "Vendor", nonce: "n-1",
+    await expect(adapterReturning(idToken({ name: "Vendor", hd: "example.test", azp: CLIENT_ID })).exchange({ code: "c", codeVerifier: "v" })).resolves.toEqual({
+      sub: "sub-1", email: "v@example.test", emailVerified: true, hostedDomain: "example.test", name: "Vendor", nonce: "n-1",
     });
   });
 

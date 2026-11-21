@@ -9,6 +9,7 @@ export interface GoogleIdentity {
   sub: string;
   email: string;
   emailVerified: boolean;
+  hostedDomain?: string;
   name?: string;
   /** The nonce the token echoes; the caller compares it with the one it stored. */
   nonce?: string;

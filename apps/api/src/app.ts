@@ -93,7 +93,7 @@ export function buildApp(config: Config, db: Db): Express {
     ? buildGoogleSigninRouter({
         config,
         service: new GoogleSigninService({
-          config, accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository,
+          config, accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository, mailer,
           repository: new GoogleSigninRepository(db),
           oidc: new GoogleOidcAdapter({ clientId: googleOauth.clientId, clientSecret: googleOauth.clientSecret, redirectUri: googleOauth.redirectUri }),
         }),

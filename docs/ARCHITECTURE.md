@@ -708,3 +708,5 @@ not a shortcut. The full register, including the design questions that block sli
 | How do I run it? | [../README.md](../README.md) |
 
 Single-active issuance increments accounts.sessionGeneration to serialize competing transactions before replacing account sessions. The configured MongoDB deployment must support transactions.
+
+google_signups.mailboxProofHash is null for Google-hosted mailboxes or a digest for an external address. Tickets from before this field was introduced expire closed.

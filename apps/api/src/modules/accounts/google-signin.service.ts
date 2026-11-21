@@ -1,6 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Config } from "../../core/config.js";
 import { UnauthorizedError } from "../../core/errors.js";
+import type { Mailer } from "../../ports/mailer.port.js";
+import { verificationEmail } from "./account-email.template.js";
 import type { GoogleOidc } from "../../ports/google-oidc.port.js";
 import { AccountTokensRepository } from "./account-tokens.repository.js";
 import { AccountsRepository, normalizeEmail } from "./accounts.repository.js";
@@ -11,11 +13,12 @@ import { SessionsRepository } from "./sessions.js";
 export const GOOGLE_FAILURE = "ไม่สามารถเข้าสู่ระบบด้วย Google ได้";
 
 export type GoogleSignedIn = { status: "signed_in"; sessionId: string; expiresAt: string };
-export type GoogleCallbackResult = GoogleSignedIn | { status: "consent_required"; ticket: string };
+export type GoogleCallbackResult = GoogleSignedIn | { status: "consent_required"; ticket: string; checkMailbox?: true };
 
 export interface GoogleSigninDeps {
   config: Config;
   oidc: GoogleOidc;
+  mailer: Mailer;
   repository: GoogleSigninRepository;
   accounts: AccountsRepository;
   tokens: AccountTokensRepository;
@@ -88,17 +91,28 @@ export class GoogleSigninService {
 
     // No account, or one that never confirmed its address: a new account, but only after consent.
     const ticket = randomBytes(32).toString("base64url");
+    const googleHostsMailbox = email.endsWith("@gmail.com") || Boolean(identity.hostedDomain);
+    const proof = googleHostsMailbox ? null : randomBytes(32).toString("base64url");
     await this.deps.repository.saveSignup(
-      { _id: sha256Hex(ticket), sub: identity.sub, email, ...(identity.name ? { displayName: identity.name } : {}) },
+      { _id: sha256Hex(ticket), mailboxProofHash: proof ? sha256Hex(proof) : null, sub: identity.sub, email, ...(identity.name ? { displayName: identity.name } : {}) },
       this.deps.config.googleOauth.transactionTtlMs,
     );
+    if (proof) {
+      const url = new URL("/google-consent", this.deps.config.appOrigin);
+      url.hash = new URLSearchParams({ proof }).toString();
+      await this.deps.mailer.send(verificationEmail(email, url.toString()));
+      return { status: "consent_required", ticket, checkMailbox: true };
+    }
     return { status: "consent_required", ticket };
   }
 
   /** The consent step for a Google identity with no account. Consent is the same record password registration writes. */
-  async complete(input: { ticket: string; behaviourConsent?: boolean }): Promise<GoogleSignedIn> {
+  async complete(input: { ticket: string; proof?: string; behaviourConsent?: boolean }): Promise<GoogleSignedIn> {
     const signup = await this.deps.repository.consumeSignup(sha256Hex(input.ticket));
     if (!signup) throw fail();
+    // Pre-upgrade tickets lack the proof policy and must restart.
+    if (signup.mailboxProofHash !== null &&
+        (!signup.mailboxProofHash || !input.proof || !equalDigests(sha256Hex(input.proof), signup.mailboxProofHash))) throw fail();
     // Re-checked, because minutes have passed since the callback: the address may have registered meanwhile.
     if (await this.deps.accounts.findByGoogleSub(signup.sub)) throw fail();
     const existing = await this.deps.accounts.findByEmail(signup.email);

@@ -468,3 +468,5 @@ account writes to `admin_audit`, so who did what and when survives (`FR-E-5`, `N
    silently corrected (`NFR-F7`).
 6. **Every host, port, key, and limit comes from configuration.** `localhost` appears in no source
    file (`NFR-S7`).
+
+Google callback includes checkMailbox=true with the consent ticket for an external signup. The web sends the browser to the email instructions. /auth/google/complete also requires the proof from the emailed consent link for that ticket.

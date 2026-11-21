@@ -7,7 +7,7 @@ import { GoogleSigninService } from "./google-signin.service.js";
 
 // Google sends the code and state back in the query string; the web server relays them here in a body.
 const callbackSchema = z.object({ code: z.string().min(1).max(2048), state: z.string().min(1).max(512), binding: z.string().min(1).max(512) });
-const completeSchema = z.object({ ticket: z.string().min(1).max(512), consent: z.literal(true), behaviourConsent: z.boolean().optional() });
+const completeSchema = z.object({ ticket: z.string().min(1).max(512), consent: z.literal(true), proof: z.string().min(1).max(512).optional(), behaviourConsent: z.boolean().optional() });
 
 /**
  * Mounted only when `GOOGLE_OAUTH_ENABLED` is on, so a deployment without an OAuth client answers 404 rather than
@@ -30,7 +30,7 @@ export function buildGoogleSigninRouter(deps: { config: Config; service: GoogleS
 
   router.post("/google/complete", ...writes, async (req, res) => {
     const input = completeSchema.parse(req.body);
-    const result = await deps.service.complete({ ticket: input.ticket, ...(input.behaviourConsent ? { behaviourConsent: true } : {}) });
+    const result = await deps.service.complete({ ticket: input.ticket, proof: input.proof, ...(input.behaviourConsent ? { behaviourConsent: true } : {}) });
     res.set("cache-control", "no-store").json(result);
   });
 

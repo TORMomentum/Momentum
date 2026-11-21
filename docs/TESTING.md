@@ -155,3 +155,5 @@ Wording check for every case: no screen says "suspicious", "corrupt" or "irregul
 The password login integration test races two successful requests and probes /me with both returned IDs.
 
 The Google route suite rejects anonymous email-only linkage, authenticates with a real password, links from that session and verifies the old session returns 401.
+
+The external Google signup case checks that email_verified without hd creates neither an account nor a reset token until the browser supplies the emailed proof.

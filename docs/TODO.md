@@ -628,3 +628,5 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 TOR-319 review: single-active issuance is transactional in the shared repository.
 
 TOR-315 review: first linking requires the existing authenticated account at start and callback. Password and Google issue through the shared transactional session repository.
+
+TOR-315: first signup with an external Google address verifies the current mailbox before enabling recovery.

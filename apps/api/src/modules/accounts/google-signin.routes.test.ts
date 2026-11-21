@@ -45,12 +45,13 @@ class StubGoogle implements GoogleOidc {
   async exchange(input: { code: string; codeVerifier: string }): Promise<GoogleIdentity> {
     this.verifier = input.codeVerifier;
     if (this.failExchange) throw new Error("bad token");
-    return { sub: "google-sub-1", email: "Vendor@Example.test", emailVerified: true, name: "Vendor G", nonce: this.sent?.nonce, ...this.claims };
+    return { sub: "google-sub-1", email: "Vendor@Example.test", emailVerified: true, hostedDomain: "example.test", name: "Vendor G", nonce: this.sent?.nonce, ...this.claims };
   }
 }
 
 let db: Db;
 let google: StubGoogle;
+let mailer: LogMailer;
 let app: express.Express;
 
 function buildTestApp() {
@@ -62,7 +63,7 @@ function buildTestApp() {
   testApp.use(sessionContext(sessionsRepository));
   testApp.use("/auth", buildGoogleSigninRouter({
     config,
-    service: new GoogleSigninService({ config, oidc: google, repository: new GoogleSigninRepository(db), accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository }),
+    service: new GoogleSigninService({ config, mailer, oidc: google, repository: new GoogleSigninRepository(db), accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository }),
   }));
   testApp.use("/auth", buildAccountsRouter({ config, accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository, mailer: new LogMailer(), vault: { removeAll: async () => undefined } }));
   testApp.use(errorMiddleware);
@@ -97,6 +98,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await Promise.all([accounts(db).deleteMany({}), accountTokens(db).deleteMany({}), sessions(db).deleteMany({}), oauthTransactions(db).deleteMany({}), googleSignups(db).deleteMany({})]);
   google = new StubGoogle();
+  mailer = new LogMailer();
   app = buildTestApp();
 });
 
@@ -261,6 +263,31 @@ describe("Google sign-in: accounts", () => {
 });
 
 describe("Google sign-in: first sign-in needs PDPA consent", () => {
+  it("requires fresh mailbox proof and the browser ticket for an external Google address without hd", async () => {
+    google.claims = { hostedDomain: undefined, emailVerified: true };
+    const first = await callbackWith();
+    expect(first.body.checkMailbox).toBe(true);
+    await post("/auth/google/complete").send({ ticket: first.body.ticket, consent: true }).expect(401);
+    await post("/auth/password/forgot").send({ email: "vendor@example.test" });
+    expect(await accountTokens(db).countDocuments({ purpose: "reset" })).toBe(0);
+    expect(await accounts(db).countDocuments({})).toBe(0);
+    const second = await callbackWith();
+    const link = new URL(mailer.messages.at(-1)!.text.trim().split("\n").at(-1)!);
+    const proof = new URLSearchParams(link.hash.slice(1)).get("proof");
+    expect(proof).toBeTruthy();
+    expect(JSON.stringify(second.body)).not.toContain(proof);
+    await post("/auth/google/complete").send({ ticket: second.body.ticket, consent: true, proof }).expect(200);
+    expect((await accounts(db).findOne({}))?.emailVerifiedAt).toBeInstanceOf(Date);
+  });
+
+  it("accepts a verified Gmail mailbox without a hosted domain", async () => {
+    google.claims = { email: "vendor@gmail.com", hostedDomain: undefined };
+    const callback = await callbackWith();
+    expect(callback.body.checkMailbox).toBeUndefined();
+    await post("/auth/google/complete").send({ ticket: callback.body.ticket, consent: true }).expect(200);
+    expect(mailer.messages).toHaveLength(0);
+  });
+
   it("creates no account until consent is given, then records the same consent a password sign-up does", async () => {
     const callback = await callbackWith();
     expect(callback.body.status).toBe("consent_required");

@@ -13,7 +13,7 @@ import styles from "../features/auth/auth.module.css";
  */
 const behaviourEnabled = () => process.env.NEXT_PUBLIC_BEHAVIOUR_ENABLED === "true";
 
-export function GoogleConsentView() {
+export function GoogleConsentView({ checkMailbox }: { checkMailbox?: boolean } = {}) {
   const [consented, setConsented] = useState(false);
   // Separate and optional, exactly as at password sign-up (TOR-259): never a condition of the account.
   const [behaviourConsented, setBehaviourConsented] = useState(false);
@@ -28,10 +28,12 @@ export function GoogleConsentView() {
     setError(null);
     setBusy(true);
     try {
+      // The email proof stays in the URL fragment until the same-origin consent POST.
+      const proof = new URLSearchParams(window.location.hash.slice(1)).get("proof") ?? undefined;
       const response = await fetch("/api/auth/google/complete", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ consent: true, ...(behaviourEnabled() && behaviourConsented ? { behaviourConsent: true } : {}) }),
+        body: JSON.stringify({ consent: true, proof, ...(behaviourEnabled() && behaviourConsented ? { behaviourConsent: true } : {}) }),
       });
       if (!response.ok) {
         setError("หมดเวลาหรือไม่สามารถสร้างบัญชีได้ กรุณาเริ่มเข้าสู่ระบบด้วย Google ใหม่อีกครั้ง");
@@ -45,6 +47,13 @@ export function GoogleConsentView() {
       setBusy(false);
     }
   }
+
+  if (checkMailbox) return (
+    <main className={styles.formSide}>
+      <h1 className={styles.title}>ยืนยันอีเมลของคุณ</h1>
+      <p>เปิดลิงก์ที่เราส่งไปยังอีเมลของคุณในเบราว์เซอร์นี้ เพื่อยืนยันอีเมลและสมัครต่อ</p>
+    </main>
+  );
 
   return (
     <main className={styles.split}>
