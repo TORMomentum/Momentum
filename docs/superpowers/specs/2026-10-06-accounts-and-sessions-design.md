@@ -385,3 +385,5 @@ with a stub verifier and by a local-key token for the adapter. The first run wit
 2026-11-21 linking revision: a matching verified address alone is refused. The account screen starts a browser-bound transaction with its authenticated account ID. Callback requires the same active account and matching email before storing a first Google subject. An ordinary returning login uses the linked subject.
 
 2026-11-21 external signup revision: a verified Google ID token with a Gmail address or hosted-domain claim can proceed to consent directly. Other new applicants need both their browser signup ticket and a separate one-time proof sent to the current mailbox. Neither an account nor a recovery address exists before both are checked.
+
+2026-11-21 revision: public pages render signed out after a rejected cookie. Only vendor account, profile, path and notification pages invoke the expired-session redirect. Email action URLs stay in the original browser navigation.

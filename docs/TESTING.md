@@ -157,3 +157,7 @@ The password login integration test races two successful requests and probes /me
 The Google route suite rejects anonymous email-only linkage, authenticates with a real password, links from that session and verifies the old session returns 401.
 
 The external Google signup case checks that email_verified without hd creates neither an account nor a reset token until the browser supplies the emailed proof.
+
+Public email action smoke check: open /verify and /reset-password with a token and a stale vendor cookie against the running web and API. Both must render their action form without redirecting. Check /account with the same cookie for expiry cleanup.
+
+Run node tools/check_email_action_pages.mjs with APP_ORIGIN pointing at the running web service to repeat this regression check.

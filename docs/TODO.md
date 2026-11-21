@@ -630,3 +630,5 @@ TOR-319 review: single-active issuance is transactional in the shared repository
 TOR-315 review: first linking requires the existing authenticated account at start and callback. Password and Google issue through the shared transactional session repository.
 
 TOR-315: first signup with an external Google address verifies the current mailbox before enabling recovery.
+
+TOR-319: rejected cookies leave public email actions available and trigger expiry cleanup on vendor pages.

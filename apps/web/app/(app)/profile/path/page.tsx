@@ -1,9 +1,11 @@
+import { redirectExpiredVendor } from "../../../../src/shared/api/viewer-session";
 import { VendorOnly } from "../../../../src/features/app-shell/VendorOnly";
 import { PathView } from "../../../../src/features/path/PathView";
 import { fetchFieldPath } from "../../../../src/shared/api/path.api";
 
 /** The target is read from the URL and the analysis on the server, so the page arrives complete. */
 export default async function PathPage({ searchParams }: { searchParams: Promise<{ target?: string }> }) {
+  await redirectExpiredVendor();
   const { target } = await searchParams;
   const result = target ? await fetchFieldPath(target) : null;
   return (
