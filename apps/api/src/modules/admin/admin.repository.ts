@@ -70,6 +70,7 @@ export interface AdminTorPage {
 
 /** A search term as a literal pattern: nothing a reviewer types is read as regex syntax. */
 function literal(text: string): RegExp {
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- every regex metacharacter in the term is escaped here, so it matches as literal text
   return new RegExp(escapeRegExp(text), "i");
 }
 

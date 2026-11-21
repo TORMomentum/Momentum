@@ -1,6 +1,6 @@
 # Testing — TOR Radar
 
-_Last updated: 2026-11-03. Kept current by the rule in [CLAUDE.md](../CLAUDE.md) ("Docs stay
+_Last updated: 2026-11-20. Kept current by the rule in [CLAUDE.md](../CLAUDE.md) ("Docs stay
 current"); CI fails a pull request that adds or removes a test file without updating this one._
 
 The [SRS](SRS.md) states every requirement as a testable statement with a verification method (T
@@ -16,6 +16,8 @@ test, D demonstration, I inspection, A analysis) and gives each feature an accep
 | `npm run build && npm test` | The CI order. Packages ship compiled output, so testing before building tests a source tree the app never sees | as above |
 | `npm run test:report` | The whole suite, then regenerates [test-report.md](test-report.md): every test with its result, grouped by feature | as above |
 | `npx vitest run <path>` | One file | as above |
+| `npm audit --audit-level=high` | The CI dependency gate: fails on any high or critical advisory, dev tree included | network |
+| Semgrep (Docker, command in [security/sast-report.md](security/sast-report.md) §5) | The CI SAST gate: `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`; CodeQL runs only in CI (findings in the PR's code-scanning tab) | Docker |
 | `node tools/check_mermaid.mjs` | Parses every Mermaid block under `docs/` | nothing |
 | `node tools/check_docs_drift.mjs` | Fails when code changed without its doc (rules in `tools/docs_drift.mjs`) | `git fetch origin` |
 | `RUN_LIVE_VERTEX=1 npx vitest run apps/api/src/adapters/vertex.ai.test.ts` | One real Vertex AI extraction — **paid**, run deliberately | Vertex credentials |

@@ -602,7 +602,7 @@ Decided; not substituted without a design change.
 | Notifications | SMTP email behind a `Mailer` port; Mailpit in Compose | — | The only channel in scope. Dispatch is off (`NOTIFY_DISPATCH_ENABLED`) until the match benchmark exists |
 | Runtime | Node | ≥ 22 | Native `fetch`, `process.loadEnvFile` |
 | Tests | Vitest, Supertest | 4 · 7 | Same runner across workspaces |
-| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. The dependency audit is not in CI yet (slice 1 task 15) |
+| Infrastructure | Docker Compose, GitHub Actions CI | — | NFR-S6; lint, Mermaid parse, docs drift, build and test on every PR. CodeQL, Semgrep and `npm audit --audit-level=high` run on every PR (TOR-323; [security/sast-report.md](security/sast-report.md)) |
 
 **Why Mongo is also the queue (D5):** the alternative is a second infrastructure service for a
 workload of a few thousand documents. An atomic `findOneAndUpdate` claim with a lock expiry gives
