@@ -12,6 +12,7 @@ export default async function AccountPage() {
   const account = await fetchOwnAccount();
   return (
     <AccountView
+      googleEnabled={process.env.GOOGLE_OAUTH_ENABLED === "true"}
       consent={account?.consent ?? null}
       behaviour={account?.behaviourEnabled ? { consent: account.behaviourConsent ?? null } : null}
     />

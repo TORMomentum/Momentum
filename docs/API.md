@@ -408,7 +408,10 @@ the idle timeout). The web app, on a `401` for a cookie it holds, drops the cook
 | Route | Purpose |
 | :--- | :--- |
 | `POST /register` · `/verify` · `/login` · `/logout` | Account lifecycle; consent is recorded at registration. `/login` ends the session id the request carried (`x-session-id`) and, while `SESSION_SINGLE_ACTIVE` is on (default), every other session of the account. `/logout` deletes the session row. Through the web route `/api/auth/logout` the reply also carries `Clear-Site-Data: "cache", "cookies", "storage"` and drops the cookie (TOR-319) |
-| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change. A new password (`POST /register`, `/password/reset`, `/password/change`) is refused with **422** `password_breached` (Thai message รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น) when it is on the bundled common-password list or seen in Have I Been Pwned (TOR-320). Reset checks before it consumes the token, so the link stays usable |
+| `POST /password/forgot` · `/password/reset` · `/password/change` | Password recovery and change. `forgot` also serves a Google-only account (verified address, no password yet): the reset link is how such a vendor sets a password, which `DELETE /me` needs  A new password (`POST /register`, `/password/reset`, `/password/change`) is refused with **422** `password_breached` (Thai message รหัสผ่านนี้อยู่ในรายการรหัสผ่านที่รั่วไหลหรือใช้กันทั่วไป กรุณาตั้งรหัสผ่านอื่น) when it is on the bundled common-password list or seen in Have I Been Pwned (TOR-320). Reset checks before it consumes the token, so the link stays usable |
+| `GET /auth/google/start` | Sign in with Google (TOR-315). `404` unless `GOOGLE_OAUTH_ENABLED`. Rate-limited. Stores one single-use transaction (state, nonce, PKCE verifier, browser binding; kept as digests where it matters) for `OAUTH_TRANSACTION_TTL_MS`, and answers `{ url, binding }`: `url` is Google's authorization URL (`response_type=code`, scopes `openid email profile`, `code_challenge_method=S256`, `state`, `nonce`, `prompt=select_account`); `binding` is for the web handler to put in an httpOnly cookie. `no-store`. **`/auth` only, not mounted under `/api/v1`** |
+| `POST /auth/google/callback` | `{ code, state, binding }`, same-origin only, rate-limited. Consumes the transaction (so a replay or a forged `state` finds nothing), checks `binding` against its digest in constant time, exchanges the code with the stored verifier, and accepts the ID token only when signature, issuer, audience, `azp`, expiry and `nonce` all match **and** Google says `email_verified`. Then: a linked `google.sub` signs in; a **verified** account with the same address is linked only when the same account authenticated both the start and callback of an explicit link from the account screen; otherwise nothing is created and the reply is `{ status: "consent_required", ticket }`. Success is `{ status: "signed_in", sessionId, expiresAt }`. Every failure, a disabled account included, is `401` with the one message `ไม่สามารถเข้าสู่ระบบด้วย Google ได้` |
+| `POST /auth/google/complete` | `{ ticket, consent: true, behaviourConsent? }`, same-origin only. Consumes the ticket, records the same consent a password registration records, creates the account (verified, no password, `google.sub`) and answers `{ status: "signed_in", sessionId, expiresAt }`. An existing unverified password account for the address is removed first. `400` without `consent: true`; `401` for an unknown, used or expired ticket |
 | `GET /me` · `POST /me/consent/withdraw` | The signed-in account (with `behaviourConsent`, null until given, `behaviourEnabled` and `draftEnabled`); withdrawing consent |
 | `POST /me/consent/behaviour` · `POST /me/consent/behaviour/withdraw` | The separate consent to record what the vendor views, saves, dismisses and prepares (TOR-215). Withdrawing deletes every event recorded. Also given at sign-up with the optional `behaviourConsent: true` on `POST /register`, never a condition of registering |
 | `POST /me/events` | `{ torId, type: view \| save \| dismiss \| prepare }`, one event, `204`. `403` unless `MATCH_BEHAVIOUR_ENABLED` is on and the vendor consented; `404` for an unknown TOR. A bookmark is recorded as `save` by the server |
@@ -427,6 +430,15 @@ the idle timeout). The web app, on a `401` for a cookie it holds, drops the cook
 
 Each route is mounted twice, under `/api/v1` and under `/auth`: the browser reaches its own account
 through the Next handler that owns the cookie, which forwards under `/auth`.
+
+**Sign in with Google through the web (TOR-315).** The browser never calls the API for this; the Next handler
+`app/api/auth/[...path]` owns the redirects and the cookies:
+
+| Web route | Does |
+| :--- | :--- |
+| `GET /api/auth/google/start` | Calls the API's start, sets `tor-radar-google-binding` (httpOnly, `SameSite=Lax`, `Secure` outside development, path `/api/auth/google`, 10 minutes) and redirects to Google. Any failure, including the feature being off, redirects to `/login?error=google` |
+| `GET /api/auth/google/callback` | The redirect URI registered at Google (`GOOGLE_OAUTH_REDIRECT_URI`, default `APP_ORIGIN` + this path). Without the binding cookie, or with Google's `error`, it never calls the API. Success sets the normal `tor-radar-session` cookie (and drops the staff cookie, as password sign-in does) and redirects to `/dashboard`; a first sign-in sets `tor-radar-google-ticket` and redirects to `/google-consent`; any failure redirects to `/login?error=google` |
+| `POST /api/auth/google/complete` | The consent page's submit: `{ consent: true, behaviourConsent? }`; the ticket comes from its cookie. Same-origin only. `{ ok: true }` and the session cookie on success |
 
 `GET /tors` accepts `minMatch` and `maxMatch` (whole percentages, `MATCH_RANGE` in
 `@tor-radar/shared`) only from a signed-in caller — without a session the request is refused with
@@ -487,3 +499,6 @@ account writes to `admin_audit`, so who did what and when survives (`FR-E-5`, `N
 7. **Who may call what is written down in one place.** [security/access-control-matrix.md](security/access-control-matrix.md)
    lists every route with its caller, its enforcing middleware and how a vendor is kept to its own data;
    `apps/api/src/core/access-control.test.ts` fails when a route and the matrix disagree (`NFR-S1`).
+
+
+Google callback includes checkMailbox=true with the consent ticket for an external signup. The web sends the browser to the email instructions. /auth/google/complete also requires the proof from the emailed consent link for that ticket.

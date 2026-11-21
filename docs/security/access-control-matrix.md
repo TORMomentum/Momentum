@@ -56,6 +56,9 @@ test: keep the first three columns exactly `METHOD`, `` `path` ``, caller.
 | GET | `/sources/bma-egp/tors/:projectId/documents` | public | none (finding F1) | none, upstream BMA eGP data |
 | POST | `/api/v1/register` | public | `requireSameOrigin`, `authRateLimit` ([accounts.routes.ts:51](../../apps/api/src/modules/accounts/accounts.routes.ts)) | creates an account |
 | POST | `/api/v1/verify` | public | single-use emailed token ([accounts.routes.ts:85](../../apps/api/src/modules/accounts/accounts.routes.ts)) | the token names the account |
+| GET | `/auth/google/start` | public | OAuth enabled, rate limited | starts browser-bound Google sign-in |
+| POST | `/auth/google/callback` | public | same origin, OAuth state and browser binding | verifies identity |
+| POST | `/auth/google/complete` | public | same origin, consent, signup ticket and mailbox proof when required | completes signup |
 | POST | `/api/v1/login` | public | same-origin, rate limit, password check ([accounts.routes.ts:92](../../apps/api/src/modules/accounts/accounts.routes.ts)) | issues a session for that account |
 | POST | `/api/v1/logout` | public | same-origin, rate limit ([accounts.routes.ts:101](../../apps/api/src/modules/accounts/accounts.routes.ts)) | revokes only the session id presented (F4) |
 | POST | `/api/v1/password/forgot` | public | same-origin, rate limit ([accounts.routes.ts:107](../../apps/api/src/modules/accounts/accounts.routes.ts)) | sends to the account's own address |

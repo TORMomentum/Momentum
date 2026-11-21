@@ -13,6 +13,11 @@ x-api-env: &api-env
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:?ADMIN_API_KEYS is required}
   SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
   APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
+  # Sign in with Google (TOR-315). Off unless .env turns it on; the id and secret come from the Google console.
+  GOOGLE_OAUTH_ENABLED: ${GOOGLE_OAUTH_ENABLED:-false}
+  GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+  GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+  GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
   SESSION_LIFETIME_MS: ${SESSION_LIFETIME_MS:-604800000}
   SESSION_IDLE_TIMEOUT_MS: ${SESSION_IDLE_TIMEOUT_MS:-1800000}
   SESSION_TOUCH_INTERVAL_MS: ${SESSION_TOUCH_INTERVAL_MS:-60000}
@@ -57,6 +62,7 @@ services:
       - APP_ORIGIN=${APP_ORIGIN:?APP_ORIGIN is required}
       - ADMIN_API_KEYS=${ADMIN_API_KEYS:?ADMIN_API_KEYS is required}
       - STAFF_ACCESS_SECRET=${STAFF_ACCESS_SECRET:?STAFF_ACCESS_SECRET is required}
+      - GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}
       # The vault upload handler refuses a body past this before reading it; keep it equal to the API's.
       - VAULT_MAX_FILE_BYTES=${VAULT_MAX_FILE_BYTES:-10485760}
       # The draft handler waits this long for the model (plus a few seconds); keep it equal to the API's.

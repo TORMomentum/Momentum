@@ -26,9 +26,11 @@ export function ResetPasswordView() { const token = useSearchParams().get("token
  * block, its own colour, and the password asked for in the same breath.
  */
 export function AccountView({
+  googleEnabled,
   consent: initialConsent,
   behaviour,
 }: {
+  googleEnabled?: boolean;
   consent: ConsentRecord | null;
   /** Present only while scoring by behaviour is on; its consent is separate from the one above. */
   behaviour?: { consent: { agreedAt: string; withdrawnAt?: string } | null } | null;
@@ -93,6 +95,7 @@ export function AccountView({
     <main className={account.page}>
       <header className={account.head}>
         <h1 className={account.title}>ข้อมูลบัญชีและความเป็นส่วนตัว</h1>
+        {googleEnabled && <a href="/api/auth/google/start?link=1">เชื่อมบัญชี Google</a>}
         <p className={account.sub}>
           ส่งออกหรือลบข้อมูลของคุณได้ทุกเมื่อ ตามสิทธิ์ของเจ้าของข้อมูลส่วนบุคคล
         </p>

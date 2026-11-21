@@ -85,12 +85,17 @@ choosing, wait for them to sign in with Google, and the automatic link hands you
 - A single-use, hashed, expiring token sent by email verifies it.
 - Google sign-in links to an existing account **only** when that account is already verified and
   Google asserts `email_verified` for the same address. Otherwise it creates its own account.
+  _(2026-11-21: "creates its own account" cannot hold for an unverified password account, because the address is a
+  unique key. See section 10.3 for what happens instead.)_
 
 **This depends on outbound email, which does not exist yet** (TOR-33/34). Until it does, Google
 sign-in is the only path that completes, and password registration is built but gated. The
 dependency is stated here rather than discovered mid-build.
 
 ### 2.6 Google is validated claim by claim
+
+> **Built 2026-11-21 (TOR-315); refined in section 10.** Where this section and section 10 differ, section 10 is the
+> record of what shipped.
 
 Authorisation Code with PKCE. The transaction — `state`, `nonce`, PKCE verifier, redirect URI — is a
 short-lived server-side row consumed atomically on return, not a cookie that can be replayed.
@@ -200,6 +205,9 @@ by the delete. A long-lived stolen session cannot by itself destroy an account.
 `OAUTH_TRANSACTION_TTL_MS` · `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` · `GOOGLE_REDIRECT_URI` ·
 `CONSENT_NOTICE_VERSION`.
 
+_(2026-11-21: the three Google names were built as `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` and
+`GOOGLE_OAUTH_REDIRECT_URI`, plus `GOOGLE_OAUTH_ENABLED`; see section 10.)_
+
 ## 6. Testing
 
 Every control above is a test, because a security control nobody tested is a claim:
@@ -208,7 +216,7 @@ Every control above is a test, because a security control nobody tested is a cla
 | :--- | :--- |
 | Enumeration | Unknown address, wrong password and unverified account return the identical status and body; the unknown path performs a dummy verification |
 | CSRF | Register, sign in, sign out, password change and delete are refused with a foreign or absent `Origin` |
-| Takeover | Google does NOT link to an unverified account; it does link to a verified one; an unverified Google address never links |
+| Takeover | Google does NOT link to an unverified account; it links a verified account after the existing owner authenticates; an unverified Google address never links |
 | OAuth | Mismatched `state`, replayed transaction, wrong `aud`/`azp`/issuer, expired token, and a redirect URI that is not the registered one are each refused |
 | Sessions | Expired session rejected; cookie attributes exactly as §2.2; password change, role change and deletion revoke every session |
 | Deletion | Re-authentication required; a second account with the same address can register afterwards; the first account's profile and bookmarks are gone |
@@ -250,6 +258,114 @@ Every control above is a test, because a security control nobody tested is a cla
 15. The staff cookie and admin API key were described as replaced; they are not.
 16. The tests named none of the security cases above.
 
+## 10. Revision 2026-11-21 — Sign in with Google, as built (TOR-315)
+
+Subtasks TOR-328 (login route), TOR-329 (token validation), TOR-330 (linking), TOR-331 (settings), TOR-332
+(button and callback page). ASVS V10. This section follows sections 2.5 and 2.6 where they speak and records what
+they left open.
+
+### 10.1 The flow
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant W as Next handler /api/auth/google/*
+    participant A as API /auth/google/*
+    participant G as Google
+    B->>W: GET /api/auth/google/start
+    W->>A: GET start
+    A-->>A: state, nonce, PKCE verifier, binding, then store digests of state and binding
+    A-->>W: url and binding
+    W-->>B: 307 to Google, Set-Cookie binding (httpOnly, Lax, path-scoped, 10 min)
+    B->>G: authorise (code_challenge S256, state, nonce)
+    G-->>B: 302 /api/auth/google/callback?code&state
+    B->>W: GET callback (cookie: binding)
+    W->>A: POST callback with code, state, binding
+    A-->>A: consume transaction by state digest, compare binding digest (constant time)
+    A->>G: code and verifier
+    G-->>A: id_token
+    A-->>A: signature, iss, aud, exp, azp, nonce, email_verified
+    A-->>W: signed_in | consent_required
+    W-->>B: Set-Cookie session, 302 /dashboard (or ticket cookie, 302 /google-consent)
+```
+
+- **The transaction is a server-side row**, as 2.6 says, keyed by the SHA-256 of `state` and consumed with
+  `findOneAndDelete`: a forged, expired or replayed `state` finds nothing, and a wrong guess burns the attempt.
+- **A cookie is added for one reason: login CSRF.** A server-side row alone does not tie the callback to the browser
+  that started it, so an attacker could start a flow, stop before the callback, and feed the victim the callback URL,
+  signing the victim in as the attacker. The browser holds a random `binding` in an httpOnly, `SameSite=Lax` cookie
+  whose path is `/api/auth/google`; the API keeps only its digest and compares in constant time. The cookie carries
+  no secret that can sign anyone in on its own, so it is not signed or encrypted.
+- **Validation split.** `google-auth-library` (already a dependency, so no new one) verifies the signature against
+  Google's published keys, the issuer, the audience and the expiry. The adapter adds `azp`; the service adds `nonce`
+  (constant-time) and `email_verified === true`. The port (`GoogleOidc`) stops at the claims, so every rule above is
+  tested with a stub, and the adapter's own checks are tested with a token signed by a local key.
+- **Nothing sensitive is kept or logged.** The authorization code, ID token and verifier are used once and dropped;
+  the verifier sits in the transaction row until it is consumed or expires (`OAUTH_TRANSACTION_TTL_MS`). The
+  `prompt=select_account` parameter makes Google show its account chooser every time.
+- The routes live under `/auth` only, are rate-limited like every auth route, and exist only while
+  `GOOGLE_OAUTH_ENABLED` is on. The web handler turns every failure into `/login?error=google` with one Thai
+  message; the reason is never put in the URL.
+
+### 10.2 Linking and the account key
+
+- A linked account is found by **`google.sub`** from then on, never by address. A renamed address at Google still
+  reaches the same account.
+- A first sign-in with an address that belongs to an existing, **verified** account links it (stores `google.sub`)
+  only through a linking transaction started and completed with that account’s active TOR Radar session. The account keeps its password. An account already linked to a different
+  `sub` is refused.
+- `email_verified` must be true on the token for any of this, including the sub match: an address Google does not
+  vouch for is not used to find, link or create anything.
+- `google.sub` has a partial unique index, so one Google identity can own one account.
+
+### 10.3 The unverified password account (the case 2.5 left open)
+
+2.5 says Google "creates its own account" when the existing account is unverified, but the address is a unique key,
+so a second account cannot exist. An unverified account owns nothing (2.5), and whoever registered it chose its
+password without proving the address. Linking would hand that person the real owner's Google sign-in, which is the
+takeover revision 1 allowed. So: the Google owner is asked for consent like any new vendor, and when it is given the
+unverified row (and its tokens and sessions) is removed and a fresh account is created. The attacker's password does
+not survive.
+
+### 10.4 PDPA consent for a Google account
+
+A first Google sign-in creates **no account**. The callback stores a short-lived `google_signups` row (digest of a
+ticket, `sub`, address, name) and the browser is sent to `/google-consent`, holding the ticket in an httpOnly cookie.
+Ticking the PDPA box posts to `google/complete`, which records exactly the consent a password registration records
+(notice version and hash, `agreedAt`, `action: "checkbox"`), plus the optional, separate behaviour consent, then
+creates the account (verified, no password) and the session. Unticked, the request is refused and nothing exists.
+
+### 10.5 Accounts with no password
+
+Every place that reads `passwordHash` was checked.
+
+| Place | Behaviour for a Google-only account |
+| :--- | :--- |
+| `POST /login` | Fails with the same status and body as an unknown address, after the same dummy verification |
+| `POST /password/change` | `401`: there is no current password to give |
+| `POST /password/forgot` | Now **serves** it (it needs a verified address, not a password), so such a vendor can set one through the emailed link |
+| `DELETE /me` | `400` with a Thai message saying to set a password through "forgot password" first, then delete. Re-authenticating by a fresh Google round trip (`prompt=login`, section 2.10) is not built |
+| `GET /me/export` | Works; carries `google.sub`; never carries a hash |
+| Deletion | `softDelete` unsets `google`, freeing the `sub` and the address |
+| Disabled or deleted | Refused on the `sub` path and on the address path; a disabled account stays signed out everywhere |
+
+### 10.6 Configuration
+
+| Variable | Default | Meaning |
+| :--- | :--- | :--- |
+| `GOOGLE_OAUTH_ENABLED` | `false` | Mounts the routes and shows the button; the web server reads it too |
+| `GOOGLE_OAUTH_CLIENT_ID` · `GOOGLE_OAUTH_CLIENT_SECRET` | none | Required when enabled (checked at load) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | `APP_ORIGIN` + `/api/auth/google/callback` | Must equal a URI registered on the OAuth client |
+| `OAUTH_TRANSACTION_TTL_MS` | `600000` | Life of an attempt and of the consent ticket |
+
+### 10.7 Not verified here
+
+A real Google login needs an OAuth client and a person at a browser. What ran live: the start route redirects to
+`accounts.google.com` with `code_challenge_method=S256`, `state` and `nonce`; a forged state, a missing binding cookie,
+a declined consent and a wrong binding are each refused. The callback-to-session path is covered end to end by tests
+with a stub verifier and by a local-key token for the adapter. The first run with a real client is the owner's
+(docs/gcp-setup.md, 7.3b).
+
 ## Revision 2026-11-20 — session timeout and revocation (TOR-319, ASVS V7.2.4 / V7.4.1 / V14.3.1)
 
 - Idle timeout: `resolve` rejects a session whose `lastSeenAt` is older than `SESSION_IDLE_TIMEOUT_MS` (default 30 min); `touch` has the same
@@ -265,6 +381,10 @@ Every control above is a test, because a security control nobody tested is a cla
   layout triggers this for any page, public ones included, since it already asks `/me` once per render.
 
 2026-11-21 revision: single-active session issuance serializes on the account in a MongoDB transaction. Every authentication provider calls SessionsRepository.create.
+
+2026-11-21 linking revision: a matching verified address alone is refused. The account screen starts a browser-bound transaction with its authenticated account ID. Callback requires the same active account and matching email before storing a first Google subject. An ordinary returning login uses the linked subject.
+
+2026-11-21 external signup revision: a verified Google ID token with a Gmail address or hosted-domain claim can proceed to consent directly. Other new applicants need both their browser signup ticket and a separate one-time proof sent to the current mailbox. Neither an account nor a recovery address exists before both are checked.
 
 2026-11-21 revision: public pages render signed out after a rejected cookie. Only vendor account, profile, path and notification pages invoke the expired-session redirect. Email action URLs stay in the original browser navigation.
 

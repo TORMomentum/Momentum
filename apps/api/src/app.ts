@@ -34,6 +34,10 @@ import { SessionsRepository } from "./modules/accounts/sessions.js";
 import { AccountsRepository } from "./modules/accounts/accounts.repository.js";
 import { AccountTokensRepository } from "./modules/accounts/account-tokens.repository.js";
 import { buildAccountsRouter } from "./modules/accounts/accounts.routes.js";
+import { buildGoogleSigninRouter } from "./modules/accounts/google-signin.routes.js";
+import { GoogleSigninRepository } from "./modules/accounts/google-signin.repository.js";
+import { GoogleSigninService } from "./modules/accounts/google-signin.service.js";
+import { GoogleOidcAdapter } from "./adapters/google.oidc.js";
 import { ProfileRepository } from "./modules/profile/profile.repository.js";
 import { createEmbedder } from "./adapters/embedder.factory.js";
 import { createTextGenerator } from "./adapters/text.factory.js";
@@ -95,6 +99,18 @@ export function buildApp(config: Config, db: Db): Express {
     config, accounts: accountsRepository, tokens: tokensRepository,
     sessions: sessionsRepository, mailer, breachedPasswords: new HibpBreachedPasswords(config.hibp), vault: vaultService,
   });
+  // Sign in with Google (TOR-315) exists only when switched on; its client id and secret are checked at config load.
+  const { googleOauth } = config;
+  const googleRouter = googleOauth.enabled && googleOauth.clientId && googleOauth.clientSecret
+    ? buildGoogleSigninRouter({
+        config,
+        service: new GoogleSigninService({
+          config, accounts: accountsRepository, tokens: tokensRepository, sessions: sessionsRepository, mailer,
+          repository: new GoogleSigninRepository(db),
+          oidc: new GoogleOidcAdapter({ clientId: googleOauth.clientId, clientSecret: googleOauth.clientSecret, redirectUri: googleOauth.redirectUri }),
+        }),
+      })
+    : null;
   const vaultRouter = buildVaultRouter({ config, vault: vaultRepository, service: vaultService, storage: vaultStorage });
   // Mounted twice on purpose. The browser reaches the signed-in account's own
   // routes through the Next handler that owns the cookie, which forwards under
@@ -115,6 +131,7 @@ export function buildApp(config: Config, db: Db): Express {
   });
   const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config), behaviour: behaviourRepository });
   const pathRouter = buildPathRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config) });
+  if (googleRouter) app.use("/auth", googleRouter);
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
     app.use(prefix, profileRouter);

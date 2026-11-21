@@ -46,7 +46,7 @@ function mountedRoutes(mounts: Array<{ prefix: string; router: { stack: Array<{ 
   for (const { prefix, router } of mounts) {
     for (const layer of router.stack) {
       if (!layer.route) continue;
-      const base = prefix === "/auth" ? API_PREFIX : prefix;
+      const base = prefix === "/auth" && !layer.route.path.startsWith("/google/") ? API_PREFIX : prefix;
       const path = layer.route.path === "/" ? base : `${base}${layer.route.path}`;
       for (const method of Object.keys(layer.route.methods)) if (method !== "_all") found.add(`${method.toUpperCase()} ${path}`);
     }
@@ -61,6 +61,7 @@ const baseConfig = loadConfig(process.env);
 // Sign-in throttling is not under test; behaviour recording is switched on so A has events to protect.
 const config: Config = {
   ...baseConfig,
+  googleOauth: { ...baseConfig.googleOauth, enabled: true, clientId: "matrix-client", clientSecret: "matrix-test-secret" },
   draft: { ...baseConfig.draft, enabled: true },
   authRateLimitPerIp: 10_000,
   authRateLimitPerEmail: 10_000,

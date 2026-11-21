@@ -128,7 +128,9 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
   router.post("/password/forgot", ...writes, async (req, res) => {
     const { email } = z.object({ email: z.string().email().max(320) }).parse(req.body);
     const account = await deps.accounts.findByEmail(email);
-    if (account?.passwordHash && account.emailVerifiedAt && !account.disabledAt) {
+    // A Google-only account (no password yet) may also ask: the link goes to the verified address, and setting a
+    // password is how such a vendor gains a way to confirm a deletion (FR-D-3) without a second Google round trip.
+    if (account?.emailVerifiedAt && !account.disabledAt) {
       const token = await deps.tokens.create(account.id, "reset", deps.config.resetTokenTtlMs);
       await deps.mailer.send(passwordResetEmail(account.email, tokenUrl(deps.config.appOrigin, "/reset-password", token)));
     }
@@ -198,9 +200,9 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     if (!req.auth) throw new UnauthorizedError();
     const input = deleteSchema.parse(req.body);
     const account = req.auth.account;
-    // Google-only accounts cannot prove possession with this endpoint.
+    // A Google-only account has no password to confirm with until it sets one through "forgot password".
     if (!account.passwordHash) {
-      throw new BadRequestError("บัญชีนี้ไม่มีรหัสผ่านสำหรับยืนยันการลบ");
+      throw new BadRequestError("บัญชีนี้ยังไม่มีรหัสผ่าน กรุณาตั้งรหัสผ่านผ่านลิงก์ \"ลืมรหัสผ่าน\" ก่อน แล้วจึงลบบัญชี");
     }
     if (!await verifyPassword(account.passwordHash, input.currentPassword)) {
       throw new UnauthorizedError(AUTH_FAILURE);
