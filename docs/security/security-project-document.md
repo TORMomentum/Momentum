@@ -381,7 +381,6 @@ rows the last column says what is planned.
 | V16.5.2 | 2 | Have now | P0 |  | ApiUnavailable handling, 503s, and a disabled-extraction mode. |
 | V16.5.3 | 2 | Have now | P0 |  | Staff checks and origin checks fail closed. |
 | V16.5.4 | 3 | Planned | P3 |  | Keep the last error middleware and add a process-level handler for uncaught exceptions |
-| **V17 WebRTC** | | | | | |
 
 ---
 
