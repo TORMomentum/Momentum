@@ -103,6 +103,6 @@ export function errorMiddleware(
     });
     return;
   }
-  logger.error("unhandled_error", { requestId: req.id, name: error.name, error: error.message });
+  logger.error("unhandled_error", { requestId: req.id, name: error instanceof SyntaxError ? "SyntaxError" : error instanceof TypeError ? "TypeError" : "Error", code: "internal" });
   res.status(500).json({ error: { code: "internal", message: "Internal server error" } });
 }

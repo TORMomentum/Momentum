@@ -20,6 +20,7 @@ beforeEach(() => {
   app = express();
   app.use(securityLog());
   app.use(express.json());
+  app.post("/unexpected", (req) => { throw new TypeError(req.body.input); });
   app.post("/forbidden", () => { throw new ForbiddenError(); });
   app.post("/login", ...authRateLimit({ authRateLimitPerIp: 100, authRateLimitPerEmail: 1 }), (_req, res) => { res.json({ ok: true }); });
   const admin = express.Router();
@@ -33,6 +34,12 @@ beforeEach(() => {
 afterEach(() => setLogSink());
 
 describe("security logging", () => {
+  it("keeps request data out of the serialized unexpected-error log", async () => {
+    const res = await request(app).post("/unexpected").send({ input: "private-parser-input" }).expect(500);
+    expect(lines).toContainEqual(expect.objectContaining({ message: "unhandled_error", name: "TypeError", code: "internal", requestId: res.headers["x-request-id"] }));
+    expect(raw).not.toContain("private-parser-input");
+  });
+
   it("logs a 403 as auth.denied with route, method and request id, and none of the secrets sent", async () => {
     const response = await request(app).post("/forbidden?token=abc123").set("x-session-id", SESSION).set("cookie", "sid=cookie-value").set("user-agent", `ua/${"x".repeat(500)}`).send({ password: "hunter2-secret" });
 
