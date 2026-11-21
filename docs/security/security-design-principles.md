@@ -2,7 +2,8 @@
 
 Section (5) of the project document · grading criterion 3, "Map security design principles you have
 followed in your implementation". Principle names follow Lecture 7 (CISSP ch. 8 and the US-CERT
-principles). Code paths refer to `main` of the TOR Radar repository. Threat IDs (T01–T16) refer to the
+principles). Code paths refer to `main` of the TOR Radar repository plus the open Sprint 6 security
+PRs (#44 to #52), each named where it matters; revised 2026-11-21. Threat IDs (T01–T16) refer to the
 Threat Model tab of `Momentum-OWASP-ASVS-5.0-Plan.xlsx`.
 
 ## Summary
@@ -23,7 +24,7 @@ Threat Model tab of `Momentum-OWASP-ASVS-5.0-Plan.xlsx`.
 | 12 | Privacy by Design | Yes | PDPA consent, minimisation, export and delete, one redaction point |
 | 13 | Never Assume Your Secrets Are Safe | Yes | Hashed passwords and tokens, secrets kept out of git, constant-time compares |
 | 14 | Psychological Acceptability | Yes | Thai UI, uniform login error, simple consent |
-| 15 | Securing the Weakest Link | Planned | Risk-ranked threat model; the weakest link (shared admin secret) is P1 |
+| 15 | Securing the Weakest Link | Yes, in progress | Risk-ranked threat model; the weakest link (shared admin secret) is P1 |
 
 ---
 
@@ -56,13 +57,19 @@ An uploaded document passes five independent layers before it is stored:
    attacker-controlled. Only real PDF, JPEG, and PNG files pass.
 5. Zod schema validation of every field.
 
+Both the web app and the API now add response headers as a further layer: a per-request nonce CSP,
+`frame-ancestors`, `X-Frame-Options`, `nosniff`, `Referrer-Policy` and production HSTS on the web
+(PR #48, `apps/web/proxy.ts`), and helmet with a deny-all CSP plus a CORS allowlist on the API
+(PR #45, `apps/api/src/core/security-headers.ts`).
+
 After storage it is served with `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`, and
 `Content-Disposition: attachment` by default.
 
 The login flow layers controls the same way:
 
 - argon2id hashing
-- per-IP and per-email rate limits (`core/auth-rate-limit.ts`)
+- a breached and common password check at register, reset and change (PR #49)
+- per-IP and per-email rate limits (`core/auth-rate-limit.ts`), with the real client IP forwarded from the web server (PR #47)
 - email verification before first login
 - a uniform failure message
 
@@ -75,6 +82,7 @@ The login flow layers controls the same way:
   - Any other error returns a generic `500 Internal server error` with no stack trace.
 - **The staff area fails closed.** If the signed-in account's role cannot be read, the answer is
   no (`apps/web/src/shared/lib/staff-session.ts`, `signedInAccountMayActAsStaff`).
+- **No default keys.** `INTAKE_API_KEYS` and `ADMIN_API_KEYS` have no `change-me-*` fallback; Compose refuses to start without them (PR #51).
 - **Configuration fails fast.** The API refuses to start if a required key or secret is missing
   (Zod schema in `config.ts`). It never runs with an empty key.
 - **Storage writes fail rather than overwrite.** `putIfAbsent` uses `ifGenerationMatch: 0`
@@ -93,6 +101,8 @@ The login flow layers controls the same way:
   No email leaves the system until an operator turns it on.
 - **Downloads are attachments by default.** Original documents download as attachments, and
   inline display is allowed only for the in-app viewer.
+- **`TRUST_PROXY` defaults to false and `true` is refused** (PR #47), so a forged `X-Forwarded-For` cannot pick a rate-limit bucket.
+- **Sessions are single-active by default** (`SESSION_SINGLE_ACTIVE`, PR #50).
 - **Optional AI features start off.** Behaviour-based matching and embeddings default to off.
 - **Production keeps secrets in Google Secret Manager.** `.env.example` holds names only, never
   values.
@@ -137,6 +147,8 @@ A vendor who obtains the staff pass still gets no admin rights while signed in a
 - **One configuration file** (`core/config.ts`). Every threshold, key name, and limit is
   validated there.
 - **One header helper** (`lib/content-disposition.ts`). Download headers are built in one place.
+- **One escape helper** (`lib/escape-regexp.ts`, PR #51) for every `$regex` built from user input.
+- **One logger** (`core/logger.ts`, PR #46) with one sanitizer; no `console.*` in the API or workers.
 - **No extra infrastructure.** MongoDB doubles as the job queue, so there is no separate queue
   service to secure.
 
@@ -148,6 +160,8 @@ A vendor who obtains the staff pass still gets no admin rights while signed in a
   Instead, every document request goes through an API route that checks access and whether the TOR
   is restricted, then streams the bytes (`lib/stream-document.ts`).
 - **Restricted TORs return 404**, even to someone who knows the ID.
+- **Idle sessions are refused** (`SESSION_IDLE_TIMEOUT_MS`, 30 minutes) and a new login revokes the old session id and, by default, the account's other sessions (PR #50, `modules/accounts/sessions.ts`).
+- **Every route has a row in a written access matrix** (`docs/security/access-control-matrix.md`), and a test fails when a route is added without one or when vendor B can read vendor A's data (PR #52).
 - **Sessions are checked against the database on every request** (server-side session store), so
   a revoked session stops working immediately rather than at expiry.
 - **Admin server actions call `requireStaff()` at the start of each action**
@@ -204,6 +218,7 @@ A vendor who obtains the staff pass still gets no admin rights while signed in a
 - **Export and deletion on request**, from the account page.
 - **Minimisation.**
   - Contact details in TOR documents pass through `lib/redact.ts` before they are displayed.
+  - The logger masks password, token, secret, cookie, session and body-like keys (PR #46).
   - The mail adapter logs `recipient: "[redacted]"` (`adapters/log.mailer.ts:15`).
   - Logs carry record IDs and storage keys, never extracted field values or document contents.
 - **No third-party trackers** on any page.
@@ -217,6 +232,7 @@ A vendor who obtains the staff pass still gets no admin rights while signed in a
   and expire. A database leak does not reveal usable tokens.
 - **Secret comparisons are constant-time** (`timingSafeEqual`): the intake/admin keys and the staff
   secret. Secrets are hashed first, so their length is not leaked either.
+- **Secrets stay out of git, and the history was scanned.** gitleaks over 530 commits found no real credential (PR #51, `docs/security/secret-scan.md`).
 - **Secrets stay out of git.**
   - Local secrets live in `.env` and `secrets/`, both gitignored.
   - Production secrets live in Google Secret Manager.
@@ -233,6 +249,7 @@ A vendor who obtains the staff pass still gets no admin rights while signed in a
   wrong.
 - Consent is one clear step at registration, and export and deletion are one click on the account
   page.
+- A breached password is refused with a plain Thai message, and an expired session lands on the sign-in page with a Thai explanation (PRs #49, #50).
 - Vendors are not asked for a second factor (yet). The extra burden is reserved for admins, who
   hold the highest privilege (planned, T02).
 
@@ -249,12 +266,18 @@ A vendor who obtains the staff pass still gets no admin rights while signed in a
 
 ## Known gaps (honest status)
 
-| Gap | Principle affected | Threat | Priority |
-| :-- | :-- | :-- | :-- |
-| Admins share one secret; no per-person admin accounts or TOTP | Separation of Duties, Weakest Link | T02 | P1 |
-| No dependency audit in CI | Defense in Depth | T12 | P1 |
-| No site-wide security headers (CSP, HSTS, frame-ancestors) | Defense in Depth, Secure Defaults | T05, T10 | P2 |
-| Logins and 401/403 responses are not logged | Complete Mediation (accountability) | T15 | P2 |
-| Containers run as root | Least Privilege | T03 | P2 |
-| URL intake has no government-host allowlist | Least Privilege | T04 | P2 |
-| One unescaped regex in `matching.repository.ts` | Zero Trust (input) | T07 | P3 |
+Updated 2026-11-21 after the Sprint 6 PRs. Closed gaps are listed so the history stays visible.
+
+| Gap | Principle affected | Threat | Priority | Status |
+| :-- | :-- | :-- | :-- | :-- |
+| Admins share one secret; no per-person admin accounts or TOTP | Separation of Duties, Weakest Link | T02 | P1 | Open |
+| No dependency audit in CI | Defense in Depth | T12 | P1 | Open, TOR-323 pending (PR open) |
+| No site-wide security headers (CSP, HSTS, frame-ancestors) | Defense in Depth, Secure Defaults | T05, T10 | P2 | Closed by PRs #45 and #48 |
+| Logins and 401/403 responses are not logged | Complete Mediation (accountability) | T15 | P2 | Closed by PR #46; actor is still "admin", no alerts |
+| Containers run as root | Least Privilege | T03 | P2 | Open |
+| URL intake has no government-host allowlist | Least Privilege | T04 | P2 | Open |
+| One unescaped regex in `matching.repository.ts` | Zero Trust (input) | T07 | P3 | Closed by PR #51 |
+| Per-IP login limit saw the proxy; no limit on search and downloads | Defense in Depth | T01, T11 | P1 | Closed by PR #47 |
+| No idle timeout; old sessions survived a new login | Complete Mediation | T10 | P2 | Closed by PR #50 |
+| `change-me-*` default keys in Compose | Secure Defaults | T13 | P2 | Closed by PR #51 |
+| `/sources/bma-egp/*` is public and unlimited (access-matrix finding F1) | Least Privilege | T08, T11 | P2 | Open |
