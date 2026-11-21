@@ -1,6 +1,6 @@
 # Testing — TOR Radar
 
-_Last updated: 2026-11-03. Kept current by the rule in [CLAUDE.md](../CLAUDE.md) ("Docs stay
+_Last updated: 2026-11-20. Kept current by the rule in [CLAUDE.md](../CLAUDE.md) ("Docs stay
 current"); CI fails a pull request that adds or removes a test file without updating this one._
 
 The [SRS](SRS.md) states every requirement as a testable statement with a verification method (T
@@ -16,6 +16,8 @@ test, D demonstration, I inspection, A analysis) and gives each feature an accep
 | `npm run build && npm test` | The CI order. Packages ship compiled output, so testing before building tests a source tree the app never sees | as above |
 | `npm run test:report` | The whole suite, then regenerates [test-report.md](test-report.md): every test with its result, grouped by feature | as above |
 | `npx vitest run <path>` | One file | as above |
+| `npm audit --audit-level=high` | The CI dependency gate: fails on any high or critical advisory, dev tree included | network |
+| Semgrep (Docker, command in [security/sast-report.md](security/sast-report.md) §5) | The CI SAST gate: `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`; CodeQL runs only in CI (findings in the PR's code-scanning tab) | Docker |
 | `node tools/check_mermaid.mjs` | Parses every Mermaid block under `docs/` | nothing |
 | `node tools/check_docs_drift.mjs` | Fails when code changed without its doc (rules in `tools/docs_drift.mjs`) | `git fetch origin` |
 | `RUN_LIVE_VERTEX=1 npx vitest run apps/api/src/adapters/vertex.ai.test.ts` | One real Vertex AI extraction — **paid**, run deliberately | Vertex credentials |
@@ -77,6 +79,7 @@ and a look-alike origin getting no `Access-Control-*` header on a request or a p
 | UT-F2-W1 | FR-A-1 | extraction worker without a credential | no project, no credential path, a path to no file, a real file; a cycle with no handler; a cycle with one | the blocker names what is missing; with no handler nothing is claimed and nothing is published | Pass | `extract.worker.test.ts` |
 | UT-F3-1 | FR-G-1 | `torStateOf` | `{ torStatus: "announced", deadline: "2026-10-05" }`, today later | `closed` — the date wins over the label | Pass | `tor-state.test.ts` |
 | UT-F3-2 | FR-B-6 | `POST /admin/tors/bulk` | `{ action: "reject", ids: [id] }` with no reason | 400; the TOR stays public | Pass | `admin.routes.test.ts` |
+| UT-S-1 | NFR-S1 | `escapeRegExp` and `GET /me/matches` (TOR-366) | vendor terms `a.*(`, `(a+)+$`, `[x`, `a\|b`; a nested quantifier on 40 characters | matched as literal text only; no regex error (200, not 500); no backtracking blow-up | Pass | `escape-regexp.test.ts`, `matching.routes.test.ts` |
 | UT-F4-0 | FR-E-3 | `GET /tors?q=` keyword | a Thai word inside an unspaced title; the agency; a word in no record | finds the record by word, matches the agency, returns nothing for a miss; index creation is idempotent | Pass | `tors.atlas-search.test.ts` (needs `mongodb-atlas-local`) |
 | UT-F4-1 | NFR-F2 | `GET /tors` search | 5,000-record corpus, every filter at once | answered within 2 s | Pass | `tors.search.timing.test.ts` |
 | UT-F4-2 | NFR-F2 | `GET /tors` search | deep pages of the same corpus | each page within 2 s (cursor, not skip) | Pass | `tors.search.timing.test.ts` |

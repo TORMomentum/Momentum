@@ -1,5 +1,6 @@
 import { ObjectId, type Db, type Filter } from "mongodb";
 import { accounts, adminAudit, vendorProfiles, type AccountDocument, type AccountRole, type AdminAuditDocument } from "../../core/db.js";
+import { escapeRegExp } from "../../lib/escape-regexp.js";
 import { NotFoundError } from "../../core/errors.js";
 
 /** One row of the vendors list: enough to choose whom to open. No password hash, ever. */
@@ -40,7 +41,8 @@ function row(account: AccountDocument & { _id: ObjectId }): AdminAccountRow {
 
 /** A search term as literal text: nothing typed is read as a pattern. */
 function literal(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- every regex metacharacter in the term is escaped here, so it matches as literal text
+  return new RegExp(escapeRegExp(text), "i");
 }
 
 /**

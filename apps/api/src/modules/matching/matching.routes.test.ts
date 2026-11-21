@@ -128,6 +128,15 @@ describe("matching routes", () => {
     expect((await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId)).body.items.map((item: { id: string }) => item.id)).toContain(id);
   });
 
+  it("reads a vendor's own words literally: regex characters neither throw nor match everything (TOR-366)", async () => {
+    const current = await vendor("regex@example.test");
+    await vendorProfiles(db).insertOne({ accountId: current.accountId, categories: ["construction.road"], otherCategories: ["a.*(", "(a+)+$", "[x"], areas: ["thailand"], budget: null, taxonomyVersion: "test", updatedAt: new Date() });
+    const id = await seed("จัดซื้อคอมพิวเตอร์", 100);
+    const response = await request(app).get("/api/v1/me/matches").set("x-session-id", current.sessionId);
+    expect(response.status).toBe(200);
+    expect(response.body.items.map((item: { id: string }) => item.id)).not.toContain(id);
+  });
+
   it("finds a TOR by the meaning of a vendor's own words when none of them appears in its title (TOR-202)", async () => {
     // The app's config has embeddings off; matching reads its own copy.
     const on = loadConfig({ ...process.env, EMBEDDINGS_ENABLED: "true" });

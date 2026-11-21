@@ -90,6 +90,7 @@ def call(method: str, path: str, body: dict | None = None):
         },
     )
     try:
+        # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected -- SITE is the operator's own Atlassian https URL from the environment; developer tool, not part of the service
         with urllib.request.urlopen(req, timeout=30) as r:
             raw = r.read()
             return json.loads(raw) if raw else {}

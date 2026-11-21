@@ -569,6 +569,26 @@ Branch `feat/tor-224-company-path`._
 - [x] Checked live with curl against the compose stack (see the PR)
 - [ ] The web app sets no security headers of its own yet (separate story)
 
+## Sprint 6 — TOR-324 Close secret and input gaps
+
+- [x] TOR-364 Compose has no default keys: `INTAKE_API_KEYS`, `ADMIN_API_KEYS` are required like `SESSION_SECRET` (verified: `docker compose config` fails with the variable named, then starts once set)
+- [x] `web` now receives `APP_ORIGIN`, `ADMIN_API_KEYS`, `STAFF_ACCESS_SECRET` (required); before, `/api/auth/*` returned 500 under Compose (found in TOR-318 review). Verified: register and login through `:10900/api/auth`, staff review page renders
+- [x] TOR-365 Git history scanned with gitleaks (530 commits): 4 false positives, no real credential; `.gitleaks.toml` and a CI step added — see `docs/security/secret-scan.md`
+- [x] TOR-366 Vendor terms escaped in the matching `$regex` through one `lib/escape-regexp.ts` (the three other private copies now use it)
+- [ ] Not done: weak-key rejection at startup (min length) — CI and tests use short throwaway keys; revisit with a production-only rule
+- [ ] Staff sign-in form itself (server action) not driven by a script; the staff cookie was forged with the secret to prove the web container reads it
+
+## Sprint 6 — TOR-323 SAST and dependency audit in CI
+
+- [x] TOR-360 CodeQL workflow (`codeql.yml`: PR, push to main, weekly; `security-and-quality`)
+- [x] TOR-361 Semgrep workflow (`semgrep.yml`: four rulesets, `--error`, SARIF artifact and code-scanning upload)
+- [x] TOR-362 `npm audit --audit-level=high` in `ci.yml`; today's high and critical advisories fixed by lockfile bumps
+- [x] TOR-363 Findings triaged and exported to [security/sast-report.md](security/sast-report.md)
+- [x] Semgrep findings fixed: actions pinned to commit SHAs, shell injection in `ci.yml`, containers run as `node`
+- [x] CodeQL alerts from the first PR run folded into the report (none)
+- [ ] Two moderate `uuid` advisories (via `@google-cloud/storage`) accepted until that package's next major is adopted
+- [ ] Running the images as `node` verified against the deployed Cloud Run services (checked on Compose only)
+
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
