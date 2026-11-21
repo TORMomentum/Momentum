@@ -569,7 +569,8 @@ Branch `feat/tor-224-company-path`._
 - [x] TOR-372 OWASP Top 10:2025 mapping (§7), category list checked against top10.owasp.org/2025
 - [x] TOR-373 Security test process (§6)
 - [ ] The document describes the system as it will be after PRs #44 to #52 merge; re-read its evidence column after each merge
-- [ ] Reports still to link when their PRs land: `sast-report.md` (TOR-323), `dast-report.md` (TOR-322); Google OIDC (TOR-315)
+- [x] SAST (#54), ZAP (#57) and Google OIDC (#55) added to the document and the workbook (11 more requirements Have now); counts taken from the reports on their branches
+- [ ] Final ZAP scan on the merged `main` (TOR-358) is run by a person; update §6 of the document from it
 - [ ] A person takes the DevTools header screenshot (TOR-355) and exports the final PDF
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
