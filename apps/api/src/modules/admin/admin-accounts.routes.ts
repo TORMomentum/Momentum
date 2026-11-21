@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import { TAXONOMY_VERSION } from "@tor-radar/seeds";
 import { profileSchema } from "../profile/profile.routes.js";
+import { auditAdmin } from "../../core/security-log.js";
 import { requireKey } from "../intake/intake.auth.js";
 import type { AdminAccountsService } from "./admin-accounts.service.js";
 
@@ -28,6 +29,7 @@ export function buildAdminAccountsRouter(deps: AdminAccountsRouterDeps): Router 
   const actorOf = (req: Request) => (req as Request & { actor?: string }).actor ?? "admin";
 
   router.use(requireKey(deps.adminKeys, "admin"));
+  router.use(auditAdmin(actorOf));
 
   router.get("/reports/other-terms", async (_req, res) => {
     res.json(await deps.service.otherTermsReport(deps.pageSize));

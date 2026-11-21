@@ -132,6 +132,8 @@ const schema = z.object({
   // overview. Unset: STUCK_LOCK_MULTIPLE job locks, i.e. a lease that has
   // expired several times over with no worker finishing it.
   ADMIN_STUCK_AFTER_MS: blankAsAbsent(z.coerce.number().int().positive()),
+  // Minimum severity written to stdout: debug < info < warn < error.
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   JOB_POLL_MS: z.coerce.number().int().positive().default(2_000),
   RECONCILE_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   RECONCILE_MIN_AGE_MS: z.coerce.number().int().positive().default(120_000),
@@ -385,6 +387,7 @@ export interface Config {
   jobMaxAttempts: number;
   jobBackoffMs: number;
   jobLockMs: number;
+  logLevel: "debug" | "info" | "warn" | "error";
   jobPollMs: number;
   reconcileIntervalMs: number;
   reconcileMinAgeMs: number;
@@ -524,6 +527,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     jobMaxAttempts: parsed.JOB_MAX_ATTEMPTS,
     jobBackoffMs: parsed.JOB_BACKOFF_MS,
     jobLockMs: parsed.JOB_LOCK_MS,
+    logLevel: parsed.LOG_LEVEL,
     jobPollMs: parsed.JOB_POLL_MS,
     reconcileIntervalMs: parsed.RECONCILE_INTERVAL_MS,
     reconcileMinAgeMs: parsed.RECONCILE_MIN_AGE_MS,

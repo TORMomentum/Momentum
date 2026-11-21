@@ -282,3 +282,11 @@ so every request arrived from the web server's address and the per-address limit
 Not verified here: the exact entries Google's front end appends on the web-to-api call. The hop counts
 (`TRUSTED_PROXY_HOPS=1` on web, `TRUST_PROXY=2` on api) are config precisely so they can be corrected
 after a look at a real request in the deployed environment.
+
+## 10. Revision 2026-11-20 - security event logging (TOR-316)
+
+Logins, refusals and admin actions are now logged (ASVS V16.3; threats T01, T15). `POST /login` logs
+`auth.login.success`, or `auth.login.failure` with a `reason` (`unknown_email`, `bad_password`, `disabled`,
+`unverified`); `POST /logout` logs `auth.logout`. The HTTP response to a failed login is unchanged and uniform
+(section 2); only the log distinguishes the reasons. No log line holds a password, an email address, a session
+id or a cookie. The event vocabulary and fields are in `docs/ARCHITECTURE.md`, "Logging and security events".

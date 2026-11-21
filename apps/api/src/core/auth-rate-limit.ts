@@ -10,9 +10,13 @@ function emailKey(req: Request): string {
   return typeof body?.email === "string" ? normalizeEmail(body.email) : "";
 }
 
-function tooManyRequests(_req: Request, res: Parameters<RequestHandler>[1]): void {
-  // A uniform empty response does not disclose whether the address or email limit fired.
-  res.status(429).end();
+function tooManyRequests(keyType: "ip" | "email") {
+  return (_req: Request, res: Parameters<RequestHandler>[1]): void => {
+    // The security-log hook reads this; the response itself stays uniform and empty,
+    // so it does not disclose whether the address or email limit fired.
+    res.locals.rateLimitKey = keyType;
+    res.status(429).end();
+  };
 }
 
 /**
@@ -24,13 +28,13 @@ export function authRateLimit(limits: Pick<Config, "authRateLimitPerIp" | "authR
     windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
     standardHeaders: false,
     legacyHeaders: false,
-    handler: tooManyRequests,
   };
   return [
-    rateLimit({ ...common, limit: limits.authRateLimitPerIp }),
+    rateLimit({ ...common, limit: limits.authRateLimitPerIp, handler: tooManyRequests("ip") }),
     rateLimit({
       ...common,
       limit: limits.authRateLimitPerEmail,
+      handler: tooManyRequests("email"),
       keyGenerator: emailKey,
       // Without this, every request carrying no address shares one bucket, and a
       // handful of them would lock out the whole service's email allowance.

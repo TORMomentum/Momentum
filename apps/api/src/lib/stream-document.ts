@@ -3,6 +3,7 @@ import { pipeline } from "node:stream/promises";
 import { NotFoundError } from "../core/errors.js";
 import { parseRange } from "./byte-range.js";
 import { contentDisposition, type Disposition } from "./content-disposition.js";
+import { logger } from "../core/logger.js";
 
 export interface StreamableDocument {
   key: string;
@@ -74,7 +75,7 @@ export async function streamDocument(
     await pipeline(source, res);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ERR_STREAM_PREMATURE_CLOSE") {
-      console.error(JSON.stringify({ event: "document_stream_failed", key: doc.key, error: String(error) }));
+      logger.error("document_stream_failed", { key: doc.key, error: String(error) });
     }
     res.destroy();
   }
