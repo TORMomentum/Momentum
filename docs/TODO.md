@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-12_
+_last updated: 2026-11-20_
 
 ---
 
@@ -560,6 +560,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] The Cloud Run worker's credential and project were not checked in this change
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
+
+## Sprint 6 — TOR-323 SAST and dependency audit in CI
+
+- [x] TOR-360 CodeQL workflow (`codeql.yml`: PR, push to main, weekly; `security-and-quality`)
+- [x] TOR-361 Semgrep workflow (`semgrep.yml`: four rulesets, `--error`, SARIF artifact and code-scanning upload)
+- [x] TOR-362 `npm audit --audit-level=high` in `ci.yml`; today's high and critical advisories fixed by lockfile bumps
+- [x] TOR-363 Findings triaged and exported to [security/sast-report.md](security/sast-report.md)
+- [x] Semgrep findings fixed: actions pinned to commit SHAs, shell injection in `ci.yml`, containers run as `node`
+- [ ] CodeQL alerts from the first PR run folded into the report
+- [ ] Two moderate `uuid` advisories (via `@google-cloud/storage`) accepted until that package's next major is adopted
+- [ ] Running the images as `node` verified against the deployed Cloud Run services (checked on Compose only)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
 
