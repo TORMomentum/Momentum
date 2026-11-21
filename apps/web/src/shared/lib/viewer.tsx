@@ -1,5 +1,6 @@
 "use client";
 
+import "./zod-no-eval";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 

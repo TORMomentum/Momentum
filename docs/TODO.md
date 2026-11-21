@@ -561,6 +561,17 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-321 Web security headers
+
+- [x] TOR-352 Nonce-based CSP in `apps/web/proxy.ts` (`script-src 'nonce-…' 'strict-dynamic'`; no `unsafe-eval` in production)
+- [x] TOR-353 HSTS (production only), `Referrer-Policy`, `nosniff`, `Permissions-Policy`, `poweredByHeader: false`
+- [x] TOR-354 `frame-ancestors 'none'`, `'self'` for the original-viewer routes; `X-Frame-Options` to match
+- [x] Verified live: zero CSP violations on landing, search, dashboard, login, TOR detail, original; framing blocked from a foreign origin
+- [x] TOR-355 header capture saved as `docs/security/evidence/web-headers.txt` and `.png` (a rendered `curl -I`)
+- [ ] TOR-355 a human still takes the real DevTools Network screenshot for the report
+- [ ] Not run: a deployed Cloud Run + IAP check (HSTS and IAP's own pages); the TOR detail page was checked with a queued record only
+- [ ] `style-src-attr 'unsafe-inline'` stays while components use `style={{…}}`; removing it means moving those to CSS classes or custom properties
+
 ## Sprint 6 — TOR-318 Rate limits for login and public APIs
 
 - [x] TOR-341: the web server forwards one client `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`); the API trusts proxy hops
@@ -652,6 +663,8 @@ Branch `feat/tor-224-company-path`._
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-321 review: global Next headers cover static assets and prefetch responses. The proxy sets the nonce policy and path-dependent frame options.
 
 TOR-318 review: Compose uses the socket peer for its published API port. Cloud Run sets trusted hop counts explicitly.
 
