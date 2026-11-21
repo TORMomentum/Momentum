@@ -165,6 +165,7 @@ function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filt
   } else if (criteria.q) {
     // Fallback for a mongod without Atlas Search (search spec §5): a substring,
     // which Thai needs and $text cannot do.
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- escapeRegExp neutralises every metacharacter in the user term
     const pattern = new RegExp(escapeRegExp(criteria.q), "i");
     clauses.push({
       $or: [

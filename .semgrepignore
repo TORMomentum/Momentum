@@ -1,0 +1,9 @@
+# Semgrep ignores these in addition to its defaults (.gitignore is honoured too).
+# Design-canvas source: reference only, never built or linted (CLAUDE.md).
+mockups/
+node_modules/
+dist/
+.next/
+coverage/
+# Lockfile carries integrity hashes that look like secrets to entropy rules.
+package-lock.json
