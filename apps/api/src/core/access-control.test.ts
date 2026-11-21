@@ -11,9 +11,7 @@ import { WORK_CATEGORIES } from "@tor-radar/seeds";
 import { GcsVaultStorage } from "../adapters/gcs.vault.storage.js";
 import { createTextGenerator } from "../adapters/text.factory.js";
 import { API_PREFIX, buildApp } from "../app.js";
-import { AccountsRepository } from "../modules/accounts/accounts.repository.js";
 import { hashPassword } from "../modules/accounts/password.js";
-import { SessionsRepository } from "../modules/accounts/sessions.js";
 import { loadConfig, type Config } from "./config.js";
 import { accounts, behaviourEvents, bookmarks, connect, disconnect, ensureIndexes, sessions, tors, vaultDocuments, vendorProfiles } from "./db.js";
 import { isolatedDbUrl } from "../test/mongo.js";
@@ -74,18 +72,21 @@ const config: Config = {
 
 let db: Db;
 let app: Express;
-let sessionsRepository: SessionsRepository;
 let mounted: Set<string>;
 
 const FILL: Record<string, string> = { id: "0123456789abcdef01234567", torId: "0123456789abcdef01234567", projectId: "1", page: "1", field: "title" };
 const concrete = (path: string) => path.replace(/:(\w+)/g, (_m, name: string) => FILL[name] ?? "x");
 
 async function vendor(email: string, displayName: string) {
-  const account = await new AccountsRepository(db, sessionsRepository).create({
+  const now = new Date();
+  const account = await accounts(db).insertOne({
+    role: "vendor", emailVerifiedAt: now, createdAt: now, updatedAt: now,
     email, displayName, passwordHash: await hashPassword("correct-password", config),
     consent: { noticeVersion: "test", noticeHash: "test", agreedAt: new Date(), action: "checkbox" },
   });
-  return { accountId: account.id, email, displayName, session: (await sessionsRepository.create(account.id)).id };
+  const login = await request(app).post(`${API_PREFIX}/login`).set("origin", config.appOrigin)
+    .send({ email, password: "correct-password" }).expect(200);
+  return { accountId: account.insertedId.toString(), email, displayName, session: login.body.sessionId as string };
 }
 type Vendor = Awaited<ReturnType<typeof vendor>>;
 
@@ -133,7 +134,6 @@ beforeAll(async () => {
   mounted = mountedRoutes(mounts);
   use.mockRestore(); get.mockRestore();
 
-  sessionsRepository = new SessionsRepository(db, config.session.lifetimeMs);
   await Promise.all([accounts, sessions, bookmarks, vendorProfiles, vaultDocuments, behaviourEvents, tors].map((collection) => (collection(db) as { deleteMany(filter: object): Promise<unknown> }).deleteMany({})));
   a = await vendor("vendor-a@example.test", "ผู้ขายเอ-A-NAME");
   b = await vendor("vendor-b@example.test", "ผู้ขายบี-B-NAME");
