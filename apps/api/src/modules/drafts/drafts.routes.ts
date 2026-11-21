@@ -28,6 +28,7 @@ export function buildDraftsRouter(deps: { config: Config; service: DraftsService
     legacyHeaders: false,
     keyGenerator: (req) => req.auth?.account._id.toString() ?? "anonymous",
     handler: (_req, res) => {
+      res.locals.rateLimitKey = "account";
       res.status(429).json({ error: { code: "rate_limited", message: "ขอให้ AI ร่างบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" } });
     },
   });

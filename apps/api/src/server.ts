@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { loadEnvFile } from "./core/env-file.js";
 import { loadConfig } from "./core/config.js";
 import { connect, disconnect, ensureIndexes, ensureSearchIndex } from "./core/db.js";
+import { logger } from "./core/logger.js";
 
 /**
  * Starts the HTTP API: read the configuration, connect the database, make sure
@@ -25,13 +26,11 @@ async function main(): Promise<void> {
   const host = process.env.API_HOST ?? "0.0.0.0";
 
   const server = app.listen(config.apiPort, host, () => {
-    console.log(
-      JSON.stringify({ event: "api_listening", host, port: config.apiPort, prefix: "/api/v1" }),
-    );
+    logger.info("api_listening", { host, port: config.apiPort, prefix: "/api/v1" });
   });
 
   const shutdown = async (signal: string): Promise<void> => {
-    console.log(JSON.stringify({ event: "api_shutdown", signal }));
+    logger.info("api_shutdown", { signal });
     server.close();
     await disconnect();
     process.exit(0);
@@ -42,6 +41,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(JSON.stringify({ event: "api_start_failed", error: String(error) }));
+  logger.error("api_start_failed", { error: String(error) });
   process.exit(1);
 });
