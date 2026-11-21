@@ -1,0 +1,44 @@
+name: CodeQL
+
+# SAST on JavaScript/TypeScript (TOR-323, ASVS V15.2.1, threat T12).
+# Runs on every pull request, on main, and weekly so that a new query shipped
+# by GitHub is applied to code that has not changed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Mondays 02:17 UTC, off the hour on purpose (GitHub queues the :00 slots)
+    - cron: "17 2 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to code scanning
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        with:
+          languages: javascript-typescript
+          # security-and-quality, not the default suite: the default only runs
+          # high-precision security queries. This project is graded on finding
+          # security defects, and the extra maintainability/reliability queries
+          # are cheap to triage on a codebase this size.
+          queries: security-and-quality
+          # Keep the mockups (design-canvas source, never built) out of the scan.
+          config: |
+            paths-ignore:
+              - mockups
+              - "**/node_modules"
+              - "**/dist"
+              - "**/.next"
+      # JavaScript/TypeScript needs no build step.
+      - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        with:
+          category: /language:javascript-typescript

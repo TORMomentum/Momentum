@@ -24,5 +24,8 @@ RUN npm ci
 COPY apps/api ./apps/api
 
 WORKDIR /app/apps/api
+# Not root: a code-execution bug in the app must not own the container (TOR-323).
+# Files stay root-owned and world-readable; the app writes nothing under /app.
+USER node
 EXPOSE 4000
 CMD ["npm", "start"]

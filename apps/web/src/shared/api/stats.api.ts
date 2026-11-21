@@ -3,6 +3,7 @@ import "server-only";
 import type { ChecklistSummary } from "@tor-radar/shared";
 import type { DashboardFilters } from "../lib/dashboard-filters";
 import { identityToken } from "./api-client";
+import { forwardedClientHeaders } from "./client-ip";
 
 export interface DashboardVerdict {
   kind: "anomaly" | "normal" | "not-evaluated";
@@ -45,10 +46,10 @@ export async function fetchDashboard(filters: DashboardFilters = {}): Promise<Da
   const suffix = query.size ? `?${query}` : "";
   const base = apiBaseUrl();
   const response = await identityToken(base)
-    .then((token) =>
+    .then(async (token) =>
       fetch(`${base}/api/v1/stats/dashboard${suffix}`, {
         cache: "no-store",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { ...(await forwardedClientHeaders()), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       }),
     )
     .catch((error: unknown) => {
