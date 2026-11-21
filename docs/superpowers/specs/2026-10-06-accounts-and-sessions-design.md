@@ -263,3 +263,5 @@ Every control above is a test, because a security control nobody tested is a cla
   browser receives, the API's is not.
 - A cookie the API rejects is dropped by `GET /api/auth/expired` and the reader lands on `/login?reason=expired` with a Thai message. The root
   layout triggers this for any page, public ones included, since it already asks `/me` once per render.
+
+2026-11-21 revision: single-active session issuance serializes on the account in a MongoDB transaction. Every authentication provider calls SessionsRepository.create.

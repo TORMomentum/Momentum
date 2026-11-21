@@ -98,7 +98,6 @@ export function buildAccountsRouter(deps: AccountsRouterDeps): Router {
     // the account's other sessions go with it unless several devices are allowed (ASVS V7.4.1).
     const previous = req.get("x-session-id");
     if (previous) await deps.sessions.revoke(previous);
-    if (deps.config.session.singleActive) await deps.sessions.revokeAllForAccount(account.id);
     const session = await deps.sessions.create(account.id);
     res.json({ sessionId: session.id, expiresAt: session.expiresAt.toISOString() });
   });

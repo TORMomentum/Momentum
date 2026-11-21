@@ -145,3 +145,5 @@ the last column.
 | TC-F12-1 | F12 | Run `tools/import_national_egp_tors.mts` twice | Second run adds no records. The SRS criterion — each adapter reports its last collection and health — is not built | |
 
 Wording check for every case: no screen says "suspicious", "corrupt" or "irregular" (NFR-F5).
+
+The password login integration test races two successful requests and probes /me with both returned IDs.

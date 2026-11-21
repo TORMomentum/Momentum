@@ -207,6 +207,10 @@ describe("account routes", () => {
     await verifiedAccount();
     config.session.singleActive = true;
     try {
+      const concurrent = await Promise.all([login(), login()]);
+      expect(concurrent.map((response) => response.status)).toEqual([200, 200]);
+      const states = await Promise.all(concurrent.map((response) => request(app).get("/api/v1/me").set("x-session-id", response.body.sessionId)));
+      expect(states.map((response) => response.status).sort()).toEqual([200, 401]);
       const first = (await login()).body.sessionId as string;
       const second = (await login()).body.sessionId as string;
       const third = (await write(request(app).post("/api/v1/login")).set("x-session-id", second).send({ email: "vendor@example.test", password: "correct-password" })).body.sessionId as string;

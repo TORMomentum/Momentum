@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { ObjectId, type Db, type WithId } from "mongodb";
-import { accounts, sessions, type AccountDocument, type AccountRole, type SessionDocument } from "../../core/db.js";
+import { accounts, sessions, withTransaction, type AccountDocument, type AccountRole, type SessionDocument } from "../../core/db.js";
 
 export interface ResolvedSession {
   account: WithId<AccountDocument>;
@@ -10,14 +10,25 @@ export interface ResolvedSession {
 export class SessionsRepository {
   constructor(
     private readonly db: Db,
-    private readonly timeouts: { lifetimeMs: number; idleTimeoutMs: number; touchIntervalMs: number },
+    private readonly timeouts: { lifetimeMs: number; idleTimeoutMs: number; touchIntervalMs: number; singleActive: boolean },
   ) {}
 
   async create(accountId: string): Promise<{ id: string; expiresAt: Date }> {
     const createdAt = new Date();
     const expiresAt = new Date(createdAt.getTime() + this.timeouts.lifetimeMs);
     const id = randomBytes(32).toString("hex");
-    await sessions(this.db).insertOne({ _id: id, accountId, createdAt, expiresAt, lastSeenAt: createdAt });
+    const document = { _id: id, accountId, createdAt, expiresAt, lastSeenAt: createdAt };
+    if (this.timeouts.singleActive) {
+      await withTransaction(async (session) => {
+        // Contending issuers write the same row even when there are no sessions to delete.
+        const result = await accounts(this.db).updateOne({ _id: new ObjectId(accountId) }, { $inc: { sessionGeneration: 1 } }, { session });
+        if (!result.matchedCount) throw new Error("Session account missing");
+        await sessions(this.db).deleteMany({ accountId }, { session });
+        await sessions(this.db).insertOne(document, { session });
+      });
+    } else {
+      await sessions(this.db).insertOne(document);
+    }
     return { id, expiresAt };
   }
 
