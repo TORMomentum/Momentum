@@ -20,10 +20,10 @@ cut or reword what has not landed. `[main]` means it runs on `main` today.
 | 3 Login burst gives 429 | `[main]` | Ran on `main`: `401 401 401 401 401 429 429 …` |
 | 4 Breached password refused | #49 | Not run here (PR branch); the PR author ran it live |
 | 5 Session idle expiry | #50 | Not run here; the PR author ran it live |
-| 6 Google sign-in | TOR-315, no PR yet | Not available |
+| 6 Google sign-in | #55 (off by default, needs an OAuth client) | Not run here; the PR author ran the redirect and refusal cases live |
 | 7 Vendor B cannot read A's file | `[main]` (test and matrix: #52) | Ran on `main`: A 200, B 404, no session 401 |
 | 8 Admin action in the log | #46 | Not run here |
-| 9 Reports and pipeline | TOR-322 ZAP, TOR-323 SAST, #44 CD | ZAP and SAST: no PR yet |
+| 9 Reports and pipeline | #57 ZAP, #54 SAST, #44 CD | Reports read from the PR branches; not re-run |
 
 ## Before the demo (once, the day before)
 
@@ -145,12 +145,26 @@ Browser version: log in, leave the tab 25 seconds, click a page: you land on
 `/login?reason=expired` with "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง". Mention the absolute lifetime
 (`SESSION_LIFETIME_MS`) and that a new login revokes the account's other sessions.
 
-## 6. Google sign-in (not available yet)
+## 6. Google sign-in (5:30 – 6:00) — needs #55
 
-TOR-315 has no pull request at the time of writing. When it merges: open `/login`, show the "Sign in with Google"
-button, and explain authorization-code flow with PKCE, `state` and `nonce`. It needs a Google OAuth client id and
-secret in `.env` (names in `.env.example` after the PR). If it has not merged, skip this step and say it is a
-known gap (slides 6 and 13).
+Google sign-in is off by default and needs an OAuth client (consent screen, Web client with redirect URI
+`<APP_ORIGIN>/api/auth/google/callback`, steps in `docs/gcp-setup.md` 7.3b). We have no client for the demo, so we
+show the flow up to Google and the refusals, not a live login. In `.env` set `GOOGLE_OAUTH_ENABLED=true`,
+`GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` to placeholder values (names as in `.env.example` after #55),
+rebuild (`docker compose up -d --build`), then:
+
+```bash
+WEB=http://127.0.0.1:${WEB_PORT:-3000}
+# 1. the start route redirects to Google with PKCE S256, state and nonce, and sets a browser-binding cookie
+curl -si "$WEB/api/auth/google/start" | grep -iE "^(HTTP|location|set-cookie)"
+# 2. a forged callback (no binding cookie, unknown state) ends on the login page, no session
+curl -si "$WEB/api/auth/google/callback?code=x&state=forged" | grep -iE "^(HTTP|location|set-cookie)"
+```
+
+Point at `code_challenge_method=S256`, `state` and `nonce` in the `Location` header, and that the cookie is `HttpOnly` and
+`SameSite=Lax`. Browser: `/login` shows the Google button (hidden when the flag is off) and the Thai error after the
+forged callback. Say: the ID token's signature, issuer, audience, expiry, `azp`, nonce and `email_verified` are
+checked, and an unverified password account is never linked. If #55 has not merged, skip and cite slides 6 and 13.
 
 ## 7. Vendor B cannot read vendor A's file (6:00 – 7:00) — works on `main`
 
@@ -189,10 +203,14 @@ sanitizer: `docker compose logs api | grep -ciE "$ADMIN|$DEMO_VENDOR_PASSWORD"` 
 
 ## 9. Reports and pipeline (8:00 – 9:00)
 
-- SAST report: the CI run's code-scanning or Semgrep output (TOR-323, no PR yet). Slide 12 has the counts.
-- ZAP report: open the HTML report from the ZAP baseline run (TOR-322, no PR yet).
+- SAST: `docs/security/sast-report.md` (#54). Semgrep baseline 26 findings, now 0 (17 fixed, 9 false positives each
+  suppressed inline with a reason); CodeQL 0 alerts; `npm audit` had 12 production vulnerabilities (2 critical,
+  4 high) fixed by lockfile updates. Show the PR's Semgrep and CodeQL checks or the Security tab.
+- DAST: `docs/security/dast-report.md` (#57). `main`: 0 High, 2 Medium, 9 Low, 5 Info; with #45 to #51 merged:
+  0 / 0 / 5 / 5. Both Mediums (no CSP, no clickjacking protection) are closed by #48. The final scan on merged
+  `main` (TOR-358) is a human task: re-read the numbers before presenting.
 - Secret scan: `docs/security/secret-scan.md` (#51): 530 commits, 4 false positives, none real.
-- CI/CD: GitHub Actions tab → a green `CI` run on `main` → `Deploy to Cloud Run` run with the smoke-check step (#44).
+- CI/CD: GitHub Actions tab, a green `CI` run on `main`, then `Deploy to Cloud Run` with the smoke-check step (#44).
 
 ## After the demo
 

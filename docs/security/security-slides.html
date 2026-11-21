@@ -203,7 +203,7 @@
     <tr><td>Password login</td><td>argon2id hash; uniform failure message; dummy hash for unknown emails; email verification first</td><td>Demo: login; <code>accounts.routes.ts</code></td><td><span class="tag teal">merged</span></td></tr>
     <tr><td>Breached passwords</td><td>Bundled top-10k list plus HIBP k-anonymity (only a 5-char SHA-1 prefix leaves)</td><td>Demo: <code>password123</code> refused with the Thai message &middot; PR #49</td><td><span class="tag gold">open PR</span></td></tr>
     <tr><td>Session idle + absolute timeout</td><td>30 min idle (<code>SESSION_IDLE_TIMEOUT_MS</code>), absolute lifetime; new login revokes other sessions; <code>Clear-Site-Data</code> on logout</td><td>Demo: short idle env, 401 after silence &middot; PR #50</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>Google sign-in (OIDC)</td><td>Authorization-code flow with PKCE, state and nonce, ID token verified</td><td>Demo: the Google button</td><td><span class="tag warn">TODO</span> no PR yet (TOR-315)</td></tr>
+    <tr><td>Google sign-in (OIDC)</td><td>Authorization-code flow with PKCE (S256), <code>state</code>, <code>nonce</code>; ID token signature, issuer, audience, expiry, <code>azp</code>, nonce and <code>email_verified</code> checked; single-use server-side transaction bound to the browser by a cookie; off by default</td><td>Demo: <code>/api/auth/google/start</code> redirect and refusals (no live Google login: no OAuth client) &middot; PR #55</td><td><span class="tag gold">open PR</span></td></tr>
   </table>
   <div class="foot"><span>Grading criteria 4, 5 and 18 (breached passwords, login timeout)</span><span>ASVS V6, V7, V10</span></div>
 </section>
@@ -259,8 +259,8 @@
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
     <tr><td>Environment and credentials</td><td>Every credential from <code>.env</code> (ignored); Compose refuses to start without the secrets; production uses Secret Manager</td><td>Demo: <code>docker compose config</code> without a key fails &middot; PR #51</td><td><span class="tag gold">open PR</span></td></tr>
     <tr><td>Secret scan</td><td>gitleaks over all 530 commits: 4 findings, all documentation placeholders; no rotation needed; CI re-runs it</td><td><code>docs/security/secret-scan.md</code> &middot; PR #51</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>SAST</td><td>Static analysis in CI on every PR</td><td>Report on slide 12</td><td><span class="tag warn">TODO</span> no PR yet (TOR-323)</td></tr>
-    <tr><td>DAST</td><td>OWASP ZAP baseline against the running stack</td><td>Report on slide 12</td><td><span class="tag warn">TODO</span> no PR yet (TOR-322)</td></tr>
+    <tr><td>SAST and dependency audit</td><td>CodeQL (<code>security-and-quality</code>) and Semgrep (<code>p/default</code>, <code>p/nodejs</code>, <code>p/typescript</code>, <code>p/secrets</code>) on every PR; <code>npm audit --audit-level=high</code> gates the build; actions pinned by SHA</td><td><code>docs/security/sast-report.md</code> &middot; PR #54</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>DAST</td><td>OWASP ZAP 2.17 baseline and API scan (passive, signed in as a vendor) against the Compose stack</td><td><code>docs/security/dast-report.md</code> &middot; PR #57</td><td><span class="tag gold">open PR</span></td></tr>
     <tr><td>CI/CD</td><td>Lint, tests, docs check on each PR; auto-deploy to Cloud Run only after CI passes on <code>main</code>; smoke check requires each service Ready</td><td>Actions tab &middot; PR #44</td><td><span class="tag gold">open PR</span></td></tr>
   </table>
   <div class="foot"><span>Grading criteria 9, 14 and 15</span><span>ASVS V13, V15</span></div>
@@ -294,16 +294,17 @@
   <div class="eyebrow"><span><b>Results</b> · SAST, DAST, tests</span><span>12 / 15</span></div>
   <h2>What the tools found, <span class="tick">and what we did about it.</span></h2>
   <div class="cols">
-    <div class="card"><p class="stat-label">SAST (CodeQL or Semgrep)</p>
-      <span class="big">TODO</span><p class="muted">Counts by severity and the fixed / accepted split. <span class="tag warn">placeholder</span> fill from the report once TOR-323 merges.</p></div>
-    <div class="card"><p class="stat-label">DAST (ZAP baseline)</p>
-      <span class="big">TODO</span><p class="muted">Alerts by risk level, with the accepted ones explained. <span class="tag warn">placeholder</span> fill from the report once TOR-322 merges.</p></div>
-    <div class="card"><p class="stat-label">Secret scan (gitleaks)</p>
-      <span class="big">0 real</span><p class="muted">530 commits scanned; 4 false positives (curl examples), allowlisted line by line. PR #51.</p></div>
-    <div class="card"><p class="stat-label">Automated tests</p>
-      <span class="big">1035</span><p class="muted">passing on the access-control branch (PR #52), 10 skipped; includes 77 access-control cases.</p></div>
+    <div class="card"><p class="stat-label">SAST &mdash; Semgrep, baseline on <code>main</code></p>
+      <span class="big">26 &rarr; 0</span><p class="muted">17 fixed (14 unpinned actions, a shell injection in CI, 2 containers running as root), 9 false positives each suppressed inline with a reason. CodeQL: 0 alerts. PR #54.</p></div>
+    <div class="card"><p class="stat-label">Dependency audit (<code>npm audit</code>)</p>
+      <span class="big">6 &rarr; 0</span><p class="muted">production vulnerabilities at high or critical (2 critical, 4 high) fixed by lockfile updates; moderate and low listed and accepted. PR #54.</p></div>
+    <div class="card"><p class="stat-label">DAST &mdash; ZAP, High / Medium / Low / Info</p>
+      <span class="big">0/2/9/5 &rarr; 0/0/5/5</span><p class="muted"><code>main</code> vs <code>main</code> with #45&ndash;#51 merged (local merge). Both Mediums (no CSP, no anti-clickjacking) closed by #48. PR #57.</p></div>
+    <div class="card"><p class="stat-label">Secret scan and tests</p>
+      <span class="big">0 real</span><p class="muted">gitleaks: 530 commits, 4 false positives (PR #51). 1035 tests pass on the access-control branch, 77 of them access control (PR #52).</p></div>
   </div>
-  <div class="foot"><span>Grading criteria 14 and 15</span><span>Update this slide before presenting</span></div>
+  <p class="muted" style="font-size:.8rem">ZAP numbers are pre-freeze; the final scan on merged <code>main</code> (TOR-358) is run by a person, then update this slide.</p>
+  <div class="foot"><span>Grading criteria 14 and 15</span><span>Re-check against the merged <code>main</code> before presenting</span></div>
 </section>
 
 <!-- 13 · ACCEPTED RISKS -->
@@ -316,7 +317,7 @@
     <tr><td><code>/sources/bma-egp/*</code> is public and unlimited (finding F1 in the access matrix)</td><td>No vendor data behind it; awaiting a decision to protect or remove it</td></tr>
     <tr><td>CSP still allows <code>style-src-attr 'unsafe-inline'</code></td><td>React inline <code>style</code> attributes; scripts stay nonce-only</td></tr>
     <tr><td>Breached-password check fails open if HIBP is down</td><td>Availability over a perfect check; the local list is always applied</td></tr>
-    <tr><td>No multi-factor authentication; Google sign-in only if TOR-315 lands</td><td>We chose four other advanced features (rate limits, login timeout, breached passwords, session management)</td></tr>
+    <tr><td>No multi-factor authentication; Google sign-in is off by default and was not run against a real Google client</td><td>We chose four other advanced features (rate limits, login timeout, breached passwords, session management); the OIDC flow is tested with a stub verifier and live up to the redirect</td></tr>
     <tr><td>Unverified on the deployed Cloud Run + IAP stack</td><td>Verified on Docker Compose only</td></tr>
   </table>
   <div class="foot"><span>Grading criterion 16</span><span>Done / not-done checklist is in the project document</span></div>
@@ -331,7 +332,7 @@
     <tr><td class="n">0:00</td><td>Stack up, two vendor accounts, sample TORs seeded</td></tr>
     <tr><td class="n">1:30</td><td>Security headers and CSP in DevTools; CORS refuses a foreign origin</td></tr>
     <tr><td class="n">3:00</td><td>Login burst &rarr; 429; breached password refused in Thai</td></tr>
-    <tr><td class="n">4:30</td><td>Session idle expiry (short timeout); Google sign-in button</td></tr>
+    <tr><td class="n">4:30</td><td>Session idle expiry (short timeout); Google sign-in start redirect and refusals</td></tr>
     <tr><td class="n">6:00</td><td>Vendor B cannot read vendor A's file (curl)</td></tr>
     <tr><td class="n">7:00</td><td>Admin action in the security log; secrets refuse to start without keys</td></tr>
     <tr><td class="n">8:00</td><td>SAST and ZAP reports, CI and deploy run</td></tr>
