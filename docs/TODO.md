@@ -561,6 +561,19 @@ Branch `feat/tor-224-company-path`._
 - [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
       match-email arrow from the extraction worker — both to settle with the email check
 
+## Sprint 6 — TOR-318 Rate limits for login and public APIs
+
+- [x] TOR-341: the web server forwards one client `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`); the API trusts proxy hops
+      from `TRUST_PROXY` (default off, `true` refused) — the login limiter now sees the client (live: client A limited
+      at 60, client B not; a forged prefix still lands in A's bucket)
+- [x] TOR-342: `GET /tors`, `/tors/facets` and `GET`/`HEAD /tors/:id/document` limited per client address
+      (`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` 120, `DOCUMENT_RATE_LIMIT_PER_MIN` 60); live 429 shown directly and via the web page
+- [x] TOR-343: supertest cases for separate buckets, spoofed header from an untrusted peer, 429 on search and download
+- [ ] Not verified: the entries Google's front end really appends on the web-to-api call in Cloud Run; confirm
+      `TRUST_PROXY=2` / `TRUSTED_PROXY_HOPS=1` against a request log after the next deploy
+- [ ] The dashboard `/stats` routes and `GET /tors/:id` are not limited (cheap, cached reads); revisit if abused
+- [ ] Compose web has no `APP_ORIGIN`, so `/api/auth/*` returns 500 there until it is set (found while testing; not changed here)
+
 ## Sprint 6 — TOR-316 Security event logging
 
 - [x] TOR-333 One structured logger (`core/logger.ts`, `LOG_LEVEL`); every `console.*` in the API and workers replaced
@@ -639,5 +652,7 @@ Branch `feat/tor-224-company-path`._
 - [ ] Decide whether `pixel-agents` stays — it rewrote `settings.json`, hooked every event, and
       changed the model from `claude-fable-5[1m]` to `opus`
 - [ ] Decide whether Fable goes back as the architect model
+
+TOR-318 review: Compose uses the socket peer for its published API port. Cloud Run sets trusted hop counts explicitly.
 
 TOR-316 review: unexpected errors log only a classified type, internal code and request ID.

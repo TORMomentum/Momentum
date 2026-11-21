@@ -53,8 +53,9 @@ async function seedRecord(restricted = false): Promise<string> {
   return result.insertedId.toString();
 }
 
-function buildTestApp() {
+function buildTestApp(testConfig = config, trustProxy: number | string = 1) {
   const app = express();
+  app.set("trust proxy", trustProxy);
   app.use((req, _res, next) => {
     receivedAuthorization = req.get("authorization");
     next();
@@ -62,12 +63,12 @@ function buildTestApp() {
   app.use(
     "/api/v1/tors",
     buildTorsRouter({
-      service: new TorsService({ repo: new TorsRepository(db), config }),
+      service: new TorsService({ repo: new TorsRepository(db), config: testConfig }),
       storage,
-      search: config.search,
-      config,
+      search: testConfig.search,
+      config: testConfig,
       profiles: new ProfileRepository(db),
-      matching: new MatchingRepository(db, config),
+      matching: new MatchingRepository(db, testConfig),
     }),
   );
   app.use(errorMiddleware);
@@ -180,5 +181,40 @@ describe("public TOR list route", () => {
     expect(response.body.items).toHaveLength(1);
     expect(response.body.items[0]).toMatchObject({ budget: { value: 100 }, verdict: { kind: "not-evaluated" } });
     expect(response.body.items[0]).not.toHaveProperty("cohort");
+  });
+});
+
+describe("public read rate limits (TOR-318)", () => {
+  const tiny = { ...config, publicSearchRateLimitPerMin: 2, documentRateLimitPerMin: 2 };
+
+  it("answers 429 on search past the limit, per forwarded client address", async () => {
+    const app = buildTestApp(tiny);
+    const search = (ip: string) => request(app).get("/api/v1/tors").set("X-Forwarded-For", ip);
+
+    expect((await search("203.0.113.1")).status).toBe(200);
+    expect((await search("203.0.113.1")).status).toBe(200);
+    expect((await search("203.0.113.1")).status).toBe(429);
+    expect((await search("203.0.113.2")).status).toBe(200);
+  });
+
+  it("answers 429 on the document download past the limit, on a bucket separate from search", async () => {
+    const id = await seedRecord();
+    const app = buildTestApp(tiny);
+    const download = () => request(app).get(`/api/v1/tors/${id}/document`).set("X-Forwarded-For", "203.0.113.1");
+
+    expect((await download()).status).toBe(200);
+    expect((await download()).status).toBe(200);
+    expect((await download()).status).toBe(429);
+    expect((await request(app).get("/api/v1/tors").set("X-Forwarded-For", "203.0.113.1")).status).toBe(200);
+  });
+
+  it("ignores X-Forwarded-For from a peer that is not a trusted proxy", async () => {
+    // The test client connects from loopback; only 10.0.0.0/8 is trusted here.
+    const app = buildTestApp(tiny, "10.0.0.0/8");
+    const search = (ip: string) => request(app).get("/api/v1/tors").set("X-Forwarded-For", ip);
+
+    expect((await search("203.0.113.1")).status).toBe(200);
+    expect((await search("203.0.113.2")).status).toBe(200);
+    expect((await search("203.0.113.3")).status).toBe(429);
   });
 });

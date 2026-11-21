@@ -106,6 +106,14 @@ const schema = z.object({
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
   AUTH_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(60),
   AUTH_RATE_LIMIT_PER_EMAIL: z.coerce.number().int().positive().default(10),
+  // Per client address, per minute, on the costly public reads (TOR-318). Generous for the demo.
+  PUBLIC_SEARCH_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(120),
+  DOCUMENT_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(60),
+  // Express `trust proxy`: "false" (nothing trusted), a hop count, or an address list/names such as
+  // "loopback, uniquelocal". "true" is refused - it would trust any X-Forwarded-For a caller sends.
+  TRUST_PROXY: z.string().trim().min(1).default("false").refine((v) => v.toLowerCase() !== "true", {
+    message: "TRUST_PROXY=true trusts every caller's X-Forwarded-For; use a hop count or an address list",
+  }),
   VERIFY_TOKEN_TTL_MS: z.coerce.number().int().positive().default(86_400_000),
   RESET_TOKEN_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
   CONSENT_NOTICE_VERSION: z.string().min(1).default("2026-10-06"),
@@ -366,6 +374,10 @@ export interface Config {
   };
   authRateLimitPerIp: number;
   authRateLimitPerEmail: number;
+  publicSearchRateLimitPerMin: number;
+  documentRateLimitPerMin: number;
+  /** Value for Express `trust proxy`; `false` leaves it unset. */
+  trustProxy: false | number | string;
   verifyTokenTtlMs: number;
   resetTokenTtlMs: number;
   consentNotice: { version: string; hash: string };
@@ -458,6 +470,11 @@ export const OPEN_VALUES = [
   "ANOMALY_METHOD",
 ] as const;
 
+function parseTrustProxy(value: string): false | number | string {
+  if (value.toLowerCase() === "false") return false;
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | undefined>): Config {
   const parsed = schema.parse(env);
   return {
@@ -498,6 +515,9 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     },
     authRateLimitPerIp: parsed.AUTH_RATE_LIMIT_PER_IP,
     authRateLimitPerEmail: parsed.AUTH_RATE_LIMIT_PER_EMAIL,
+    publicSearchRateLimitPerMin: parsed.PUBLIC_SEARCH_RATE_LIMIT_PER_MIN,
+    documentRateLimitPerMin: parsed.DOCUMENT_RATE_LIMIT_PER_MIN,
+    trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,
     resetTokenTtlMs: parsed.RESET_TOKEN_TTL_MS,
     consentNotice: { version: parsed.CONSENT_NOTICE_VERSION, hash: parsed.CONSENT_NOTICE_HASH },

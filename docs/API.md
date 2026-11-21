@@ -260,6 +260,12 @@ last updated. Keyword matching (`q`) reads the title and agency through an Atlas
 `SEARCH_ATLAS_ENABLED` is on: it matches whole Thai words, best first, up to `SEARCH_MAX_HITS`. With the
 switch off (a plain `mongod`) it falls back to a substring match. The request and response do not change.
 
+**Rate limit (TOR-318).** `GET /tors` and `GET /tors/facets` share one allowance of
+`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` (default 120) per client address per minute; past it the answer is
+an empty `429` with no rate-limit headers (the same as the sign-in limiter). "Client address" is the
+real client only because of the proxy scheme in the 2026-11-20 revision of the accounts-and-sessions spec
+(`TRUST_PROXY` on the API, the web server forwarding one `X-Forwarded-For`).
+
 ### `GET /api/v1/tors/facets` ✅
 
 The filter options that occur in the published corpus, most frequent first, capped at
@@ -292,7 +298,8 @@ is a 404.
 ### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
 Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
-and never opens the object. A restricted record answers **`404`**, the same as an unknown id: a
+and never opens the object. Limited to `DOCUMENT_RATE_LIMIT_PER_MIN` (default 60) per client address per
+minute, `HEAD` and `GET` together, on a bucket of its own: past it, an empty `429` (TOR-318). A restricted record answers **`404`**, the same as an unknown id: a
 `403` would confirm both that the record exists and that it was taken down (`FR-B-6`).
 
 **Query:** `?disposition=inline` or `?disposition=attachment` (default). Any other value is `400`.
