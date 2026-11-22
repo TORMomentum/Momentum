@@ -116,7 +116,7 @@ Twenty alerts were open on `main` at `e841398`: ten in code scanning and ten fro
 | Alert | Rule | Where | Outcome |
 | :---- | :---- | :---- | :---- |
 | Semgrep #20, #21 | detect-non-literal-regexp | admin and admin-accounts repositories | **Fixed**: a Mongo `$regex` string (still fully escaped) replaces `new RegExp`, so the inline `nosemgrep` is gone |
-| CodeQL #18 | js/regex/unmatchable-dollar | `sources/national-egp/package.ts` | **Fixed**: `(?![a-z])` replaces `([^a-z]|$)` before `.*\.pdf$` |
+| CodeQL #18 | js/regex/unmatchable-dollar | `sources/national-egp/package.ts` | **Fixed**: `(?![a-z])` replaces `([^a-z]\|$)` before `.*\.pdf$` |
 | CodeQL #15 | js/polynomial-redos | `packages/shared/src/categories.ts` | **Fixed**: the title is cut at the first "โดยวิธี"/"ด้วยวิธี" match instead of `.*$` |
 | CodeQL #12 | js/incomplete-multi-character-sanitization | `sources/national-egp/announcements.ts` | **Fixed**: tags are stripped until the text stops changing |
 | CodeQL #13 | js/incomplete-sanitization | `tools/test_report.mjs` | **Fixed**: backslashes are escaped before pipes |
