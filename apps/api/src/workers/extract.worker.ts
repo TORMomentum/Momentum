@@ -22,6 +22,7 @@ import { VaultService } from "../modules/vault/vault.service.js";
 import { createVaultStorage } from "../adapters/storage.factory.js";
 import { StatsRepository } from "../modules/stats/stats.repository.js";
 import { configureLogger, logger } from "../core/logger.js";
+import { installProcessErrorHandlers } from "../core/process-errors.js";
 
 /**
  * Given a TOR id, read the stored document, OCR + extract the nine fields,
@@ -233,6 +234,7 @@ if (isEntry) {
   // Same as the API server: on a developer machine the configuration lives in
   // the repository .env; in a container it comes from Compose and there is no
   // file to read.
+  installProcessErrorHandlers();
   loadEnvFile();
   const config = loadConfig(process.env);
   // Only where a probe port is configured (Cloud Run). Locally the API already owns API_PORT.

@@ -4,6 +4,7 @@ import { loadEnvFile } from "../core/env-file.js";
 import { connect, ensureIndexes } from "../core/db.js";
 import { StatsService } from "../modules/stats/stats.service.js";
 import { configureLogger, logger } from "../core/logger.js";
+import { installProcessErrorHandlers } from "../core/process-errors.js";
 
 const pause = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
@@ -41,6 +42,7 @@ export async function startStatsWorker(config: ReturnType<typeof loadConfig>): P
 
 const isEntry = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isEntry) {
+  installProcessErrorHandlers();
   loadEnvFile();
   startStatsWorker(loadConfig(process.env)).catch((error: Error) => {
     logger.error("stats_worker_crashed", { error: error.message });
