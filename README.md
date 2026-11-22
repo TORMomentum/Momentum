@@ -5,7 +5,7 @@
 **Thai government procurement TORs, collected in one place, read with AI, matched to vendors,
 and published for anyone to audit.**
 
-[![Live on Cloud Run](https://img.shields.io/badge/live-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](https://tor-radar-web-aqhy2xehkq-as.a.run.app/)
+[![Live on Cloud Run](https://img.shields.io/badge/live-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](https://tor-radar-web-412311451957.asia-southeast1.run.app/)
 [![CI](https://github.com/TORMomentum/Momentum/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TORMomentum/Momentum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/TORMomentum/Momentum/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/TORMomentum/Momentum/actions/workflows/codeql.yml)
 [![Semgrep](https://github.com/TORMomentum/Momentum/actions/workflows/semgrep.yml/badge.svg?branch=main)](https://github.com/TORMomentum/Momentum/actions/workflows/semgrep.yml)
@@ -51,7 +51,7 @@ with a documented statistical-anomaly rule. Every figure traces back to an unalt
 <table>
 <tr><td>
 
-**🔗 <https://tor-radar-web-aqhy2xehkq-as.a.run.app/>**
+**🔗 <https://tor-radar-web-412311451957.asia-southeast1.run.app/>**
 
 </td></tr>
 </table>
