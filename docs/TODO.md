@@ -726,7 +726,11 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [x] TOR-363 Findings triaged and exported to [security/sast-report.md](security/sast-report.md)
 - [x] Semgrep findings fixed: actions pinned to commit SHAs, shell injection in `ci.yml`, containers run as `node`
 - [x] CodeQL alerts from the first PR run folded into the report (none)
-- [ ] Two moderate `uuid` advisories (via `@google-cloud/storage`) accepted until that package's next major is adopted
+- [x] The `uuid` advisory under `@google-cloud/storage` closed by an override to `^11.1.1` (2026-11-22), not by the storage major
+- [x] 2026-11-22: all 20 open alerts addressed: 8 CodeQL/Semgrep fixed in code, 2 CodeQL dismissed as false positives
+      (`safe-fetch.ts` is the SSRF guard itself; `build_seeds.mjs` is a dev tool writing a fixed path), 10 Dependabot
+      closed by mermaid 12.3.0, typescript-eslint ^8.73, vitest ^4.1.12 and the uuid override. See sast-report.md §8
+- [ ] mermaid 12 is checked only by `tools/check_mermaid.mjs` in CI; no page renders Mermaid
 - [ ] Running the images as `node` verified against the deployed Cloud Run services (checked on Compose only)
 
 ## 3. Open values carried from the SRS — BLOCKED ON DATA
