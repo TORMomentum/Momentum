@@ -33,7 +33,7 @@ describe("apiRequest", () => {
   it("fetches and attaches an identity token scoped to api's own URL when running on Cloud Run", async () => {
     process.env.K_SERVICE = "tor-radar-web";
     const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url.startsWith("http://metadata.google.internal")) {
+      if (new URL(url).host === "metadata.google.internal") {
         expect(url).toContain(encodeURIComponent("https://api.example.run.app"));
         return Promise.resolve(new Response("the-id-token", { status: 200 }));
       }

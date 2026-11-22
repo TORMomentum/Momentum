@@ -22,7 +22,7 @@ function basename(name: string): string {
 }
 
 // TOR.pdf, TOR(1).pdf, 1141001044_TOR.pdf — "TOR" as a word of its own, so monitor.pdf is not one.
-const NAMED_TOR = /(^|[^a-z])tor([^a-z]|$).*\.pdf$/i;
+const NAMED_TOR = /(^|[^a-z])tor(?![a-z]).*\.pdf$/i;
 const ATTACHED_TOR = /^attach_tor_(\d+)\.pdf$/i; // Attach_TOR_1.pdf
 const ANNOUNCEMENT = /^annoudoc_.*\.pdf$/i; // annoudoc_<deptId>_<projectId>.pdf
 const BILL_OF_QUANTITIES = /^attach_boq_(\d+)\.pdf$/i; // Attach_BOQ_1.pdf

@@ -63,7 +63,7 @@ export class MatchQualityService {
 
   async worksheet(accountId: string): Promise<{ items: WorksheetItem[] }> {
     const [rows, labels] = await Promise.all([this.scored(accountId), this.deps.labels.forAccount(accountId)]);
-    const order = (torId: string) => createHash("sha1").update(`${accountId}:${torId}`).digest("hex");
+    const order = (torId: string) => createHash("sha256").update(`${accountId}:${torId}`).digest("hex");
     const matched = rows
       .filter((row) => row.matched)
       .sort((a, b) => b.score - a.score)

@@ -22,9 +22,13 @@ export interface ListItem {
 const ENTITIES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" };
 
 function cellText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]+>/g, "")
+  let text = html.replace(/<br\s*\/?>/gi, " ");
+  // Strip tags until nothing changes: a single pass can leave one behind ("<scr<b>ipt>" becomes "<script>").
+  for (let previous = ""; previous !== text; ) {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, "");
+  }
+  return text
     .replace(/&(nbsp|amp|lt|gt|quot|#39);/g, (_, name: string) => ENTITIES[name])
     .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
     .replace(/\s+/g, " ")

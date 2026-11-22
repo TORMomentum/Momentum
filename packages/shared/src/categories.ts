@@ -54,6 +54,12 @@ function kindOf(text: string): "buy" | "hire" | "build" | "rent" | null {
 /** List values that only say the kind, which a title can make more specific. */
 const GENERIC: ReadonlySet<string> = new Set(["จ้างเหมาบริการ", "ซื้อวัสดุและครุภัณฑ์อื่น ๆ", "งานก่อสร้าง-อื่น ๆ"]);
 
+/** The title up to its procurement method ("โดยวิธี…" / "ด้วยวิธี…"). A cut at the first match, not `.*$`, so it stays linear. */
+function cutMethod(title: string): string {
+  const method = /(โดย|ด้วย)วิธี/.exec(title);
+  return method ? title.slice(0, method.index) : title;
+}
+
 /** Construction by what is built: the category's own word first, the title's only if it has none. */
 function buildingWork(category: string, title: string): TorCategory {
   for (const text of [category, title]) {
@@ -78,7 +84,7 @@ export function normalizeCategory(text: unknown, context?: unknown): TorCategory
   // what is bought — and its "อิเล็กทรอนิกส์" would read as electronics — so it is cut first.
   const title =
     typeof context === "string"
-      ? context.normalize("NFC").replace(/(โดย|ด้วย)วิธี.*$/, "").replace(/\s+/g, " ").trim()
+      ? cutMethod(context.normalize("NFC")).replace(/\s+/g, " ").trim()
       : "";
   // On the list already, and specific — or nothing to refine it with — it stands.
   if (isTorCategory(category) && (!GENERIC.has(category) || !title)) return category;
