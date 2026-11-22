@@ -1,13 +1,63 @@
 # DAST report — OWASP ZAP (TOR-322)
 
-_Scans run 2026-11-20 and 2026-11-21. Story TOR-322 (criterion 15); subtasks TOR-356, TOR-357, TOR-358, TOR-359._
+_Scans run 2026-11-20, 2026-11-21 and 2026-11-22. Story TOR-322 (criterion 15); subtasks TOR-356, TOR-357, TOR-358, TOR-359._
 
 ## Status
 
-This is the **pre-freeze** report. The final full scan after code freeze (**TOR-358**, Sun 22 Nov 12:00)
-has not been run: the security pull requests (#45 to #51) were still open when this was written, so the
-second table below is a local merge of them, not the real `main`. **A human must re-run the scan on the
-merged `main` and update the tables** (exact command in [Re-running](#re-running)).
+**Final.** The final scan after code freeze (**TOR-358**) ran on 2026-11-22 against the merged `main` at
+`b629eb6`, with every Sprint 6 pull request in it: the passive baseline signed out and signed in, plus an
+**active** scan of the web app. No High or Medium alert on any of them, and no attack in the active scan
+succeeded. See [Final scan on merged main](#final-scan-on-merged-main-tor-358). The earlier sections below
+are the pre-freeze record and are kept as history.
+
+## Final scan on merged main (TOR-358)
+
+Target: a throwaway Compose stack built from `main` at `b629eb6` (project `torzap`, its own Mongo and GCS
+emulator volumes; the shared Atlas cluster was not reached, because Compose pins `MONGO_URL` to the `mongo`
+service). Seeded with the 10 benchmark TORs (`tools/seed_search_corpus.mts`) and one throwaway vendor account,
+registered and verified through Mailpit, then signed in through the web `/api/auth/login`.
+
+| Scan | Script | High | Medium | Low | Info |
+| :---- | :---- | ---: | ---: | ---: | ---: |
+| Web and API, signed out | `tools/zap/run.sh` (baseline, passive; API over `openapi.json`) | 0 | 0 | 3 | 5 |
+| Web and API, signed in as a vendor | the same, `ZAP_SESSION_COOKIE` set | 0 | 0 | 5 | 7 |
+| Web, **active** attack scan, signed out | `zap-full-scan.py -t http://web:3000 -m 5` | 0 | 0 | 3 | 3 |
+
+The active scan spidered 88 URLs and ran 141 rules with no alert from any attack rule, among them SQL
+injection (generic and time-based for MySQL, PostgreSQL, Oracle, MsSQL, Hypersonic), NoSQL injection for
+MongoDB (plain and time-based), reflected and persistent XSS, path traversal, SSRF, remote OS command
+injection (plain and time-based), server-side code, template (plain and blind), expression-language, XPath,
+XSLT and CRLF injection, and server-side include.
+
+Alerts, triaged:
+
+| Rule | Risk | Scans | Verdict |
+| :---- | :---- | :---- | :---- |
+| 90004 Cross-Origin-Resource-Policy missing | Low | all | **Accepted risk**, unchanged: public, same-origin static assets |
+| 90004 Cross-Origin-Opener-Policy / -Embedder-Policy missing | Low | all | **Accepted risk**, unchanged: no cross-origin popups or embeds |
+| 10096 Timestamp Disclosure - Unix | Low | signed in | **False positive**: the number is in the scan account's own e-mail address (`zap-<epoch>@example.test`), echoed back to its owner on its own pages |
+| 10044 Big Redirect Detected | Low | signed in | **False positive**, as before |
+| 10031 User Controllable HTML Element Attribute | Info | signed in | **False positive**, as before (`/profile/path?target=`) |
+| 10104 User Agent Fuzzer | Info | active | **No action**: ZAP repeated requests with other User-Agent values; nothing new was returned |
+| 10049, 10109, 100000 | Info | all | **No action**, as before |
+
+Closed since the pre-freeze report: `X-Content-Type-Options` and `Permissions-Policy` missing on
+`/_next/static` files (the two "open, low" rows below) no longer appear.
+
+Limits of the final scan:
+
+- The active scan targeted the web app signed out. The API was scanned passively, over the six public
+  endpoints in `openapi.json`; its input handling is covered by the integration tests.
+- ZAP's DOM XSS rule was left out (`-addonuninstall domxss`): it starts a browser inside the ZAP container,
+  and the first attempt was killed for lack of memory on the 4 GB Docker VM. Reflected and persistent XSS
+  rules ran; React escaping and the nonce CSP are the controls against DOM XSS.
+- The stack ran over HTTP on the Compose network, so ZAP could not check TLS or HSTS.
+- `tools/zap/run.sh` fails on macOS's bash 3.2 when no session cookie is set (`zap_opts[@]: unbound
+  variable` under `set -u`). The scans above ran from a copy that expands the array as
+  `${zap_opts[@]+"${zap_opts[@]}"}`; the script in the repository is unchanged.
+
+Reports (HTML, JSON, Markdown) are in `zap-reports/final.*`, `zap-reports/final-auth.*` and
+`zap-reports/final-active/` on the machine that ran them (gitignored), and are attached to TOR-359.
 
 ## Tool and method
 

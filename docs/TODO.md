@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-20_
+_last updated: 2026-11-22_
 
 ---
 
@@ -606,8 +606,9 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 - [x] TOR-373 Security test process (§6)
 - [ ] The document describes the system as it will be after PRs #44 to #52 merge; re-read its evidence column after each merge
 - [x] SAST (#54), ZAP (#57) and Google OIDC (#55) added to the document and the workbook (11 more requirements Have now); counts taken from the reports on their branches
-- [ ] Final ZAP scan on the merged `main` (TOR-358) is run by a person; update §6 of the document from it
-- [ ] A person takes the DevTools header screenshot (TOR-355) and exports the final PDF
+- [x] Final ZAP scan on the merged `main` (TOR-358) run; `dast-report.md` and slide 12 updated from it
+- [x] DevTools header screenshots (TOR-355): `docs/security/evidence/web-headers-devtools-1.png`, `-2.png` (#59)
+- [ ] Export the final PDF of the document
 
 ## Sprint 6 — TOR-327 Security presentation and submission
 
@@ -616,7 +617,8 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 
 - [x] TOR-374 Slides: `docs/security/security-slides.html`, 15 slides, keyboard navigation, renders offline
 - [x] TOR-374 Slide 12 results filled from the SAST report (#54) and the DAST report (#57), pre-freeze numbers
-- [ ] TOR-374 After the final ZAP scan on merged `main` (TOR-358) update slide 12; add member names to slide 1
+- [x] TOR-374 Slide 12 DAST card updated from the final ZAP scan on merged `main` (TOR-358)
+- [ ] TOR-374 Add member names to slide 1
 - [ ] TOR-374 Slide status tags (merged / open PR / TODO) re-checked against `main` the morning of the presentation
 - [x] TOR-375 Demo script `docs/security/demo-script.md` and seed `tools/demo-seed.mjs` (buckets, two verified vendors, a vault file, two TORs through the intake API); seed run twice on `main`
 - [x] TOR-375 Verified live on `main`: headers (before picture), login burst 5x401 then 429, vendor B gets 404 for vendor A's file
@@ -632,8 +634,10 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [x] Run on the open security PRs merged locally (#45-#51), also signed in as a vendor: 0 High, 0 Medium, 5-6 Low
 - [x] TOR-357 No High or Medium finding remains once those PRs merge, so no code fix was needed here
 - [x] TOR-359 Report and accepted risks: [security/dast-report.md](security/dast-report.md)
-- [ ] TOR-358 Final full scan after code freeze (Sun 22 Nov 12:00): a human re-runs `tools/zap/run.sh` on the merged `main`, with and without a session cookie, and updates the report
-- [ ] Optional: raise the Low header findings on static assets (Permissions-Policy, nosniff, CORP) if the team wants a zero-warning baseline
+- [x] TOR-358 Final scan on merged `main` at `b629eb6` (22 Nov): baseline signed out 0/0/3/5, signed in 0/0/5/7, active web scan 0/0/3/3 (88 URLs, 141 rules, no attack succeeded); report updated
+- [ ] `tools/zap/run.sh` fails on macOS bash 3.2 without a session cookie (`zap_opts[@]: unbound variable`); fix the empty-array expansion
+- [x] Permissions-Policy and nosniff on static assets: no longer reported on `main`
+- [ ] Optional: CORP, COOP and COEP (accepted risks) if the team wants a zero-warning baseline
 
 ## Sprint 6 — TOR-325 Access control evidence
 
