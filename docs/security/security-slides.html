@@ -101,7 +101,7 @@
   OWASP ASVS: what we built, how we verified it, and what we accepted.</p>
   <p class="muted">Monday 23 November 2026 · 13:00 · Members: <i>[TODO: names]</i></p>
   <p class="muted" style="font-size:.8rem">Keys: &rarr; / Space next · &larr; back · Home / End · Print gives one slide per page.
-  Status tags reflect the repository on 2026-11-21: <span class="tag teal">merged</span> <span class="tag gold">open PR</span> <span class="tag warn">TODO</span></p>
+  Status tags reflect the repository on 2026-11-22: <span class="tag teal">merged</span> <span class="tag teal">merged</span> <span class="tag warn">TODO</span></p>
   <div class="foot"><span>TOR Radar — security</span><span>docs/security/</span></div>
 </section>
 
@@ -200,9 +200,9 @@
   <table>
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
     <tr><td>Password login</td><td>argon2id hash; uniform failure message; dummy hash for unknown emails; email verification first</td><td>Demo: login; <code>accounts.routes.ts</code></td><td><span class="tag teal">merged</span></td></tr>
-    <tr><td>Breached passwords</td><td>Bundled top-10k list plus HIBP k-anonymity (only a 5-char SHA-1 prefix leaves)</td><td>Demo: <code>password123</code> refused with the Thai message &middot; PR #49</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>Session idle + absolute timeout</td><td>30 min idle (<code>SESSION_IDLE_TIMEOUT_MS</code>), absolute lifetime; new login revokes other sessions; <code>Clear-Site-Data</code> on logout</td><td>Demo: short idle env, 401 after silence &middot; PR #50</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>Google sign-in (OIDC)</td><td>Authorization-code flow with PKCE (S256), <code>state</code>, <code>nonce</code>; ID token signature, issuer, audience, expiry, <code>azp</code>, nonce and <code>email_verified</code> checked; single-use server-side transaction bound to the browser by a cookie; off by default</td><td>Demo: <code>/api/auth/google/start</code> redirect and refusals (no live Google login: no OAuth client) &middot; PR #55</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Breached passwords</td><td>Bundled top-10k list plus HIBP k-anonymity (only a 5-char SHA-1 prefix leaves)</td><td>Demo: <code>password123</code> refused with the Thai message &middot; PR #49</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Session idle + absolute timeout</td><td>30 min idle (<code>SESSION_IDLE_TIMEOUT_MS</code>), absolute lifetime; new login revokes other sessions; <code>Clear-Site-Data</code> on logout</td><td>Demo: short idle env, 401 after silence &middot; PR #50</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Google sign-in (OIDC)</td><td>Authorization-code flow with PKCE (S256), <code>state</code>, <code>nonce</code>; ID token signature, issuer, audience, expiry, <code>azp</code>, nonce and <code>email_verified</code> checked; single-use server-side transaction bound to the browser by a cookie; off by default</td><td>Demo: <code>/api/auth/google/start</code> redirect and refusals (no live Google login: no OAuth client) &middot; PR #55</td><td><span class="tag teal">merged</span></td></tr>
   </table>
   <div class="foot"><span>Grading criteria 4, 5 and 18 (breached passwords, login timeout)</span><span>ASVS V6, V7, V10</span></div>
 </section>
@@ -213,9 +213,9 @@
   <h2>Headers set in our code, <span class="tick">shown in DevTools.</span></h2>
   <table>
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
-    <tr><td>Web CSP</td><td>Per-request nonce, <code>strict-dynamic</code>, <code>object-src 'none'</code>, <code>frame-ancestors 'none'</code> (self for the document viewer); HSTS, nosniff, Referrer-Policy, Permissions-Policy; no <code>X-Powered-By</code></td><td>DevTools &rarr; Network &rarr; Headers &middot; PR #48 (<code>docs/security/evidence/</code>)</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>API headers</td><td>helmet with deny-all CSP, nosniff, no <code>X-Powered-By</code></td><td><code>curl -I</code> on the API &middot; PR #45</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>CORS</td><td>Single allowed origin (<code>APP_ORIGIN</code>), exact match, never <code>*</code>; foreign preflight gets no CORS headers</td><td>Tests; <code>curl -H "Origin: https://evil.example"</code> &middot; PR #45</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Web CSP</td><td>Per-request nonce, <code>strict-dynamic</code>, <code>object-src 'none'</code>, <code>frame-ancestors 'none'</code> (self for the document viewer); HSTS, nosniff, Referrer-Policy, Permissions-Policy; no <code>X-Powered-By</code></td><td>DevTools &rarr; Network &rarr; Headers &middot; PR #48 (<code>docs/security/evidence/</code>)</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>API headers</td><td>helmet with deny-all CSP, nosniff, no <code>X-Powered-By</code></td><td><code>curl -I</code> on the API &middot; PR #45</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>CORS</td><td>Single allowed origin (<code>APP_ORIGIN</code>), exact match, never <code>*</code>; foreign preflight gets no CORS headers</td><td>Tests; <code>curl -H "Origin: https://evil.example"</code> &middot; PR #45</td><td><span class="tag teal">merged</span></td></tr>
     <tr><td>CSRF</td><td>Server-side Origin check on every account write; SameSite cookies</td><td><code>requireSameOrigin</code></td><td><span class="tag teal">merged</span></td></tr>
   </table>
   <p class="muted" style="font-size:.82rem">On <code>main</code> today both servers still send <code>X-Powered-By</code> and no CSP: the demo shows the before and after.</p>
@@ -229,8 +229,8 @@
   <table>
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
     <tr><td>Login rate limit</td><td>Per IP and per email (<code>express-rate-limit</code>); empty 429</td><td>Demo: 14 bad logins &rarr; 5&times;401 then 429 (run on <code>main</code>)</td><td><span class="tag teal">merged</span></td></tr>
-    <tr><td>Real client IP; search and download limits</td><td>Web forwards one <code>X-Forwarded-For</code>; API trusts a configured number of hops; 120/min search, 60/min documents</td><td>Two clients, separate buckets &middot; PR #47</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>Security logging</td><td>JSON lines; <code>auth.login.failure</code>, <code>auth.denied</code>, <code>ratelimit.hit</code>, <code>admin.action</code>; one sanitizer masks secrets</td><td>Demo: <code>docker compose logs api | grep admin.action</code> &middot; PR #46</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Real client IP; search and download limits</td><td>Web forwards one <code>X-Forwarded-For</code>; API trusts a configured number of hops; 120/min search, 60/min documents</td><td>Two clients, separate buckets &middot; PR #47</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Security logging</td><td>JSON lines; <code>auth.login.failure</code>, <code>auth.denied</code>, <code>ratelimit.hit</code>, <code>admin.action</code>; one sanitizer masks secrets</td><td>Demo: <code>docker compose logs api | grep admin.action</code> &middot; PR #46</td><td><span class="tag teal">merged</span></td></tr>
     <tr><td>Error handling</td><td>Central handler: generic 500, no stack trace; Zod failures return paths, never input</td><td>Any bad request in the demo</td><td><span class="tag teal">merged</span></td></tr>
   </table>
   <div class="foot"><span>Grading criteria 11, 12 and 18 (rate limits)</span><span>ASVS V16, V2.4</span></div>
@@ -243,8 +243,8 @@
   <table>
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
     <tr><td>Roles</td><td>Separate intake and admin keys (constant-time compare); vendor sessions; admin area needs staff pass and, if signed in, the admin role</td><td>401/403 matrix</td><td><span class="tag teal">merged</span></td></tr>
-    <tr><td>Own-data access</td><td><code>/me</code> routes take the account from the session, never from an id in the request; other account's id returns 404</td><td>Demo: curl B &rarr; A's file id = 404 (run on <code>main</code>) &middot; matrix and test, PR #52</td><td><span class="tag teal">merged</span> <span class="tag gold">test: open PR</span></td></tr>
-    <tr><td>Input validation, NoSQL injection</td><td>Zod on every body; primitives-only filters so no operator object reaches Mongo; magic-byte check; escaped regexes (matching fixed in PR #51)</td><td>Tests</td><td><span class="tag teal">merged</span> <span class="tag gold">regex fix: PR #51</span></td></tr>
+    <tr><td>Own-data access</td><td><code>/me</code> routes take the account from the session, never from an id in the request; other account's id returns 404</td><td>Demo: curl B &rarr; A's file id = 404 (run on <code>main</code>) &middot; matrix and test, PR #52</td><td><span class="tag teal">merged</span> <span class="tag teal">merged</span></td></tr>
+    <tr><td>Input validation, NoSQL injection</td><td>Zod on every body; primitives-only filters so no operator object reaches Mongo; magic-byte check; escaped regexes (matching fixed in PR #51)</td><td>Tests</td><td><span class="tag teal">merged</span> <span class="tag teal">merged</span></td></tr>
     <tr><td>SSRF on URL intake</td><td>Scheme allowlist, every resolved address checked, re-check after redirects, size and time caps</td><td>Unit tests</td><td><span class="tag teal">merged</span></td></tr>
   </table>
   <div class="foot"><span>Grading criteria 6, 7 and 8</span><span>ASVS V1, V2, V5, V8</span></div>
@@ -256,11 +256,11 @@
   <h2>Nothing secret in git. <span class="tick">Every merge is checked, then deployed.</span></h2>
   <table>
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
-    <tr><td>Environment and credentials</td><td>Every credential from <code>.env</code> (ignored); Compose refuses to start without the secrets; production uses Secret Manager</td><td>Demo: <code>docker compose config</code> without a key fails &middot; PR #51</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>Secret scan</td><td>gitleaks over all 530 commits: 4 findings, all documentation placeholders; no rotation needed; CI re-runs it</td><td><code>docs/security/secret-scan.md</code> &middot; PR #51</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>SAST and dependency audit</td><td>CodeQL (<code>security-and-quality</code>) and Semgrep (<code>p/default</code>, <code>p/nodejs</code>, <code>p/typescript</code>, <code>p/secrets</code>) on every PR; <code>npm audit --audit-level=high</code> gates the build; actions pinned by SHA</td><td><code>docs/security/sast-report.md</code> &middot; PR #54</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>DAST</td><td>OWASP ZAP 2.17 baseline and API scan (passive, signed in as a vendor) against the Compose stack</td><td><code>docs/security/dast-report.md</code> &middot; PR #57</td><td><span class="tag gold">open PR</span></td></tr>
-    <tr><td>CI/CD</td><td>Lint, tests, docs check on each PR; auto-deploy to Cloud Run only after CI passes on <code>main</code>; smoke check requires each service Ready</td><td>Actions tab &middot; PR #44</td><td><span class="tag gold">open PR</span></td></tr>
+    <tr><td>Environment and credentials</td><td>Every credential from <code>.env</code> (ignored); Compose refuses to start without the secrets; production uses Secret Manager</td><td>Demo: <code>docker compose config</code> without a key fails &middot; PR #51</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Secret scan</td><td>gitleaks over all 530 commits: 4 findings, all documentation placeholders; no rotation needed; CI re-runs it</td><td><code>docs/security/secret-scan.md</code> &middot; PR #51</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>SAST and dependency audit</td><td>CodeQL (<code>security-and-quality</code>) and Semgrep (<code>p/default</code>, <code>p/nodejs</code>, <code>p/typescript</code>, <code>p/secrets</code>) on every PR; <code>npm audit --audit-level=high</code> gates the build; actions pinned by SHA</td><td><code>docs/security/sast-report.md</code> &middot; PR #54</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>DAST</td><td>OWASP ZAP 2.17 baseline and API scan (passive, signed out and signed in as a vendor) and an active attack scan of the web app, against the Compose stack</td><td><code>docs/security/dast-report.md</code> &middot; PR #57</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>CI/CD</td><td>Lint, tests, docs check on each PR; auto-deploy to Cloud Run only after CI passes on <code>main</code>; smoke check requires each service Ready</td><td>Actions tab &middot; PR #44</td><td><span class="tag teal">merged</span></td></tr>
   </table>
   <div class="foot"><span>Grading criteria 9, 14 and 15</span><span>ASVS V13, V15</span></div>
 </section>
@@ -298,11 +298,11 @@
     <div class="card"><p class="stat-label">Dependency audit (<code>npm audit</code>)</p>
       <span class="big">6 &rarr; 0</span><p class="muted">production vulnerabilities at high or critical (2 critical, 4 high) fixed by lockfile updates; moderate and low listed and accepted. PR #54.</p></div>
     <div class="card"><p class="stat-label">DAST &mdash; ZAP, High / Medium / Low / Info</p>
-      <span class="big">0/2/9/5 &rarr; 0/0/5/5</span><p class="muted"><code>main</code> vs <code>main</code> with #45&ndash;#51 merged (local merge). Both Mediums (no CSP, no anti-clickjacking) closed by #48. PR #57.</p></div>
+      <span class="big">0/2/9/5 &rarr; 0/0/3/5</span><p class="muted">Before Sprint 6 vs the final scan of merged <code>main</code> (signed in: 0/0/5/7). Active attack scan: 88 URLs, 141 rules, no injection, XSS, SSRF or path traversal succeeded. Both Mediums (no CSP, no anti-clickjacking) closed by #48.</p></div>
     <div class="card"><p class="stat-label">Secret scan and tests</p>
       <span class="big">0 real</span><p class="muted">gitleaks: 530 commits, 4 false positives (PR #51). 1035 tests pass on the access-control branch, 77 of them access control (PR #52).</p></div>
   </div>
-  <p class="muted" style="font-size:.8rem">ZAP numbers are pre-freeze; the final scan on merged <code>main</code> (TOR-358) is run by a person, then update this slide.</p>
+  <p class="muted" style="font-size:.8rem">ZAP: final scan on merged <code>main</code> at <code>b629eb6</code>, 22 Nov 2026 (TOR-358); the remaining Lows are accepted header risks and false positives.</p>
   <div class="foot"><span>Grading criteria 14 and 15</span><span>Re-check against the merged <code>main</code> before presenting</span></div>
 </section>
 
