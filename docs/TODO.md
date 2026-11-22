@@ -583,7 +583,7 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 - [x] PDPA consent required before a Google-only account exists
 - [x] Tests: routes and service, adapter with a locally signed JWT, config, web handler and button
 - [x] **Owner, Google Cloud console:** OAuth client created, GitHub variables (`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_ENABLED=true`) set, Secret Manager secret `GOOGLE_OAUTH_CLIENT_SECRET` created by the owner 2026-11-22, and the secret block in `deploy/cloudrun/api.yaml` uncommented (`gcp-setup.md` 7.3b). The redirect URI registration was not checked by the agent
-- [ ] **A real Google sign-in in a browser** — not run yet. Run it once after this deploy goes green
+- [x] **A real Google sign-in in a browser** — run by the owner on 2026-11-22 against the Cloud Run web service after the client secret was corrected and the redirect URI matched (`https://tor-radar-web-<project-number>.<region>.run.app/api/auth/google/callback`); the sign-in completed. Not covered: the account-linking path (an existing verified password account) was not exercised live
 - [ ] Deleting an account without a password could re-authenticate by a fresh Google sign-in (`prompt=login`) instead of "set a password first"
 
 ## Sprint 6 — TOR-319 Session timeout and revocation
