@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📡 TOR Radar
+# TOR Radar
 
 **Thai government procurement TORs, collected in one place, read with AI, matched to vendors,
 and published for anyone to audit.**
@@ -19,13 +19,13 @@ and published for anyone to audit.**
 ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
 ![OWASP ASVS](https://img.shields.io/badge/OWASP-ASVS_5.0-000000?logo=owasp&logoColor=white)
 
-[**Open the live app**](#-production) · [Install](#-install-and-run) · [Documentation](#-documentation) · [Security](#-security) · [Status](#-status)
+[**Open the live app**](#production) · [Install](#install-and-run) · [Documentation](#documentation) · [Security](#security) · [Status](#status)
 
 </div>
 
 ---
 
-## 💡 Why
+## Why
 
 Agencies publish Terms of Reference across dozens of sites as PDFs, scans, and HTML. A small vendor
 cannot watch them all; a citizen cannot compare them. TOR Radar collects the published documents,
@@ -35,23 +35,23 @@ with a documented statistical-anomaly rule. Every figure traces back to an unalt
 > Course project · Software Design, Year 3 Semester 1 · team **Momentum**. National scope (Thai
 > government agencies), seeded from Bangkok sources first.
 
-| | What it does |
-| :---: | :--- |
-| 📥 | **Collects** TORs from e-GP sources and admin uploads, and keeps every original immutable in Cloud Storage |
-| 🤖 | **Reads** Thai documents with Document AI and Gemini; every value carries its confidence, model and source link |
-| 🔎 | **Searches** the corpus by agency, category, budget and date, with a detail page per TOR |
-| 📊 | **Publishes** a public dashboard with a documented statistical-anomaly rule and a specification-quality checklist |
-| 🎯 | **Matches** each vendor's profile to new TORs, with a readiness checklist, document vault and AI cover-letter draft |
-| 🔐 | **Protects** accounts with Google sign-in, breached-password checks, session timeouts, rate limits and security logging |
+| Area | What it does |
+| :--- | :--- |
+| Intake | Collects TORs from e-GP sources and admin uploads, and keeps every original immutable in Cloud Storage |
+| Extraction | Reads Thai documents with Document AI and Gemini; every value carries its confidence, model and source link |
+| Search | Searches the corpus by agency, category, budget and date, with a detail page per TOR |
+| Transparency | Publishes a public dashboard with a documented statistical-anomaly rule and a specification-quality checklist |
+| Matching | Matches each vendor's profile to new TORs, with a readiness checklist, document vault and AI cover-letter draft |
+| Security | Protects accounts with Google sign-in, breached-password checks, session timeouts, rate limits and security logging |
 
 ---
 
-## 🌐 Production
+## Production
 
 <table>
 <tr><td>
 
-**🔗 <https://tor-radar-web-412311451957.asia-southeast1.run.app/>**
+**<https://tor-radar-web-412311451957.asia-southeast1.run.app/>**
 
 </td></tr>
 </table>
@@ -73,7 +73,7 @@ re-asserts the proxy and smoke-checks each service. How it works, and how to rol
 
 ---
 
-## 🚀 Install and run
+## Install and run
 
 ### Prerequisites
 
@@ -122,10 +122,10 @@ docker compose ps           # web, api, worker, mongo, gcs, mail should all be U
 
 | What | Where (default ports) |
 | :--- | :--- |
-| 🖥️ Web app | http://localhost:3000 |
-| ⚙️ API | http://localhost:4000, health check at `/health` |
-| 📬 Mailpit, the inbox for every email the app sends | http://localhost:8025 |
-| 🗄️ MongoDB / GCS emulator | `localhost:27017` / `localhost:4443` |
+| Web app | http://localhost:3000 |
+| API | http://localhost:4000, health check at `/health` |
+| Mailpit, the inbox for every email the app sends | http://localhost:8025 |
+| MongoDB / GCS emulator | `localhost:27017` / `localhost:4443` |
 
 Logs: `docker compose logs -f api` (the API writes JSON lines). Without a Vertex credential the worker logs
 `extraction_disabled`; that is expected.
@@ -183,7 +183,7 @@ the same way it does locally. `web`'s image prerenders `/` and `/methodology` at
 
 ---
 
-## 🧭 Layout
+## Layout
 
 ```
 apps/web/         Next.js 16 — app/ is routing only, UI code in src/ (views → features → entities → shared)
@@ -197,7 +197,7 @@ tools/            source collection, seeds, demo seed, ZAP, docs checks, Jira se
 
 ---
 
-## 🔐 Security
+## Security
 
 Built and checked against **OWASP ASVS 5.0** for 01219325 Software Development Security.
 
@@ -218,7 +218,7 @@ slides: [docs/security/security-slides.html](docs/security/security-slides.html)
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Start with whichever question you have:
 
@@ -288,21 +288,21 @@ goes and the finished work recorded in work-log.md.
 
 ---
 
-## 📈 Status
+## Status
 
-| | Area |
-| :---: | :--- |
-| ✅ | **Slice 1–4 built:** intake and immutable storage on Cloud Storage, AI extraction with confidence tiering and a review queue, search and TOR detail, the dashboard with its anomaly rule and quality checklist, vendor accounts, profiles and matching |
-| ✅ | **Sprint 5:** document vault, readiness checklist, AI cover-letter draft, company path, personnel and behaviour-aware matching |
-| ✅ | **Sprint 6:** continuous deployment to Cloud Run, Sign in with Google, and the security work above (SAST, DAST, headers, rate limits, logging, sessions, breached passwords) |
-| ⬜ | **Still open:** CSV export (F11); match emails (the notify worker runs in neither Compose nor Cloud Run); the open values in SRS §8 that wait on real data |
+| State | Milestone | Scope |
+| :--- | :--- | :--- |
+| Done | Slices 1–4 | intake and immutable storage on Cloud Storage, AI extraction with confidence tiering and a review queue, search and TOR detail, the dashboard with its anomaly rule and quality checklist, vendor accounts, profiles and matching |
+| Done | Sprint 5 | document vault, readiness checklist, AI cover-letter draft, company path, personnel and behaviour-aware matching |
+| Done | Sprint 6 | continuous deployment to Cloud Run, Sign in with Google, and the security work above (SAST, DAST, headers, rate limits, logging, sessions, breached passwords) |
+| Open | Remaining | CSV export (F11); match emails (the notify worker runs in neither Compose nor Cloud Run); the open values in SRS §8 that wait on real data |
 
 Task-level progress lives in [docs/TODO.md](docs/TODO.md), the one place it is tracked. The slices are
 described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10.
 
 ---
 
-## 🧱 Stack
+## Stack
 
 Next.js 16 · React 19 · Express 5 · MongoDB Atlas · Google Cloud Storage · Zod 4 · Vitest ·
 Vertex AI (Document AI + Gemini) · Docker Compose · Cloud Run · GitHub Actions. The reasoning behind each
