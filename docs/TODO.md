@@ -582,8 +582,8 @@ _Design: [`specs/2026-10-06-accounts-and-sessions-design.md`](superpowers/specs/
 - [x] TOR-332 button (only when enabled), `/google-consent` page, Thai error on `/login?error=google`
 - [x] PDPA consent required before a Google-only account exists
 - [x] Tests: routes and service, adapter with a locally signed JWT, config, web handler and button
-- [ ] **Owner, Google Cloud console:** create the OAuth client and register the redirect URI, set the GitHub variables and the Secret Manager secret, uncomment the secret block in `deploy/cloudrun/api.yaml` (`gcp-setup.md` 7.3b)
-- [ ] **A real Google sign-in in a browser** — not run; no client existed. Run it once after the console step
+- [x] **Owner, Google Cloud console:** OAuth client created, GitHub variables (`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_ENABLED=true`) set, Secret Manager secret `GOOGLE_OAUTH_CLIENT_SECRET` created by the owner 2026-11-22, and the secret block in `deploy/cloudrun/api.yaml` uncommented (`gcp-setup.md` 7.3b). The redirect URI registration was not checked by the agent
+- [ ] **A real Google sign-in in a browser** — not run yet. Run it once after this deploy goes green
 - [ ] Deleting an account without a password could re-authenticate by a fresh Google sign-in (`prompt=login`) instead of "set a password first"
 
 ## Sprint 6 — TOR-319 Session timeout and revocation
