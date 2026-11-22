@@ -3,6 +3,7 @@ import { loadEnvFile } from "./core/env-file.js";
 import { loadConfig } from "./core/config.js";
 import { connect, disconnect, ensureIndexes, ensureSearchIndex } from "./core/db.js";
 import { logger } from "./core/logger.js";
+import { installProcessErrorHandlers } from "./core/process-errors.js";
 
 /**
  * Starts the HTTP API: read the configuration, connect the database, make sure
@@ -15,6 +16,7 @@ import { logger } from "./core/logger.js";
  * accept duplicates silently.
  */
 async function main(): Promise<void> {
+  installProcessErrorHandlers();
   loadEnvFile();
   const config = loadConfig(process.env);
   const db = await connect(config.mongoUrl);

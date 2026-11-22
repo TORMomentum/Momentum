@@ -234,6 +234,12 @@ cookie, api key, session, credential, `body`, `content`, `bytes` or `text` becom
 never written; strings are cut at 500 characters. (`lib/redact.ts` is the PDPA serializer for TOR contact
 fields and is unrelated.) Request bodies and document contents are never logged.
 
+`core/process-errors.ts` writes an uncaught exception or an unhandled rejection through the same logger as
+`severity: ERROR` (`uncaught_exception`, `unhandled_rejection`; name and message only, no stack) and exits 1 so
+Cloud Run restarts the instance. The API and all three workers install it at start. On Cloud Run the stdout
+lines reach Cloud Logging with no agent; log-based metrics and alert policies on them are set up in the console
+(docs/gcp-setup.md §7.6).
+
 `core/security-log.ts` gives each request an id (`X-Request-Id`, generated, never taken from the caller) and
 writes security events (`category: "security"`) from a fixed vocabulary. Each carries `requestId`, `method`,
 `path` (no query string), `ip`, `userAgent` (120 characters), and `accountId` when a session resolved.

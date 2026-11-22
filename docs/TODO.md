@@ -698,7 +698,8 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [ ] No route returns 403 today (`requireRole` is not mounted), so `auth.denied` with 403 is tested but not shown live
 - [ ] `GET /me` without a session is a 401 and so logs `auth.denied`; watch the volume once the web app is live
 - [ ] Web (Next.js) handlers still use their own logging; only the API and workers are covered
-- [ ] Cloud Logging alerts on `auth.login.failure` bursts are not set up (GCP console step)
+- [x] Uncaught exceptions and unhandled rejections are logged as ERROR before the process exits (`core/process-errors.ts`; API and workers)
+- [ ] Cloud Logging log-based metrics and alert policies: steps are in docs/gcp-setup.md §7.6, not yet done in the GCP console
 
 ## Sprint 6 — TOR-317 API security headers and CORS
 

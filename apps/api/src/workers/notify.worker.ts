@@ -5,6 +5,7 @@ import { connect, disconnect, ensureIndexes } from "../core/db.js";
 import { loadEnvFile } from "../core/env-file.js";
 import { NotifyService } from "../modules/notifications/notify.service.js";
 import { configureLogger, logger } from "../core/logger.js";
+import { installProcessErrorHandlers } from "../core/process-errors.js";
 
 const pause = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
@@ -27,4 +28,4 @@ export async function startNotifyWorker(config: Config): Promise<void> {
 }
 
 const isEntry = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isEntry) { loadEnvFile(); startNotifyWorker(loadConfig(process.env)).catch((error: Error) => { logger.error("notify_worker_crashed", { error: error.message }); process.exit(1); }); }
+if (isEntry) { installProcessErrorHandlers(); loadEnvFile(); startNotifyWorker(loadConfig(process.env)).catch((error: Error) => { logger.error("notify_worker_crashed", { error: error.message }); process.exit(1); }); }
