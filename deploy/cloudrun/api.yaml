@@ -51,15 +51,16 @@ spec:
             # redirect URI is derived from APP_ORIGIN. The client SECRET is not mounted here, because a secretKeyRef
             # to a secret that does not exist fails the whole deploy: when enabling, create the Secret Manager
             # secret GOOGLE_OAUTH_CLIENT_SECRET and add the block below (docs/gcp-setup.md, "Sign in with Google").
+            # The secret now exists (created 2026-11-22), so the block is mounted.
             - name: GOOGLE_OAUTH_ENABLED
               value: "${GOOGLE_OAUTH_ENABLED}"
             - name: GOOGLE_OAUTH_CLIENT_ID
               value: "${GOOGLE_OAUTH_CLIENT_ID}"
-            # - name: GOOGLE_OAUTH_CLIENT_SECRET
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: GOOGLE_OAUTH_CLIENT_SECRET
-            #       key: latest
+            - name: GOOGLE_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: GOOGLE_OAUTH_CLIENT_SECRET
+                  key: latest
             - name: MONGO_URL
               valueFrom:
                 secretKeyRef:
