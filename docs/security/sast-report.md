@@ -109,6 +109,29 @@ Pulled with `gh api "repos/TORMomentum/Momentum/code-scanning/alerts?ref=refs/pu
   They were dismissed in code scanning as "false positive" with a pointer to this report. The `--error`
   gate honours the inline comments and passes.
 
+## 8. Alerts cleared on 2026-11-22
+
+Twenty alerts were open on `main` at `e841398`: ten in code scanning and ten from Dependabot.
+
+| Alert | Rule | Where | Outcome |
+| :---- | :---- | :---- | :---- |
+| Semgrep #20, #21 | detect-non-literal-regexp | admin and admin-accounts repositories | **Fixed**: a Mongo `$regex` string (still fully escaped) replaces `new RegExp`, so the inline `nosemgrep` is gone |
+| CodeQL #18 | js/regex/unmatchable-dollar | `sources/national-egp/package.ts` | **Fixed**: `(?![a-z])` replaces `([^a-z]\|$)` before `.*\.pdf$` |
+| CodeQL #15 | js/polynomial-redos | `packages/shared/src/categories.ts` | **Fixed**: the title is cut at the first "โดยวิธี"/"ด้วยวิธี" match instead of `.*$` |
+| CodeQL #12 | js/incomplete-multi-character-sanitization | `sources/national-egp/announcements.ts` | **Fixed**: tags are stripped until the text stops changing |
+| CodeQL #13 | js/incomplete-sanitization | `tools/test_report.mjs` | **Fixed**: backslashes are escaped before pipes |
+| CodeQL #14 | js/incomplete-url-substring-sanitization | `api-client.test.ts` | **Fixed**: the test compares the URL's host |
+| CodeQL #10 | js/weak-cryptographic-algorithm | `match-quality.service.ts` | **Fixed**: SHA-256. The hash only orders a worksheet; nothing secret depended on it |
+| CodeQL #11 | js/request-forgery | `lib/safe-fetch.ts` | **False positive, dismissed**: this is the SSRF guard (scheme allowlist, resolved-address check on every hop, size and time caps); a user URL is its input by design |
+| CodeQL #17 | js/http-to-file-access | `tools/build_seeds.mjs` | **False positive, dismissed**: a developer tool that writes the upstream taxonomy to one fixed path in the repo |
+| Dependabot #11, #15, #36–#38 | dompurify ≤ 3.4.16 | via mermaid | **Fixed**: mermaid 12.3.0 brings dompurify 3.5.0 |
+| Dependabot #14 | katex < 0.18.2 | via mermaid | **Fixed**: katex 0.18.10 |
+| Dependabot #47 | minimatch < 11.0.1 | via typescript-eslint | **Fixed**: typescript-eslint ^8.73.0 brings minimatch 11.0.9 |
+| Dependabot #30, #31 | @vitest/mocker < 4.1.12 | via vitest | **Fixed**: vitest ^4.1.12 |
+| Dependabot #1 | uuid < 11.1.1 | gaxios 6 under `@google-cloud/storage` and `gtoken` | **Fixed**: `overrides.uuid` is `^11.1.1`; gaxios only calls `v4()` |
+
+The lockfile was written with npm 11; npm 10.9 fails on this tree with "Cannot read properties of null (reading 'edgesOut')".
+
 ## 7. Not verified
 
 - The Cloud Run services were not redeployed; `USER node` was verified on Docker Compose only.

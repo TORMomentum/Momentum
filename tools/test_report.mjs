@@ -43,7 +43,7 @@ if (!input) {
 const run = JSON.parse(readFileSync(input, "utf8"));
 const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
 const result = { passed: "✅ Pass", failed: "❌ Fail", pending: "⏭ Skipped", skipped: "⏭ Skipped", todo: "⏭ Todo" };
-const cell = (text) => String(text).replace(/\|/g, "\\|").replace(/\s+/g, " ");
+const cell = (text) => String(text).replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\s+/g, " ");
 
 const groups = features.map(([name, reqs]) => ({ name, reqs, files: [] }));
 for (const file of run.testResults) {
