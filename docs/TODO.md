@@ -635,8 +635,6 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [x] TOR-357 No High or Medium finding remains once those PRs merge, so no code fix was needed here
 - [x] TOR-359 Report and accepted risks: [security/dast-report.md](security/dast-report.md)
 - [x] TOR-358 Final scan on merged `main` at `b629eb6` (22 Nov): baseline signed out 0/0/3/5, signed in 0/0/5/7, active web scan 0/0/3/3 (88 URLs, 141 rules, no attack succeeded); report updated
-- [x] ZAP desktop Pen Test policy scan, web and API, public and signed-in vendor (22 Nov): 0 High, 1 Medium (API 404 CSP), 1 Low (false positive); report in `security/evidence/`
-- [ ] API: JSON 404 handler so a 404 keeps helmet's CSP with `frame-ancestors` (ZAP 10055 on bare `/sources`)
 - [ ] `tools/zap/run.sh` fails on macOS bash 3.2 without a session cookie (`zap_opts[@]: unbound variable`); fix the empty-array expansion
 - [x] Permissions-Policy and nosniff on static assets: no longer reported on `main`
 - [ ] Optional: CORP, COOP and COEP (accepted risks) if the team wants a zero-warning baseline

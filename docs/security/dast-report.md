@@ -59,37 +59,6 @@ Limits of the final scan:
 Reports (HTML, JSON, Markdown) are in `zap-reports/final.*`, `zap-reports/final-auth.*` and
 `zap-reports/final-active/` on the machine that ran them (gitignored), and are attached to TOR-359.
 
-## Pen Test policy scan, web and API, signed in (2026-11-22)
-
-Automated DAST scan (OWASP ZAP 2.17 desktop, Pen Test policy) of the web app and the API, public and as a
-signed-in vendor, on an isolated local stack. This is an automated scan, not a manual penetration test.
-Report: [evidence/zap-pentest-policy-2026-11-22.html](evidence/zap-pentest-policy-2026-11-22.html).
-
-| Site | High | Medium | Low | Info |
-| :---- | ---: | ---: | ---: | ---: |
-| web `:3000` and API `:4000`, public and signed-in vendor | 0 | 1 | 1 | 3 |
-
-| Rule | Risk | Verdict |
-| :---- | :---- | :---- |
-| 10055 CSP: Failure to Define Directive with No Fallback, API `/sources` | Medium | **Real, low impact.** Bare `/sources` is a 404 from Express's default final handler, which replaces helmet's CSP with `default-src 'none'` (no `frame-ancestors`). Normal API responses carry `default-src 'none';frame-ancestors 'none'` and `X-Frame-Options: DENY`. The 404 body is plain text. Fix: a JSON 404 handler in the API (open) |
-| 10044 Big Redirect Detected, `/admin/*` → `/admin/login` | Low | **False positive**: the 15 KB body is the Next.js page shell (site title only), no admin data |
-| 10109, 10104, 10031 | Info | **No action**, as above |
-
-Covered (automated): every public page, every signed-in vendor page, every API route; injection (SQL/NoSQL,
-XSS, command, path traversal), headers, cookies, CSP, information leaks; an SSRF probe on the intake URL route
-(401 without a key); the session sent as cookie and header.
-
-Not covered:
-
-- Admin and intake as staff: no admin or intake key was used, so only the signed-out side was tested.
-- Login, logout, register, password reset/change and Google sign-in were excluded so the scan could not sign
-  itself out.
-- Business logic by hand. Cross-account access (one vendor reading another's vault or bookmarks) is covered by
-  the access-control integration tests (77 tests, [access-control-matrix.md](access-control-matrix.md)), not by
-  manual testing. Takedown abuse and rate-limit bypass were not tested by hand.
-- Brute force and lockout: rate limits stop it (login per IP and per email; search 120/min, documents 60/min).
-- The deployed cloud environment (HTTPS, Cloud Run, the real bucket): local stack only.
-
 ## Tool and method
 
 | | |
