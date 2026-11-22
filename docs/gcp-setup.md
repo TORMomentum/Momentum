@@ -300,6 +300,73 @@ Security tab**, not part of this workflow; redeploys only need to keep the toggl
 recreate it. `tor-radar-api` stays IAM-only, reached by `web` through the identity-token path
 in `apps/web/src/shared/api/api-client.ts`, not by a browser directly.
 
+### 7.6 Cloud Logging: metrics and alerts (TOR-316)
+
+The code side needs nothing: the API and the workers write one JSON line per event to stdout, and Cloud Run
+ships stdout to Cloud Logging by itself (no agent, no API to enable). `severity` becomes the entry's
+severity; `message` and every other field stay under `jsonPayload`. Security events carry
+`jsonPayload.category = "security"` and one of the names in `docs/ARCHITECTURE.md` (Logging and security
+events). What is left is console-only: turn those lines into counters, then alert on the counters.
+
+The console moves its labels now and then; if a button is not where this says, search the page for the
+quoted name. The thresholds below are starting values, not measured ones: tune them after a week of real traffic.
+
+**1. Check the logs arrive.** **Logging → Logs Explorer**, paste into the query box and press **Run query**:
+
+```
+resource.type="cloud_run_revision"
+jsonPayload.category="security"
+```
+
+Sign in once on the deployed site with a wrong password. An `auth.login.failure` entry (severity
+WARNING) appears within a few seconds. If nothing shows, widen the time range to the last hour; if still
+nothing, check that the `tor-radar-api` revision is `Ready` (Cloud Run → tor-radar-api).
+
+**2. Create five log-based metrics.** **Logging → Log-based metrics → Create metric**. For each row:
+**Metric type** = **Counter**, **Log metric name** = the name below, paste the filter into **Build filter**,
+leave **Units** empty, **Create metric**.
+
+| Metric name | Filter (all start with `resource.type="cloud_run_revision"`) | Watches |
+| :--- | :--- | :--- |
+| `sec_login_failures` | `jsonPayload.message="auth.login.failure"` | credential stuffing, T01 |
+| `sec_ratelimit_hits` | `jsonPayload.message="ratelimit.hit"` | abuse and brute force, T01 |
+| `sec_denied` | `jsonPayload.message="auth.denied"` | probing for access, T08 |
+| `sec_admin_actions` | `jsonPayload.message="admin.action"` | every admin write, T02 |
+| `app_fatal_errors` | `severity>=ERROR AND jsonPayload.message=("uncaught_exception" OR "unhandled_rejection" OR "api_start_failed" OR "worker_crashed" OR "stats_worker_crashed" OR "notify_worker_crashed")` | the process died, T15 |
+
+**3. Create an email notification channel.** **Monitoring → Alerting → Edit notification channels**
+(top right). Under **Email** click **Add new**, enter the team's shared mailbox (not one person's), save.
+If **Monitoring** asks to create a workspace the first time, accept it for this project.
+
+**4. Create five alert policies.** **Monitoring → Alerting → Create policy**. For each row:
+**Select a metric** → clear the **Active** filter, search for the metric name (it is listed as
+`logging/user/<name>`) → **Apply**. **Rolling window** = the value below, **Rolling window function** =
+**sum**. Then **Next** → **Threshold position** = **Above threshold**, the threshold below → **Next** → in
+**Notifications** pick the email channel from step 3 → name the policy → **Create policy**.
+
+| Policy name | Metric | Window | Threshold |
+| :--- | :--- | :--- | :--- |
+| Login failures burst | `sec_login_failures` | 5 min | above 20 |
+| Rate limit hits | `sec_ratelimit_hits` | 5 min | above 50 |
+| Access denied burst | `sec_denied` | 5 min | above 50 |
+| Admin action | `sec_admin_actions` | 5 min | above 0 |
+| App crash | `app_fatal_errors` | 1 min | above 0 |
+
+`Admin action` will email on every legitimate admin write; admin writes are rare here, and the point is
+that a write nobody expected is seen. Raise its threshold or remove it if it becomes noise.
+
+**5. Prove it works.** On the deployed site fail a login 25 times within five minutes (a script or the
+browser). Within about five minutes **Alerting** shows an open **Login failures burst** incident and the
+mailbox gets an email. Close the incident from the Alerting page afterwards. Log-based metrics lag the logs
+by a minute or two, so do not conclude the alert is broken before that.
+
+**6. Optional: keep logs longer.** **Logging → Logs Storage → `_Default` → Edit → Retention** (default 30
+days). Longer retention costs storage; the course needs only evidence, so the default is enough unless the
+team wants 90 days.
+
+Tick the "Cloud Logging alerts" line in `docs/TODO.md` and update the A09 row of
+`docs/security/security-project-document.md` only after step 5 has produced a real email.
+
 ### What goes where
 
 | | Lives in | Committed |
