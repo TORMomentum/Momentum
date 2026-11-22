@@ -1,24 +1,79 @@
-# TOR Radar
+<div align="center">
 
-Thai government procurement TORs, collected in one place, extracted with AI, matched to vendors, and
-published for anyone to audit.
+# 📡 TOR Radar
 
-Agencies publish Terms of Reference across dozens of sites as PDFs, scans, and HTML. A small vendor
-cannot watch them all; a citizen cannot compare them. TOR Radar collects the published documents,
-extracts their fields, emails vendors whose skills match within minutes, and puts the totals on a
-public dashboard with a documented statistical-anomaly rule — every figure traceable to an unaltered
-original.
+**Thai government procurement TORs, collected in one place, read with AI, matched to vendors,
+and published for anyone to audit.**
 
-> Course project · Software Design, Year 3 Semester 1 · team Momentum. National scope (Thai
-> government agencies), seeded from Bangkok sources first.
+[![Live on Cloud Run](https://img.shields.io/badge/live-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](https://tor-radar-web-aqhy2xehkq-as.a.run.app/)
+[![CI](https://github.com/TORMomentum/Momentum/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TORMomentum/Momentum/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/TORMomentum/Momentum/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/TORMomentum/Momentum/actions/workflows/codeql.yml)
+[![Semgrep](https://github.com/TORMomentum/Momentum/actions/workflows/semgrep.yml/badge.svg?branch=main)](https://github.com/TORMomentum/Momentum/actions/workflows/semgrep.yml)
+[![Deploy](https://github.com/TORMomentum/Momentum/actions/workflows/deploy.yml/badge.svg)](https://github.com/TORMomentum/Momentum/actions/workflows/deploy.yml)
+
+![Next.js](https://img.shields.io/badge/Next.js_16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
+![Express](https://img.shields.io/badge/Express_5-000000?logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB_Atlas-47A248?logo=mongodb&logoColor=white)
+![Google Cloud](https://img.shields.io/badge/Vertex_AI_·_GCS-4285F4?logo=googlecloud&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
+![OWASP ASVS](https://img.shields.io/badge/OWASP-ASVS_5.0-000000?logo=owasp&logoColor=white)
+
+[**Open the live app**](#-production) · [Install](#-install-and-run) · [Documentation](#-documentation) · [Security](#-security) · [Status](#-status)
+
+</div>
 
 ---
 
-## Install and run
+## 💡 Why
 
-This section describes `main` once the secrets change (PR #51, TOR-324) is merged: Compose then refuses to
-start without `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET`. Before that
-merge only `SESSION_SECRET` is required, and the other keys fall back to `change-me-*` defaults.
+Agencies publish Terms of Reference across dozens of sites as PDFs, scans, and HTML. A small vendor
+cannot watch them all; a citizen cannot compare them. TOR Radar collects the published documents,
+extracts their fields, matches them to vendors' skills, and puts the totals on a public dashboard
+with a documented statistical-anomaly rule. Every figure traces back to an unaltered original.
+
+> Course project · Software Design, Year 3 Semester 1 · team **Momentum**. National scope (Thai
+> government agencies), seeded from Bangkok sources first.
+
+| | What it does |
+| :---: | :--- |
+| 📥 | **Collects** TORs from e-GP sources and admin uploads, and keeps every original immutable in Cloud Storage |
+| 🤖 | **Reads** Thai documents with Document AI and Gemini; every value carries its confidence, model and source link |
+| 🔎 | **Searches** the corpus by agency, category, budget and date, with a detail page per TOR |
+| 📊 | **Publishes** a public dashboard with a documented statistical-anomaly rule and a specification-quality checklist |
+| 🎯 | **Matches** each vendor's profile to new TORs, with a readiness checklist, document vault and AI cover-letter draft |
+| 🔐 | **Protects** accounts with Google sign-in, breached-password checks, session timeouts, rate limits and security logging |
+
+---
+
+## 🌐 Production
+
+<table>
+<tr><td>
+
+**🔗 <https://tor-radar-web-aqhy2xehkq-as.a.run.app/>**
+
+</td></tr>
+</table>
+
+> [!IMPORTANT]
+> **How to get in.** The deployment sits behind Google Identity-Aware Proxy and admits only
+> **`@ku.th`** Google accounts.
+>
+> 1. Open **Google Chrome**.
+> 2. Sign in to Chrome (or to Google in that browser) with your **`@ku.th`** account.
+> 3. Open the link above. Pick the `@ku.th` account if Google asks which one to use.
+>
+> Any other account (a personal Gmail, for example) is refused by the proxy before it reaches the app.
+> Inside the app you can then register with an email and password, or use **เข้าสู่ระบบด้วย Google**.
+
+Every merge to `main` that passes CI deploys to Cloud Run automatically (web, API and worker), then
+re-asserts the proxy and smoke-checks each service. How it works, and how to roll back:
+[docs/gcp-setup.md](docs/gcp-setup.md) §7.
+
+---
+
+## 🚀 Install and run
 
 ### Prerequisites
 
@@ -27,15 +82,16 @@ merge only `SESSION_SECRET` is required, and the other keys fall back to `change
 - `openssl` (or Node, below) to generate secrets
 - Optional, for real AI extraction: a Google Cloud project with Vertex AI and its service-account key in
   `secrets/gcp-sa.json` (see [docs/gcp-setup.md](docs/gcp-setup.md)). Without it everything runs except
-  extraction: uploaded documents stay `queued` and nothing is published that was not extracted.
+  extraction: uploaded documents stay `queued`, and nothing unextracted is published.
 
-### 1. Configure
+### 1 · Configure
 
 ```bash
 cp .env.example .env
 ```
 
-Fill in the required values in `.env`. Generate each secret on your machine, never reuse one, never commit `.env`:
+Compose refuses to start without `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS` and
+`STAFF_ACCESS_SECRET`. Generate each one on your machine. Never reuse one, and never commit `.env`:
 
 ```bash
 openssl rand -base64 48     # SESSION_SECRET (32+ characters)
@@ -44,11 +100,20 @@ openssl rand -hex 32        # INTAKE_API_KEYS, ADMIN_API_KEYS, STAFF_ACCESS_SECR
 ```
 
 `APP_ORIGIN` must be the address you open the web app at (`http://localhost:3000` with the default port):
-account routes refuse any other `Origin`. Every other setting has a working default; the rest of `.env.example`
-documents them. To run on other ports (for example next to another stack) set `COMPOSE_PROJECT_NAME`,
-`WEB_PORT`, `API_PORT`, `MONGO_PORT`, `GCS_EMULATOR_PORT`, `MAIL_SMTP_PORT`, `MAIL_UI_PORT` and change `APP_ORIGIN` to match.
+account routes refuse any other `Origin`. Every other setting has a working default, documented in
+`.env.example`. To run on other ports (next to another stack, say) set `COMPOSE_PROJECT_NAME`, `WEB_PORT`,
+`API_PORT`, `MONGO_PORT`, `GCS_EMULATOR_PORT`, `MAIL_SMTP_PORT`, `MAIL_UI_PORT`, and change `APP_ORIGIN` to match.
 
-### 2. Start
+<details>
+<summary><b>Optional: Sign in with Google locally</b></summary>
+
+Set `GOOGLE_OAUTH_ENABLED=true`, `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` in `.env`, and
+register `http://localhost:3000/api/auth/google/callback` as a redirect URI on the OAuth client. The full
+console steps, for local and Cloud Run, are in [docs/gcp-setup.md](docs/gcp-setup.md) §7.3b.
+
+</details>
+
+### 2 · Start
 
 ```bash
 docker compose up --build -d
@@ -57,15 +122,15 @@ docker compose ps           # web, api, worker, mongo, gcs, mail should all be U
 
 | What | Where (default ports) |
 | :--- | :--- |
-| Web app | http://localhost:3000 |
-| API | http://localhost:4000, health check at `/health` |
-| Mailpit, the inbox for every email the app sends (verification links) | http://localhost:8025 |
-| MongoDB / GCS emulator | `localhost:27017` / `localhost:4443` |
+| 🖥️ Web app | http://localhost:3000 |
+| ⚙️ API | http://localhost:4000, health check at `/health` |
+| 📬 Mailpit, the inbox for every email the app sends | http://localhost:8025 |
+| 🗄️ MongoDB / GCS emulator | `localhost:27017` / `localhost:4443` |
 
 Logs: `docker compose logs -f api` (the API writes JSON lines). Without a Vertex credential the worker logs
 `extraction_disabled`; that is expected.
 
-### 3. Seed demo data (optional)
+### 3 · Seed demo data (optional)
 
 ```bash
 echo "DEMO_VENDOR_PASSWORD=choose-a-long-unique-password" >> .env
@@ -76,9 +141,9 @@ Creates the two storage buckets the emulator does not create by itself, two veri
 (`vendor-a@demo.example`, `vendor-b@demo.example`), one private file in vendor A's vault, and two sample TORs
 from `docs/corpus` through the intake API. It is safe to run again. Uploading a document before the buckets
 exist returns `500`, so run it (or create `tor-raw` and `tor-vault` yourself) before using intake.
-The security demo built on it is [docs/security/demo-script.md](docs/security/demo-script.md).
+The security demo built on it: [docs/security/demo-script.md](docs/security/demo-script.md).
 
-### 4. Run the tests
+### 4 · Test
 
 The integration tests use the Compose MongoDB and GCS emulator, so keep them up and install dependencies once:
 
@@ -90,14 +155,15 @@ npm run lint                # eslint
 npm run build               # all workspaces
 ```
 
-### 5. Stop
+### 5 · Stop
 
 ```bash
 docker compose down         # stop, keep the data
 docker compose down -v      # stop and delete the database, stored files and mail
 ```
 
-### Without containers
+<details>
+<summary><b>Without containers, secrets, and image notes</b></summary>
 
 ```bash
 npm ci
@@ -110,28 +176,49 @@ and, only when testing against real Google Cloud Storage instead of the emulator
 team for them; never commit them.
 
 The `web` and `api` Dockerfiles install from the workspace root, so `@tor-radar/shared` resolves inside the image
-the same way it does locally (TOR-140). `web`'s image prerenders `/` and `/methodology` at build time; without
-`API_BASE_URL` set as a build arg, those two pages bake in their no-data fallback rather than live figures — worth
-fixing before either page ships behind Cloud Run.
+the same way it does locally. `web`'s image prerenders `/` and `/methodology` at build time; without
+`API_BASE_URL` set as a build arg, those two pages bake in their no-data fallback rather than live figures.
 
-CI runs lint, test, and build on every pull request ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+</details>
 
 ---
 
-## Layout
+## 🧭 Layout
 
 ```
-apps/web/         Next.js 16 — app/ is routing only, UI code in src/
-apps/api/         Express 5 — feature modules, ports, adapters, worker
+apps/web/         Next.js 16 — app/ is routing only, UI code in src/ (views → features → entities → shared)
+apps/api/         Express 5 — feature modules, ports, adapters, workers
 packages/shared/  types + Zod schemas both apps import
-docs/             requirements, architecture, design specs, benchmark evidence
+packages/seeds/   taxonomy, categories, sources
+docs/             requirements, architecture, design specs, security, benchmark evidence
 mockups/          design-canvas source the UI was ported from — never built
-tools/            source collection, seed generation, Jira seeding, Vertex checks, scoring
+tools/            source collection, seeds, demo seed, ZAP, docs checks, Jira seeding, Vertex checks
 ```
 
 ---
 
-## Documentation
+## 🔐 Security
+
+Built and checked against **OWASP ASVS 5.0** for 01219325 Software Development Security.
+
+| Area | What is in place | Evidence |
+| :--- | :--- | :--- |
+| Authentication | Sign in with Google (OIDC code flow, PKCE, state, nonce), Argon2 password hashing, breached-password check (HIBP k-anonymity) | [security document](docs/security/security-project-document.md) |
+| Sessions | Idle and absolute timeouts, old session revoked at login, cleared at logout | [TODO.md](docs/TODO.md) |
+| Access control | Public / vendor / admin matrix, tested so one vendor cannot read another's data | [access-control-matrix.md](docs/security/access-control-matrix.md) |
+| Headers and transport | Nonce-based CSP, HSTS, frame denial, CORS allowlist, `nosniff` on originals | [evidence/](docs/security/evidence/) |
+| Abuse | Rate limits on login and public APIs; SSRF guard on URL intake | [API.md](docs/API.md) |
+| Logging | Structured security events, uncaught-error logging to Cloud Logging | [security document](docs/security/security-project-document.md) |
+| SAST | CodeQL and Semgrep on every pull request; `npm audit` gate in CI; no open alerts | [sast-report.md](docs/security/sast-report.md) |
+| DAST | OWASP ZAP baseline (signed out and signed in) and active scan on merged `main`: no High or Medium | [dast-report.md](docs/security/dast-report.md) |
+
+Threat model, design principles and the ASVS mapping:
+[docs/security/security-project-document.md](docs/security/security-project-document.md) ·
+slides: [docs/security/security-slides.html](docs/security/security-slides.html).
+
+---
+
+## 📚 Documentation
 
 Start with whichever question you have:
 
@@ -140,23 +227,25 @@ Start with whichever question you have:
 | **How it is put together** — containers, data model, invariants, diagrams | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | **What it must do** — every requirement, testable, with verification method | [docs/SRS.md](docs/SRS.md) |
 | **Why it exists** — problem, stakeholders, personas, user stories, plan | [docs/PROJECT.md](docs/PROJECT.md) |
-| **How the current slice is built** — decisions, seams, security, containers | [docs/superpowers/specs/](docs/superpowers/specs/) |
+| **How each slice is built** — decisions, seams, security, containers | [docs/superpowers/specs/](docs/superpowers/specs/) |
 | **Every route** — body, query parameters, auth | [docs/API.md](docs/API.md) |
 | **How it is tested** — commands, test cases, manual acceptance cases | [docs/TESTING.md](docs/TESTING.md) |
 | **Which tests pass right now** — every test, grouped by feature (generated) | [docs/test-report.md](docs/test-report.md) |
 | **What is being built right now** | [docs/TODO.md](docs/TODO.md) — the live checklist |
 | **What the project is doing next** — decided, undecided, and why | [docs/PLAN.md](docs/PLAN.md) |
-| **How the current slice is executed** — task by task, with tests | [docs/superpowers/plans/](docs/superpowers/plans/) |
+| **How a slice is executed** — task by task, with tests | [docs/superpowers/plans/](docs/superpowers/plans/) |
 | **What delegated agents built, and how it was verified** (slice 1 only so far) | [docs/work-log.md](docs/work-log.md) |
-| **Where the TORs come from** — the BMA eGP API, document formats, taxonomy seeds | [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md) |
+| **Where the TORs come from** — the eGP APIs, document formats, taxonomy seeds | [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md) |
 | **How accurate the extraction is** | [docs/corpus/BENCHMARK.md](docs/corpus/BENCHMARK.md) |
 | **How it is secured** — ASVS mapping, threat model, principles, test process | [docs/security/security-project-document.md](docs/security/security-project-document.md) |
-| **How to set up Vertex AI** | [docs/gcp-setup.md](docs/gcp-setup.md) |
+| **How to set up Google Cloud** — Vertex AI, Cloud Run, Google sign-in | [docs/gcp-setup.md](docs/gcp-setup.md) |
+| **I am new to the team** | [docs/ONBOARDING.md](docs/ONBOARDING.md) |
 
 Working in this repo with an AI agent: [CLAUDE.md](CLAUDE.md) (Claude Code) or
 [AGENTS.md](AGENTS.md) (any other agent).
 
-### How the documents connect
+<details>
+<summary><b>How the documents connect</b></summary>
 
 Each document is produced from the one before it. Several are updated in the same pull request,
 and a change late in the flow can send an edit back up it.
@@ -195,20 +284,32 @@ flowchart TD
 Every slice runs the same loop: spec, then plan, then build, with TODO.md and PLAN.md updated as it
 goes and the finished work recorded in work-log.md.
 
+</details>
+
 ---
 
-## Status
+## 📈 Status
 
-All four slices are built: intake and immutable storage on Google Cloud Storage, AI extraction
-with confidence tiering and the review queue, search, the dashboard with its anomaly rule and
-quality checklist, and vendor accounts, profiles and matching. Still open: CSV export (F11), Google
-sign-in, Compose hardening, and match emails, which stay off until the match benchmark exists.
-The four slices are described in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10, and exact task-level progress lives in
-[docs/TODO.md](docs/TODO.md) — the one place it is tracked.
+| | Area |
+| :---: | :--- |
+| ✅ | **Slice 1–4 built:** intake and immutable storage on Cloud Storage, AI extraction with confidence tiering and a review queue, search and TOR detail, the dashboard with its anomaly rule and quality checklist, vendor accounts, profiles and matching |
+| ✅ | **Sprint 5:** document vault, readiness checklist, AI cover-letter draft, company path, personnel and behaviour-aware matching |
+| ✅ | **Sprint 6:** continuous deployment to Cloud Run, Sign in with Google, and the security work above (SAST, DAST, headers, rate limits, logging, sessions, breached passwords) |
+| ⬜ | **Still open:** CSV export (F11); match emails (the notify worker runs in neither Compose nor Cloud Run); the open values in SRS §8 that wait on real data |
 
-## Stack
+Task-level progress lives in [docs/TODO.md](docs/TODO.md), the one place it is tracked. The slices are
+described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10.
+
+---
+
+## 🧱 Stack
 
 Next.js 16 · React 19 · Express 5 · MongoDB Atlas · Google Cloud Storage · Zod 4 · Vitest ·
-Vertex AI (Document AI + Gemini) · Docker Compose. The reasoning behind each choice is in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §8.
+Vertex AI (Document AI + Gemini) · Docker Compose · Cloud Run · GitHub Actions. The reasoning behind each
+choice is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §8.
+
+<div align="center">
+
+<sub>Made by team Momentum · Kasetsart University</sub>
+
+</div>
