@@ -25,6 +25,14 @@ export const PROJECT_SEARCH_URL =
  */
 export const SITE_BASE = process.env.NATIONAL_EGP_SITE_BASE ?? "https://process.gprocurement.go.th";
 
+/**
+ * A project's published stages with their dates — the "เอกสาร/ประกาศที่เกี่ยวข้อง" table on e-GP's
+ * project page (TOR-204). Answers a plain GET with no token; it needs `pageAnnounceType`, and any
+ * stage type returns the whole table. Relative to SERVICE_BASE.
+ */
+export const PROJECT_STAGES_PATH =
+  process.env.NATIONAL_EGP_PROJECT_STAGES_PATH ?? "/egp-oann10-service/pb/a-egp-allt-project/announcement/greenBook";
+
 /** The list's announcement types this source reads: the draft TOR, and the invitation to bid. */
 export const LIST_TYPES = { tor: "1", invitation: "2" } as const;
 export type ListKind = keyof typeof LIST_TYPES;

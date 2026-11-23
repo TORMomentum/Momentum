@@ -4,6 +4,7 @@
 import { logger } from "../../core/logger.js";
 import { safeFetchDocument } from "../../lib/safe-fetch.js";
 import { parseAnnouncementList, type ListItem } from "./announcements.js";
+import { parseProjectStages, type ProjectStage } from "./stages.js";
 import {
   FEED_URL,
   MAX_ATTEMPTS,
@@ -15,6 +16,7 @@ import {
   REQUEST_TIMEOUT_MS,
   RETRY_DELAY_MS,
   SERVICE_BASE,
+  PROJECT_STAGES_PATH,
   type AnnounceType,
 } from "./config.js";
 
@@ -203,3 +205,17 @@ export function announcementListUrl(kind: ListKind, page = 1): string {
   return url.toString();
 }
 
+/** URL of a project's stage table (TOR-204). `pageAnnounceType` is required; any stage type returns every row. */
+export function projectStagesUrl(projectId: string): string {
+  const url = new URL(PROJECT_STAGES_PATH, SERVICE_BASE);
+  url.searchParams.set("mode", "LINK");
+  url.searchParams.set("tempProjectId", projectId);
+  url.searchParams.set("pageAnnounceType", "B0");
+  return url.toString();
+}
+
+/** A project's published stages and their days in `timeZone`; empty when e-GP lists none. */
+export async function fetchProjectStages(projectId: string, timeZone: string): Promise<ProjectStage[]> {
+  const bytes = await getBytes(projectStagesUrl(projectId), JSON_MAX_BYTES);
+  return parseProjectStages(JSON.parse(bytes.toString("utf8")), timeZone);
+}
