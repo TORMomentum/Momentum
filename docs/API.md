@@ -234,7 +234,10 @@ Filter values are parsed as primitives only, so no operator object can reach a M
 malformed is a 400. Every confidence tier is listed. Restricted, unpublished and duplicate records are
 not.
 
-Pagination is a cursor over `(announcedAt desc, _id desc)`: pass `nextCursor` back as `cursor`.
+The list comes in four segments: verified TORs still taking bids with at least `SEARCH_MIN_PREP_DAYS`
+(default 5) days left, then those closing sooner (today included), both closing soonest first; then
+every other verified record, then unverified ones, both newest announcement first. Pagination is an
+opaque cursor that resumes inside its segment: pass `nextCursor` back as `cursor`.
 (`page` from an earlier draft is superseded; see rendering spec §5.1.)
 
 ```json

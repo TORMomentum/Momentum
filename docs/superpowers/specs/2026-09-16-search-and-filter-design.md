@@ -151,3 +151,22 @@ Vendors asked (2026-10-15 review) for TORs that leave them enough time to prepar
   linkable, and shows as an applied-filter chip ("เหลือเวลาเตรียมอย่างน้อย N วัน").
 - "Days left" counts calendar days in `TIME_ZONE`, the same "today" that decides `open` and the
   days-left label on each row.
+
+## 10. Revision 2026-11-23 — time to prepare leads the list (2026-10-15 review with the instructor)
+
+In the 2026-10-15 review a TOR closing in a day or two was judged the least useful thing to show first:
+a vendor cannot prepare a bid in that time. The leading "still taking bids" segment is split in two.
+
+| Segment | Records | Order | Cursor `s` |
+| :--- | :--- | :--- | :--- |
+| 1. closing | verified, announced, deadline on or after today + `SEARCH_MIN_PREP_DAYS` | deadline asc, `_id` asc | `c` (unchanged) |
+| 2. soon | verified, announced, deadline from today to the day before that | deadline asc, `_id` asc | `k` (new) |
+| 3. rest | every other verified record | `announcedAt` desc, `_id` desc | none |
+| 4. unverified | records marked "unverified extraction" | `announcedAt` desc, `_id` desc | `u` |
+
+- `SEARCH_MIN_PREP_DAYS` (default 5) lives in `core/config.ts` and `.env.example`; 0 turns the split
+  off and segment 2 is empty. "Days" are calendar days in `TIME_ZONE`, the same "today" as `open`.
+- Records closing soon are still listed, never hidden; they only move after the ones with time to
+  prepare.
+- A cursor from before this revision (`s: "c"`) still decodes and resumes in segment 1.
+- Each segment still reads its order from an index, so the two-second target (§4) is unaffected.

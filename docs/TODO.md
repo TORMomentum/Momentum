@@ -800,6 +800,9 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
 - [x] TOR-203 Search filter "at least N days left to prepare": `minDaysLeft` on `GET /tors` (TOR-228),
   7 / 14 / 30-day presets and an applied-filter chip on Search (TOR-229), tests and API.md (TOR-230).
   Verified on a local Compose stack: API counts for 0 / 7 / 14 / 30 days and the rendered page
+- [x] Search order (2026-10-15 review): TORs with at least `SEARCH_MIN_PREP_DAYS` (5) days to prepare
+  first, then those closing sooner, then other verified, then unverified; new cursor segment `soon`.
+  Verified on a local Compose stack: order on the API and `/search`, and a one-per-page cursor walk
 - [ ] TOR-69 CSV export of the filtered TOR list (F11)
 - [ ] TOR-87 Ingestion-source health per adapter (F12)
 - [ ] TOR-204 – 207 TOR project stages on e-GP: spike, `stage` / `stageHistory`, timeline, notifications
