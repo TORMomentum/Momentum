@@ -354,6 +354,9 @@ const schema = z.object({
   NOTIFY_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   NOTIFY_DAILY_BOUNDARY: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "NOTIFY_DAILY_BOUNDARY must be HH:MM").default("00:00"),
   NOTIFY_HIGH_MIN_MATCH: z.coerce.number().min(0).max(100).default(80),
+  // TOR-239: a stage move older than this is not emailed. It bounds the first dispatch after a vendor
+  // starts following, and after the worker was off, so no backlog of old moves arrives at once.
+  STAGE_NOTIFY_LOOKBACK_DAYS: z.coerce.number().int().positive().default(14),
 
   API_PORT: z.coerce.number().int().positive().default(4000),
   // The extraction worker's probe server, for Cloud Run (TOR-140). Unset, as on a developer
@@ -503,6 +506,8 @@ export interface Config {
     batchSize: number;
     dailyBoundary: string;
     highMinMatch: number;
+    /** TOR-239: a stage move older than this is not emailed. */
+    stageLookbackDays: number;
   };
   apiPort: number;
   workerHealthPort?: number;
@@ -707,6 +712,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       batchSize: parsed.NOTIFY_BATCH_SIZE,
       dailyBoundary: parsed.NOTIFY_DAILY_BOUNDARY,
       highMinMatch: parsed.NOTIFY_HIGH_MIN_MATCH,
+      stageLookbackDays: parsed.STAGE_NOTIFY_LOOKBACK_DAYS,
     },
     apiPort: parsed.API_PORT,
     ...(parsed.WORKER_HEALTH_PORT !== undefined ? { workerHealthPort: parsed.WORKER_HEALTH_PORT } : {}),
