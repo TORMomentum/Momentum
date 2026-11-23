@@ -60,7 +60,7 @@ const MAX_VALUES = 20;
 const MAX_VALUE_CHARS = 300;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** The API enforces its own configured ceiling; this only keeps a hand-edited URL sane. */
-const MAX_DAYS_LEFT = 365;
+export const MAX_DAYS_LEFT = 365;
 
 /** The "days left to prepare" choices offered on Search (TOR-203). */
 export const DAYS_LEFT_PRESETS = [7, 14, 30] as const;
@@ -90,6 +90,19 @@ function date(value: string | string[] | undefined): string | null {
   if (!raw || !ISO_DATE.test(raw)) return null;
   const parsed = new Date(`${raw}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(raw) ? raw : null;
+}
+
+/**
+ * What the typed "days left" box means: a whole number of days, `null` for an
+ * empty box (no filter), or `undefined` when the text is not one, so the box
+ * goes back to the filter in force instead of guessing.
+ */
+export function parseDaysLeftInput(value: string): number | null | undefined {
+  const raw = value.trim();
+  if (raw === "") return null;
+  if (!/^\d{1,3}$/.test(raw)) return undefined;
+  const parsed = Number(raw);
+  return parsed <= MAX_DAYS_LEFT ? parsed : undefined;
 }
 
 function daysLeft(value: string | string[] | undefined): number | null {

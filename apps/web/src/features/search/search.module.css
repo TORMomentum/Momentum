@@ -286,6 +286,20 @@
 
 .daysLeftOptionOn { border-color: var(--blue); background: var(--blue); color: var(--paper); }
 
+.daysLeftCustom { display: flex; align-items: center; gap: 6px; color: var(--ink); }
+
+.daysLeftInput {
+  width: 64px;
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font: 12px var(--data);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.daysLeftInput:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+
 .dateInput {
   width: 100%;
   border: 1px solid rgba(18, 35, 60, 0.35);

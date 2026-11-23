@@ -14,6 +14,8 @@ import {
   SEARCH_STATES,
   toSearchQuery,
   DAYS_LEFT_PRESETS,
+  MAX_DAYS_LEFT,
+  parseDaysLeftInput,
   type SearchFilters,
   type SearchState,
 } from "../features/search/search.params";
@@ -156,6 +158,21 @@ export function SearchView({
       setDraftBudget({ min: committedMin, max: committedMax });
     }
   }, [committedMin, committedMax]);
+
+  // The typed "days left" box: a draft while typing, committed on Enter or on leaving the box,
+  // so typing "14" does not search for 1 first.
+  const [draftDaysLeft, setDraftDaysLeft] = useState(filters.minDaysLeft === null ? "" : String(filters.minDaysLeft));
+  useEffect(() => {
+    setDraftDaysLeft(filters.minDaysLeft === null ? "" : String(filters.minDaysLeft));
+  }, [filters.minDaysLeft]);
+  const commitDaysLeft = () => {
+    const parsed = parseDaysLeftInput(draftDaysLeft);
+    if (parsed === undefined) {
+      setDraftDaysLeft(filters.minDaysLeft === null ? "" : String(filters.minDaysLeft));
+    } else if (parsed !== filters.minDaysLeft) {
+      update({ minDaysLeft: parsed });
+    }
+  };
 
   const committedMatchMin = filters.minMatch ?? MATCH_RANGE.floor;
   const committedMatchMax = filters.maxMatch ?? MATCH_RANGE.ceiling;
@@ -382,6 +399,26 @@ export function SearchView({
                 );
               })}
             </div>
+            <label className={styles.daysLeftCustom}>
+              <span>หรือระบุเอง</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_DAYS_LEFT}
+                step={1}
+                className={styles.daysLeftInput}
+                value={draftDaysLeft}
+                placeholder="จำนวน"
+                aria-label="เหลือเวลาเตรียมอย่างน้อย (วัน)"
+                onChange={(e) => setDraftDaysLeft(e.target.value)}
+                onBlur={commitDaysLeft}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitDaysLeft();
+                }}
+              />
+              <span>วัน</span>
+            </label>
           </div>
           <div className={styles.dateRange}>
             <label className={styles.dateField}>
