@@ -98,6 +98,8 @@ export interface PublicTorRecord {
   /** The project's published stages, oldest first, and the newest of them (TOR-205). */
   stageHistory: ProjectStageEntry[];
   stage: { code: string; kind: StageKind; on: string } | null;
+  /** When the stages were last read from the source; null before the first read. */
+  stagesCheckedAt: Date | null;
   provenance: Provenance | null;
   confidenceLevel: ConfidenceLevel | null;
   unverified: boolean;
@@ -522,6 +524,7 @@ export class TorsRepository {
           sourceProject: 1,
           stageHistory: 1,
           stage: 1,
+          stagesCheckedAt: 1,
           provenance: 1,
           confidenceLevel: 1,
           unverified: 1,
@@ -542,6 +545,7 @@ export class TorsRepository {
       sourceProject: doc.sourceProject ?? null,
       stageHistory: doc.stageHistory ?? [],
       stage: doc.stage ?? null,
+      stagesCheckedAt: doc.stagesCheckedAt ?? null,
       provenance: doc.provenance ?? null,
       confidenceLevel: doc.confidenceLevel ?? null,
       unverified: doc.unverified,
