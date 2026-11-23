@@ -821,6 +821,11 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
 - [ ] Missing announcement dates: `tools/backfill_egp_announced_dates.mts` is built; 57 dates filled on
   Atlas so far, the rest once the TOR-205 stages worker has read every project (`--stored-only`), with
   `--fix-mismatch` (the team agreed to replace disagreeing dates)
+- [x] TOR-205 project stages on one record (spec 2026-11-23-project-stages): `stageHistory` / `stage` on
+  public e-GP TOR records, the stages worker (`npm run stages-worker`: daily per project, paced, backs off
+  on refusals), stage changes in `tor_events`, and a final stage deciding the badge, the open filters,
+  matching, notifications and the CSV through `lib/tor-state.ts`. Tests pass; not yet run against e-GP,
+  which is refusing (see above). No Compose service yet, like the stats worker
 - [ ] TOR-87 Ingestion-source health per adapter (F12)
-- [ ] TOR-205 – 207 TOR project stages: `stage` / `stageHistory`, timeline, notifications
+- [ ] TOR-206 – 207 stage timeline on the TOR page, stage notifications (read what TOR-205 writes)
 - [ ] TOR-221 Winner announcements: winner, price, bidders

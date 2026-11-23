@@ -25,7 +25,7 @@ show or to notify about.
 | 7 | The status badge | **The source's stage decides when it is final.** A record whose stage is `awarded` or `cancelled` shows "ประกาศผู้ชนะแล้ว" / "ยกเลิกแล้ว" and is not open, whatever extraction read. Otherwise the badge is decided as today, from `torStatus` and the deadline. Chosen by the team: the stage is a value the source system states, the extracted `torStatus` is a model's reading of a document that predates it |
 | 8 | The extracted `torStatus` | **Never rewritten.** It stays exactly as extracted and is still shown as an extracted field with its confidence (NFR-F6, NFR-F7). Decision 7 changes which value the badge reads, not the field |
 | 9 | One place decides | The badge, the open filter, matching, notification, the dashboard's state counts and the export all ask `lib/tor-state.ts`, which already defines the five states (§6). Today ten modules read `fields.torStatus.value`; the ones that decide "is it open" move onto the shared rule |
-| 10 | The audit trail | A stage change writes a `tor_events` entry with `kind: "stage"`, `from` and `to` as stage codes, `source: "national-egp"`, `actor: "stages-worker"` (FR-E-5). The record's `statusHistory` stays pipeline-only. TOR-207 reads these entries to notify |
+| 10 | The audit trail | A stage change writes a `tor_events` entry with `kind: "stage"`, `from` (null the first time) and `to` as stage codes, `source: "national-egp"`, `actor: "stages-worker"` (FR-E-5). The record's `statusHistory` stays pipeline-only. TOR-207 reads these entries to notify |
 | 11 | Unknown codes | A code missing from the kind table is stored with `kind: "other"` and its code, and logged once per code (`stage_code_unknown`). It never decides the badge. The table grows as codes are confirmed (spike §4: winner and cancellation codes are still to be sampled) |
 
 ## 3. Stage kinds
@@ -86,9 +86,10 @@ flowchart LR
     write --> badge
 ```
 
-- **New records:** the e-GP import sets `stagesDueAt: now` on every TOR record it creates, so the worker
-  reads it on its next pass. Existing records are given `stagesDueAt: now` once by a migration step in the
-  worker's start-up (records with a `sourceProject.system` of `national-egp` and no `stagesCheckedAt`).
+- **New records:** whenever nothing is due, the worker gives every public e-GP TOR record that has never
+  been read (`stagesCheckedAt` and `stagesDueAt` both absent) a due time of now. That covers the corpus
+  that predates the worker and every record imported since, without the import or intake knowing about
+  stages.
 - **One pass:** claim up to `STAGES_BATCH` (default 50) due records, grouped by project; read each project's
   table once; write every record of that project; compute the next due time from decision 6; sleep
   `STAGES_REQUEST_DELAY_MS` between projects.
@@ -112,9 +113,10 @@ disagree. The stage is added there, not beside it:
   segment use (announced, deadline today or later or none, stage not final), so those stop writing
   `fields.torStatus.value: "announced"` by hand.
 
-The API adds `state` (a `TorState`) to each list row and to the detail record, computed by `torStateOf`.
-The web's `/search` and TOR-page badges and the CSV's `สถานะ` column read `state` instead of re-deriving it
-from `torStatus`. `isOpenOn` (matching), the notification filter and the dashboard's state counts pass
+The API adds `torState` (a `TorState`; `state` is already the pipeline state on a row) to each list row
+and to the detail record, computed by `torStateOf`. The web's `/search` and TOR-page badges and the CSV's
+`สถานะ` column read `torState` instead of re-deriving it from `torStatus`. The detail record also carries
+`stage` and `stageHistory` for TOR-206. `isOpenOn` (matching), the notification filter and the dashboard's state counts pass
 the stage kind. Readers that report the extracted value as such (admin review, extraction grading)
 keep reading `torStatus`.
 
