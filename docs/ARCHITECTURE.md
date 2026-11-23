@@ -178,7 +178,8 @@ The feature modules, as of Sprint 4:
 | :--- | :--- |
 | `intake/` | The three intake routes, dedupe, immutable storage, enqueue |
 | `extraction/` | OCR and field extraction, confidence grading |
-| `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter |
+| `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter (`tors.match-filter.ts`, shared with `export/`) |
+| `export/` | CSV of the filtered list (`GET /export/tors.csv`, TOR-69): pages through `TorsService.search`, adds provenance, writes RFC 4180 with a formula guard |
 | `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
 | `accounts/` | Registration, sign-in (password, and Google through `google-signin.*`), sessions, password reset, PDPA export and deletion |
 | `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
@@ -698,7 +699,7 @@ slice reads the records it writes.
 | :--- | :--- | :--- | :--- |
 | **1** | F1 | Config, ports and adapters, three intake routes, immutable storage, dedupe, job queue, worker, admin upload screen, design tokens | ✅ except Compose hardening and the CI audit (task 15) | 🔨 |
 | 2 | F2, F3 | Vertex AI OCR and field extraction, confidence tiering, review queue | ✅ |
-| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export | ✅ except CSV export (F11) and Atlas Search |
+| 3 | F4, F7, F8, F11 | Search, TOR detail, dashboard, anomaly rule, quality checklist, CSV export | ✅ except Atlas Search |
 | 4 | F5, F6, F9, F10 | Auth and vendor profiles, taxonomy, matching, email notification, PDPA and takedown | ✅ except Google sign-in; match emails off until the benchmark |
 
 Task-level progress lives in [TODO.md](TODO.md) and is not repeated here — this document describes
