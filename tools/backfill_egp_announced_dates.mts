@@ -1,5 +1,5 @@
 /**
- * Gives e-GP TOR records the announcement date e-GP itself lists for their draft TOR (TOR-204).
+ * Gives e-GP TOR records the announcement date e-GP itself lists for their TOR (TOR-204).
  *
  *   npx tsx tools/backfill_egp_announced_dates.mts                  dry run: what would change, nothing written
  *   npx tsx tools/backfill_egp_announced_dates.mts --apply          fill in records that have no announcement date
@@ -20,7 +20,7 @@
  *
  * A TOR collected from e-GP's invitation list was given no announcement date: the list's date is
  * the invitation's, not the TOR's, and the TOR rarely states one. e-GP's project page lists every
- * stage with its date (`fetchProjectStages`); the draft TOR's (B0 or B3) is the TOR's announcement date.
+ * stage with its date (`fetchProjectStages`); the draft TOR's (B0 or B3) is the TOR's announcement date, or with no draft stage the first invitation's (D0).
  * Design: docs/superpowers/specs/2026-11-23-egp-project-stages-design.md
  *
  * The date is recorded as a source value (`announcedAtOrigin: "source"`), the cohort month is
@@ -36,7 +36,7 @@ import { connect, disconnect, tors } from "../apps/api/src/core/db.js";
 import { cohortFor } from "../apps/api/src/modules/stats/cohort.js";
 import { StatsRepository, windowKeysFor } from "../apps/api/src/modules/stats/stats.repository.js";
 import { fetchProjectStages } from "../apps/api/src/sources/national-egp/client.js";
-import { DRAFT_TOR_CODES, torAnnouncedOn, type ProjectStage } from "../apps/api/src/sources/national-egp/stages.js";
+import { DRAFT_TOR_CODES, INVITATION_CODE, torAnnouncedOn, type ProjectStage } from "../apps/api/src/sources/national-egp/stages.js";
 
 const rootEnv = fileURLToPath(new URL("../.env", import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -110,8 +110,8 @@ try {
     }
     if (!b0) {
       tally.noTorStage += 1;
-      // The codes it does list, so a draft code not yet in DRAFT_TOR_CODES shows up here.
-      console.log(`no draft  ${projectId}  [${codes.join(" ") || "no stages"}]  (draft codes: ${DRAFT_TOR_CODES.join(", ")})`);
+      // Neither a draft nor an invitation: the codes it does list, so a code worth reading shows up here.
+      console.log(`no date   ${projectId}  [${codes.join(" ") || "no stages"}]  (dated by: ${[...DRAFT_TOR_CODES, INVITATION_CODE].join(", ")})`);
       continue;
     }
 
