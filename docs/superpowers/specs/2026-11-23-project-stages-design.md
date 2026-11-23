@@ -32,11 +32,11 @@ show or to notify about.
 
 | `kind` | e-GP codes | Final | Badge |
 | :--- | :--- | :--- | :--- |
-| `draft` | `B0` | no | as today |
+| `draft` | `B0`, `B3` | no | as today |
 | `median-price` | `BOQ` | no | as today |
 | `invitation` | `D0` | no | as today |
-| `awarded` | to confirm (spike §4) | **yes** | ประกาศผู้ชนะแล้ว |
-| `cancelled` | to confirm (spike §4) | **yes** | ยกเลิกแล้ว |
+| `awarded` | `W0` (§10) | **yes** | ประกาศผู้ชนะแล้ว |
+| `cancelled` | `D1` (§10) | **yes** | ยกเลิกแล้ว |
 | `other` | anything else | no | as today |
 
 The table lives in `sources/national-egp/stages.ts` beside the parser. Codes for `awarded` and `cancelled`
@@ -151,3 +151,16 @@ All in `core/config.ts` with these defaults and in `.env.example`. None is an SR
 - Collecting the winner's document, price and bidders (TOR-221).
 - Projects with an invitation but no TOR (linking spec §5).
 - Writing stages onto BMA e-GP records.
+
+## 10. Revision 2026-11-23 — codes confirmed, and a cancelled invitation is still followed
+
+Four projects sampled once e-GP answered again (spike spec §3a) confirmed the final codes: `W0`
+ประกาศรายชื่อผู้ชนะการเสนอราคา → `awarded`; `D1` ยกเลิกประกาศเชิญชวน → `cancelled`; and a second draft
+code, `B3` ร่างเอกสารประกวดราคา(e-Bidding) → `draft`. `price` (สรุปข้อมูลการเสนอราคาเบื้องต้น) stays `other`:
+it says bids were opened, not that the project is over.
+
+**Decision 6 changes for `cancelled`.** `D1` cancels the *invitation*, and an agency can invite again in
+the same project; that later `D0` is the newest stage and reopens the record. So only `awarded` stops the
+re-reads. A cancelled project is still read every `STAGES_REFRESH_HOURS` until `STAGES_MAX_AGE_DAYS`, and
+shows "ยกเลิกแล้ว" meanwhile (decision 7 is unchanged: both kinds are final for the badge).
+
