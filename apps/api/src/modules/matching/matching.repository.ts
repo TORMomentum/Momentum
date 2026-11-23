@@ -30,6 +30,8 @@ const MATCH_PROJECTION = {
   "fields.budget": 1,
   "fields.deadline": 1,
   "fields.torStatus": 1,
+  // A final stage closes the TOR whatever extraction read (TOR-205).
+  stage: 1,
   "fields.scopeSummary": 1,
   "fields.qualifications": 1,
   "fields.requiredDocuments": 1,

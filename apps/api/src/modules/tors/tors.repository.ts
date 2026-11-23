@@ -1,10 +1,10 @@
 import { ObjectId, type Db, type Filter, type WithId } from "mongodb";
-import type { ConfidenceLevel, ExtractedField, Provenance, SourceProject, TorFields } from "@tor-radar/shared";
+import type { ConfidenceLevel, ExtractedField, ProjectStageEntry, Provenance, SourceProject, StageKind, TorFields } from "@tor-radar/shared";
 import type { SearchConfig } from "../../core/config.js";
 import { SEARCH_PATHS, torPeerStats, tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import type { SearchCursor, SearchFilter } from "./tors.query.js";
-import { stateFilter } from "../../lib/tor-state.js";
+import { NOT_FINAL, openFilter, stateFilter, torStateOf } from "../../lib/tor-state.js";
 import { escapeRegExp } from "../../lib/escape-regexp.js";
 
 export interface PublicTorDocumentRecord {
@@ -52,6 +52,8 @@ export interface TorListItem {
    */
   deadline: { raw: string; value: string | null; verified: boolean; fromDocument?: string };
   torStatus: { value: string | null; verified: boolean };
+  /** The project's newest published stage, as the source states it (TOR-205); null when none is known. */
+  stage: { code: string; kind: StageKind; on: string } | null;
 }
 
 /**
@@ -93,6 +95,9 @@ export interface PublicTorRecord {
   sourceUrl: string | null;
   /** The source system's project the TOR belongs to, when it was collected from one. */
   sourceProject: SourceProject | null;
+  /** The project's published stages, oldest first, and the newest of them (TOR-205). */
+  stageHistory: ProjectStageEntry[];
+  stage: { code: string; kind: StageKind; on: string } | null;
   provenance: Provenance | null;
   confidenceLevel: ConfidenceLevel | null;
   unverified: boolean;
@@ -134,6 +139,7 @@ const LIST_PROJECTION = {
   "fields.budget": 1,
   "fields.deadline": 1,
   "fields.torStatus": 1,
+  stage: 1,
   // For the row's anomaly verdict (dashboard spec §6.2), never shown as such.
   cohort: 1,
   "access.restricted": 1,
@@ -194,10 +200,8 @@ function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filt
     clauses.push(stateFilter(criteria.state, criteria.today) as Filter<TorDocument>);
   }
   if (criteria.openOn) {
-    clauses.push({ "fields.torStatus.value": "announced" });
-    clauses.push({
-      $or: [{ "fields.deadline.value": null }, { "fields.deadline.value": { $gte: criteria.openOn } }],
-    });
+    // The one definition of "still open", stage included (lib/tor-state.ts, TOR-205).
+    clauses.push(openFilter(criteria.openOn) as Filter<TorDocument>);
   }
   if (criteria.minBudget !== undefined || criteria.maxBudget !== undefined) {
     const range: Record<string, number> = {};
@@ -237,7 +241,7 @@ function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filt
  * Deadlines are ISO strings, so string order is date order.
  */
 function closingOn(today: string): Filter<TorDocument> {
-  return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: NO_DATE_AFTER } };
+  return { ...NOT_FINAL, "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: NO_DATE_AFTER } };
 }
 
 /**
@@ -252,8 +256,8 @@ const NO_DATE_AFTER = ":";
 function closingBand(today: string, prepFrom: string | undefined, band: "closing" | "soon"): Filter<TorDocument> {
   if (!prepFrom || prepFrom <= today) return band === "closing" ? closingOn(today) : { _id: { $exists: false } };
   return band === "closing"
-    ? { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: prepFrom, $lt: NO_DATE_AFTER } }
-    : { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: prepFrom } };
+    ? { ...NOT_FINAL, "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: prepFrom, $lt: NO_DATE_AFTER } }
+    : { ...NOT_FINAL, "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: prepFrom } };
 }
 
 /** The first two segments hold only records whose critical fields are verified (SRS §4.2.1). */
@@ -431,6 +435,7 @@ export class TorsRepository {
           value: doc.fields?.torStatus?.value ?? null,
           verified: doc.fields?.torStatus?.verified ?? false,
         },
+        stage: doc.stage ?? null,
         cohort: doc.cohort ?? null,
         restricted: doc.access?.restricted ?? true,
         state: doc.pipeline?.state ?? "",
@@ -515,6 +520,8 @@ export class TorsRepository {
           announcedAt: 1,
           sourceUrl: 1,
           sourceProject: 1,
+          stageHistory: 1,
+          stage: 1,
           provenance: 1,
           confidenceLevel: 1,
           unverified: 1,
@@ -533,6 +540,8 @@ export class TorsRepository {
       announcedAt: doc.announcedAt ?? null,
       sourceUrl: doc.sourceUrl ?? null,
       sourceProject: doc.sourceProject ?? null,
+      stageHistory: doc.stageHistory ?? [],
+      stage: doc.stage ?? null,
       provenance: doc.provenance ?? null,
       confidenceLevel: doc.confidenceLevel ?? null,
       unverified: doc.unverified,
@@ -555,7 +564,7 @@ export class TorsRepository {
     const today = new Date().toISOString().slice(0, 10);
     const docs = await tors(this.db).find(
       { $and: [{ _id: { $in: objectIds } }, VISIBLE] },
-      { projection: { fields: 1 } },
+      { projection: { fields: 1, stage: 1 } },
     ).toArray();
     return docs.map((doc) => ({
       id: doc._id.toString(),
@@ -563,7 +572,16 @@ export class TorsRepository {
       agency: doc.fields?.agency?.raw ?? "",
       deadline: typeof doc.fields?.deadline?.value === "string" ? doc.fields.deadline.value : null,
       budget: typeof doc.fields?.budget?.value === "number" ? doc.fields.budget.value : null,
-      open: doc.fields?.torStatus?.value === "announced" && (typeof doc.fields?.deadline?.value !== "string" || doc.fields.deadline.value >= today),
+      open: ["open", "awaiting-invitation"].includes(
+        torStateOf(
+          {
+            torStatus: (doc.fields?.torStatus?.value as never) ?? null,
+            deadline: typeof doc.fields?.deadline?.value === "string" ? doc.fields.deadline.value : null,
+            stageKind: doc.stage?.kind ?? null,
+          },
+          today,
+        ),
+      ),
     }));
   }
 

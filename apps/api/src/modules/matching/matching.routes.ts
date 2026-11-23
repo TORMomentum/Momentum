@@ -39,6 +39,7 @@ function biddable(record: WithId<TorDocument>, today: string): boolean {
       {
         torStatus: { value: isString(record.fields.torStatus?.value) ? record.fields.torStatus.value : null },
         deadline: { value: isString(record.fields.deadline?.value) ? record.fields.deadline.value : null },
+        stage: record.stage ?? null,
       },
       today,
     )
