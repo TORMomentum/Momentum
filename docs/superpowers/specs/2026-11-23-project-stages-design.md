@@ -189,7 +189,8 @@ The first full read of the 991 e-GP projects logged four codes outside the table
 - **Names.** The source's own Thai name, exactly as published (NFR-F7). Only a stage e-GP leaves unnamed
   (`BOQ`) gets our Thai name for its kind. Codes are never shown: they mean nothing to a vendor.
 - **Links (TOR-237).** A draft stage whose `recordId` is this TOR, and an invitation stage when the reader
-  can open the invitation (the same rule `originalDocuments` applies), link to the stored original. Every
+  can open the invitation (the same rule `originalDocuments` applies), open the stored original in the
+  page's own document window (`OriginalPreview`, on that document's tab), as "เปิดเอกสารต้นฉบับ" does. Every
   other stage relies on one link to the project on e-GP (`sourceProject.url`), because e-GP has no public
   per-stage address (spike spec §4).
 - **Freshness (NFR-F6).** The footer names the source and the last read, from `stagesCheckedAt`, which the
