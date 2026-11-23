@@ -28,7 +28,8 @@
  *
  * Run the worker (`npm run worker -w @tor-radar/api`) to extract and publish what this queues.
  *
- * A one-off, like the BMA import: no schedule, no health record. Re-running is safe — a stored
+ * Run by hand, like the BMA import, with no schedule; each run's outcome is recorded as source
+ * `national-egp-import` for the admin source-health page (TOR-87). Re-running is safe — a stored
  * document is recognised by its hash. It is a public government service, so requests are paced.
  */
 import { existsSync } from "node:fs";
@@ -38,6 +39,9 @@ import { createStorage } from "../apps/api/src/adapters/storage.factory.js";
 import { MongoQueue } from "../apps/api/src/adapters/mongo.queue.js";
 import { loadConfig } from "../apps/api/src/core/config.js";
 import { connect, disconnect, ensureIndexes, tors } from "../apps/api/src/core/db.js";
+import { SourceHealthRepository } from "../apps/api/src/modules/sources/source-health.repository.js";
+import { SourceHealthService } from "../apps/api/src/modules/sources/source-health.service.js";
+import { NATIONAL_EGP_IMPORT_ID } from "../apps/api/src/modules/sources/sources.registry.js";
 import { asCalendarDay } from "../apps/api/src/lib/calendar-date.js";
 import { sha256 } from "../apps/api/src/lib/hash.js";
 import { packageKeyFor } from "../apps/api/src/lib/storage-key.js";
@@ -339,6 +343,9 @@ async function targets(): Promise<Target[]> {
   }));
 }
 
+/** Why the run could not do its work, when it could not: the list unreadable, or a crash (TOR-87). */
+let runError: string | null = null;
+
 try {
   let list: Target[];
   try {
@@ -347,13 +354,31 @@ try {
     // The source being down is the source's state, not a crash in this tool: say so plainly.
     console.error(`e-GP is not answering (${(error as Error).message}) — try again later, or use --project <number>`);
     process.exitCode = 1;
+    runError = `e-GP list unavailable: ${(error as Error).message}`;
     list = [];
   }
   if (list.length === 0 && !process.exitCode) console.log("nothing to import — e-GP listed no announcements");
   for (const target of list) {
     await skipOnSourceError(target.projectId, () => importProject(target));
   }
+} catch (error) {
+  runError = error instanceof Error ? error.message : "unknown";
+  throw error;
 } finally {
   console.log(JSON.stringify({ event: "national_egp_import_done", ...tally }));
+  // Source health (TOR-87): the run's outcome, for the admin page. Failed when it could not run at all or
+  // every project failed.
+  const everyFailed = tally.projects > 0 && tally.failed >= tally.projects;
+  const error = runError ?? (everyFailed ? "every project failed" : null);
+  try {
+    await new SourceHealthService({ repo: new SourceHealthRepository(db), config }).recordRun(NATIONAL_EGP_IMPORT_ID, {
+      ok: error === null,
+      items: tally.projects,
+      failed: tally.failed,
+      error,
+    });
+  } catch (healthError) {
+    console.error(`source health not recorded: ${(healthError as Error).message}`);
+  }
   await disconnect();
 }
