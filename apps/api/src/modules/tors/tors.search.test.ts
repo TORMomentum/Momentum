@@ -485,6 +485,16 @@ describe("GET /tors — what can still be bid on comes first", () => {
     expect((await search("")).items.map((item) => item.id)).toEqual([prep, soon]);
     expect((await search("minDaysLeft=5")).items.map((item) => item.id)).toEqual([prep]);
   });
+
+  it("never reads a deadline left as text as a date far in the future", async () => {
+    // Extraction can leave a deadline as written; Thai text sorts after every ISO date.
+    const dated = await seed({ deadline: "2026-09-25" });
+    const text = await seed({ deadline: "วันที่ 8 ตุลาคม 2569" });
+    expect(ids(await search("minDaysLeft=7"))).toEqual([dated]);
+    expect(ids(await search("deadlineFrom=2026-09-20"))).toEqual([dated]);
+    // Still listed, after the dated closing records rather than among them.
+    expect((await search("")).items.map((item) => item.id)).toEqual([dated, text]);
+  });
 });
 
 describe("GET /tors — input is primitives only", () => {
