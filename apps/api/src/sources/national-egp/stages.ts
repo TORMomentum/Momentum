@@ -82,6 +82,9 @@ export const STAGE_KINDS: Readonly<Record<string, StageKind>> = {
   // เปลี่ยนแปลงประกาศรายชื่อผู้ชนะการเสนอราคา, after a W0: the winner announcement amended, still a winner.
   // 69109402570 (W0 2026-11-11, W2 2026-11-19).
   W2: "awarded",
+  // ข้อมูลสาระสำคัญในสัญญา: the signed contract's key details, published after the winner. 33 projects list it
+  // after their W0 (69099445932 among them); as the newest stage it must keep them awarded.
+  I0: "awarded",
   // ยกเลิกประกาศเชิญชวน: 69069300968, 69099528942.
   D1: "cancelled",
 };

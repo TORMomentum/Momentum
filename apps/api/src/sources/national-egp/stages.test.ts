@@ -82,7 +82,7 @@ describe("e-GP project stages (TOR-204)", () => {
   });
 
   it("names only the codes confirmed on a real project, and keeps any other as `other` (TOR-205)", () => {
-    expect(["B0", "B3", "BOQ", "D0", "W0", "W2", "D1"].map(stageKindOf)).toEqual(["draft", "draft", "median-price", "invitation", "awarded", "awarded", "cancelled"]);
+    expect(["B0", "B3", "BOQ", "D0", "W0", "W2", "I0", "D1"].map(stageKindOf)).toEqual(["draft", "draft", "median-price", "invitation", "awarded", "awarded", "awarded", "cancelled"]);
     // A cancelled winner announcement (W1) is not a final stage: the project may be awarded again.
     expect(stageKindOf("W1")).toBe("other");
     // The bid summary is real but says nothing about whether bids are still taken.
