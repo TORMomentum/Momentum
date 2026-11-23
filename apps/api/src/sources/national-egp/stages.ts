@@ -25,7 +25,8 @@ export function parseProjectStages(json: unknown, timeZone: string): ProjectStag
   const rows = body.data?.greenBookAnnouncementTypeLinkDto ?? [];
   const stages: ProjectStage[] = [];
   for (const row of rows) {
-    if (typeof row.announceType !== "string" || !/^[A-Z0-9]{1,8}$/.test(row.announceType)) continue;
+    // e-GP's codes are short and plain; "price" (the bid summary) is lower case.
+    if (typeof row.announceType !== "string" || !/^[A-Za-z0-9]{1,8}$/.test(row.announceType)) continue;
     if (typeof row.announceDate !== "string") continue;
     const at = new Date(row.announceDate);
     if (Number.isNaN(at.getTime())) continue;
@@ -38,7 +39,14 @@ export function parseProjectStages(json: unknown, timeZone: string): ProjectStag
   return stages;
 }
 
-/** The day the draft TOR was announced (B0), if e-GP lists one. */
+/**
+ * e-GP codes for the draft TOR, each confirmed on a real project: `B0` (69109234234) and `B3`
+ * "ร่างเอกสารประกวดราคา(e-Bidding)" (69069300968, 69099528942; sampled 2026-11-23).
+ */
+export const DRAFT_TOR_CODES: readonly string[] = ["B0", "B3"];
+
+/** The day the draft TOR was announced, if e-GP lists one; the earliest when it lists more than one. */
 export function torAnnouncedOn(stages: ProjectStage[]): string | null {
-  return stages.find((stage) => stage.type === "B0")?.announcedOn ?? null;
+  const days = stages.filter((stage) => DRAFT_TOR_CODES.includes(stage.type)).map((stage) => stage.announcedOn);
+  return days.length > 0 ? days.sort()[0]! : null;
 }

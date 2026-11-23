@@ -14,7 +14,7 @@
  *
  * A TOR collected from e-GP's invitation list was given no announcement date: the list's date is
  * the invitation's, not the TOR's, and the TOR rarely states one. e-GP's project page lists every
- * stage with its date (`fetchProjectStages`); the draft TOR's (B0) is the TOR's announcement date.
+ * stage with its date (`fetchProjectStages`); the draft TOR's (B0 or B3) is the TOR's announcement date.
  * Design: docs/superpowers/specs/2026-11-23-egp-project-stages-design.md
  *
  * The date is recorded as a source value (`announcedAtOrigin: "source"`), the cohort month is
@@ -90,7 +90,7 @@ try {
     await sleep(DELAY_MS);
     if (!b0) {
       tally.noTorStage += 1;
-      console.log(`no B0     ${projectId}`);
+      console.log(`no draft  ${projectId}`);
       continue;
     }
 

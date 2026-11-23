@@ -41,6 +41,26 @@ describe("e-GP project stages (TOR-204)", () => {
     expect(torAnnouncedOn([])).toBeNull();
   });
 
+  it("dates the draft TOR from B3 too, and keeps lower-case codes such as the bid summary (sampled 2026-11-23)", () => {
+    // e-GP's answer for project 69069300968, in e-GP's own order: not date order.
+    const cancelled = {
+      response: { responseCode: 0 },
+      data: {
+        greenBookAnnouncementTypeLinkDto: [
+          { announceType: "B3", announceTypeDesc: "ร่างเอกสารประกวดราคา(e-Bidding)", announceDate: "2026-08-16T17:00:00.000Z" },
+          { announceType: "BOQ", announceTypeDesc: null, announceDate: "2026-08-23T17:00:00.000Z" },
+          { announceType: "price", announceTypeDesc: "สรุปข้อมูลการเสนอราคาเบื้องต้น", announceDate: "2026-09-09T17:00:00.000Z" },
+          { announceType: "D0", announceTypeDesc: "ประกาศเชิญชวน", announceDate: "2026-08-23T17:00:00.000Z" },
+          { announceType: "D1", announceTypeDesc: "ยกเลิกประกาศเชิญชวน", announceDate: "2026-11-22T17:00:00.000Z" },
+        ],
+      },
+    };
+    const stages = parseProjectStages(cancelled, TZ);
+    expect(stages.map((stage) => stage.type)).toEqual(["B3", "BOQ", "price", "D0", "D1"]);
+    expect(torAnnouncedOn(stages)).toBe("2026-08-17");
+    expect(torAnnouncedOn([{ type: "B3", description: null, announcedOn: "2026-09-02" }, { type: "B0", description: null, announcedOn: "2026-09-01" }])).toBe("2026-09-01");
+  });
+
   it("asks e-GP for the table with the parameter it requires", () => {
     const url = new URL(projectStagesUrl("69109234234"));
     expect(url.pathname).toBe("/egp-oann10-service/pb/a-egp-allt-project/announcement/greenBook");
