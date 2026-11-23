@@ -73,6 +73,13 @@ type Badge = { label: string; className: string };
  * record.
  */
 function statusBadgeFor(row: TorListItem): Badge {
+  // The API decides the state, a final stage from the source included (TOR-205).
+  if (row.torState) {
+    const className =
+      row.torState === "open" ? styles.badgeOpen : row.torState === "awaiting-invitation" ? styles.badgeUpcoming : styles.badgeClosed;
+    return { label: STATE_LABELS[row.torState], className };
+  }
+  // An API older than TOR-205: derived from the extracted status as before.
   if (row.torStatus.value === "cancelled") return { label: "ยกเลิกแล้ว", className: styles.badgeClosed };
   if (row.torStatus.value === "awarded") return { label: "ประกาศผู้ชนะแล้ว", className: styles.badgeClosed };
   if (!row.open) return { label: "ปิดรับแล้ว", className: styles.badgeClosed };

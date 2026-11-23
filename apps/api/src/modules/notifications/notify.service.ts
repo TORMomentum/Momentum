@@ -4,6 +4,7 @@ import type { Config } from "../../core/config.js";
 import type { TorDocument } from "../../core/db.js";
 import type { Mailer } from "../../ports/mailer.port.js";
 import { calendarDate } from "../../lib/calendar-date.js";
+import { torStateOf } from "../../lib/tor-state.js";
 import { scoreMatch } from "../matching/match-scorer.js";
 import { MatchingRepository } from "../matching/matching.repository.js";
 import { renderMatchEmail, type MatchedTor } from "./match-email.template.js";
@@ -36,9 +37,18 @@ function dailyPeriod(now: Date, timezone: string, boundary: string): string {
   return date;
 }
 
+/** Unrestricted and still taking bids by the one rule, a final stage included (lib/tor-state.ts, TOR-205). */
 function open(record: TorDocument, today: string): boolean {
   const deadline = record.fields.deadline?.value;
-  return !record.access.restricted && record.fields.torStatus?.value === "announced" && (typeof deadline !== "string" || deadline >= today);
+  const state = torStateOf(
+    {
+      torStatus: (record.fields.torStatus?.value as never) ?? null,
+      deadline: typeof deadline === "string" ? deadline : null,
+      stageKind: record.stage?.kind ?? null,
+    },
+    today,
+  );
+  return !record.access.restricted && (state === "open" || state === "awaiting-invitation");
 }
 
 function emailTor(tor: WithId<TorDocument>, score: number, reasons: string[], config: Config): MatchedTor {

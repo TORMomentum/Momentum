@@ -1,10 +1,11 @@
-import type { ExtractedField, Provenance, TorFields } from "@tor-radar/shared";
+import type { ExtractedField, Provenance, StageKind, TorFields } from "@tor-radar/shared";
 import type { Config } from "../../core/config.js";
 import { NotFoundError } from "../../core/errors.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { budgetYearOf } from "../../lib/budget-year.js";
 import { extensionFor } from "../../lib/content-disposition.js";
 import { redactTor } from "../../lib/redact.js";
+import { torStateOf, type TorState } from "../../lib/tor-state.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import { buildProjectUrl } from "../../sources/bma-egp/client.js";
 import { buildProjectSearchUrl } from "../../sources/national-egp/client.js";
@@ -39,16 +40,29 @@ function publicField<T>(field: ExtractedField<T> | undefined) {
   };
 }
 
+/** What `torStateOf` needs from a row: the extracted status and deadline, and the project's stage. */
+type StateInput = {
+  torStatus: { value: string | null };
+  deadline: { value: string | null };
+  stage?: { kind: StageKind } | null;
+};
+
+/** The row's state by the one rule (lib/tor-state.ts): a final stage from the source decides first (TOR-205). */
+export function torStateOfRow(item: StateInput, today: string): TorState {
+  return torStateOf(
+    { torStatus: item.torStatus.value as never, deadline: item.deadline.value, stageKind: item.stage?.kind ?? null },
+    today,
+  );
+}
+
 /**
- * Still accepting bids: announced, and the deadline is today or later, or not
- * stated. Mirrors the repository's `openOn` filter; the search tests pin both.
- * ISO strings compare as dates, and a value carrying a time still counts today.
+ * Still accepting bids: announced, the deadline today or later or not stated,
+ * and no final stage. The same rule as the repository's `openFilter`; the
+ * tor-state tests pin both. ISO strings compare as dates.
  */
-export function isOpenOn(
-  item: { torStatus: { value: string | null }; deadline: { value: string | null } },
-  today: string,
-): boolean {
-  return item.torStatus.value === "announced" && (item.deadline.value === null || item.deadline.value >= today);
+export function isOpenOn(item: StateInput, today: string): boolean {
+  const state = torStateOfRow(item, today);
+  return state === "open" || state === "awaiting-invitation";
 }
 
 /** `YYYY-MM-DD` plus whole days, on the calendar (no time zone involved). */
@@ -125,6 +139,8 @@ export class TorsService {
       items: page.items.map(({ cohort: _cohort, restricted: _restricted, state: _state, ...item }, index) => ({
         ...item,
         open: isOpenOn(item, today),
+        // The badge's state, decided once here so no screen re-derives it (TOR-205).
+        torState: torStateOfRow(item, today),
         verdict: verdicts[index],
       })),
       total: page.total,
@@ -226,6 +242,17 @@ export class TorsService {
                 : buildProjectUrl(record.sourceProject.projectId),
           }
         : null,
+      // The project's published stages as the source lists them, and the badge's state (TOR-205).
+      stageHistory: record.stageHistory,
+      stage: record.stage,
+      torState: torStateOfRow(
+        {
+          torStatus: { value: typeof record.fields.torStatus?.value === "string" ? record.fields.torStatus.value : null },
+          deadline: { value: typeof record.fields.deadline?.value === "string" ? record.fields.deadline.value : null },
+          stage: record.stage,
+        },
+        calendarDate(this.deps.now?.() ?? new Date(), this.deps.config.search.timeZone),
+      ),
       provenance: record.provenance,
       confidenceLevel: record.confidenceLevel,
       unverified: record.unverified,

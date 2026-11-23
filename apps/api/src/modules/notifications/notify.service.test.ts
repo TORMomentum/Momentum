@@ -20,9 +20,9 @@ async function vendor(overrides: Partial<{ verified: boolean; disabled: boolean;
   return id.toString();
 }
 
-async function tor(overrides: Partial<{ deadline: string; restricted: boolean; status: "announced" | "closed" | "awarded" | "cancelled" }> = {}) {
+async function tor(overrides: Partial<{ deadline: string; restricted: boolean; status: "announced" | "closed" | "awarded" | "cancelled"; stageKind: "awarded" | "cancelled" }> = {}) {
   const now = new Date();
-  return (await tors(db).insertOne({ contentHash: new ObjectId().toHexString(), storage: { bucket: "test", key: "test", contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { referenceNo: { raw: "TOR-TEST", value: "TOR-TEST", confidence: 1, verified: true }, title: { raw: "จ้างพัฒนาระบบสารสนเทศและเว็บไซต์", value: "จ้างพัฒนาระบบสารสนเทศและเว็บไซต์", confidence: 1, verified: true }, agency: { raw: "หน่วยงานทดสอบ", value: "หน่วยงานทดสอบ", confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: overrides.deadline ?? future, value: overrides.deadline ?? future, confidence: 1, verified: true }, torStatus: { raw: overrides.status ?? "announced", value: overrides.status ?? "announced", confidence: 1, verified: true } }, announcedAt: now, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: overrides.restricted ?? false }, duplicateOf: null, createdAt: now, updatedAt: now })).insertedId.toString();
+  return (await tors(db).insertOne({ contentHash: new ObjectId().toHexString(), storage: { bucket: "test", key: "test", contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 }, fields: { referenceNo: { raw: "TOR-TEST", value: "TOR-TEST", confidence: 1, verified: true }, title: { raw: "จ้างพัฒนาระบบสารสนเทศและเว็บไซต์", value: "จ้างพัฒนาระบบสารสนเทศและเว็บไซต์", confidence: 1, verified: true }, agency: { raw: "หน่วยงานทดสอบ", value: "หน่วยงานทดสอบ", confidence: 1, verified: true }, budget: { raw: "100", value: 100, confidence: 1, verified: true }, deadline: { raw: overrides.deadline ?? future, value: overrides.deadline ?? future, confidence: 1, verified: true }, torStatus: { raw: overrides.status ?? "announced", value: overrides.status ?? "announced", confidence: 1, verified: true } }, ...(overrides.stageKind ? { stage: { code: "X", kind: overrides.stageKind, on: "2026-10-01" } } : {}), announcedAt: now, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: overrides.restricted ?? false }, duplicateOf: null, createdAt: now, updatedAt: now })).insertedId.toString();
 }
 
 function service(enabled: boolean, extra: Partial<typeof base.notifications> = {}) { return new NotifyService(db, { ...base, notifications: { ...base.notifications, dispatchEnabled: enabled, ...extra } }, mailer, () => new Date("2026-10-07T06:00:00.000Z")); }
@@ -101,7 +101,8 @@ describe("NotifyService", () => {
 
   describe("sendMatchesNow (admin-triggered)", () => {
     it("emails the vendor their open matches even while automatic sending is off, and claims nothing", async () => {
-      const id = await vendor(); await tor(); await tor({ status: "awarded" });
+      // A final stage from the source closes a TOR extraction still reads as announced (TOR-205).
+      const id = await vendor(); await tor(); await tor({ status: "awarded" }); await tor({ stageKind: "cancelled" });
       const result = await service(false).sendMatchesNow(id);
       expect(result.sent).toBe(1);
       expect(deliveries).toHaveLength(1);

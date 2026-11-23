@@ -30,7 +30,7 @@ function field<T>(value: T | null, verified = true): ExtractedField<T> {
   return { raw: value === null ? "" : String(value), value, confidence: 0.97, verified, evidence: "quote" };
 }
 
-async function seed(overrides: { agency?: string; deadline?: string | null; restricted?: boolean; title?: string } = {}) {
+async function seed(overrides: { agency?: string; deadline?: string | null; restricted?: boolean; title?: string; stage?: TorDocument["stage"] } = {}) {
   seq += 1;
   const now = new Date(Date.UTC(2026, 8, 1, 0, seq));
   const fields: Partial<TorFields> = {
@@ -54,6 +54,7 @@ async function seed(overrides: { agency?: string; deadline?: string | null; rest
     unverified: false,
     statusHistory: [],
     access: { restricted: overrides.restricted ?? false },
+    ...(overrides.stage ? { stage: overrides.stage } : {}),
     duplicateOf: null,
     provenance: {
       ocrModel: "documentai",
@@ -192,6 +193,18 @@ describe("GET /export/tors.csv (TOR-69)", () => {
     expect(byHeader["เอกสารต้นฉบับ"]).toBe(`${ORIGIN}/tors/${id}/document`);
     // The contact line is extracted but never listed publicly; the export must not carry it either.
     expect(text).not.toContain("02 123 4567");
+  });
+
+  it("follows the source's final stage over the extracted status, in the state column and the open filter (TOR-205)", async () => {
+    const open = await seed({ deadline: "2026-12-01" });
+    const awarded = await seed({ deadline: "2026-12-01", stage: { code: "W0", kind: "awarded", on: "2026-11-20" } });
+    const stateOf = async (query: string) => {
+      const [header, ...rows] = parseCsv((await exportCsv(query)).text.replace(/^\uFEFF/, ""));
+      return Object.fromEntries(rows.map((row) => [row[header!.indexOf("หน้า TOR")]!.split("/").pop(), row[header!.indexOf("สถานะ")]]));
+    };
+    expect(await stateOf("")).toEqual({ [open]: "เปิดรับข้อเสนอ", [awarded]: "ประกาศผู้ชนะแล้ว" });
+    expect(await stateOf("open=true")).toEqual({ [open]: "เปิดรับข้อเสนอ" });
+    expect(await stateOf("state=awarded")).toEqual({ [awarded]: "ประกาศผู้ชนะแล้ว" });
   });
 
   it("refuses a malformed filter, and a match filter without a signed-in vendor", async () => {

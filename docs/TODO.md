@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-23_
+_last updated: 2026-11-24_
 
 ---
 
@@ -817,10 +817,22 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   project number (spec 2026-11-23-egp-project-stages). `fetchProjectStages`; the import dates a TOR from
   its draft stage (`B0`/`B3`), or with no draft stage from its first invitation (`D0`, spec §3b)
 - [x] TOR-204/231: sampled four more projects (spike §3a): `W0` winner, `D1` cancelled invitation, `B3` a
-  second draft-TOR code, `price` the bid summary
-- [ ] Missing announcement dates: `tools/backfill_egp_announced_dates.mts` is built; 57 dates filled on
-  Atlas so far, the rest once the TOR-205 stages worker has read every project (`--stored-only`), with
-  `--fix-mismatch` (the team agreed to replace disagreeing dates)
+  second draft-TOR code, `price` the bid summary. In `STAGE_KINDS` (TOR-205)
+- [x] Missing announcement dates, applied on Atlas 2026-11-23/24: the stages worker read all 991 e-GP
+  projects, then `--apply --stored-only --fix-mismatch` (the team agreed to replace disagreeing dates).
+  251 undated TORs filled in all (57 from e-GP lookups, then 188 + 6 from stored stages; 111 of them
+  from the first invitation, spec §3b), 117 disagreeing dates replaced — every one moved later; the old
+  ones matched no e-GP stage (dates read from the document, or import days). A final dry run: 991 of 991
+  agree, 0 undated
+- [x] TOR-205 project stages on one record (spec 2026-11-23-project-stages): `stageHistory` / `stage` on
+  public e-GP TOR records, the stages worker (`npm run stages-worker`: daily per project, paced, backs off
+  on refusals), stage changes in `tor_events`, and a final stage deciding the badge, the open filters,
+  matching, notifications and the CSV through `lib/tor-state.ts`. A cancelled invitation is still followed
+  in case the agency invites again (spec §10). No Compose service yet, like the stats worker
+  - [x] first full read on Atlas (2026-11-23/24): 991 of 991 projects, e-GP answering about 80 requests per
+    20 minutes. W2 and I0 named `awarded` (spec §11), W1 and `price` stay `other`
+  - [ ] a deployed stages worker — it ran from a laptop for the first read; without one, stages stop
+    refreshing
 - [ ] TOR-87 Ingestion-source health per adapter (F12)
-- [ ] TOR-205 – 207 TOR project stages: `stage` / `stageHistory`, timeline, notifications
+- [ ] TOR-206 – 207 stage timeline on the TOR page, stage notifications (read what TOR-205 writes)
 - [ ] TOR-221 Winner announcements: winner, price, bidders
