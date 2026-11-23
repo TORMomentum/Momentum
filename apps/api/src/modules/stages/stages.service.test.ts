@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextDueAt, stageHistoryOf } from "./stages.service.js";
+import { nextDueAt, passOutcome, stageHistoryOf } from "./stages.service.js";
 
 const STAGES = [
   { code: "B0", description: "ร่างเอกสารประกวดราคา(e-Bidding)", on: "2026-10-21" },
@@ -48,5 +48,19 @@ describe("nextDueAt (TOR-205)", () => {
     expect(nextDueAt({ kind: "invitation", on: "2026-05-01" }, "2026-05-01", "2026-11-23", now, settings)).toBeNull();
     expect(nextDueAt(null, "2026-05-01", "2026-11-23", now, settings)).toBeNull();
     expect(nextDueAt(null, "2026-11-01", "2026-11-23", now, settings)).toEqual(new Date("2026-11-24T03:00:00Z"));
+  });
+});
+
+describe("passOutcome (TOR-87)", () => {
+  it("is a success while any project was read, a failure on a back-off or when all failed, and nothing when idle", () => {
+    expect(passOutcome({ projects: 0, failed: 0, backOff: false })).toBeNull();
+    expect(passOutcome({ projects: 5, failed: 2, backOff: false, lastError: "status 500" })).toEqual({ ok: true, items: 5, failed: 2, error: null });
+    expect(passOutcome({ projects: 3, failed: 3, backOff: true, lastError: "Source responded with status 429" })).toEqual({
+      ok: false,
+      items: 3,
+      failed: 3,
+      error: "Source responded with status 429",
+    });
+    expect(passOutcome({ projects: 2, failed: 2, backOff: false })).toEqual({ ok: false, items: 2, failed: 2, error: "unknown" });
   });
 });

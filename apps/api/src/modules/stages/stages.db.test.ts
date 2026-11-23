@@ -141,7 +141,7 @@ describe("stages worker pass (TOR-205)", () => {
     await service(source).seed();
     const pass = await service(source).runPass();
 
-    expect(pass).toEqual({ projects: FAILURES_BEFORE_BACKOFF, failed: FAILURES_BEFORE_BACKOFF, backOff: true });
+    expect(pass).toEqual({ projects: FAILURES_BEFORE_BACKOFF, failed: FAILURES_BEFORE_BACKOFF, backOff: true, lastError: "Source responded with status 429" });
     expect(asked).toHaveLength(FAILURES_BEFORE_BACKOFF);
     const held = await tors(db).countDocuments({ stagesDueAt: new Date(NOW.getTime() + config.stages.claimMs) });
     expect(held).toBe(FAILURES_BEFORE_BACKOFF);
