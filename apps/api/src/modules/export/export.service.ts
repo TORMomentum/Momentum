@@ -42,9 +42,9 @@ export class ExportService {
       cursor = decodeCursor(page.nextCursor);
     }
 
-    const provenance = await this.deps.tors.provenanceFor(items.map((item) => item.id));
+    const details = await this.deps.tors.exportDetailsFor(items.map((item) => item.id));
     let csv = CSV_BOM + csvLine([...EXPORT_HEADER]);
-    for (const item of items) csv += csvLine(exportRow(item, provenance.get(item.id), this.deps.appOrigin));
+    for (const item of items) csv += csvLine(exportRow(item, details.get(item.id), this.deps.appOrigin));
 
     return { csv, rows: items.length, total, truncated: total > items.length };
   }

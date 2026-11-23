@@ -1,4 +1,4 @@
-import type { ExtractedField, TorFields } from "@tor-radar/shared";
+import type { ExtractedField, Provenance, TorFields } from "@tor-radar/shared";
 import type { Config } from "../../core/config.js";
 import { NotFoundError } from "../../core/errors.js";
 import { calendarDate } from "../../lib/calendar-date.js";
@@ -71,9 +71,25 @@ type VerdictRow = {
 export class TorsService {
   constructor(private readonly deps: TorsServiceDeps) {}
 
-  /** Extraction provenance for the given record ids (NFR-F6); used by the CSV export. */
-  async provenanceFor(ids: string[]) {
-    return this.deps.repo.provenanceFor(ids.map((id) => new ObjectId(id)));
+  /**
+   * For the CSV export: each record's extraction provenance (NFR-F6) and the public page it was
+   * collected from — the e-GP project when there is one, the same link the detail page gives.
+   */
+  async exportDetailsFor(ids: string[]): Promise<Map<string, { provenance?: Provenance; source: string | null }>> {
+    const found = await this.deps.repo.exportDetailsFor(ids.map((id) => new ObjectId(id)));
+    return new Map(
+      [...found].map(([id, record]) => [
+        id,
+        {
+          provenance: record.provenance,
+          source: record.sourceProject
+            ? record.sourceProject.system === "national-egp"
+              ? buildProjectSearchUrl(record.sourceProject.projectId)
+              : buildProjectUrl(record.sourceProject.projectId)
+            : record.sourceUrl,
+        },
+      ]),
+    );
   }
 
   async search(request: SearchRequest, matchIds?: ObjectId[]) {

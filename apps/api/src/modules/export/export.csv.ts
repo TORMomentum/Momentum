@@ -34,6 +34,8 @@ export interface ExportItem {
   announcedAt: string | Date | null;
   confidenceLevel: string | null;
   unverified: boolean;
+  /** Still taking bids today, as the list decides it. */
+  open: boolean;
   title?: ShownField<string>;
   referenceNo?: ShownField<string>;
   agency?: ShownField<string>;
@@ -43,16 +45,21 @@ export interface ExportItem {
   torStatus?: ShownField<string>;
 }
 
-/** Thai headers (NFR-F7), in the order of spec §3. */
+/** What the export adds to a list row (`TorsService.exportDetailsFor`). */
+export interface ExportDetails {
+  provenance?: Provenance;
+  /** The public page the record was collected from: the e-GP project, or the source URL. */
+  source: string | null;
+}
+
+/** Thai headers (NFR-F7), in the order of spec §3 (revision §7). */
 export const EXPORT_HEADER = [
-  "รหัสระเบียน",
   "เลขที่โครงการ",
   "ชื่อโครงการ",
   "หน่วยงาน",
   "หมวดหมู่",
   "หมวดหมู่ตามเอกสาร",
   "งบประมาณ (บาท)",
-  "งบประมาณตามเอกสาร",
   "กำหนดยื่นข้อเสนอ",
   "กำหนดยื่นข้อเสนอตามเอกสาร",
   "สถานะ",
@@ -60,15 +67,34 @@ export const EXPORT_HEADER = [
   "ระดับความมั่นใจ",
   "ยังไม่ยืนยันการสกัด",
   "ฟิลด์ที่ยังไม่ยืนยัน",
-  "โมเดลที่สกัด",
-  "เวอร์ชันโมเดล",
+  "โมเดล AI ที่สกัด",
   "เวลาที่สกัด",
   "หน้า TOR",
   "เอกสารต้นฉบับ",
+  "ประกาศต้นทาง",
 ] as const;
 
-/** The exported fields, by the name a reader sees in "ฟิลด์ที่ยังไม่ยืนยัน". */
-const CHECKED_FIELDS = ["referenceNo", "title", "agency", "category", "budget", "deadline", "torStatus"] as const;
+/** The exported fields, in Thai, as "ฟิลด์ที่ยังไม่ยืนยัน" names them. */
+const CHECKED_FIELDS = [
+  ["referenceNo", "เลขที่โครงการ"],
+  ["title", "ชื่อโครงการ"],
+  ["agency", "หน่วยงาน"],
+  ["category", "หมวดหมู่"],
+  ["budget", "งบประมาณ"],
+  ["deadline", "กำหนดยื่นข้อเสนอ"],
+  ["torStatus", "สถานะ"],
+] as const;
+
+const CONFIDENCE_LABELS: Record<string, string> = { high: "สูง", medium: "กลาง", low: "ต่ำ" };
+
+/** The same five states, in the same words, as the status badge on /search. */
+export function stateLabel(item: Pick<ExportItem, "open" | "deadline" | "torStatus">): string {
+  if (item.torStatus?.value === "cancelled") return "ยกเลิกแล้ว";
+  if (item.torStatus?.value === "awarded") return "ประกาศผู้ชนะแล้ว";
+  if (!item.open) return "ปิดรับแล้ว";
+  if (item.deadline?.value == null) return "รอประกาศเชิญชวน";
+  return "เปิดรับข้อเสนอ";
+}
 
 function isoDay(value: string | Date | null): string {
   if (!value) return "";
@@ -76,30 +102,34 @@ function isoDay(value: string | Date | null): string {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
 }
 
+function modelOf(provenance: Provenance | undefined): string {
+  if (!provenance) return "";
+  const { extractModel, modelVersion } = provenance;
+  return modelVersion && modelVersion !== extractModel ? `${extractModel} (${modelVersion})` : extractModel;
+}
+
 /** One row: values as extracted (NFR-F7), with confidence, provenance and source links (NFR-F6). */
-export function exportRow(item: ExportItem, provenance: Provenance | undefined, appOrigin: string): Array<string | number | null> {
+export function exportRow(item: ExportItem, details: ExportDetails | undefined, appOrigin: string): Array<string | number | null> {
   const page = new URL(`/tors/${encodeURIComponent(item.id)}`, appOrigin).toString();
-  const unverifiedFields = CHECKED_FIELDS.filter((name) => item[name] && !item[name]!.verified);
+  const unverifiedFields = CHECKED_FIELDS.filter(([name]) => item[name] && !item[name]!.verified).map(([, label]) => label);
   return [
-    item.id,
     item.referenceNo?.raw ?? "",
     item.title?.raw ?? "",
     item.agency?.raw ?? "",
     item.category?.value ?? "",
     item.category?.raw ?? "",
     item.budget?.value ?? null,
-    item.budget?.raw ?? "",
     item.deadline?.value ?? "",
     item.deadline?.raw ?? "",
-    item.torStatus?.value ?? "",
+    stateLabel(item),
     isoDay(item.announcedAt),
-    item.confidenceLevel ?? "",
+    item.confidenceLevel ? (CONFIDENCE_LABELS[item.confidenceLevel] ?? item.confidenceLevel) : "",
     item.unverified ? "ใช่" : "ไม่",
-    unverifiedFields.join(";"),
-    provenance?.extractModel ?? "",
-    provenance?.modelVersion ?? "",
-    provenance?.extractedAt ?? "",
+    unverifiedFields.join("; "),
+    modelOf(details?.provenance),
+    details?.provenance?.extractedAt ?? "",
     page,
     `${page}/document`,
+    details?.source ?? "",
   ];
 }
