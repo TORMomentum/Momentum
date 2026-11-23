@@ -48,6 +48,7 @@ import {
   downloadPackage,
   fetchAnnouncementList,
   fetchFeed,
+  fetchProjectStages,
   fileIdFromLink,
   getBidPackage,
   packageUrl,
@@ -62,6 +63,7 @@ import {
   type AnnounceType,
 } from "../apps/api/src/sources/national-egp/config.js";
 import { knownFieldsFromFeedItem, knownFieldsFromListItem } from "../apps/api/src/sources/national-egp/enrich.js";
+import { torAnnouncedOn } from "../apps/api/src/sources/national-egp/stages.js";
 import { entryFilename, selectPackageDocuments } from "../apps/api/src/sources/national-egp/package.js";
 import { readZip, type ZipEntry } from "../apps/api/src/sources/national-egp/zip.js";
 
@@ -259,12 +261,26 @@ async function importProject(target: Target) {
   const datesInvitation = target.from === "invitation-list" || target.item?.announceType === "D0";
   const base = { target, source: found.ref, knownFields };
 
+  // From the invitation list or a D0 item the listed date is not the TOR's. e-GP's project page lists
+  // the draft TOR's own date (TOR-204); without it the TOR has no announcement date at all.
+  let torPublishedAt = datesTor ? listedOn : undefined;
+  if (!torPublishedAt) {
+    try {
+      const day = torAnnouncedOn(await fetchProjectStages(target.projectId, config.search.timeZone));
+      if (day) torPublishedAt = new Date(`${day}T00:00:00Z`);
+    } catch (error) {
+      // The date is optional: the TOR is still collected, and the backfill tool can date it later.
+      console.log(`no date ${target.projectId} — project stages unavailable: ${(error as Error).message}`);
+    }
+    await sleep(DELAY_MS);
+  }
+
   await submitDocument({
     ...base,
     entry: documents.tor,
     annexes: documents.annexes,
     documentType: "tor",
-    publishedAt: datesTor ? listedOn : undefined,
+    publishedAt: torPublishedAt,
   });
   if (documents.invitation) {
     await submitDocument({
