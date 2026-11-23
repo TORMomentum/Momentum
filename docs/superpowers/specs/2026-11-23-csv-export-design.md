@@ -27,6 +27,8 @@ search; `401` for a match filter without a session.
 
 ## 3. Columns
 
+> **Superseded by §7** (same day, after reading a real export): the table below is the first version.
+
 | Header | Source |
 | :--- | :--- |
 | รหัสระเบียน | record id |
@@ -68,3 +70,20 @@ search; `401` for a match filter without a session.
 ## 6. Out of scope
 
 Excel (`.xlsx`) files · exporting the dashboard's statistics · scheduled or e-mailed exports.
+
+## 7. Revision 2026-11-23 — columns a reader can use
+
+Reading the first export against the Atlas corpus (703 rows) changed §3:
+
+| Change | Why |
+| :--- | :--- |
+| Status, confidence and the unverified field names are written in Thai | They came out as code (`announced`, `high`, `category;torStatus`), against NFR-F7. The status uses the five words of the `/search` badge, decided the same way, so it is the state **on the day of the export** |
+| "เวอร์ชันโมเดล" merged into "โมเดล AI ที่สกัด" | The two held the same string on every row; the version is added in brackets only when it differs |
+| "รหัสระเบียน" removed | An internal id; the TOR page link already carries it, and the project number is the key a reader knows |
+| "งบประมาณตามเอกสาร" removed | 702 of 703 rows were the number with commas or a trailing `.00`. The text as written stays on the TOR page, one link away. The deadline keeps both columns: a deadline extraction left as text has no ISO value, and the text is then the only one |
+| "ประกาศต้นทาง" added | The page the record was collected from: the e-GP project search for an e-GP record (the detail page's own link), otherwise its source URL. Lets a reader check against the government site |
+
+Columns now, in order: เลขที่โครงการ · ชื่อโครงการ · หน่วยงาน · หมวดหมู่ · หมวดหมู่ตามเอกสาร · งบประมาณ (บาท) ·
+กำหนดยื่นข้อเสนอ · กำหนดยื่นข้อเสนอตามเอกสาร · สถานะ · วันที่ประกาศ · ระดับความมั่นใจ (สูง / กลาง / ต่ำ) ·
+ยังไม่ยืนยันการสกัด (ใช่ / ไม่) · ฟิลด์ที่ยังไม่ยืนยัน · โมเดล AI ที่สกัด · เวลาที่สกัด · หน้า TOR · เอกสารต้นฉบับ ·
+ประกาศต้นทาง.

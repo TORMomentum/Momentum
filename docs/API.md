@@ -406,11 +406,12 @@ The current search as CSV (FR-E-7). Design: [csv-export spec](superpowers/specs/
   the file is the whole result, in the list's order.
 - **Rows:** at most `EXPORT_MAX_ROWS` (default 5000), read page by page. `X-Export-Total` is the number
   of matching records and `X-Export-Truncated` is `true` when the file holds fewer.
-- **Columns (Thai headers):** record id, project number, title, agency, category (normalised and as
-  written), budget (baht and as written), deadline (ISO and as written), status, announcement date,
-  confidence level, the "unverified extraction" mark, the names of unverified fields, extraction model,
-  model version and time, the TOR page and the original document (both on `APP_ORIGIN`). Built from the
-  list serializer: nothing a public reader cannot already see. Restricted records are absent.
+- **Columns (18, Thai headers and Thai labels):** project number, title, agency, category (normalised and
+  as written), budget in baht, deadline (ISO and as written), status (the `/search` badge's words, as of
+  the export day), announcement date, confidence (สูง / กลาง / ต่ำ), the "unverified extraction" mark, the
+  unverified fields by Thai name, the extraction model and time, the TOR page and the original document
+  (both on `APP_ORIGIN`), and the source page (the e-GP project, or the source URL). Built from the list
+  serializer: nothing a public reader cannot already see. Restricted records are absent.
 - **Response:** `text/csv; charset=utf-8` with a byte-order mark, RFC 4180 quoting, `Content-Disposition:
   attachment; filename="tor-radar-YYYY-MM-DD.csv"`, `Cache-Control: no-store`, `nosniff`. A cell starting
   with `=`, `+`, `-`, `@`, tab or CR is prefixed with `'` so no spreadsheet runs it as a formula.
