@@ -1,4 +1,4 @@
-import { FINAL_STAGE_KINDS, type ProjectStageEntry, type StageKind } from "@tor-radar/shared";
+import type { ProjectStageEntry, StageKind } from "@tor-radar/shared";
 import type { Config } from "../../core/config.js";
 import { logger } from "../../core/logger.js";
 import { calendarDate } from "../../lib/calendar-date.js";
@@ -30,8 +30,10 @@ export function stageHistoryOf(
 }
 
 /**
- * When to read the project again (decision 6): never once its stage is final, never once its newest
- * stage — or, with none listed, its announcement — is older than `maxAgeDays`; otherwise after `refreshMs`.
+ * When to read the project again (decision 6, revised §10): never once a winner is announced, never once
+ * its newest stage — or, with none listed, its announcement — is older than `maxAgeDays`; otherwise after
+ * `refreshMs`. A cancelled invitation (`D1`) is still followed: an agency can invite again in the same
+ * project, and that later `D0` must reopen it.
  */
 export function nextDueAt(
   latest: { kind: StageKind; on: string } | null,
@@ -40,7 +42,7 @@ export function nextDueAt(
   now: Date,
   settings: { refreshMs: number; maxAgeDays: number },
 ): Date | null {
-  if (latest && FINAL_STAGE_KINDS.includes(latest.kind)) return null;
+  if (latest?.kind === "awarded") return null;
   const newest = latest?.on ?? fallbackDay;
   const ageDays = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${newest}T00:00:00Z`)) / DAY_MS;
   if (ageDays > settings.maxAgeDays) return null;
