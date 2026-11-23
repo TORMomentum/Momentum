@@ -135,6 +135,11 @@ const schema = z.object({
   STAGES_MAX_AGE_DAYS: z.coerce.number().int().positive().default(180),
   STAGES_BATCH: z.coerce.number().int().positive().default(50),
   STAGES_CLAIM_MS: z.coerce.number().int().positive().default(900_000),
+  // Source health (TOR-87, spec 2026-11-24-source-health §6).
+  SOURCE_ALERT_FAILURES: z.coerce.number().int().positive().default(3),
+  SOURCE_STALE_HOURS: z.coerce.number().positive().default(48),
+  SOURCE_HEARTBEAT_MS: z.coerce.number().int().positive().default(3_600_000),
+  SOURCE_CHECK_INTERVAL_MS: z.coerce.number().int().positive().default(3_600_000),
   STAGE_HISTORY_MAX: z.coerce.number().int().positive().default(20),
   // Express `trust proxy`: "false" (nothing trusted), a hop count, or an address list/names such as
   // "loopback, uniquelocal". "true" is refused - it would trust any X-Forwarded-For a caller sends.
@@ -441,6 +446,8 @@ export interface Config {
     claimMs: number;
     historyMax: number;
   };
+  /** Ingestion-source health (TOR-87, spec 2026-11-24-source-health). */
+  sources: { alertFailures: number; staleMs: number; heartbeatMs: number; checkIntervalMs: number };
   /** Value for Express `trust proxy`; `false` leaves it unset. */
   trustProxy: false | number | string;
   verifyTokenTtlMs: number;
@@ -602,6 +609,12 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       batch: parsed.STAGES_BATCH,
       claimMs: parsed.STAGES_CLAIM_MS,
       historyMax: parsed.STAGE_HISTORY_MAX,
+    },
+    sources: {
+      alertFailures: parsed.SOURCE_ALERT_FAILURES,
+      staleMs: parsed.SOURCE_STALE_HOURS * 3_600_000,
+      heartbeatMs: parsed.SOURCE_HEARTBEAT_MS,
+      checkIntervalMs: parsed.SOURCE_CHECK_INTERVAL_MS,
     },
     trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,

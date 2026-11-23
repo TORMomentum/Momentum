@@ -528,6 +528,29 @@ export function notificationLeases(db: Db): Collection<NotificationLeaseDocument
   return db.collection<NotificationLeaseDocument>("notification_leases");
 }
 
+/**
+ * One collecting source's health (TOR-87, spec 2026-11-24-source-health), `_id` the source id. Keyed by id,
+ * so it needs no index beyond `_id`.
+ */
+export interface SourceHealthDocument {
+  _id: string;
+  /** The source's process was alive: any run, or an idle worker's heartbeat. */
+  lastSeenAt: Date | null;
+  lastSuccessAt: Date | null;
+  lastFailureAt: Date | null;
+  /** The last failure's message, cut short; source messages hold status codes, never credentials. */
+  lastError: string | null;
+  consecutiveFailures: number;
+  lastRun: { at: Date; items: number; failed: number } | null;
+  /** The open alert, while one is: set when admins were told, cleared when they were told it recovered. */
+  alert: { kind: "failing" | "stale"; sentAt: Date } | null;
+  updatedAt: Date;
+}
+
+export function sourceHealth(db: Db): Collection<SourceHealthDocument> {
+  return db.collection<SourceHealthDocument>("source_health");
+}
+
 /** The text fields a keyword query reads: the extracted value and the text it was read from. */
 export const SEARCH_PATHS = ["fields.title.raw", "fields.title.value", "fields.agency.raw", "fields.agency.value"] as const;
 
