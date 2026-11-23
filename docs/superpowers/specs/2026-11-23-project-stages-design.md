@@ -178,3 +178,20 @@ The first full read of the 991 e-GP projects logged four codes outside the table
 | `W1` | ยกเลิกประกาศรายชื่อผู้ชนะการเสนอราคา | `other` | The winner announcement withdrawn: the project is no longer awarded, but not over either. It may be awarded again, or its invitation cancelled (`D1`, as in 69099682131), so the badge falls back to the extracted status and the project is still followed |
 | `I0` | ข้อมูลสาระสำคัญในสัญญา | `awarded` | The signed contract's key details, published after the winner. 33 projects list it after their `W0`; as the newest stage it would otherwise have taken them out of `awarded` |
 | `price` | สรุปข้อมูลการเสนอราคาเบื้องต้น | `other` | Unchanged (§10) |
+
+## 12. Revision 2026-11-24 — the timeline on the TOR page (TOR-206)
+
+`StagePanel` (`apps/web/src/features/tor-detail/`) renders `stageHistory` on the detail page:
+
+- **Order.** By day, oldest first. e-GP's table is not in date order (§10), and a stable sort keeps its
+  order on a tie, so the last row is the stage `latestStage` calls current. That row is marked; a final one
+  carries "ได้ผู้ชนะแล้ว" or "ยกเลิก".
+- **Names.** The source's own Thai name, exactly as published (NFR-F7). Only a stage e-GP leaves unnamed
+  (`BOQ`) gets our Thai name for its kind. Codes are never shown: they mean nothing to a vendor.
+- **Links (TOR-237).** A draft stage whose `recordId` is this TOR, and an invitation stage when the reader
+  can open the invitation (the same rule `originalDocuments` applies), link to the stored original. Every
+  other stage relies on one link to the project on e-GP (`sourceProject.url`), because e-GP has no public
+  per-stage address (spike spec §4).
+- **Freshness (NFR-F6).** The footer names the source and the last read, from `stagesCheckedAt`, which the
+  detail API now returns.
+- A record with no stages (another source, or not read yet) shows no panel.

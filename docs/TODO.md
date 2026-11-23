@@ -837,5 +837,9 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   - [ ] a deployed stages worker — it ran from a laptop for the first read; without one, stages stop
     refreshing
 - [ ] TOR-87 Ingestion-source health per adapter (F12)
-- [ ] TOR-206 – 207 stage timeline on the TOR page, stage notifications (read what TOR-205 writes)
+- [x] TOR-206 stage timeline on the TOR page (spec 2026-11-23-project-stages §12): `StagePanel` — the
+  project's stages by day, the source's own names (no codes), the current one marked, "ดูเอกสาร" for a stage
+  we hold the original of, the e-GP project link and the last-read time (`stagesCheckedAt` on the detail).
+  Checked live on Atlas: an awarded, a cancelled and a BMA TOR (no panel)
+- [ ] TOR-207 stage notifications (read the `stage` events TOR-205 writes)
 - [ ] TOR-221 Winner announcements: winner, price, bidders

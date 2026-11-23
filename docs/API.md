@@ -306,7 +306,9 @@ otherwise. `torState` and `stage` are as in the list. `stageHistory` lists the p
 oldest first, as the source gives them (TOR-205): `[{ "code": "B0", "kind": "draft", "description":
 "ร่างเอกสารประกวดราคา(e-Bidding)", "on": "2026-10-21", "recordId": "…" }, …]` — `code` and `description`
 exactly as the source wrote them, `on` the Bangkok day, `recordId` our record of that stage's document
-when we hold one (its original at `GET /api/v1/tors/{recordId}/document`). Empty when no stage is known. When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
+when we hold one (its original at `GET /api/v1/tors/{recordId}/document`). Empty when no stage is known.
+`stagesCheckedAt` is when the stages were last read from the source (ISO time), `null` before the first read
+(TOR-206: the detail page says how fresh its timeline is). When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
 `evaluationMethod`, `evaluationWeights` and `requiredDocuments` in the same `{raw, value, confidence, verified}`
 shape (`value` is the structured list; see the extraction spec §13); they are absent from older records. Invitations
 themselves are supporting documents: never listed, counted, or served as a record of their own. Contact data passes through the public
