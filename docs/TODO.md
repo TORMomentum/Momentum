@@ -813,11 +813,14 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   `/search` (spec 2026-11-23). Verified against the Atlas corpus through the web app: `minDaysLeft=14`
   gives 34 rows, the list's own count, Thai intact, download headers as specified. Columns revised the same
   day after reading the real file (spec §7): 18, all in Thai, with the source page
-- [ ] 178 of 658 e-GP records have no announcement date: the import dates only the document its list
-  announces, so a TOR collected from the invitation list gets none, and extraction finds none in the TOR.
-  e-GP's project page lists every stage with its date (ราคากลาง, ร่าง TOR, ประกาศเชิญชวน); reading it is
-  TOR-204. About 18 records carry an announcement date before 2026 on a 2569 project; check against the
-  same page
+- [x] TOR-204 spike: the stages come from e-GP's public project stage table, keyed by the 11-digit
+  project number (spec 2026-11-23-egp-project-stages). `fetchProjectStages`; the import dates a TOR from
+  its draft stage (`B0`/`B3`), or with no draft stage from its first invitation (`D0`, spec §3b)
+- [x] TOR-204/231: sampled four more projects (spike §3a): `W0` winner, `D1` cancelled invitation, `B3` a
+  second draft-TOR code, `price` the bid summary
+- [ ] Missing announcement dates: `tools/backfill_egp_announced_dates.mts` is built; 57 dates filled on
+  Atlas so far, the rest once the TOR-205 stages worker has read every project (`--stored-only`), with
+  `--fix-mismatch` (the team agreed to replace disagreeing dates)
 - [ ] TOR-87 Ingestion-source health per adapter (F12)
-- [ ] TOR-204 – 207 TOR project stages on e-GP: spike, `stage` / `stageHistory`, timeline, notifications
+- [ ] TOR-205 – 207 TOR project stages: `stage` / `stageHistory`, timeline, notifications
 - [ ] TOR-221 Winner announcements: winner, price, bidders
