@@ -11,7 +11,7 @@ import type { MailMessage, Mailer } from "../../ports/mailer.port.js";
 import { isolatedDbUrl } from "../../test/mongo.js";
 import { SourceHealthRepository } from "./source-health.repository.js";
 import { ERROR_MAX_CHARS, healthOf, SourceHealthService } from "./source-health.service.js";
-import { BMA_EGP_IMPORT_ID, NATIONAL_EGP_IMPORT_ID, STAGES_SOURCE_ID } from "./sources.registry.js";
+import { BMA_EGP_IMPORT_ID, NATIONAL_EGP_AWARDS_ID, NATIONAL_EGP_IMPORT_ID, STAGES_SOURCE_ID } from "./sources.registry.js";
 import { buildSourcesRouter } from "./sources.routes.js";
 
 const base = loadConfig(process.env);
@@ -142,6 +142,8 @@ describe("GET /admin/sources (TOR-293)", () => {
     await tor("national-egp", { stagesCheckedAt: NOW });
     await tor("national-egp");
     await tor("national-egp", { documentType: "invitation" });
+    // A winner announcement counts for its own source only (TOR-221).
+    await tor("national-egp", { documentType: "award" });
     await tor("bma-egp");
     await service().recordRun(STAGES_SOURCE_ID, ok, new Date());
     await service().recordRun(BMA_EGP_IMPORT_ID, { ok: false, items: 0, failed: 0, error: "e-GP list unavailable" }, NOW);
@@ -154,9 +156,10 @@ describe("GET /admin/sources (TOR-293)", () => {
     expect(rows).toEqual([
       [STAGES_SOURCE_ID, "automatic", "ok", 1],
       [NATIONAL_EGP_IMPORT_ID, "manual", "never", 2],
+      [NATIONAL_EGP_AWARDS_ID, "manual", "never", 1],
       [BMA_EGP_IMPORT_ID, "manual", "failing", 1],
     ]);
-    expect(response.body.sources[2].lastError).toBe("e-GP list unavailable");
+    expect(response.body.sources[3].lastError).toBe("e-GP list unavailable");
   });
 });
 

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DocumentUnreadableError } from "../core/errors.js";
 import { loadConfig } from "../core/config.js";
-import { parseExtraction, responseSchema, systemPrompt, userPrompt, VertexAi } from "./vertex.ai.js";
+import { AWARD_RESPONSE_SCHEMA, AWARD_SYSTEM_PROMPT, parseAward, parseExtraction, responseSchema, systemPrompt, userPrompt, VertexAi } from "./vertex.ai.js";
 
 const CORPUS = fileURLToPath(new URL("../../../../docs/corpus/", import.meta.url));
 
@@ -164,4 +164,37 @@ describe.skipIf(!hasCreds || process.env.RUN_LIVE_VERTEX !== "1")("VertexAi.extr
     expect(result.status.value).toBe("announced");
     expect(result.modelVersion).toMatch(/gemini/);
   }, 60_000);
+});
+
+describe("parseAward (TOR-221)", () => {
+  const f = (value: unknown, confidence = 0.97) => ({ raw: String(value ?? ""), value, confidence, evidence: "-" });
+
+  it("maps the winner, the price and the date", () => {
+    const award = parseAward(
+      { winner: f("บริษัท สยามก่อสร้าง จำกัด"), price_thb: f(1_250_000), announcement_date: f("2026-11-20") },
+      "gemini-3.5-flash-001",
+    );
+    expect(award.winner.value).toBe("บริษัท สยามก่อสร้าง จำกัด");
+    expect(award.price.value).toBe(1_250_000);
+    expect(award.announcementDate.value).toBe("2026-11-20");
+    expect(award.modelVersion).toBe("gemini-3.5-flash-001");
+  });
+
+  it("drops a price that is not positive and a date that is not ISO, rather than guessing", () => {
+    const award = parseAward({ winner: f("บริษัท ก จำกัด"), price_thb: f(0), announcement_date: f("20 พ.ย. 2569") }, "m");
+    expect(award.price.value).toBeNull();
+    expect(award.announcementDate.value).toBeNull();
+  });
+
+  it("refuses an announcement with neither a winner nor a price", () => {
+    expect(() => parseAward({ winner: f(null, 0), price_thb: f(null, 0), announcement_date: f("2026-11-20") }, "m")).toThrow(
+      DocumentUnreadableError,
+    );
+    expect(() => parseAward("not json", "m")).toThrow(DocumentUnreadableError);
+  });
+
+  it("asks for no signatory or official, only the three values (FR-B-5)", () => {
+    expect(Object.keys(AWARD_RESPONSE_SCHEMA.properties)).toEqual(["winner", "price_thb", "announcement_date"]);
+    expect(AWARD_SYSTEM_PROMPT).toContain("ห้ามใส่ชื่อเจ้าหน้าที่หรือผู้ลงนาม");
+  });
 });

@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 const QUERY = { status: "failed" as const, kind: "tor" as const };
-const row = (id: string): AdminTorsTableRow => ({ id, title: `โครงการ ${id}`, invitation: false, agency: "กทม.", projectNumber: null, status: { label: "เผยแพร่อยู่", tone: "" }, createdAt: "2026-10-01T00:00:00.000Z" });
+const row = (id: string): AdminTorsTableRow => ({ id, title: `โครงการ ${id}`, documentType: "tor", agency: "กทม.", projectNumber: null, status: { label: "เผยแพร่อยู่", tone: "" }, createdAt: "2026-10-01T00:00:00.000Z" });
 const button = (text: string) => [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === text);
 
 describe("AdminTorsTable", () => {
