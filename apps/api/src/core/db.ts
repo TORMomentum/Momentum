@@ -1,5 +1,5 @@
 import { MongoClient, MongoServerError, ObjectId, type Collection, type Db } from "mongodb";
-import type { ConfidenceLevel, DocumentType, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
+import type { ConfidenceLevel, DocumentType, ProjectStageEntry, Provenance, SourceProject, StageKind, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
 import type { TorClassification } from "../modules/matching/tor-classifier.js";
@@ -33,6 +33,18 @@ export interface TorDocument {
   documentType?: DocumentType;
   /** The source project this document belongs to — what links a TOR to its invitation. */
   sourceProject?: SourceProject;
+  /**
+   * The project's published stages, oldest first, as the source lists them (TOR-205). Bounded by the
+   * source (a handful per project) and capped at STAGE_HISTORY_MAX on write. Only public TOR records
+   * carry it; an invitation record is a supporting document.
+   */
+  stageHistory?: ProjectStageEntry[];
+  /** The newest entry of `stageHistory`: what the badge and the open filters read (lib/tor-state.ts). */
+  stage?: { code: string; kind: StageKind; on: string };
+  /** When the stages were last read from the source. */
+  stagesCheckedAt?: Date;
+  /** When the stages worker should read them again; null once the stage is final or too old to follow. */
+  stagesDueAt?: Date | null;
   /** The TOR's other files, stored as originals and read together with it (checklist C3). */
   annexes?: StoredAnnex[];
   sourceUrl: string | null;
@@ -62,6 +74,8 @@ export interface TorDocument {
 /** One transition, appended and never updated. The audit trail (FR-E-5). */
 export interface TorEventDocument {
   torId: string;
+  /** Absent: a pipeline transition. "stage": the project moved to another published stage (TOR-205). */
+  kind?: "stage";
   from: string | null;
   to: string;
   at: Date;
@@ -620,6 +634,11 @@ export async function ensureIndexes(db: Db): Promise<void> {
   // Every audit read is "this TOR, newest first". A collection growing to
   // millions of small documents is ordinary; a document growing is not.
   await torEvents(db).createIndex({ torId: 1, at: -1 });
+  // The stages worker's claim: records due for a re-read, oldest due first. Partial, so the many records
+  // that are never re-read (final, too old, not from e-GP) are not in it (TOR-205).
+  await tors(db).createIndex({ stagesDueAt: 1 }, { partialFilterExpression: { stagesDueAt: { $type: "date" } } });
+  // The open filters exclude a final stage (lib/tor-state.ts).
+  await tors(db).createIndex({ "stage.kind": 1 });
   // The review queue: records still needing a human, oldest first so nothing
   // starves. `unverified` leads because approval clears it, which is what takes
   // a record out of the queue.

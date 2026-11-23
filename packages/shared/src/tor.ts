@@ -54,6 +54,28 @@ export interface ExtractedField<T = string> {
 /** What a stored document is. A record without one is a TOR. */
 export type DocumentType = "tor" | "invitation";
 
+/**
+ * What a published stage of a project is (TOR-205). The source's own code is kept beside it; `other` is a
+ * code not yet confirmed from a sampled project, and never decides anything.
+ */
+export type StageKind = "draft" | "median-price" | "invitation" | "awarded" | "cancelled" | "other";
+
+/** Stage kinds after which a project takes no more bids, whatever its TOR's extracted status says. */
+export const FINAL_STAGE_KINDS: readonly StageKind[] = ["awarded", "cancelled"];
+
+/** One published stage of the project a record belongs to, as the source lists it (TOR-205). */
+export interface ProjectStageEntry {
+  /** The source's own code, e.g. e-GP's announceType "B0". */
+  code: string;
+  kind: StageKind;
+  /** The source's own Thai name, as given; null when it gives none. */
+  description: string | null;
+  /** The stage's announcement day in Thailand, `YYYY-MM-DD`. */
+  on: string;
+  /** Our record of that stage's document, when we hold one. */
+  recordId?: string;
+}
+
 /** The source system's project a document belongs to; every document of one project shares it. */
 /** A stored file that belongs to a TOR without being a record of its own — an annex read with it. */
 export interface StoredAnnex {

@@ -28,4 +28,18 @@ describe("torStateOf", () => {
     expect(torStateOf({ torStatus: null, deadline: "2026-12-01" }, TODAY)).toBe("closed");
     expect(torStateOf({ torStatus: "closed", deadline: null }, TODAY)).toBe("closed");
   });
+
+  it("lets a final stage from the source outrank what extraction read (TOR-205)", () => {
+    expect(torStateOf({ torStatus: "announced", deadline: "2026-12-01", stageKind: "awarded" }, TODAY)).toBe("awarded");
+    expect(torStateOf({ torStatus: "announced", deadline: null, stageKind: "cancelled" }, TODAY)).toBe("cancelled");
+    expect(torStateOf({ torStatus: "awarded", deadline: null, stageKind: "cancelled" }, TODAY)).toBe("cancelled");
+  });
+
+  it("changes nothing for a stage that is not final, or an unconfirmed code", () => {
+    for (const stageKind of ["draft", "median-price", "invitation", "other", null] as const) {
+      expect(torStateOf({ torStatus: "announced", deadline: "2026-12-01", stageKind }, TODAY)).toBe("open");
+      expect(torStateOf({ torStatus: "announced", deadline: null, stageKind }, TODAY)).toBe("awaiting-invitation");
+      expect(torStateOf({ torStatus: "awarded", deadline: null, stageKind }, TODAY)).toBe("awarded");
+    }
+  });
 });

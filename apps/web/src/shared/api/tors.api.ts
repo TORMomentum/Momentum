@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Checklist } from "@tor-radar/shared";
+import type { Checklist, ProjectStageEntry, StageKind } from "@tor-radar/shared";
 import { cookies } from "next/headers";
 import { withArabicDigits } from "../lib/format";
 import { apiRequest, getJson } from "./api-client";
@@ -27,6 +27,12 @@ export interface ListField<T> {
 
 export type TorStatusValue = "announced" | "closed" | "awarded" | "cancelled";
 
+/**
+ * Where a TOR stands, decided by the API (lib/tor-state.ts): the extracted status and deadline, and the
+ * project's stage when the source states a final one (TOR-205). Screens badge this; they never re-derive it.
+ */
+export type TorStateValue = "open" | "awaiting-invitation" | "closed" | "awarded" | "cancelled";
+
 export interface TorListItem {
   id: string;
   announcedAt: string | null;
@@ -34,6 +40,8 @@ export interface TorListItem {
   unverified: boolean;
   /** Decided by the API, beside the filter that uses the same rule. */
   open: boolean;
+  /** The badge's state, decided by the API. Optional: an API older than TOR-205 omits it. */
+  torState?: TorStateValue;
   title: { raw: string; verified: boolean };
   /**
    * The project number (เลขที่โครงการ); empty when neither the source nor the
@@ -111,6 +119,11 @@ export interface TorDetail {
   checklist?: Checklist;
   /** The TOR's project page on the source system; absent from an API older than this field. */
   sourceProject?: { system: string; projectNumber: string | null; url: string } | null;
+  /** The badge's state, decided by the API (TOR-205); absent from an older API. */
+  torState?: TorStateValue;
+  /** The project's published stages as the source lists them, and the newest (TOR-205, shown by TOR-206). */
+  stageHistory?: ProjectStageEntry[];
+  stage?: { code: string; kind: StageKind; on: string } | null;
   provenance: {
     ocrModel: string;
     extractModel: string;

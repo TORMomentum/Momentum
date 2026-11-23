@@ -38,6 +38,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     const stateOf = (record: (typeof scopeRecords)[number]) => torStateOf({
       torStatus: (record.fields.torStatus?.value as never) ?? null,
       deadline: (record.fields.deadline?.value as string | null) ?? null,
+      stageKind: record.stage?.kind ?? null,
     }, today);
 
     /**

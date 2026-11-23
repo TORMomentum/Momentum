@@ -242,7 +242,7 @@ opaque cursor that resumes inside its segment: pass `nextCursor` back as `cursor
 
 ```json
 { "items": [ { "id": "…", "announcedAt": "2026-03-05T00:00:00.000Z", "confidenceLevel": "high",
-               "unverified": false, "open": true,
+               "unverified": false, "open": true, "torState": "open",
                "title": { "raw": "…", "verified": true },
                "referenceNo": { "raw": "69079434637", "verified": true },
                "agency": { "raw": "…", "value": "…", "verified": true },
@@ -250,10 +250,18 @@ opaque cursor that resumes inside its segment: pass `nextCursor` back as `cursor
                "budget": { "raw": "…", "value": 5524000, "verified": true },
                "deadline": { "raw": "", "value": null, "verified": false },
                "torStatus": { "value": "announced", "verified": true },
+               "stage": { "code": "D0", "kind": "invitation", "on": "2026-10-30" },
                "verdict": { "kind": "anomaly", "side": "high", "distance": 3.1 } } ],
   "total": 10, "nextCursor": null,
   "coverage": { "lastUpdatedAt": "2026-09-16T09:52:00.000Z" } }
 ```
+
+`torState` is where the TOR stands — `open`, `awaiting-invitation`, `closed`, `awarded` or `cancelled` —
+decided by one rule (`lib/tor-state.ts`) that `state=` and `open=true` filter by too. A **final stage**
+the source states (`stage.kind` `awarded` or `cancelled`, read by the stages worker, TOR-205) decides
+first; otherwise it follows the extracted `torStatus` and the deadline. `torStatus` itself is still the
+extracted value, unchanged (NFR-F7). `stage` is the project's newest published stage, `null` when none is
+known (every non-e-GP record, and an e-GP record the worker has not read yet).
 
 Each row carries its own `verdict` — `normal`, `anomaly` (with `side` and `distance`), or
 `not-evaluated` with its reason — derived at read from its peer group's bounds rather than stored on
@@ -294,7 +302,11 @@ carries `fromDocument` — a TOR's deadline read from its project's invitation t
 invitation, whose original is available at `GET /api/v1/tors/{fromDocument}/document`. A TOR collected
 from BMA e-GP carries `sourceProject` — `{ "system": "bma-egp", "projectNumber": "69099251609", "url":
 "https://egp2.bangkok.go.th/project-detail/…" }`, the project's own page on the source site — and `null`
-otherwise. When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
+otherwise. `torState` and `stage` are as in the list. `stageHistory` lists the project's published stages,
+oldest first, as the source gives them (TOR-205): `[{ "code": "B0", "kind": "draft", "description":
+"ร่างเอกสารประกวดราคา(e-Bidding)", "on": "2026-10-21", "recordId": "…" }, …]` — `code` and `description`
+exactly as the source wrote them, `on` the Bangkok day, `recordId` our record of that stage's document
+when we hold one (its original at `GET /api/v1/tors/{recordId}/document`). Empty when no stage is known. When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
 `evaluationMethod`, `evaluationWeights` and `requiredDocuments` in the same `{raw, value, confidence, verified}`
 shape (`value` is the structured list; see the extraction spec §13); they are absent from older records. Invitations
 themselves are supporting documents: never listed, counted, or served as a record of their own. Contact data passes through the public

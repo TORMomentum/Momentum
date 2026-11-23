@@ -1,4 +1,5 @@
 import type { Provenance } from "@tor-radar/shared";
+import type { TorState } from "../../lib/tor-state.js";
 
 /** Byte-order mark: without it Excel reads UTF-8 Thai as mojibake. */
 export const CSV_BOM = "\uFEFF";
@@ -36,6 +37,8 @@ export interface ExportItem {
   unverified: boolean;
   /** Still taking bids today, as the list decides it. */
   open: boolean;
+  /** The badge's state, as the list decides it: a final stage from the source included (TOR-205). */
+  torState: TorState;
   title?: ShownField<string>;
   referenceNo?: ShownField<string>;
   agency?: ShownField<string>;
@@ -88,12 +91,17 @@ const CHECKED_FIELDS = [
 const CONFIDENCE_LABELS: Record<string, string> = { high: "สูง", medium: "กลาง", low: "ต่ำ" };
 
 /** The same five states, in the same words, as the status badge on /search. */
-export function stateLabel(item: Pick<ExportItem, "open" | "deadline" | "torStatus">): string {
-  if (item.torStatus?.value === "cancelled") return "ยกเลิกแล้ว";
-  if (item.torStatus?.value === "awarded") return "ประกาศผู้ชนะแล้ว";
-  if (!item.open) return "ปิดรับแล้ว";
-  if (item.deadline?.value == null) return "รอประกาศเชิญชวน";
-  return "เปิดรับข้อเสนอ";
+/** The five words of the `/search` badge, one per state of lib/tor-state.ts. */
+const STATE_LABELS: Record<TorState, string> = {
+  open: "เปิดรับข้อเสนอ",
+  "awaiting-invitation": "รอประกาศเชิญชวน",
+  closed: "ปิดรับแล้ว",
+  awarded: "ประกาศผู้ชนะแล้ว",
+  cancelled: "ยกเลิกแล้ว",
+};
+
+export function stateLabel(item: Pick<ExportItem, "torState">): string {
+  return STATE_LABELS[item.torState];
 }
 
 function isoDay(value: string | Date | null): string {

@@ -78,6 +78,7 @@ flowchart TB
         api["<b>api</b> ✅<br/>Express 5 REST<br/>:4000"]
         worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
         stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells ·<br/>no Compose service yet"]
+        stages["<b>stages worker</b> ✅<br/>reads e-GP project stages<br/>once a day · TOR-205 ·<br/>no Compose service yet"]
         mongo[("<b>mongo</b> ✅<br/>MongoDB 8 (Atlas Local)<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
@@ -96,6 +97,8 @@ flowchart TB
     worker -->|"OCR + extract"| vertex
     worker -->|"match emails"| smtp
     stats -->|"claim dirty cohort,<br/>write bounds + rollups"| mongo
+    stages -->|"claim due record,<br/>write stageHistory + stage"| mongo
+    stages -->|"one request per project,<br/>paced, backs off on 429"| egp["🏛️ e-GP<br/>project stage table"]
     api -->|"read bounds,<br/>judge at read"| mongo
     gcs -.->|"same client,<br/>real credentials"| realgcs
 
@@ -167,10 +170,10 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF), `escape-regexp` (user text as a literal `$regex`/`RegExp`) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords`, `GoogleOidc` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
-| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320) | Imported by `app.ts` only |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords`, `GoogleOidc`, `ProjectStagesSource` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320), e-GP's project stage table (`national-egp.stages.ts`, TOR-205) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
-| `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
+| `workers/` | Extraction, statistics, notification and stages workers, and the orphan reconciler | Same wiring rules as the API; a worker entry wires its own adapters, as `app.ts` does |
 | `sources/<source>/` | Clients for public sources: `bma-egp/`, and `national-egp/` (announcement list, feed, bid packages, and a project's dated stages — `stages.ts`, TOR-204) | Reached through `lib/safe-fetch`; used by `tools/` imports, never by a route |
 
 The feature modules, as of Sprint 4:
@@ -194,6 +197,7 @@ The feature modules, as of Sprint 4:
 | `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |
 | `match-quality/` | The labelled benchmark that gates match emails (matching design §7.8) |
 | `history/` | `tor_events`, the append-only transition log |
+| `stages/` | A project's published stages on its TOR records (TOR-205): claims due records, reads the source through `ProjectStagesSource`, writes `stageHistory` and `stage`, logs a stage change to `tor_events` (`kind: "stage"`), and backs off when the source refuses. Run by `npm run stages-worker` |
 
 ### `apps/web/src/`
 
@@ -401,6 +405,10 @@ erDiagram
         object access "restricted, reason, auditRef · FR-B-6 takedown"
         object cohort "category + month · the peer group's key"
         string cohortDateSource "announced | intake · which date the month came from"
+        array stageHistory "the project's stages as the source lists them · TOR-205"
+        object stage "newest stage {code, kind, on} · a final kind decides the badge"
+        date stagesCheckedAt "last read from the source"
+        date stagesDueAt "next read · null when final or too old"
         date createdAt "when WE ingested it"
     }
     TOR_PEER_STATS {
@@ -437,8 +445,9 @@ erDiagram
     TOR_EVENTS {
         objectId _id PK
         objectId torId FK
+        string kind "absent: pipeline · stage: the project's stage moved"
         string from "null on the first transition"
-        string to "queued | extracting | published | failed | restricted"
+        string to "a pipeline state, or a stage code such as D0"
         date at
         string actor "who or what caused it"
         string source "route, worker, or admin"
@@ -586,6 +595,8 @@ Three shapes are load-bearing:
 | `behaviour_events.accountId + at` | One vendor's recent activity for their score, and the export and delete of it (TOR-215) |
 | `behaviour_events.accountId + torId + type` **unique** | One event per kind per TOR: a repeat refreshes `at` instead of adding a row. Built on a collection that still holds older repeats, `ensureIndexes` removes the older copies (the latest `at` stays) and retries once |
 | `tor_events.torId + at` | The audit read: one TOR's history, newest first |
+| `tors.stagesDueAt`, partial on a date | The stages worker's claim: records due for a re-read, oldest due first. Records never re-read (final, too old, not from e-GP) are left out of it (TOR-205) |
+| `tors.stage.kind` | The open filters exclude a final stage (`lib/tor-state.ts`) |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
 | `tor_peer_stats.category + month`, unique | One bounds document per peer group, which is what makes a recompute idempotent |

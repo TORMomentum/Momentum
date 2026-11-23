@@ -165,6 +165,8 @@ describe("matching routes", () => {
     const base = { title: field("ปรับปรุงผิวจราจร"), category: field("งานก่อสร้าง-ทาง สะพาน"), budget: { raw: "100", value: 100, confidence: 1, verified: true } };
     await seed("ปรับปรุงผิวจราจร ปิด", 100, { fields: { ...base, deadline: field("2020-01-01"), torStatus: field("announced") } });
     await seed("ปรับปรุงผิวจราจร ผู้ชนะ", 100, { fields: { ...base, deadline: field("2027-01-01"), torStatus: field("awarded") } });
+    // Extraction read "announced", but e-GP says the winner is out: a final stage closes it (TOR-205).
+    await seed("ปรับปรุงผิวจราจร e-GP ผู้ชนะ", 100, { fields: { ...base, deadline: field("2027-01-01"), torStatus: field("announced") }, stage: { code: "W0", kind: "awarded", on: "2026-11-20" } });
     await seed("ปรับปรุงผิวจราจร กำลังสกัด", 100, { pipeline: { state: "extracting", attempts: 1 } });
     await seed("ปรับปรุงผิวจราจร ถอด", 100, { access: { restricted: true, reason: "takedown" } });
     await seed("ปรับปรุงผิวจราจร ประกาศเชิญชวน", 100, { documentType: "invitation" });

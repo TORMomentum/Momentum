@@ -127,6 +127,15 @@ const schema = z.object({
   // CSV export of the filtered list (TOR-69): rows in one file, and files per client per minute.
   EXPORT_MAX_ROWS: z.coerce.number().int().positive().default(5000),
   EXPORT_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(10),
+  // Project stages from e-GP (TOR-205, spec 2026-11-23-project-stages §7). One request per project per
+  // refresh, paced; three failed lookups in a row back off, because e-GP answers 429 under load.
+  STAGES_REFRESH_HOURS: z.coerce.number().positive().default(24),
+  STAGES_REQUEST_DELAY_MS: z.coerce.number().int().nonnegative().default(2_000),
+  STAGES_BACKOFF_MS: z.coerce.number().int().positive().default(3_600_000),
+  STAGES_MAX_AGE_DAYS: z.coerce.number().int().positive().default(180),
+  STAGES_BATCH: z.coerce.number().int().positive().default(50),
+  STAGES_CLAIM_MS: z.coerce.number().int().positive().default(900_000),
+  STAGE_HISTORY_MAX: z.coerce.number().int().positive().default(20),
   // Express `trust proxy`: "false" (nothing trusted), a hop count, or an address list/names such as
   // "loopback, uniquelocal". "true" is refused - it would trust any X-Forwarded-For a caller sends.
   TRUST_PROXY: z.string().trim().min(1).default("false").refine((v) => v.toLowerCase() !== "true", {
@@ -419,6 +428,16 @@ export interface Config {
   documentRateLimitPerMin: number;
   /** CSV export (TOR-69, spec 2026-11-23). */
   export: { maxRows: number; rateLimitPerMin: number };
+  /** Project stages read from the source (TOR-205, spec 2026-11-23-project-stages §7). */
+  stages: {
+    refreshMs: number;
+    requestDelayMs: number;
+    backoffMs: number;
+    maxAgeDays: number;
+    batch: number;
+    claimMs: number;
+    historyMax: number;
+  };
   /** Value for Express `trust proxy`; `false` leaves it unset. */
   trustProxy: false | number | string;
   verifyTokenTtlMs: number;
@@ -570,6 +589,15 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     publicSearchRateLimitPerMin: parsed.PUBLIC_SEARCH_RATE_LIMIT_PER_MIN,
     documentRateLimitPerMin: parsed.DOCUMENT_RATE_LIMIT_PER_MIN,
     export: { maxRows: parsed.EXPORT_MAX_ROWS, rateLimitPerMin: parsed.EXPORT_RATE_LIMIT_PER_MIN },
+    stages: {
+      refreshMs: parsed.STAGES_REFRESH_HOURS * 3_600_000,
+      requestDelayMs: parsed.STAGES_REQUEST_DELAY_MS,
+      backoffMs: parsed.STAGES_BACKOFF_MS,
+      maxAgeDays: parsed.STAGES_MAX_AGE_DAYS,
+      batch: parsed.STAGES_BATCH,
+      claimMs: parsed.STAGES_CLAIM_MS,
+      historyMax: parsed.STAGE_HISTORY_MAX,
+    },
     trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     verifyTokenTtlMs: parsed.VERIFY_TOKEN_TTL_MS,
     resetTokenTtlMs: parsed.RESET_TOKEN_TTL_MS,

@@ -82,9 +82,13 @@ export function TorRecordView({
   const deadlineText = deadline
     ? deadlineParts(typeof deadline.value === "string" ? deadline.value : null, deadline.raw)
     : null;
-  const status = typeof fields.torStatus?.value === "string" ? fields.torStatus.value : null;
-  // Counted only while the TOR is open: announced, as the API's own rule for "open" has it.
-  const daysLeft = status === "announced" ? daysUntil(typeof deadline?.value === "string" ? deadline.value : null) : null;
+  // The API's state when it sends one (TOR-205: a final stage from the source decides first); the extracted
+  // status otherwise. The extracted field itself is still shown as extracted, with its confidence.
+  const extracted = typeof fields.torStatus?.value === "string" ? fields.torStatus.value : null;
+  const status = tor.torState === "awarded" || tor.torState === "cancelled" ? tor.torState : extracted;
+  // Counted only while the TOR is open, by the API's own rule for "open".
+  const takingBids = tor.torState ? tor.torState === "open" || tor.torState === "awaiting-invitation" : extracted === "announced";
+  const daysLeft = takingBids ? daysUntil(typeof deadline?.value === "string" ? deadline.value : null) : null;
   const daysLeftText = daysLeftLabel(daysLeft);
   const qualifications = Array.isArray(fields.qualifications?.value)
     ? (fields.qualifications.value as unknown[]).filter((item): item is string => typeof item === "string")
