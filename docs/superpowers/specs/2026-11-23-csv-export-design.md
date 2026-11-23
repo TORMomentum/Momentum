@@ -87,3 +87,24 @@ Columns now, in order: เลขที่โครงการ · ชื่อ�
 กำหนดยื่นข้อเสนอ · กำหนดยื่นข้อเสนอตามเอกสาร · สถานะ · วันที่ประกาศ · ระดับความมั่นใจ (สูง / กลาง / ต่ำ) ·
 ยังไม่ยืนยันการสกัด (ใช่ / ไม่) · ฟิลด์ที่ยังไม่ยืนยัน · โมเดล AI ที่สกัด · เวลาที่สกัด · หน้า TOR · เอกสารต้นฉบับ ·
 ประกาศต้นทาง.
+
+## 8. Revision 2026-11-23 — empty cells
+
+An empty cell in the first export could mean "nothing extracted", "no invitation to bid yet" or "the
+value is a number we have none of"; a reader could not tell which. Now:
+
+| Column | Empty becomes | Why |
+| :--- | :--- | :--- |
+| กำหนดยื่นข้อเสนอ | **stays empty** | A date column: Excel must still sort and filter it as dates |
+| กำหนดยื่นข้อเสนอตามเอกสาร, when the ISO column is empty too | "ยังไม่มีประกาศเชิญชวน" when the state is รอประกาศเชิญชวน; otherwise "ไม่พบข้อมูล" | The state already says the invitation is not out; the wording column says why there is no deadline. Read from the same `torState` as the สถานะ column, so the two cannot disagree |
+| เลขที่โครงการ · ชื่อโครงการ · หน่วยงาน · หมวดหมู่ · หมวดหมู่ตามเอกสาร | "ไม่พบข้อมูล" | Text read from the TOR. A filter in Excel can select the missing ones by name |
+| งบประมาณ (บาท) · วันที่ประกาศ · เวลาที่สกัด | **stay empty** | Numbers and dates: a word in them breaks sorting, sums and filters |
+| โมเดล AI ที่สกัด · ประกาศต้นทาง | **stay empty** | About the record, not read from the TOR; one sits beside เวลาที่สกัด, the other is a link column |
+| ฟิลด์ที่ยังไม่ยืนยัน | **stays empty** | Empty means every field is confirmed, not that something is missing |
+
+"ไม่พบข้อมูล" is the only wording, and never "เอกสารไม่ระบุ": a document can state a value that extraction
+could not read, so the export may say we did not find it, not that it is absent. A value that is there
+is still written exactly as extracted (NFR-F7); whitespace alone counts as empty. The words live once,
+as `NOT_FOUND` and `NO_INVITATION_YET` in `export.csv.ts`. The two optional columns (เลขที่โครงการ,
+หมวดหมู่) were decided by the rule "text read from the TOR", the user having left the choice open.
+
