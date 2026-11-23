@@ -4,7 +4,7 @@ import express from "express";
 import { type Db } from "mongodb";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { ExtractedField, TorFields } from "@tor-radar/shared";
+import type { ExtractedField, ProjectStageEntry, TorFields } from "@tor-radar/shared";
 import { loadConfig } from "../../core/config.js";
 import { connect, disconnect, ensureIndexes, tors, type TorDocument } from "../../core/db.js";
 import { errorMiddleware } from "../../core/errors.js";
@@ -605,6 +605,31 @@ describe("GET /tors/:id", () => {
       projectNumber: "68039469567",
       url: "https://process5.gprocurement.go.th/egp-agpc01-web/announcement?keywordSearch=68039469567",
     });
+  });
+
+  it("returns the project's stages, the current one and when they were last read; none for a record not read (TOR-206)", async () => {
+    const read = await seed();
+    const checkedAt = new Date("2026-11-24T01:10:00Z");
+    const stageHistory: ProjectStageEntry[] = [
+      { code: "B0", kind: "draft", description: "ร่างเอกสารประกวดราคา(e-Bidding)", on: "2026-10-21", recordId: read },
+      { code: "BOQ", kind: "median-price", description: null, on: "2026-10-21" },
+      { code: "W0", kind: "awarded", description: "ประกาศรายชื่อผู้ชนะการเสนอราคา", on: "2026-11-17" },
+    ];
+    await tors(db).updateOne(
+      { contentHash: `search-test-${seq}` },
+      { $set: { stageHistory, stage: { code: "W0", kind: "awarded", on: "2026-11-17" }, stagesCheckedAt: checkedAt } },
+    );
+    const unread = await seed();
+
+    const withStages = await request(buildTestApp()).get(`/api/v1/tors/${read}`);
+    const withoutStages = await request(buildTestApp()).get(`/api/v1/tors/${unread}`);
+
+    expect(withStages.body.stageHistory).toEqual(stageHistory);
+    expect(withStages.body.stage).toEqual({ code: "W0", kind: "awarded", on: "2026-11-17" });
+    expect(withStages.body.stagesCheckedAt).toBe(checkedAt.toISOString());
+    expect(withStages.body.torState).toBe("awarded");
+    expect(withoutStages.body.stageHistory).toEqual([]);
+    expect(withoutStages.body.stagesCheckedAt).toBeNull();
   });
 
   it("says when a value came from the source system rather than AI (NFR-F6)", async () => {
