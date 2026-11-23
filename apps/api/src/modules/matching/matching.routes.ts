@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { WithId } from "mongodb";
 import { z } from "zod";
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import type { Config } from "../../core/config.js";
 import type { TorDocument } from "../../core/db.js";
 import { UnauthorizedError } from "../../core/errors.js";
@@ -33,7 +34,7 @@ function biddable(record: WithId<TorDocument>, today: string): boolean {
   return (
     record.pipeline.state === "published" &&
     !record.access.restricted &&
-    record.documentType !== "invitation" &&
+    !SUPPORTING_DOCUMENT_TYPES.includes(record.documentType ?? "tor") &&
     !record.duplicateOf &&
     isOpenOn(
       {

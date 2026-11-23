@@ -1,3 +1,4 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import type { Db } from "mongodb";
 import { accounts, sourceHealth, tors, type SourceHealthDocument } from "../../core/db.js";
 import type { SourceDefinition } from "./sources.registry.js";
@@ -59,7 +60,9 @@ export class SourceHealthRepository {
     const filter =
       measure === "stages"
         ? { "sourceProject.system": system, stagesCheckedAt: { $exists: true } }
-        : { "sourceProject.system": system, documentType: { $ne: "invitation" as const }, duplicateOf: null };
+        : measure === "awards"
+          ? { "sourceProject.system": system, documentType: "award" as const, duplicateOf: null }
+          : { "sourceProject.system": system, documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] }, duplicateOf: null };
     const field = measure === "stages" ? "stagesCheckedAt" : "createdAt";
     const [records, newest] = await Promise.all([
       tors(this.db).countDocuments(filter),

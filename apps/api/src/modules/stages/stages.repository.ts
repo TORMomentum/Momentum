@@ -1,3 +1,4 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import { ObjectId, type Db, type WithId } from "mongodb";
 import type { ProjectStageEntry } from "@tor-radar/shared";
 import { torEvents, tors, type TorDocument } from "../../core/db.js";
@@ -13,7 +14,7 @@ function publicTorsOf(system: string, projectId: string) {
   return {
     "sourceProject.system": system,
     "sourceProject.projectId": projectId,
-    documentType: { $ne: "invitation" as const },
+    documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] },
     duplicateOf: null,
   };
 }
@@ -30,7 +31,7 @@ export class StagesRepository {
     const result = await tors(this.db).updateMany(
       {
         "sourceProject.system": system,
-        documentType: { $ne: "invitation" },
+        documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] },
         duplicateOf: null,
         stagesCheckedAt: { $exists: false },
         stagesDueAt: { $exists: false },
@@ -65,6 +66,15 @@ export class StagesRepository {
       { projection: { _id: 1 }, sort: { createdAt: 1, _id: 1 } },
     );
     return invitation ? invitation._id.toString() : null;
+  }
+
+  /** The project's winner announcement record, if we hold one: what a W0 or W2 stage links to (TOR-221). */
+  async awardOf(system: string, projectId: string): Promise<string | null> {
+    const award = await tors(this.db).findOne(
+      { "sourceProject.system": system, "sourceProject.projectId": projectId, documentType: "award", duplicateOf: null },
+      { projection: { _id: 1 }, sort: { createdAt: 1, _id: 1 } },
+    );
+    return award ? award._id.toString() : null;
   }
 
   /**

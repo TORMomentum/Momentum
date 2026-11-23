@@ -49,6 +49,18 @@ export const RETRY_DELAY_MS = Number(process.env.NATIONAL_EGP_RETRY_DELAY_MS ?? 
 
 /** A whole bid package, measured at 7–10 MB; the cap leaves room without inviting abuse. */
 export const MAX_PACKAGE_BYTES = Number(process.env.NATIONAL_EGP_MAX_PACKAGE_BYTES ?? 52_428_800);
+
+/**
+ * A project's winner announcement (TOR-221): e-GP's own "ประกาศรายชื่อผู้ชนะ" link asks the approval service
+ * for the announcement's template id, then opens it as a PDF from the template service. Both are plain public
+ * GETs the announcement list calls with no captcha — the bidder price report, which sits behind one, is not used.
+ */
+export const AWARD_TEMPLATE_PATH =
+  process.env.NATIONAL_EGP_AWARD_TEMPLATE_PATH ?? "/egp-approval-service/apv-common/infoApproveTemplate";
+export const AWARD_TEMPLATE_TYPE = process.env.NATIONAL_EGP_AWARD_TEMPLATE_TYPE ?? "W13";
+export const AWARD_PDF_PATH = process.env.NATIONAL_EGP_AWARD_PDF_PATH ?? "/egp-template-service/dwnt/view-pdf-file";
+/** A winner announcement is a page or two; 10 MB is far beyond any seen. */
+export const MAX_AWARD_BYTES = Number(process.env.NATIONAL_EGP_MAX_AWARD_BYTES ?? 10_485_760);
 /** Unpacking caps (spec decision 10). The largest package seen had 22 entries and 9.5 MB unpacked. */
 export const MAX_PACKAGE_ENTRIES = Number(process.env.NATIONAL_EGP_MAX_PACKAGE_ENTRIES ?? 200);
 export const MAX_PACKAGE_UNPACKED_BYTES = Number(

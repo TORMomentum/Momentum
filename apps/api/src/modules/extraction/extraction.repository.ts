@@ -1,5 +1,6 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import { ObjectId, type Db } from "mongodb";
-import type { ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
+import type { AwardResult, ConfidenceLevel, DocumentType, ExtractedField, Provenance, SourceProject, TorFields, StoredAnnex } from "@tor-radar/shared";
 import { tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
 import { NotFoundError } from "../../core/errors.js";
@@ -113,7 +114,7 @@ export class ExtractionRepository {
    */
   async linkDeadline(projectId: string, deadline: LinkedDeadline): Promise<void> {
     await tors(this.db).updateMany(
-      { "sourceProject.projectId": projectId, documentType: { $ne: "invitation" } },
+      { "sourceProject.projectId": projectId, documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] } },
       {
         $set: {
           "fields.deadline": { ...deadline.field, fromDocument: deadline.invitationId },
@@ -121,6 +122,44 @@ export class ExtractionRepository {
         },
       },
     );
+  }
+
+  /**
+   * Stores a winner announcement's reading on its own record (TOR-221). It has no TOR fields; what it says is
+   * `award`, which `linkAward` then copies to the project's TORs.
+   */
+  async writeAward(awardId: string, award: AwardResult, meta: { announcedAt: Date | null; confidenceLevel: ConfidenceLevel; hasTextLayer: boolean }): Promise<void> {
+    await tors(this.db).updateOne(
+      { _id: new ObjectId(awardId) },
+      {
+        $set: {
+          award,
+          announcedAt: meta.announcedAt,
+          confidenceLevel: meta.confidenceLevel,
+          unverified: award.unverified,
+          reviewReasons: [],
+          hasTextLayer: meta.hasTextLayer,
+          provenance: award.provenance,
+          schemaVersion: TOR_SCHEMA_VERSION,
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  /**
+   * Puts the award on every public TOR of its project, and points the project's winner stage at the award record,
+   * so the stage timeline opens it. The stage key is the project number every record of it carries.
+   */
+  async linkAward(projectId: string, award: AwardResult, awardCodes: readonly string[]): Promise<number> {
+    const filter = { "sourceProject.projectId": projectId, documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] } };
+    const result = await tors(this.db).updateMany(filter, { $set: { award, updatedAt: new Date() } });
+    await tors(this.db).updateMany(
+      { ...filter, "stageHistory.code": { $in: [...awardCodes] } },
+      { $set: { "stageHistory.$[winner].recordId": award.recordId } },
+      { arrayFilters: [{ "winner.code": { $in: [...awardCodes] } }] },
+    );
+    return result.matchedCount;
   }
 
   /**

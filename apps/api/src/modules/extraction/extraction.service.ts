@@ -1,4 +1,4 @@
-import type { Provenance } from "@tor-radar/shared";
+import type { AwardResult, ConfidenceLevel, Provenance } from "@tor-radar/shared";
 import type { Ai } from "../../ports/ai.port.js";
 import type { Embedder } from "../../ports/embeddings.port.js";
 import type { Ocr } from "../../ports/ocr.port.js";
@@ -11,6 +11,8 @@ import { grade } from "./extraction.grading.js";
 import { IMPLAUSIBLE_DEADLINE, type ExtractionRepository } from "./extraction.repository.js";
 import { cohortFor } from "../stats/cohort.js";
 import { logger } from "../../core/logger.js";
+import { winnerKindOf } from "../../lib/winner-kind.js";
+import { AWARD_STAGE_CODES } from "../../sources/national-egp/stages.js";
 
 export interface ExtractionConfig {
   model: string;
@@ -63,11 +65,53 @@ function parseDate(iso: string | null): Date | null {
 export class ExtractionService {
   constructor(private readonly deps: ExtractionServiceDeps) {}
 
+  /**
+   * A winner announcement (TOR-221): who won and at what price, read by the model, graded by the same
+   * thresholds as a TOR, stored on the award record, and copied to its project's TORs. Nothing is written
+   * unless the whole reading succeeds.
+   */
+  private async runAward(awardId: string, target: Awaited<ReturnType<ExtractionRepository["load"]>>, bytes: Buffer, textLayer: boolean): Promise<void> {
+    const { ai, config, repo } = this.deps;
+    if (!ai.extractAward) throw new Error("this Ai cannot read a winner announcement");
+    const raw = await ai.extractAward({ bytes, contentType: target.contentType });
+    // A price outside what any budget can be is a misreading, not a value (the budget's own bounds).
+    const price = raw.price.value !== null && raw.price.value >= config.budgetMinThb && raw.price.value <= config.budgetMaxThb ? raw.price.value : null;
+    const confidence = Math.min(raw.winner.value === null ? 0 : raw.winner.confidence, price === null ? 0 : raw.price.confidence);
+    const confidenceLevel: ConfidenceLevel = confidence >= config.tHigh ? "high" : confidence >= config.tLow ? "medium" : "low";
+    const announcedAt = target.sourceAnnouncedAt ?? parseDate(raw.announcementDate.value);
+    const award: AwardResult = {
+      recordId: awardId,
+      winner: { raw: raw.winner.raw, value: raw.winner.value, confidence: raw.winner.confidence },
+      winnerKind: winnerKindOf(raw.winner.value),
+      price: { raw: raw.price.raw, value: price, confidence: raw.price.confidence },
+      announcedOn: raw.announcementDate.value,
+      unverified: confidenceLevel !== "high",
+      provenance: {
+        ocrModel: config.model,
+        extractModel: config.model,
+        modelVersion: raw.modelVersion,
+        extractedAt: new Date().toISOString(),
+        thresholdsVersion: config.thresholdsVersion,
+      },
+    };
+    await repo.writeAward(awardId, award, { announcedAt, confidenceLevel, hasTextLayer: textLayer });
+    const projectId = target.sourceProject?.projectId;
+    const linked = projectId ? await repo.linkAward(projectId, award, AWARD_STAGE_CODES) : 0;
+    logger.info("award_extracted", {
+      awardId,
+      confidenceLevel,
+      linked,
+      // The model's billed units, for the cost estimate. Not named "…tokens": the logger redacts any such key.
+      ...(raw.usage ? { usageInput: raw.usage.inputTokens, usageOutput: raw.usage.outputTokens } : {}),
+    });
+  }
+
   run = async (torId: string): Promise<void> => {
     const target = await this.deps.repo.load(torId);
     const { storageKey, contentType, knownFields, createdAt, contentHash } = target;
     const bytes = await collect(await this.deps.storage.getStream(storageKey));
     const textLayer = hasTextLayer(bytes, contentType);
+    if (target.documentType === "award") return this.runAward(torId, target, bytes, textLayer);
 
     // The TOR's annexes go with it while they fit: in order, up to the count and the byte budget.
     const attachments: Array<{ bytes: Buffer; contentType: string; name: string }> = [];

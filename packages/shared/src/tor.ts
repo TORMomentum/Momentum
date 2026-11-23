@@ -51,8 +51,14 @@ export interface ExtractedField<T = string> {
   anchor?: FieldAnchor;
 }
 
-/** What a stored document is. A record without one is a TOR. */
-export type DocumentType = "tor" | "invitation";
+/**
+ * What a stored document is. A record without one is a TOR. An invitation to bid and a winner announcement
+ * (TOR-221) are supporting documents of their project's TOR: stored and extracted, never listed publicly.
+ */
+export type DocumentType = "tor" | "invitation" | "award";
+
+/** The document types that support a TOR and are never records of their own in a public list or a statistic. */
+export const SUPPORTING_DOCUMENT_TYPES: readonly DocumentType[] = ["invitation", "award"];
 
 /**
  * What a published stage of a project is (TOR-205). The source's own code is kept beside it; `other` is a
@@ -182,4 +188,30 @@ export interface TorRecord {
   duplicateOf: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One value read from a winner announcement: as the document states it, normalised, and how sure the model was. */
+export interface AwardValue<T> {
+  /** Verbatim from the document, shown to the reader unchanged (NFR-F7). */
+  raw: string;
+  value: T | null;
+  confidence: number;
+}
+
+/**
+ * The winner announcement of a TOR's project (TOR-221), copied onto each public TOR of the project from the
+ * award record it was read from. Stored whole; the public serializer leaves an individual's name out (FR-B-5).
+ */
+export interface AwardResult {
+  /** The award record — the stored original this was read from (NFR-F6). */
+  recordId: string;
+  winner: AwardValue<string>;
+  /** Whether the winner is a juristic person (company, partnership…) or an individual, decided by a rule on the name. */
+  winnerKind: "juristic" | "individual";
+  price: AwardValue<number>;
+  /** The announcement's own day, `YYYY-MM-DD`, when it states one. */
+  announcedOn: string | null;
+  /** Below T_high on the winner or the price: shown marked "unverified extraction". */
+  unverified: boolean;
+  provenance: Provenance;
 }

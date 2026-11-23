@@ -90,6 +90,9 @@ export const STAGE_KINDS: Readonly<Record<string, StageKind>> = {
 };
 
 /** The kind of an e-GP stage code; `other` for a code not in `STAGE_KINDS`. */
+/** The stage codes whose document is the winner announcement: the first one and its amendment (TOR-221). */
+export const AWARD_STAGE_CODES: readonly string[] = ["W0", "W2"];
+
 export function stageKindOf(code: string): StageKind {
   return Object.hasOwn(STAGE_KINDS, code) ? STAGE_KINDS[code]! : "other";
 }

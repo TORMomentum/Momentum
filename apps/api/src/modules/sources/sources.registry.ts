@@ -8,16 +8,18 @@ export interface SourceDefinition {
   name: string;
   /** Automatic sources run on their own and are alerted on; manual ones are run by hand and never stale. */
   kind: "automatic" | "manual";
-  /** What the source has given us: TOR records of `system`, or the records whose stages were read. */
-  records: { system: string; measure: "tors" | "stages" };
+  /** What the source has given us: TOR records of `system`, the records whose stages were read, or its winner announcements. */
+  records: { system: string; measure: "tors" | "stages" | "awards" };
 }
 
 export const STAGES_SOURCE_ID = "national-egp-stages";
 export const NATIONAL_EGP_IMPORT_ID = "national-egp-import";
 export const BMA_EGP_IMPORT_ID = "bma-egp-import";
+export const NATIONAL_EGP_AWARDS_ID = "national-egp-awards";
 
 export const SOURCES: readonly SourceDefinition[] = [
   { id: STAGES_SOURCE_ID, name: "e-GP — ขั้นตอนโครงการ", kind: "automatic", records: { system: "national-egp", measure: "stages" } },
   { id: NATIONAL_EGP_IMPORT_ID, name: "e-GP — นำเข้า TOR", kind: "manual", records: { system: "national-egp", measure: "tors" } },
+  { id: NATIONAL_EGP_AWARDS_ID, name: "e-GP — ประกาศผู้ชนะ", kind: "manual", records: { system: "national-egp", measure: "awards" } },
   { id: BMA_EGP_IMPORT_ID, name: "e-GP กรุงเทพมหานคร — นำเข้า TOR", kind: "manual", records: { system: "bma-egp", measure: "tors" } },
 ];

@@ -70,6 +70,24 @@ export interface ExtractionInput {
  * the adapter knows the model. Throws `ExtractionError` (retryable) or
  * `DocumentUnreadableError` (terminal) on failure - never a partial result.
  */
+/**
+ * What a winner announcement states (TOR-221): who won, at what price, and when it was announced. Names of the
+ * officials who signed it are never asked for (FR-B-5).
+ */
+export interface RawAward {
+  /** The winning bidder as named, e.g. "ห้างหุ้นส่วนจำกัด ๘๕สุรินทร์". */
+  winner: RawField;
+  /** The winning price in baht, VAT included, as the announcement states it. */
+  price: RawField<number>;
+  /** The announcement's date, ISO `YYYY-MM-DD` in the Gregorian calendar. */
+  announcementDate: RawField;
+  modelVersion: string;
+  /** Tokens the request used, when the provider says: what a run of them costs (TOR-221). */
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
 export interface Ai {
   extract(input: ExtractionInput): Promise<RawExtraction>;
+  /** Reads a winner announcement (TOR-221). Optional so a test double for TORs need not implement it. */
+  extractAward?(input: Pick<ExtractionInput, "bytes" | "contentType">): Promise<RawAward>;
 }

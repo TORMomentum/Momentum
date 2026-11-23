@@ -66,7 +66,7 @@ const rejectSchema = z.object({ reason: z.string().min(3).max(300) });
 const torsQuerySchema = z.object({
   q: z.string().max(200).optional(),
   status: z.enum(["all", "public", "restricted", "unverified", "processing", "stuck", "failed"]).default("all"),
-  kind: z.enum(["tor", "invitation", "all"]).default("tor"),
+  kind: z.enum(["tor", "invitation", "award", "all"]).default("tor"),
   page: z.coerce.number().int().positive().max(10_000).default(1),
 });
 const verificationParamsSchema = z.object({ field: z.enum(reviewFieldNames) });
