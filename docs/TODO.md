@@ -813,6 +813,9 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   `/search` (spec 2026-11-23). Verified against the Atlas corpus through the web app: `minDaysLeft=14`
   gives 34 rows, the list's own count, Thai intact, download headers as specified. Columns revised the same
   day after reading the real file (spec §7): 18, all in Thai, with the source page
+- [x] CSV empty cells (spec 2026-11-23-csv-export §8): text read from the TOR says "ไม่พบข้อมูล", an empty
+  deadline says "ยังไม่มีประกาศเชิญชวน" while awaiting the invitation, number and date columns stay empty.
+  Branch `feat/tor-69-csv-empty-cells`, on top of TOR-205
 - [x] TOR-204 spike: the stages come from e-GP's public project stage table, keyed by the 11-digit
   project number (spec 2026-11-23-egp-project-stages). `fetchProjectStages`; the import dates a TOR from
   its draft stage (`B0`/`B3`), or with no draft stage from its first invitation (`D0`, spec §3b)

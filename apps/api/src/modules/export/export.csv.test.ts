@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CSV_BOM, csvCell, csvLine, EXPORT_HEADER, exportRow, stateLabel } from "./export.csv.js";
+import { CSV_BOM, csvCell, csvLine, EXPORT_HEADER, exportRow, NO_INVITATION_YET, NOT_FOUND, orNotFound, stateLabel } from "./export.csv.js";
 
 describe("CSV cells (RFC 4180)", () => {
   it("quotes commas, quotes and line breaks, and leaves plain text alone", () => {
@@ -98,5 +98,71 @@ describe("one exported row", () => {
     expect(stateLabel({ torState: "closed" })).toBe("ปิดรับแล้ว");
     expect(stateLabel({ torState: "awarded" })).toBe("ประกาศผู้ชนะแล้ว");
     expect(stateLabel({ torState: "cancelled" })).toBe("ยกเลิกแล้ว");
+  });
+});
+
+describe("empty cells (spec §8)", () => {
+  const ORIGIN = "https://tor-radar.example";
+  const byHeader = (row: Array<string | number | null>) => Object.fromEntries(EXPORT_HEADER.map((header, i) => [header, row[i]]));
+  /** A row with nothing extracted: every field empty or absent. */
+  const bare = (torState: "open" | "awaiting-invitation" | "closed" | "awarded" | "cancelled", deadline: { raw?: string; value?: string | null } = {}) => ({
+    id: "6ac65474caacd671072bf14b",
+    announcedAt: null,
+    confidenceLevel: null,
+    unverified: false,
+    open: torState === "open" || torState === "awaiting-invitation",
+    torState,
+    title: { raw: "", verified: true },
+    referenceNo: { raw: "   ", verified: true },
+    agency: { raw: "", value: null, verified: true },
+    category: { raw: "", value: null, verified: true },
+    budget: { raw: "", value: null, verified: true },
+    deadline: { raw: deadline.raw ?? "", value: deadline.value ?? null, verified: true },
+  });
+
+  it("says the text read from the TOR was not found, and leaves numbers, dates, metadata and links empty", () => {
+    expect(byHeader(exportRow(bare("closed"), undefined, ORIGIN))).toMatchObject({
+      เลขที่โครงการ: NOT_FOUND,
+      ชื่อโครงการ: NOT_FOUND,
+      หน่วยงาน: NOT_FOUND,
+      หมวดหมู่: NOT_FOUND,
+      หมวดหมู่ตามเอกสาร: NOT_FOUND,
+      "งบประมาณ (บาท)": null,
+      กำหนดยื่นข้อเสนอ: "",
+      วันที่ประกาศ: "",
+      "โมเดล AI ที่สกัด": "",
+      เวลาที่สกัด: "",
+      ประกาศต้นทาง: "",
+      // Empty here means every field is confirmed, not that something is missing.
+      ฟิลด์ที่ยังไม่ยืนยัน: "",
+    });
+  });
+
+  it("explains an empty deadline by the state: no invitation yet while awaiting it, not found otherwise", () => {
+    const deadline = (torState: Parameters<typeof bare>[0]) => byHeader(exportRow(bare(torState), undefined, ORIGIN));
+    expect(deadline("awaiting-invitation")).toMatchObject({ กำหนดยื่นข้อเสนอ: "", กำหนดยื่นข้อเสนอตามเอกสาร: NO_INVITATION_YET, สถานะ: "รอประกาศเชิญชวน" });
+    for (const torState of ["open", "closed", "awarded", "cancelled"] as const) {
+      expect(deadline(torState), torState).toMatchObject({ กำหนดยื่นข้อเสนอ: "", กำหนดยื่นข้อเสนอตามเอกสาร: NOT_FOUND });
+    }
+  });
+
+  it("keeps any wording the TOR has, exactly, and fills nothing when either deadline column has a value", () => {
+    expect(orNotFound("  ชื่อ  ")).toBe("  ชื่อ  ");
+    // Thai text extraction could not turn into a date: the wording is kept, the date column stays empty.
+    expect(byHeader(exportRow(bare("closed", { raw: "ภายใน ๓๐ วัน" }), undefined, ORIGIN))).toMatchObject({
+      กำหนดยื่นข้อเสนอ: "",
+      กำหนดยื่นข้อเสนอตามเอกสาร: "ภายใน ๓๐ วัน",
+    });
+    expect(byHeader(exportRow(bare("open", { raw: "๓๐ พฤศจิกายน ๒๕๖๙", value: "2026-11-30" }), undefined, ORIGIN))).toMatchObject({
+      กำหนดยื่นข้อเสนอ: "2026-11-30",
+      กำหนดยื่นข้อเสนอตามเอกสาร: "๓๐ พฤศจิกายน ๒๕๖๙",
+    });
+  });
+
+  it("never claims the document does not state a value", () => {
+    const states = ["open", "awaiting-invitation", "closed", "awarded", "cancelled"] as const;
+    const text = states.map((torState) => csvLine(exportRow(bare(torState), undefined, ORIGIN))).join("");
+    expect(text).not.toContain("เอกสารไม่ระบุ");
+    expect(text).not.toContain("ไม่ระบุ");
   });
 });
