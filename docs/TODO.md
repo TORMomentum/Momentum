@@ -803,6 +803,10 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
 - [x] Search order (2026-10-15 review): TORs with at least `SEARCH_MIN_PREP_DAYS` (5) days to prepare
   first, then those closing sooner, then other verified, then unverified; new cursor segment `soon`.
   Verified on a local Compose stack: order on the API and `/search`, and a one-per-page cursor walk
+- [x] A deadline left as text by extraction no longer counts as a future date in the closing segments,
+  `minDaysLeft` or `deadlineFrom`. Verified against the Atlas corpus: 7 / 14 / 30 days return 90 / 29 / 1,
+  none of them undated
+- [ ] Extraction leaves some deadlines as Thai text instead of an ISO date; normalise them at extraction
 - [ ] TOR-69 CSV export of the filtered TOR list (F11)
 - [ ] TOR-87 Ingestion-source health per adapter (F12)
 - [ ] TOR-204 – 207 TOR project stages on e-GP: spike, `stage` / `stageHistory`, timeline, notifications

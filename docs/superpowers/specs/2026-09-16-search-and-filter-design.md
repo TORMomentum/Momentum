@@ -170,3 +170,7 @@ a vendor cannot prepare a bid in that time. The leading "still taking bids" segm
   prepare.
 - A cursor from before this revision (`s: "c"`) still decodes and resumes in segment 1.
 - Each segment still reads its order from an index, so the two-second target (§4) is unaffected.
+- Only an ISO date counts as a deadline in segments 1–2 and in `minDaysLeft` / `deadlineFrom`. A
+  deadline extraction left as text ("วันที่ 8 ตุลาคม 2569") sorts after every ISO string, so an
+  open-ended range used to read it as far in the future; ranges are now capped below `":"`, and such a
+  record falls to segment 3. The stored value is untouched (NFR-F7).
