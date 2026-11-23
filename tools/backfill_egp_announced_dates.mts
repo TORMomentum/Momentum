@@ -7,6 +7,12 @@
  *                                                                   also replace a date that disagrees with e-GP
  *   npx tsx tools/backfill_egp_announced_dates.mts --fix-mismatch   dry run that also lists dates e-GP disagrees with
  *   ... --limit 20                                                  only the first 20 projects
+ *   ... --stored-only                                               never ask e-GP: use only the stages the
+ *                                                                   stages worker already stored (TOR-205)
+ *
+ * A project whose stages the stages worker has stored (`stagesCheckedAt`) is read from the record, not
+ * from e-GP: e-GP refuses after about 80 requests in a window (seen twice on 2026-11-23), so the worker
+ * is the one paced reader and this tool adds no load for those projects.
  *
  * Without --fix-mismatch only projects with an undated record are looked up, so a run asks e-GP
  * about as many times as there are gaps. Three failed lookups in a row stop the run: e-GP is
@@ -30,7 +36,7 @@ import { connect, disconnect, tors } from "../apps/api/src/core/db.js";
 import { cohortFor } from "../apps/api/src/modules/stats/cohort.js";
 import { StatsRepository, windowKeysFor } from "../apps/api/src/modules/stats/stats.repository.js";
 import { fetchProjectStages } from "../apps/api/src/sources/national-egp/client.js";
-import { torAnnouncedOn } from "../apps/api/src/sources/national-egp/stages.js";
+import { DRAFT_TOR_CODES, torAnnouncedOn, type ProjectStage } from "../apps/api/src/sources/national-egp/stages.js";
 
 const rootEnv = fileURLToPath(new URL("../.env", import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -39,6 +45,7 @@ const APPLY = process.argv.includes("--apply");
 const FIX_MISMATCH = process.argv.includes("--fix-mismatch");
 const limitAt = process.argv.indexOf("--limit");
 const LIMIT = limitAt > 0 ? Number(process.argv[limitAt + 1]) : Infinity;
+const STORED_ONLY = process.argv.includes("--stored-only");
 const DELAY_MS = Number(process.env.NATIONAL_EGP_DELAY_MS ?? 700);
 const MAX_FAILURES_IN_A_ROW = 3;
 
@@ -48,13 +55,13 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const db = await connect(config.mongoUrl);
 const stats = new StatsRepository(db);
-const tally = { projects: 0, filled: 0, mismatched: 0, fixed: 0, same: 0, noTorStage: 0, failed: 0 };
+const tally = { projects: 0, fromStored: 0, notYetRead: 0, filled: 0, mismatched: 0, fixed: 0, same: 0, noTorStage: 0, failed: 0 };
 
 try {
   const records = await tors(db)
     .find(
       { "sourceProject.system": "national-egp", documentType: { $ne: "invitation" }, duplicateOf: null },
-      { projection: { announcedAt: 1, createdAt: 1, cohort: 1, "fields.category.value": 1, "sourceProject.projectId": 1 } },
+      { projection: { announcedAt: 1, createdAt: 1, cohort: 1, "fields.category.value": 1, "sourceProject.projectId": 1, stageHistory: 1, stagesCheckedAt: 1 } },
     )
     .toArray();
   const byProject = new Map<string, typeof records>();
@@ -73,9 +80,23 @@ try {
   for (const [projectId, group] of projects.slice(0, LIMIT)) {
     tally.projects += 1;
     let b0: string | null;
-    try {
-      b0 = torAnnouncedOn(await fetchProjectStages(projectId, timeZone));
+    let codes: string[];
+    // Stages the worker stored: no request. Every record of a project carries the same list.
+    const stored = group.find((record) => record.stagesCheckedAt);
+    if (stored) {
+      const stages: ProjectStage[] = (stored.stageHistory ?? []).map((row) => ({ type: row.code, description: row.description, announcedOn: row.on }));
+      b0 = torAnnouncedOn(stages);
+      codes = stages.map((stage) => stage.type);
+      tally.fromStored += 1;
+    } else if (STORED_ONLY) {
+      tally.notYetRead += 1;
+      continue;
+    } else try {
+      const stages = await fetchProjectStages(projectId, timeZone);
+      b0 = torAnnouncedOn(stages);
+      codes = stages.map((stage) => stage.type);
       failuresInARow = 0;
+      await sleep(DELAY_MS);
     } catch (error) {
       tally.failed += 1;
       failuresInARow += 1;
@@ -87,10 +108,10 @@ try {
       await sleep(DELAY_MS * 5);
       continue;
     }
-    await sleep(DELAY_MS);
     if (!b0) {
       tally.noTorStage += 1;
-      console.log(`no draft  ${projectId}`);
+      // The codes it does list, so a draft code not yet in DRAFT_TOR_CODES shows up here.
+      console.log(`no draft  ${projectId}  [${codes.join(" ") || "no stages"}]  (draft codes: ${DRAFT_TOR_CODES.join(", ")})`);
       continue;
     }
 
