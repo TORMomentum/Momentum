@@ -37,6 +37,7 @@ const render = (props: Partial<Parameters<typeof StagePanel>[0]> = {}) =>
       checkedAt="2026-11-24T01:10:00Z"
       projectUrl="https://process5.gprocurement.go.th/egp-agpc01-web/announcement?keywordSearch=69069300968"
       originals={ORIGINALS}
+      title="จ้างก่อสร้างอาคาร"
       {...props}
     />,
   );

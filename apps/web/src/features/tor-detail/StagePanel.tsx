@@ -1,6 +1,6 @@
 import type { ProjectStageEntry, StageKind } from "@tor-radar/shared";
 import { formatThaiDate, formatThaiDateTime } from "../../shared/lib/format";
-import type { OriginalDocument } from "./OriginalPreview";
+import { OriginalPreview, type OriginalDocument } from "./OriginalPreview";
 import styles from "./tor-detail.module.css";
 import labels from "../../shared/ui/labels.module.css";
 
@@ -47,6 +47,8 @@ export function StagePanel({
   checkedAt,
   projectUrl,
   originals,
+  title,
+  referenceNo,
 }: {
   torId: string;
   stages?: ProjectStageEntry[];
@@ -54,6 +56,9 @@ export function StagePanel({
   checkedAt?: string | null;
   projectUrl?: string | null;
   originals: OriginalDocument[];
+  /** For the document window's header, as the page's own "เปิดเอกสารต้นฉบับ" gives it. */
+  title: string;
+  referenceNo?: string;
 }) {
   if (!stages || stages.length === 0) return null;
   const rows = stagesInOrder(stages);
@@ -88,9 +93,16 @@ export function StagePanel({
                   {document && (
                     <>
                       {" · "}
-                      <a className={styles.sourceLink} href={document.href}>
+                      {/* The same window as "เปิดเอกสารต้นฉบับ", opened on this stage's document. */}
+                      <OriginalPreview
+                        documents={originals}
+                        initial={document.key}
+                        title={title}
+                        referenceNo={referenceNo}
+                        className={styles.sourceLink}
+                      >
                         ดูเอกสาร
-                      </a>
+                      </OriginalPreview>
                     </>
                   )}
                 </div>

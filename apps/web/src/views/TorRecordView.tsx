@@ -286,6 +286,8 @@ export function TorRecordView({
           checkedAt={tor.stagesCheckedAt}
           projectUrl={tor.sourceProject?.url}
           originals={originals}
+          title={previewProps.title}
+          referenceNo={previewProps.referenceNo}
         />
 
         <BiddingPanel
