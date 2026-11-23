@@ -126,6 +126,8 @@ export interface TorDetail {
   stage?: { code: string; kind: StageKind; on: string } | null;
   /** When the stages were last read from the source (TOR-206); null before the first read. */
   stagesCheckedAt?: string | null;
+  /** The project's winner announcement as AI read it (TOR-221); null when none was collected, absent from an older API. */
+  award?: TorAward | null;
   provenance: {
     ocrModel: string;
     extractModel: string;
@@ -136,6 +138,20 @@ export interface TorDetail {
   unverified: boolean;
   contentHash: string;
   contentType: string;
+}
+
+/**
+ * Who won and at what price (TOR-221). A winner who is a natural person is already "บุคคลธรรมดา" here: the API
+ * replaces the name before it leaves (FR-B-5).
+ */
+export interface TorAward {
+  recordId: string;
+  winner: { raw: string; value: string | null; confidence: number };
+  winnerKind: "juristic" | "individual";
+  price: { raw: string; value: number | null; confidence: number };
+  announcedOn: string | null;
+  unverified: boolean;
+  provenance: { extractModel: string; modelVersion: string; extractedAt: string };
 }
 
 /** The longest keyword the API accepts; the field stops the reader there. */

@@ -16,6 +16,7 @@ const STATUS_OPTIONS: Array<{ value: AdminTorStatus; label: string }> = [
 const KIND_OPTIONS: Array<{ value: AdminTorKind; label: string }> = [
   { value: "tor", label: "TOR" },
   { value: "invitation", label: "ประกาศเชิญชวน" },
+  { value: "award", label: "ประกาศผู้ชนะ" },
   { value: "all", label: "ทั้งหมด" },
 ];
 
@@ -123,7 +124,7 @@ export function AdminTorsView({
           rows={result.rows.map((row) => ({
             id: row.id,
             title: row.title,
-            invitation: row.documentType === "invitation",
+            documentType: row.documentType,
             agency: row.agency,
             projectNumber: row.projectNumber,
             status: statusOf(row),

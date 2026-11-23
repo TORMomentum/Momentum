@@ -9,10 +9,11 @@ function documentHref(id: string, disposition: "inline" | "attachment"): string 
 }
 
 /**
- * The originals a reader can open for one TOR: its own document, and the
- * project's invitation to bid when the deadline was read from one. The
- * invitation's id comes from the record, never from the URL, so no viewer can
- * be pointed at an arbitrary stored file.
+ * The originals a reader can open for one TOR: its own document, the
+ * project's invitation to bid when the deadline was read from one, and its
+ * winner announcement when one was read (TOR-221). Each id comes from the
+ * record, never from the URL, so no viewer can be pointed at an arbitrary
+ * stored file.
  */
 export function originalDocuments(tor: TorDetail): OriginalDocument[] {
   const id = encodeURIComponent(tor.id);
@@ -36,6 +37,19 @@ export function originalDocuments(tor: TorDetail): OriginalDocument[] {
       href: `/tors/${id}/original?doc=invitation`,
       inlineUrl: documentHref(invitationId, "inline"),
       downloadUrl: documentHref(invitationId, "attachment"),
+      contentHash: null,
+      contentType: null,
+    });
+  }
+
+  const awardId = tor.award?.recordId;
+  if (typeof awardId === "string" && OBJECT_ID.test(awardId)) {
+    documents.push({
+      key: "award",
+      label: "ประกาศผู้ชนะการเสนอราคา",
+      href: `/tors/${id}/original?doc=award`,
+      inlineUrl: documentHref(awardId, "inline"),
+      downloadUrl: documentHref(awardId, "attachment"),
       contentHash: null,
       contentType: null,
     });

@@ -32,6 +32,8 @@ export function stagesInOrder(stages: readonly ProjectStageEntry[]): ProjectStag
 function documentOf(stage: ProjectStageEntry, torId: string, originals: OriginalDocument[]): OriginalDocument | null {
   if (stage.kind === "draft" && stage.recordId === torId) return originals.find((doc) => doc.key === "tor") ?? null;
   if (stage.kind === "invitation" && stage.recordId) return originals.find((doc) => doc.key === "invitation") ?? null;
+  // The winner announcement this TOR's award was read from (TOR-221); both ids are set by the same write.
+  if (stage.kind === "awarded" && stage.recordId) return originals.find((doc) => doc.key === "award") ?? null;
   return null;
 }
 

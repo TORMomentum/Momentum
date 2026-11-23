@@ -57,17 +57,17 @@ export interface ReviewRecord extends QueueEntry {
   state?: string;
   restricted?: boolean;
   restrictedReason?: string;
-  documentType?: "tor" | "invitation";
+  documentType?: "tor" | "invitation" | "award";
 }
 
 export type AdminTorStatus = "all" | "public" | "restricted" | "unverified" | "processing" | "stuck" | "failed";
-export type AdminTorKind = "tor" | "invitation" | "all";
+export type AdminTorKind = "tor" | "invitation" | "award" | "all";
 
 export interface AdminTorRow {
   id: string;
   title: string;
   agency: string;
-  documentType: "tor" | "invitation";
+  documentType: "tor" | "invitation" | "award";
   state: string;
   restricted: boolean;
   unverified: boolean;

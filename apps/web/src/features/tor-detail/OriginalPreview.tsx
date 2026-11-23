@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import styles from "./tor-original.module.css";
 
-/** One stored original the viewer can show: the TOR itself, or its invitation to bid. */
+/** One stored original the viewer can show: the TOR itself, its invitation to bid, or its winner announcement. */
 export interface OriginalDocument {
-  key: "tor" | "invitation";
+  key: "tor" | "invitation" | "award";
   label: string;
   /** The full-page viewer for this document — where the trigger goes without JavaScript. */
   href: string;
