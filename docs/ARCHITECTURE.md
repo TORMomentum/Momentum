@@ -171,6 +171,7 @@ flowchart LR
 | `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics and notification workers, and the orphan reconciler | Same wiring rules as the API |
+| `sources/<source>/` | Clients for public sources: `bma-egp/`, and `national-egp/` (announcement list, feed, bid packages, and a project's dated stages — `stages.ts`, TOR-204) | Reached through `lib/safe-fetch`; used by `tools/` imports, never by a route |
 
 The feature modules, as of Sprint 4:
 
