@@ -28,6 +28,8 @@ import { MatchQualityService } from "./modules/match-quality/match-quality.servi
 import { TorsRepository } from "./modules/tors/tors.repository.js";
 import { TorsService } from "./modules/tors/tors.service.js";
 import { buildTorsRouter } from "./modules/tors/tors.routes.js";
+import { buildExportRouter } from "./modules/export/export.routes.js";
+import { ExportService } from "./modules/export/export.service.js";
 import { StatsRepository } from "./modules/stats/stats.repository.js";
 import { buildStatsRouter } from "./modules/stats/stats.routes.js";
 import { SessionsRepository } from "./modules/accounts/sessions.js";
@@ -236,10 +238,27 @@ export function buildApp(config: Config, db: Db): Express {
     }),
   );
 
+  const torsService = new TorsService({ repo: new TorsRepository(db, config.search), config });
+  app.use(
+    `${API_PREFIX}/export`,
+    buildExportRouter({
+      service: new ExportService({
+        tors: torsService,
+        maxRows: config.export.maxRows,
+        pageSize: config.search.maxPageSize,
+        appOrigin: config.appOrigin,
+      }),
+      config,
+      profiles: profileRepository,
+      matching: new MatchingRepository(db, config),
+      behaviour: behaviourRepository,
+    }),
+  );
+
   app.use(
     `${API_PREFIX}/tors`,
     buildTorsRouter({
-      service: new TorsService({ repo: new TorsRepository(db, config.search), config }),
+      service: torsService,
       storage,
       search: config.search,
       config,

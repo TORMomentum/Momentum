@@ -12,9 +12,7 @@ import { UnauthorizedError } from "../../core/errors.js";
 import { ProfileRepository } from "../profile/profile.repository.js";
 import type { BehaviourRepository } from "../behaviour/behaviour.repository.js";
 import { MatchingRepository } from "../matching/matching.repository.js";
-import { scoresForAccount } from "../matching/matching.scores.js";
-import { ObjectId } from "mongodb";
-import { MATCH_RANGE, matchPercent } from "@tor-radar/shared";
+import { matchIdsFor } from "./tors.match-filter.js";
 
 export interface TorsRouterDeps {
   service: TorsService;
@@ -45,16 +43,7 @@ export function buildTorsRouter(deps: TorsRouterDeps): Router {
     }
     // This remains a public route; only the optional vendor-match filter needs identity.
     if (!req.auth) throw new UnauthorizedError();
-    const scores = await scoresForAccount(deps, req.auth.account._id.toString());
-    const matchIds = Object.entries(scores)
-      // Compared as the rounded percentage the badge shows: a TOR labelled
-      // "70%" must not vanish under a 70% filter because it scored 0.695.
-      .filter(([, score]) => {
-        const percent = matchPercent(score);
-        return percent >= (minMatch ?? MATCH_RANGE.floor) && percent <= (maxMatch ?? MATCH_RANGE.ceiling);
-      })
-      .map(([id]) => new ObjectId(id));
-    res.json(await deps.service.search(search, matchIds));
+    res.json(await deps.service.search(search, await matchIdsFor(deps, req.auth.account._id.toString(), minMatch, maxMatch)));
   });
 
   // Declared before "/:id", which would otherwise claim it.

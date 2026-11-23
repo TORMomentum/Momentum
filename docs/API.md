@@ -26,7 +26,7 @@ flowchart LR
     subgraph api["API · /api/v1"]
         intake["POST /intake/upload ✅<br/>POST /intake/url ✅<br/>POST /intake ✅"]
         read["GET /tors ✅<br/>GET /tors/:id ✅<br/>GET /tors/:id/document ✅"]
-        stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ⬜"]
+        stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ✅"]
         me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅<br/>/me/vault ✅<br/>/me/tors/:id/draft ✅<br/>/me/path ✅"]
         adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅"]
         health["GET /health ✅"]
@@ -49,7 +49,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | `/intake/*` | admin console, partner scripts | `X-Api-Key`, per-role | 1 ✅ |
 | `/tors/*` | the public site, through the Next server | none (public data); the match-range filter needs a session | 3 ✅ |
-| `/stats/*`, `/export/*` | dashboard and CSV export | none | dashboard ✅ · export ⬜ |
+| `/stats/*`, `/export/*` | dashboard and CSV export | none; the match-range filter needs a session | dashboard ✅ · export ✅ |
 | `/me/*` | a signed-in vendor | session cookie | 4 ✅ |
 | `/admin/*` | review queue, all TORs, vendor accounts, match quality | admin key, sent by the Next server after its staff gate | 2–4 ✅ |
 
@@ -397,9 +397,27 @@ active rule rather than a copy of it.
 than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` is reserved for `FR-F-4` in
 sprint 4.
 
-### `GET /api/v1/export/tors.csv` ⬜ (slice 5)
+### `GET /api/v1/export/tors.csv` ✅ (TOR-69)
 
-The current filter as CSV, with the same PII minimisation as the API.
+The current search as CSV (FR-E-7). Design: [csv-export spec](superpowers/specs/2026-11-23-csv-export-design.md).
+
+- **Query:** exactly `GET /tors`'s, parsed by the same schema, so a malformed filter is `400` and
+  `minMatch` / `maxMatch` without a session is `401`. `cursor` and `pageSize` are validated and ignored:
+  the file is the whole result, in the list's order.
+- **Rows:** at most `EXPORT_MAX_ROWS` (default 5000), read page by page. `X-Export-Total` is the number
+  of matching records and `X-Export-Truncated` is `true` when the file holds fewer.
+- **Columns (18, Thai headers and Thai labels):** project number, title, agency, category (normalised and
+  as written), budget in baht, deadline (ISO and as written), status (the `/search` badge's words, as of
+  the export day), announcement date, confidence (สูง / กลาง / ต่ำ), the "unverified extraction" mark, the
+  unverified fields by Thai name, the extraction model and time, the TOR page and the original document
+  (both on `APP_ORIGIN`), and the source page (the e-GP project, or the source URL). Built from the list
+  serializer: nothing a public reader cannot already see. Restricted records are absent.
+- **Response:** `text/csv; charset=utf-8` with a byte-order mark, RFC 4180 quoting, `Content-Disposition:
+  attachment; filename="tor-radar-YYYY-MM-DD.csv"`, `Cache-Control: no-store`, `nosniff`. A cell starting
+  with `=`, `+`, `-`, `@`, tab or CR is prefixed with `'` so no spreadsheet runs it as a formula.
+- **Limit:** `EXPORT_RATE_LIMIT_PER_MIN` (default 10) per client.
+- **Web:** `/api/export/tors.csv` relays it without buffering and forwards the session for the match filter;
+  `/search` links to it as "ดาวน์โหลด CSV" with its own query.
 
 ---
 

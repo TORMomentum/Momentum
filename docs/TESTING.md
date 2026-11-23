@@ -84,6 +84,8 @@ and a look-alike origin getting no `Access-Control-*` header on a request or a p
 | UT-S-1 | NFR-S1 | `escapeRegExp` and `GET /me/matches` (TOR-366) | vendor terms `a.*(`, `(a+)+$`, `[x`, `a\|b`; a nested quantifier on 40 characters | matched as literal text only; no regex error (200, not 500); no backtracking blow-up | Pass | `escape-regexp.test.ts`, `matching.routes.test.ts` |
 | UT-F4-0 | FR-E-3 | `GET /tors?q=` keyword | a Thai word inside an unspaced title; the agency; a word in no record | finds the record by word, matches the agency, returns nothing for a miss; index creation is idempotent | Pass | `tors.atlas-search.test.ts` (needs `mongodb-atlas-local`) |
 | UT-F4-3 | FR-E-3 | `GET /tors?minDaysLeft=` (TOR-203) | deadlines yesterday, today, +6, +7, +34 days and none, on a fixed Bangkok "today"; with `deadlineFrom`; `-1`, `7.5`, `week`, above `SEARCH_MAX_DAYS_LEFT` | 0 keeps today and later; 7 keeps +7 and +34; the later of `minDaysLeft` and `deadlineFrom` wins; no-deadline records never match; malformed values are `400`. Web: the URL round-trips `minDaysLeft` and drops unreadable values; the typed box takes 0–365 whole days, clears on empty, and rejects fractions, negatives, text and values above 365 | Pass | `tors.search.test.ts`, `search.params.test.ts` |
+| UT-F11-1 | FR-E-7, NFR-S2 | `GET /export/tors.csv` | five records and a restricted one; filters none, agency, `minDaysLeft=7`, `open=true`; `EXPORT_MAX_ROWS=3`; a title starting `=`; `minDaysLeft=-1`, `minBudget=lots`, `minMatch` signed out | same ids in the same order as walking `GET /tors`; header row; CSV download headers and BOM; truncation headers; formula prefixed with `'`; provenance, both links and the source page present, status and confidence in Thai, contact line absent; `400`, `400`, `401` | Pass | `export.routes.test.ts` |
+| UT-F11-2 | FR-E-7 | `csvCell`, `exportRow`, `stateLabel` | commas, quotes, line breaks, formula starts, numbers; one full row with and without provenance; the five states | RFC 4180 quoting; `'` before `= + - @ tab`; numbers untouched; all 18 columns line up with the header, in Thai; values as extracted; model named once when the version adds nothing; unknowns stay empty; states worded as the `/search` badge. Web: the link carries the canonical query without `cursor` | Pass | `export.csv.test.ts`, `search.params.test.ts` |
 | UT-F4-4 | FR-E-3 | `GET /tors` order (2026-10-15 review) | deadlines +5 and later, today to +4, past or none, and unverified, on a fixed Bangkok "today"; page sizes 1–5 and 11 | time-to-prepare first, then closing within the prep window, then other verified, then unverified; every page size walks each record exactly once in that order; `minDaysLeft=5` leaves only the first segment; a deadline left as text is never counted as a future date | Pass | `tors.search.test.ts` |
 | UT-F4-1 | NFR-F2 | `GET /tors` search | 5,000-record corpus, every filter at once | answered within 2 s | Pass | `tors.search.timing.test.ts` |
 | UT-F4-2 | NFR-F2 | `GET /tors` search | deep pages of the same corpus | each page within 2 s (cursor, not skip) | Pass | `tors.search.timing.test.ts` |
@@ -141,8 +143,7 @@ and a look-alike origin getting no `Access-Control-*` header on a request or a p
 
 Live check (TOR-321, 2026-11-20, headless Chromium against the production web image): zero CSP violations on `/`, `/search`, `/dashboard`, `/login`, `/tors/:id`, `/tors/:id/original`; the viewer document loads in a same-origin iframe and is blocked in a foreign-origin one; `/search` is blocked in any iframe. Evidence: `docs/security/evidence/web-headers.{txt,png}`.
 
-F11 (CSV export) has no test because it is not built. F12's automated tests cover collection only;
-per-adapter health reporting is not built.
+F12's automated tests cover collection only; per-adapter health reporting is not built.
 
 ## 3. Manual acceptance cases
 
@@ -168,7 +169,7 @@ the last column.
 | TC-F9-1 | F9 | Inspect the profile picker and category filter | Both load from the seeded taxonomy, no hard-coded list | |
 | TC-F10-1 | F10 | Admin → reject (takedown) a TOR with a reason | Public page refuses it; audit entry written; original in storage unchanged | |
 | TC-F10-2 | F10 | Vendor → export data, then delete account | Export downloads; account and its data are gone | |
-| TC-F11-1 | F11 | Export CSV with filters active | Not built — case stands for when FR-E-7 lands | |
+| TC-F11-1 | F11 | On `/search`, set filters, press "ดาวน์โหลด CSV", open the file in Excel | Same records, in the same order, as the page; Thai readable; links open the TOR page and the original | |
 | TC-F12-1 | F12 | Run `tools/import_national_egp_tors.mts` twice | Second run adds no records. The SRS criterion — each adapter reports its last collection and health — is not built | |
 
 Wording check for every case: no screen says "suspicious", "corrupt" or "irregular" (NFR-F5).

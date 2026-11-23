@@ -164,3 +164,9 @@ export function toSearchQuery(filters: SearchFilters): string {
 export function hasActiveFilters(filters: SearchFilters): boolean {
   return toSearchQuery({ ...filters, cursor: null }) !== "";
 }
+
+/** The CSV of exactly what the page lists (TOR-69): the same canonical query, minus the page position. */
+export function exportHref(filters: SearchFilters): string {
+  const query = toSearchQuery({ ...filters, cursor: null });
+  return `/api/export/tors.csv${query ? `?${query}` : ""}`;
+}

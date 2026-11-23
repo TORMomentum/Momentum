@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_FILTERS, hasActiveFilters, parseDaysLeftInput, parseSearchParams, toSearchQuery } from "./search.params";
+import { EMPTY_FILTERS, exportHref, hasActiveFilters, parseDaysLeftInput, parseSearchParams, toSearchQuery } from "./search.params";
 
 describe("search URL canonicalisation", () => {
   it("gives two spellings of one search the same URL", () => {
@@ -86,5 +86,15 @@ describe("the typed days-left box", () => {
     expect(parseDaysLeftInput("2.5")).toBeUndefined();
     expect(parseDaysLeftInput("1e2")).toBeUndefined();
     expect(parseDaysLeftInput("สิบ")).toBeUndefined();
+  });
+});
+
+describe("the CSV link (TOR-69)", () => {
+  it("carries the page's canonical query without its position", () => {
+    expect(exportHref(EMPTY_FILTERS)).toBe("/api/export/tors.csv");
+    const filters = { ...EMPTY_FILTERS, agencies: ["สำนักงานเขตบางรัก"], minDaysLeft: 14, cursor: "abc" };
+    expect(exportHref(filters)).toBe(`/api/export/tors.csv?${toSearchQuery({ ...filters, cursor: null })}`);
+    expect(exportHref(filters)).not.toContain("cursor");
+    expect(exportHref(filters)).toContain("minDaysLeft=14");
   });
 });

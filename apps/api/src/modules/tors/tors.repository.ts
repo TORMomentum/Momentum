@@ -323,6 +323,22 @@ export class TorsRepository {
    * from an index, so none sorts in memory. A cursor resumes in its own segment
    * and skips the ones before it.
    */
+  /** What the CSV export adds to a list row: extraction provenance (NFR-F6) and where the record came from. */
+  async exportDetailsFor(
+    ids: ObjectId[],
+  ): Promise<Map<string, { provenance?: Provenance; sourceProject?: SourceProject; sourceUrl: string | null }>> {
+    if (ids.length === 0) return new Map();
+    const docs = await tors(this.db)
+      .find({ _id: { $in: ids } }, { projection: { provenance: 1, sourceProject: 1, sourceUrl: 1 } })
+      .toArray();
+    return new Map(
+      docs.map((doc) => [
+        doc._id.toString(),
+        { provenance: doc.provenance, sourceProject: doc.sourceProject, sourceUrl: doc.sourceUrl ?? null },
+      ]),
+    );
+  }
+
   async search(criteria: SearchCriteria, pageSize: number, cursor: SearchCursor | null): Promise<SearchPage> {
     const textIds =
       criteria.q && this.atlas?.atlasEnabled ? await this.textIds(criteria.q, this.atlas) : null;
