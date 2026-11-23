@@ -54,7 +54,7 @@ the TOR text rarely states one. Now:
   `client.ts` fetches it (`fetchProjectStages`) through the same safe fetch, size cap and retry as the
   other e-GP calls. Path in `NATIONAL_EGP_PROJECT_STAGES_PATH`.
 - `tools/import_national_egp_tors.mts`: when the listed date is not the TOR's (invitation list, D0 feed),
-  the TOR is dated from its `B0` row. A failed lookup leaves the date empty; the TOR is still collected.
+  the TOR is dated from its draft-TOR row (`B0`, or `B3` — §3a). A failed lookup leaves the date empty; the TOR is still collected.
 - `tools/backfill_egp_announced_dates.mts`: dates existing records from their `B0` row. Dry run by default;
   `--apply` fills empty dates; `--fix-mismatch` also replaces a stored date that disagrees. It writes only
   `announcedAt`, `announcedAtOrigin: "source"`, and the cohort re-derived the way extraction derives it,
@@ -62,6 +62,23 @@ the TOR text rarely states one. Now:
   e-GP only about projects with an undated record, one request per project, paced by
   `NATIONAL_EGP_DELAY_MS`; three failed lookups in a row (e-GP answers `429` under load) stop the run
   rather than add to it. Re-running is safe: dated records are skipped.
+
+## 3a. Revision 2026-11-23 — more codes, sampled
+
+Four more projects were read the same way once e-GP answered again (69029401277 and 69119388625 from the
+day's winner feed, 69069300968 and 69099528942 from its `D1` feed):
+
+| `announceType` | `announceTypeDesc` | Seen on |
+| :--- | :--- | :--- |
+| `B3` | ร่างเอกสารประกวดราคา(e-Bidding) | 69069300968, 69099528942 — a **second draft-TOR code** |
+| `price` | สรุปข้อมูลการเสนอราคาเบื้องต้น | 69069300968, 69099528942 — lower case |
+| `W0` | ประกาศรายชื่อผู้ชนะการเสนอราคา | 69029401277, 69119388625 |
+| `D1` | ยกเลิกประกาศเชิญชวน | 69069300968, 69099528942 |
+
+The table is **not in date order** (69069300968 lists `price`, 2026-09-10, before `D0`, 2026-08-24), and a
+project collected by the specific method can list `W0` alone. Changes: the parser keeps lower-case codes;
+the TOR's announcement date is the earliest of `B0` and `B3` (`DRAFT_TOR_CODES`), so the backfill's
+"no B0" count (315 in the first dry run) was in part `B3` projects. `W0` and `D1` are used by TOR-205.
 
 ## 4. Open for TOR-205 to decide
 
