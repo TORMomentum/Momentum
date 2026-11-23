@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-22_
+_last updated: 2026-11-23_
 
 ---
 
@@ -794,3 +794,22 @@ TOR-321 review: global Next headers cover static assets and prefetch responses. 
 TOR-318 review: Compose uses the socket peer for its published API port. Cloud Run sets trusted hop counts explicitly.
 
 TOR-316 review: unexpected errors log only a classified type, internal code and request ID.
+
+## Sprint 5 carry-over (2026-11-23)
+
+- [x] TOR-203 Search filter "at least N days left to prepare": `minDaysLeft` on `GET /tors` (TOR-228),
+  7 / 14 / 30-day presets and an applied-filter chip on Search (TOR-229), tests and API.md (TOR-230).
+  Verified on a local Compose stack: API counts for 0 / 7 / 14 / 30 days and the rendered page
+- [x] Search order (2026-10-15 review): TORs with at least `SEARCH_MIN_PREP_DAYS` (5) days to prepare
+  first, then those closing sooner, then other verified, then unverified; new cursor segment `soon`.
+  Verified on a local Compose stack: order on the API and `/search`, and a one-per-page cursor walk
+- [x] A deadline left as text by extraction no longer counts as a future date in the closing segments,
+  `minDaysLeft` or `deadlineFrom`. Verified against the Atlas corpus: 7 / 14 / 30 days return 90 / 29 / 1,
+  none of them undated
+- [x] Days left can also be typed ("หรือระบุเอง", 0–365) beside the 7 / 14 / 30 presets. Verified on the
+  running app: `/search?minDaysLeft=12` renders the box with 12 and the chip
+- [ ] Extraction leaves some deadlines as Thai text instead of an ISO date; normalise them at extraction
+- [ ] TOR-69 CSV export of the filtered TOR list (F11)
+- [ ] TOR-87 Ingestion-source health per adapter (F12)
+- [ ] TOR-204 – 207 TOR project stages on e-GP: spike, `stage` / `stageHistory`, timeline, notifications
+- [ ] TOR-221 Winner announcements: winner, price, bidders

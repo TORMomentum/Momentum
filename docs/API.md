@@ -222,16 +222,22 @@ Design: [search and filter spec](superpowers/specs/2026-09-16-search-and-filter-
 ### `GET /api/v1/tors` ✅
 
 Query: `q`, `agency` (repeatable), `category` (repeatable), `status`, `open=true`, `minBudget`,
-`maxBudget`, `deadlineFrom`, `deadlineTo`, `from`, `to`, `cursor`, `pageSize`. Different parameters
+`maxBudget`, `deadlineFrom`, `deadlineTo`, `minDaysLeft`, `from`, `to`, `cursor`, `pageSize`. Different parameters
 combine with AND; repeated values OR together. `from`/`to` mean **`announcedAt`**, the agency's own
 publication date, never ingestion time. `open` means announced with a deadline today or later in
-`TIME_ZONE`, or none stated. Dates are `YYYY-MM-DD` and inclusive.
+`TIME_ZONE`, or none stated. Dates are `YYYY-MM-DD` and inclusive. `minDaysLeft=N` (integer
+0…`SEARCH_MAX_DAYS_LEFT`) keeps TORs whose deadline is at least N days after today in `TIME_ZONE`
+(0 = today or later); a TOR with no stated deadline never matches, and with `deadlineFrom` the later
+bound wins (TOR-203).
 
 Filter values are parsed as primitives only, so no operator object can reach a Mongo query; anything
 malformed is a 400. Every confidence tier is listed. Restricted, unpublished and duplicate records are
 not.
 
-Pagination is a cursor over `(announcedAt desc, _id desc)`: pass `nextCursor` back as `cursor`.
+The list comes in four segments: verified TORs still taking bids with at least `SEARCH_MIN_PREP_DAYS`
+(default 5) days left, then those closing sooner (today included), both closing soonest first; then
+every other verified record, then unverified ones, both newest announcement first. Pagination is an
+opaque cursor that resumes inside its segment: pass `nextCursor` back as `cursor`.
 (`page` from an earlier draft is superseded; see rendering spec §5.1.)
 
 ```json

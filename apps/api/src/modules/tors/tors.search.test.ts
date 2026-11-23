@@ -216,6 +216,23 @@ describe("GET /tors — each filter", () => {
     expect(ids(await search("deadlineFrom=2026-09-20&deadlineTo=2026-09-30"))).toEqual([first, last].sort());
   });
 
+  it("filters by days left to prepare, counted from today in Bangkok (TOR-203)", async () => {
+    // NOW is 2026-09-16 in Bangkok.
+    await seed({ deadline: "2026-09-15" });
+    const today = await seed({ deadline: "2026-09-16" });
+    const sixDays = await seed({ deadline: "2026-09-22" });
+    const sevenDays = await seed({ deadline: "2026-09-23" });
+    const month = await seed({ deadline: "2026-10-20" });
+    await seed({ deadline: null });
+
+    expect(ids(await search("minDaysLeft=0"))).toEqual([today, sixDays, sevenDays, month].sort());
+    expect(ids(await search("minDaysLeft=7"))).toEqual([sevenDays, month].sort());
+    expect(ids(await search("minDaysLeft=30"))).toEqual([month]);
+    // The later bound wins when both are given.
+    expect(ids(await search("minDaysLeft=7&deadlineFrom=2026-10-01"))).toEqual([month]);
+    expect(ids(await search("minDaysLeft=0&deadlineFrom=2026-09-20&deadlineTo=2026-09-22"))).toEqual([sixDays]);
+  });
+
   it("filters by announcement date — the agency's date, never ingestion time", async () => {
     const august = await seed({ announcedAt: "2026-08-31" });
     await seed({ announcedAt: "2026-09-01" });
@@ -331,8 +348,9 @@ describe("GET /tors — pagination", () => {
 });
 
 describe("GET /tors — what can still be bid on comes first", () => {
-  it("lists TORs still taking bids first, closing soonest, then the rest newest first", async () => {
-    // NOW is 2026-09-16 in Bangkok.
+  it("lists TORs with time to prepare first, then those closing within the prep window, then the rest", async () => {
+    // NOW is 2026-09-16 in Bangkok; with SEARCH_MIN_PREP_DAYS=5 the prep window ends 2026-09-21.
+    expect(config.search.minPrepDays).toBe(5);
     const newestNoDeadline = await seed({ announcedAt: "2026-09-15", deadline: null });
     const closed = await seed({ announcedAt: "2026-09-14", deadline: "2026-09-10" });
     const closingLater = await seed({ announcedAt: "2026-08-01", deadline: "2026-09-30" });
@@ -343,9 +361,9 @@ describe("GET /tors — what can still be bid on comes first", () => {
     const body = await search("");
 
     expect(body.items.map((item) => item.id)).toEqual([
+      closingLater,
       closingToday,
       closingSoon,
-      closingLater,
       newestNoDeadline,
       closed,
       statusClosed,
@@ -414,9 +432,68 @@ describe("GET /tors — what can still be bid on comes first", () => {
 
     expect(pages).toBe(4);
     expect(walked.map((item) => item.id).sort()).toEqual(seeded.sort());
+    // 2026-09-21 has time to prepare and leads; 2026-09-20 is inside the prep window and follows.
     const leading = walked.slice(0, 5).map((item) => item.deadline.value as string);
-    expect(leading).toEqual([...leading].sort());
-    expect(leading.every((deadline) => deadline >= "2026-09-16")).toBe(true);
+    expect(leading).toEqual(["2026-09-21", "2026-09-21", "2026-09-20", "2026-09-20", "2026-09-20"]);
+  });
+
+  it("walks all four segments by cursor at every page size, each record once and in order", async () => {
+    // NOW 2026-09-16; prep window ends 2026-09-21.
+    const prep = [
+      await seed({ deadline: "2026-09-21" }),
+      await seed({ deadline: "2026-09-21" }),
+      await seed({ deadline: "2026-10-05" }),
+    ];
+    const soon = [
+      await seed({ deadline: "2026-09-16" }),
+      await seed({ deadline: "2026-09-18" }),
+      await seed({ deadline: "2026-09-20" }),
+    ];
+    const rest = [
+      await seed({ announcedAt: "2026-08-20", deadline: "2026-09-01" }),
+      await seed({ announcedAt: "2026-08-10", deadline: null }),
+    ];
+    const unverified = [
+      await seed({ announcedAt: "2026-08-25", deadline: "2026-09-19", confidenceLevel: "medium" }),
+      await seed({ announcedAt: null, confidenceLevel: "low" }),
+    ];
+    // Deadline ties break on _id, which follows insertion here.
+    const expected = [...prep, ...soon, ...rest, ...unverified];
+
+    for (const pageSize of [1, 2, 3, 4, 5, 11]) {
+      const walked: string[] = [];
+      let cursor: string | null = null;
+      let pages = 0;
+      do {
+        const response = await request(buildTestApp()).get(
+          `/api/v1/tors?pageSize=${pageSize}${cursor ? `&cursor=${cursor}` : ""}`,
+        );
+        expect(response.status).toBe(200);
+        walked.push(...response.body.items.map((item: { id: string }) => item.id));
+        cursor = response.body.nextCursor;
+        pages += 1;
+      } while (cursor && pages < 20);
+
+      expect(walked, `pageSize=${pageSize}`).toEqual(expected);
+      expect(pages, `pageSize=${pageSize}`).toBe(Math.ceil(expected.length / pageSize));
+    }
+  });
+
+  it("drops the split when minDaysLeft already asks for time to prepare", async () => {
+    const soon = await seed({ deadline: "2026-09-18" });
+    const prep = await seed({ deadline: "2026-09-25" });
+    expect((await search("")).items.map((item) => item.id)).toEqual([prep, soon]);
+    expect((await search("minDaysLeft=5")).items.map((item) => item.id)).toEqual([prep]);
+  });
+
+  it("never reads a deadline left as text as a date far in the future", async () => {
+    // Extraction can leave a deadline as written; Thai text sorts after every ISO date.
+    const dated = await seed({ deadline: "2026-09-25" });
+    const text = await seed({ deadline: "วันที่ 8 ตุลาคม 2569" });
+    expect(ids(await search("minDaysLeft=7"))).toEqual([dated]);
+    expect(ids(await search("deadlineFrom=2026-09-20"))).toEqual([dated]);
+    // Still listed, after the dated closing records rather than among them.
+    expect((await search("")).items.map((item) => item.id)).toEqual([dated, text]);
   });
 });
 
@@ -432,6 +509,10 @@ describe("GET /tors — input is primitives only", () => {
     [`pageSize=${config.search.maxPageSize + 1}`],
     ["minBudget=-5"],
     ["deadlineFrom=2026-02-30"],
+    ["minDaysLeft=-1"],
+    ["minDaysLeft=7.5"],
+    ["minDaysLeft=week"],
+    [`minDaysLeft=${config.search.maxDaysLeft + 1}`],
     ["from=16/09/2026"],
     ["status=suspicious"],
     ["open=yes"],

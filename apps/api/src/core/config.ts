@@ -253,6 +253,14 @@ const schema = z.object({
   SEARCH_INDEX_NAME: z.string().min(1).default("tors_text"),
   /** Most ids one keyword query may hand to the filter; bounds the $in list. */
   SEARCH_MAX_HITS: z.coerce.number().int().positive().default(1000),
+  /** Largest `minDaysLeft` a search accepts: "at least N days left to prepare" (TOR-203). */
+  SEARCH_MAX_DAYS_LEFT: z.coerce.number().int().positive().default(365),
+  /**
+   * Open TORs with fewer whole days than this before the deadline are still
+   * listed, but after the ones a vendor still has time to prepare for
+   * (2026-10-15 review). 0 turns the split off.
+   */
+  SEARCH_MIN_PREP_DAYS: z.coerce.number().int().min(0).default(5),
   /** Whose calendar decides "today" — when a deadline has passed. */
   TIME_ZONE: z.string().min(1).default("Asia/Bangkok"),
 
@@ -485,6 +493,8 @@ export interface SearchConfig {
   atlasEnabled: boolean;
   indexName: string;
   maxHits: number;
+  maxDaysLeft: number;
+  minPrepDays: number;
   timeZone: string;
 }
 
@@ -630,6 +640,8 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       atlasEnabled: parsed.SEARCH_ATLAS_ENABLED,
       indexName: parsed.SEARCH_INDEX_NAME,
       maxHits: parsed.SEARCH_MAX_HITS,
+      maxDaysLeft: parsed.SEARCH_MAX_DAYS_LEFT,
+      minPrepDays: parsed.SEARCH_MIN_PREP_DAYS,
       timeZone: parsed.TIME_ZONE,
     },
     matching: {

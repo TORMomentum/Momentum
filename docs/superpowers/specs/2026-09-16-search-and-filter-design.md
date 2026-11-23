@@ -39,6 +39,7 @@ Public, unauthenticated, uncached (rendering spec §6.1).
 | `open` | `true` | Decision 4 |
 | `minBudget`, `maxBudget` | number ≥ 0 | Inclusive, on `fields.budget.value`. A record without a budget can't satisfy a budget bound |
 | `deadlineFrom`, `deadlineTo` | `YYYY-MM-DD` | Inclusive, on `fields.deadline.value` |
+| `minDaysLeft` | integer 0…`SEARCH_MAX_DAYS_LEFT` | Added 2026-11-23, see §9 |
 | `from`, `to` | `YYYY-MM-DD` | Inclusive, on `announcedAt`: the agency's date, never ingestion time |
 | `cursor` | opaque | From a previous `nextCursor` |
 | `pageSize` | 1…`SEARCH_MAX_PAGE_SIZE` | Default `SEARCH_PAGE_SIZE` |
@@ -136,3 +137,49 @@ contract does not change. What does: a query now matches **whole Thai words**, n
 `ก่อสร้า` no longer finds `ก่อสร้าง`. With the switch off the substring match of §5 remains, for a
 `mongod` that cannot serve `$search`. `mongodb-atlas-local` replaces `mongo:7` in Compose and CI, and the
 connection string gains `?directConnection=true` because its replica set advertises its container id.
+
+## 9. Revision 2026-11-23 — "at least N days left to prepare" (TOR-203)
+
+Vendors asked (2026-10-15 review) for TORs that leave them enough time to prepare a bid.
+
+- **API.** `minDaysLeft=N`, an integer from 0 to `SEARCH_MAX_DAYS_LEFT` (default 365). The service
+  turns it into a lower bound on `fields.deadline.value`: today in `TIME_ZONE` plus N days. When
+  `deadlineFrom` is also given, the later of the two applies, so both constraints hold. A record
+  without a stated deadline cannot satisfy it, as with `deadlineFrom`. Anything else is a 400.
+- **Web.** The deadline section of the filter panel offers 7, 14 and 30 days as toggle buttons above
+  the date range; pressing the selected one clears it. The choice is a URL parameter, so it is
+  linkable, and shows as an applied-filter chip ("เหลือเวลาเตรียมอย่างน้อย N วัน").
+- "Days left" counts calendar days in `TIME_ZONE`, the same "today" that decides `open` and the
+  days-left label on each row.
+
+## 10. Revision 2026-11-23 — time to prepare leads the list (2026-10-15 review with the instructor)
+
+In the 2026-10-15 review a TOR closing in a day or two was judged the least useful thing to show first:
+a vendor cannot prepare a bid in that time. The leading "still taking bids" segment is split in two.
+
+| Segment | Records | Order | Cursor `s` |
+| :--- | :--- | :--- | :--- |
+| 1. closing | verified, announced, deadline on or after today + `SEARCH_MIN_PREP_DAYS` | deadline asc, `_id` asc | `c` (unchanged) |
+| 2. soon | verified, announced, deadline from today to the day before that | deadline asc, `_id` asc | `k` (new) |
+| 3. rest | every other verified record | `announcedAt` desc, `_id` desc | none |
+| 4. unverified | records marked "unverified extraction" | `announcedAt` desc, `_id` desc | `u` |
+
+- `SEARCH_MIN_PREP_DAYS` (default 5) lives in `core/config.ts` and `.env.example`; 0 turns the split
+  off and segment 2 is empty. "Days" are calendar days in `TIME_ZONE`, the same "today" as `open`.
+- Records closing soon are still listed, never hidden; they only move after the ones with time to
+  prepare.
+- A cursor from before this revision (`s: "c"`) still decodes and resumes in segment 1.
+- Each segment still reads its order from an index, so the two-second target (§4) is unaffected.
+- Only an ISO date counts as a deadline in segments 1–2 and in `minDaysLeft` / `deadlineFrom`. A
+  deadline extraction left as text ("วันที่ 8 ตุลาคม 2569") sorts after every ISO string, so an
+  open-ended range used to read it as far in the future; ranges are now capped below `":"`, and such a
+  record falls to segment 3. The stored value is untouched (NFR-F7).
+
+## 11. Revision 2026-11-23 — days left can be typed
+
+§9's preset buttons stay (7, 14, 30). Beside them, "หรือระบุเอง" takes any whole number from 0 to
+365 days. It commits on Enter or when the box loses focus, so typing "14" never searches for 1 first.
+An empty box clears the filter; anything else (a fraction, a negative, above 365, text) puts the box
+back to the filter in force. Pressing a preset fills the box with its number. Bid windows on the
+collected corpus are short — on 2026-11-23, 91 open TORs had a deadline, 30 of them 14 days or more
+away and 1 of them 30 — so a reader whose preparation time falls between presets needs the box.

@@ -13,6 +13,9 @@ import {
   hasActiveFilters,
   SEARCH_STATES,
   toSearchQuery,
+  DAYS_LEFT_PRESETS,
+  MAX_DAYS_LEFT,
+  parseDaysLeftInput,
   type SearchFilters,
   type SearchState,
 } from "../features/search/search.params";
@@ -156,6 +159,21 @@ export function SearchView({
     }
   }, [committedMin, committedMax]);
 
+  // The typed "days left" box: a draft while typing, committed on Enter or on leaving the box,
+  // so typing "14" does not search for 1 first.
+  const [draftDaysLeft, setDraftDaysLeft] = useState(filters.minDaysLeft === null ? "" : String(filters.minDaysLeft));
+  useEffect(() => {
+    setDraftDaysLeft(filters.minDaysLeft === null ? "" : String(filters.minDaysLeft));
+  }, [filters.minDaysLeft]);
+  const commitDaysLeft = () => {
+    const parsed = parseDaysLeftInput(draftDaysLeft);
+    if (parsed === undefined) {
+      setDraftDaysLeft(filters.minDaysLeft === null ? "" : String(filters.minDaysLeft));
+    } else if (parsed !== filters.minDaysLeft) {
+      update({ minDaysLeft: parsed });
+    }
+  };
+
   const committedMatchMin = filters.minMatch ?? MATCH_RANGE.floor;
   const committedMatchMax = filters.maxMatch ?? MATCH_RANGE.ceiling;
   const [draftMatch, setDraftMatch] = useState({ min: committedMatchMin, max: committedMatchMax });
@@ -270,7 +288,7 @@ export function SearchView({
     filters.agencies.length > 0 && "หน่วยงาน",
     filters.categories.length > 0 && "หมวดหมู่",
     (filters.minBudget !== null || filters.maxBudget !== null) && "งบประมาณ",
-    (filters.deadlineFrom || filters.deadlineTo) && "กำหนดยื่นข้อเสนอ",
+    (filters.deadlineFrom || filters.deadlineTo || filters.minDaysLeft !== null) && "กำหนดยื่นข้อเสนอ",
     filters.open && "ยังเปิดรับ",
   ].filter(Boolean);
 
@@ -288,6 +306,9 @@ export function SearchView({
       : []),
     ...(filters.deadlineFrom || filters.deadlineTo
       ? [{ key: "deadline", label: `ยื่นภายใน ${filters.deadlineFrom ? dateLabel(filters.deadlineFrom) : "…"} – ${filters.deadlineTo ? dateLabel(filters.deadlineTo) : "…"}`, onRemove: () => update({ deadlineFrom: null, deadlineTo: null }) }]
+      : []),
+    ...(filters.minDaysLeft !== null
+      ? [{ key: "daysLeft", label: `เหลือเวลาเตรียมอย่างน้อย ${filters.minDaysLeft} วัน`, onRemove: () => update({ minDaysLeft: null }) }]
       : []),
   ];
 
@@ -356,7 +377,49 @@ export function SearchView({
           </FilterSection>
         )}
 
-        <FilterSection title="กำหนดยื่นข้อเสนอ" active={filters.deadlineFrom || filters.deadlineTo ? 1 : 0}>
+        <FilterSection
+          title="กำหนดยื่นข้อเสนอ"
+          active={(filters.deadlineFrom || filters.deadlineTo ? 1 : 0) + (filters.minDaysLeft !== null ? 1 : 0)}
+        >
+          <div className={styles.daysLeft} role="group" aria-label="เหลือเวลาเตรียมอย่างน้อย">
+            <span className={styles.dateLabel}>เหลือเวลาเตรียมอย่างน้อย</span>
+            <div className={styles.daysLeftOptions}>
+              {DAYS_LEFT_PRESETS.map((days) => {
+                const selected = filters.minDaysLeft === days;
+                return (
+                  <button
+                    key={days}
+                    type="button"
+                    className={`${styles.daysLeftOption} ${selected ? styles.daysLeftOptionOn : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => update({ minDaysLeft: selected ? null : days })}
+                  >
+                    {days} วัน
+                  </button>
+                );
+              })}
+            </div>
+            <label className={styles.daysLeftCustom}>
+              <span>หรือระบุเอง</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_DAYS_LEFT}
+                step={1}
+                className={styles.daysLeftInput}
+                value={draftDaysLeft}
+                placeholder="จำนวน"
+                aria-label="เหลือเวลาเตรียมอย่างน้อย (วัน)"
+                onChange={(e) => setDraftDaysLeft(e.target.value)}
+                onBlur={commitDaysLeft}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitDaysLeft();
+                }}
+              />
+              <span>วัน</span>
+            </label>
+          </div>
           <div className={styles.dateRange}>
             <label className={styles.dateField}>
               <span className={styles.dateLabel}>ตั้งแต่</span>

@@ -28,6 +28,8 @@ export interface SearchFilters {
   /** `YYYY-MM-DD`, inclusive. */
   deadlineFrom: string | null;
   deadlineTo: string | null;
+  /** At least this many whole days left before the deadline (TOR-203); null = any. */
+  minDaysLeft: number | null;
   /** Whole percentages; null = that end unbounded. */
   minMatch: number | null;
   maxMatch: number | null;
@@ -46,6 +48,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   maxBudget: null,
   deadlineFrom: null,
   deadlineTo: null,
+  minDaysLeft: null,
   minMatch: null,
   maxMatch: null,
   cursor: null,
@@ -56,6 +59,11 @@ const MAX_QUERY_CHARS = 200;
 const MAX_VALUES = 20;
 const MAX_VALUE_CHARS = 300;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** The API enforces its own configured ceiling; this only keeps a hand-edited URL sane. */
+export const MAX_DAYS_LEFT = 365;
+
+/** The "days left to prepare" choices offered on Search (TOR-203). */
+export const DAYS_LEFT_PRESETS = [7, 14, 30] as const;
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -84,6 +92,26 @@ function date(value: string | string[] | undefined): string | null {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(raw) ? raw : null;
 }
 
+/**
+ * What the typed "days left" box means: a whole number of days, `null` for an
+ * empty box (no filter), or `undefined` when the text is not one, so the box
+ * goes back to the filter in force instead of guessing.
+ */
+export function parseDaysLeftInput(value: string): number | null | undefined {
+  const raw = value.trim();
+  if (raw === "") return null;
+  if (!/^\d{1,3}$/.test(raw)) return undefined;
+  const parsed = Number(raw);
+  return parsed <= MAX_DAYS_LEFT ? parsed : undefined;
+}
+
+function daysLeft(value: string | string[] | undefined): number | null {
+  const raw = first(value);
+  if (!raw || !/^\d{1,3}$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return parsed <= MAX_DAYS_LEFT ? parsed : null;
+}
+
 function matchThreshold(value: string | string[] | undefined): number | null {
   const raw = first(value);
   if (!raw || !/^\d{1,3}$/.test(raw)) return null;
@@ -103,6 +131,7 @@ export function parseSearchParams(params: RawSearchParams): SearchFilters {
     maxBudget: amount(params.maxBudget),
     deadlineFrom: date(params.deadlineFrom),
     deadlineTo: date(params.deadlineTo),
+    minDaysLeft: daysLeft(params.minDaysLeft),
     minMatch: matchThreshold(params.minMatch),
     maxMatch: matchThreshold(params.maxMatch),
     cursor: cursor && /^[A-Za-z0-9_-]{1,200}$/.test(cursor) ? cursor : null,
@@ -120,6 +149,7 @@ export function toSearchQuery(filters: SearchFilters): string {
   if (filters.maxBudget !== null) params.set("maxBudget", String(filters.maxBudget));
   if (filters.maxMatch !== null) params.set("maxMatch", String(filters.maxMatch));
   if (filters.minBudget !== null) params.set("minBudget", String(filters.minBudget));
+  if (filters.minDaysLeft !== null) params.set("minDaysLeft", String(filters.minDaysLeft));
   if (filters.minMatch !== null) params.set("minMatch", String(filters.minMatch));
   if (filters.open) params.set("open", "true");
   if (filters.state) params.set("state", filters.state);
