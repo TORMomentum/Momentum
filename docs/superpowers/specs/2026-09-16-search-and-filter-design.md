@@ -39,6 +39,7 @@ Public, unauthenticated, uncached (rendering spec §6.1).
 | `open` | `true` | Decision 4 |
 | `minBudget`, `maxBudget` | number ≥ 0 | Inclusive, on `fields.budget.value`. A record without a budget can't satisfy a budget bound |
 | `deadlineFrom`, `deadlineTo` | `YYYY-MM-DD` | Inclusive, on `fields.deadline.value` |
+| `minDaysLeft` | integer 0…`SEARCH_MAX_DAYS_LEFT` | Added 2026-11-23, see §9 |
 | `from`, `to` | `YYYY-MM-DD` | Inclusive, on `announcedAt`: the agency's date, never ingestion time |
 | `cursor` | opaque | From a previous `nextCursor` |
 | `pageSize` | 1…`SEARCH_MAX_PAGE_SIZE` | Default `SEARCH_PAGE_SIZE` |
@@ -136,3 +137,17 @@ contract does not change. What does: a query now matches **whole Thai words**, n
 `ก่อสร้า` no longer finds `ก่อสร้าง`. With the switch off the substring match of §5 remains, for a
 `mongod` that cannot serve `$search`. `mongodb-atlas-local` replaces `mongo:7` in Compose and CI, and the
 connection string gains `?directConnection=true` because its replica set advertises its container id.
+
+## 9. Revision 2026-11-23 — "at least N days left to prepare" (TOR-203)
+
+Vendors asked (2026-10-15 review) for TORs that leave them enough time to prepare a bid.
+
+- **API.** `minDaysLeft=N`, an integer from 0 to `SEARCH_MAX_DAYS_LEFT` (default 365). The service
+  turns it into a lower bound on `fields.deadline.value`: today in `TIME_ZONE` plus N days. When
+  `deadlineFrom` is also given, the later of the two applies, so both constraints hold. A record
+  without a stated deadline cannot satisfy it, as with `deadlineFrom`. Anything else is a 400.
+- **Web.** The deadline section of the filter panel offers 7, 14 and 30 days as toggle buttons above
+  the date range; pressing the selected one clears it. The choice is a URL parameter, so it is
+  linkable, and shows as an applied-filter chip ("เหลือเวลาเตรียมอย่างน้อย N วัน").
+- "Days left" counts calendar days in `TIME_ZONE`, the same "today" that decides `open` and the
+  days-left label on each row.
