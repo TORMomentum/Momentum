@@ -380,7 +380,7 @@ export class VertexAi implements Ai {
           ],
         },
       ],
-      generationConfig: { responseMimeType: "application/json", responseSchema: AWARD_RESPONSE_SCHEMA, temperature: 0, maxOutputTokens: 2048 },
+      generationConfig: { responseMimeType: "application/json", responseSchema: AWARD_RESPONSE_SCHEMA, temperature: 0, maxOutputTokens: 8192 },
     });
     const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
     if (!text) throw new ExtractionError("model returned an empty response");
