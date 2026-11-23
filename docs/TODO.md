@@ -841,5 +841,9 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   project's stages by day, the source's own names (no codes), the current one marked, "ดูเอกสาร" for a stage
   we hold the original of, the e-GP project link and the last-read time (`stagesCheckedAt` on the detail).
   Checked live on Atlas: an awarded, a cancelled and a BMA TOR (no panel)
-- [ ] TOR-207 stage notifications (read the `stage` events TOR-205 writes)
+- [x] TOR-207 stage notifications (spec 2026-11-24-stage-notifications): the match email's stage note
+  (TOR-238); one email per move to invitation, awarded or cancelled, to vendors sent the TOR as a match or
+  who bookmarked it, once, within `STAGE_NOTIFY_LOOKBACK_DAYS` (TOR-239); tests (TOR-240). Checked live to
+  Mailpit; on Atlas all 991 stage events are first reads, so nothing would be sent today
+  - [ ] the emails go out only once `NOTIFY_DISPATCH_ENABLED` is turned on (the match benchmark)
 - [ ] TOR-221 Winner announcements: winner, price, bidders
