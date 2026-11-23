@@ -82,8 +82,10 @@ describe("e-GP project stages (TOR-204)", () => {
   });
 
   it("names only the codes confirmed on a real project, and keeps any other as `other` (TOR-205)", () => {
-    expect(["B0", "BOQ", "D0"].map(stageKindOf)).toEqual(["draft", "median-price", "invitation"]);
-    expect(stageKindOf("W0")).toBe("other");
+    expect(["B0", "B3", "BOQ", "D0", "W0", "D1"].map(stageKindOf)).toEqual(["draft", "draft", "median-price", "invitation", "awarded", "cancelled"]);
+    // The bid summary is real but says nothing about whether bids are still taken.
+    expect(stageKindOf("price")).toBe("other");
+    expect(stageKindOf("Z9")).toBe("other");
     // An inherited property is not a code.
     expect(stageKindOf("constructor")).toBe("other");
     expect(stageKindOf("toString")).toBe("other");

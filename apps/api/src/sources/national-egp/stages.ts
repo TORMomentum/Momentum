@@ -73,8 +73,14 @@ export function torAnnouncedOn(stages: ProjectStage[]): string | null {
  */
 export const STAGE_KINDS: Readonly<Record<string, StageKind>> = {
   B0: "draft",
+  // ร่างเอกสารประกวดราคา(e-Bidding): 69069300968, 69099528942.
+  B3: "draft",
   BOQ: "median-price",
   D0: "invitation",
+  // ประกาศรายชื่อผู้ชนะการเสนอราคา: 69029401277, 69119388625.
+  W0: "awarded",
+  // ยกเลิกประกาศเชิญชวน: 69069300968, 69099528942.
+  D1: "cancelled",
 };
 
 /** The kind of an e-GP stage code; `other` for a code not in `STAGE_KINDS`. */
