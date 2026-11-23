@@ -117,18 +117,44 @@ function modelOf(provenance: Provenance | undefined): string {
 }
 
 /** One row: values as extracted (NFR-F7), with confidence, provenance and source links (NFR-F6). */
+/**
+ * What an empty text cell says (spec 2026-11-23-csv-export §8). "Not found", never "the document does not
+ * state it": a document can state a value that extraction could not read.
+ */
+export const NOT_FOUND = "ไม่พบข้อมูล";
+/** The deadline as written, when there is none yet because the invitation to bid is not out. */
+export const NO_INVITATION_YET = "ยังไม่มีประกาศเชิญชวน";
+
+/** A text value as extracted, or NOT_FOUND when there is none. Never re-worded otherwise (NFR-F7). */
+export function orNotFound(text: string | null | undefined): string {
+  return text && text.trim() !== "" ? text : NOT_FOUND;
+}
+
+/**
+ * The deadline as the document words it. When there is no wording either, the state says why: a TOR whose
+ * invitation to bid is not out has no deadline yet; anything else was not found. The ISO column beside it
+ * stays empty instead, so Excel can still sort and filter it as dates.
+ */
+function deadlineAsWritten(item: Pick<ExportItem, "deadline" | "torState">): string {
+  const raw = item.deadline?.raw;
+  if (raw && raw.trim() !== "") return raw;
+  return item.torState === "awaiting-invitation" ? NO_INVITATION_YET : NOT_FOUND;
+}
+
 export function exportRow(item: ExportItem, details: ExportDetails | undefined, appOrigin: string): Array<string | number | null> {
   const page = new URL(`/tors/${encodeURIComponent(item.id)}`, appOrigin).toString();
   const unverifiedFields = CHECKED_FIELDS.filter(([name]) => item[name] && !item[name]!.verified).map(([, label]) => label);
+  // Text read from the TOR says NOT_FOUND when empty; numbers, dates, the record's own metadata and links
+  // stay empty, so a spreadsheet can still sort, filter and follow them (spec §8).
   return [
-    item.referenceNo?.raw ?? "",
-    item.title?.raw ?? "",
-    item.agency?.raw ?? "",
-    item.category?.value ?? "",
-    item.category?.raw ?? "",
+    orNotFound(item.referenceNo?.raw),
+    orNotFound(item.title?.raw),
+    orNotFound(item.agency?.raw),
+    orNotFound(item.category?.value),
+    orNotFound(item.category?.raw),
     item.budget?.value ?? null,
     item.deadline?.value ?? "",
-    item.deadline?.raw ?? "",
+    deadlineAsWritten(item),
     stateLabel(item),
     isoDay(item.announcedAt),
     item.confidenceLevel ? (CONFIDENCE_LABELS[item.confidenceLevel] ?? item.confidenceLevel) : "",
