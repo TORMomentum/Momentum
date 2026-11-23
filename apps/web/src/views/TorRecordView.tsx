@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BiddingPanel } from "../features/tor-detail/BiddingPanel";
 import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
+import { StagePanel } from "../features/tor-detail/StagePanel";
 import { OriginalPreview, type OriginalDocument } from "../features/tor-detail/OriginalPreview";
 import { DraftPanel } from "../features/tor-detail/DraftPanel";
 import { ReadinessPanel } from "../features/tor-detail/ReadinessPanel";
@@ -277,6 +278,15 @@ export function TorRecordView({
             </div>
           </div>
         )}
+
+        <StagePanel
+          torId={tor.id}
+          stages={tor.stageHistory}
+          current={tor.stage}
+          checkedAt={tor.stagesCheckedAt}
+          projectUrl={tor.sourceProject?.url}
+          originals={originals}
+        />
 
         <BiddingPanel
           evaluationMethod={fields.evaluationMethod}
