@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Db, WithId } from "mongodb";
+import type { StageKind } from "@tor-radar/shared";
 import type { Config } from "../../core/config.js";
 import type { TorDocument } from "../../core/db.js";
 import type { Mailer } from "../../ports/mailer.port.js";
@@ -7,7 +8,7 @@ import { calendarDate } from "../../lib/calendar-date.js";
 import { torStateOf } from "../../lib/tor-state.js";
 import { scoreMatch } from "../matching/match-scorer.js";
 import { MatchingRepository } from "../matching/matching.repository.js";
-import { renderMatchEmail, type MatchedTor } from "./match-email.template.js";
+import { renderMatchEmail, renderStageEmail, type MatchedTor } from "./match-email.template.js";
 import { NotifyRepository, type EligibleVendor } from "./notify.repository.js";
 import { DEFAULT_NOTIFY } from "../profile/profile.routes.js";
 import { BadRequestError } from "../../core/errors.js";
@@ -51,6 +52,27 @@ function open(record: TorDocument, today: string): boolean {
   return !record.access.restricted && (state === "open" || state === "awaiting-invitation");
 }
 
+/**
+ * Where the project stands, for the match email (TOR-238): a TOR met at its draft stage tells the vendor
+ * they have time to prepare. None when no stage is known.
+ */
+export function stageNoteOf(kind: StageKind | undefined): string | undefined {
+  if (kind === "draft") return "ขั้นร่าง TOR · ยังไม่เปิดยื่นข้อเสนอ — มีเวลาเตรียมตัว";
+  if (kind === "median-price") return "ประกาศราคากลางแล้ว · รอประกาศเชิญชวน";
+  if (kind === "invitation") return "ประกาศเชิญชวนแล้ว · เปิดยื่นข้อเสนอ";
+  return undefined;
+}
+
+/**
+ * The stage moves worth an email (TOR-239, spec 2026-11-24-stage-notifications): each changes what a
+ * vendor does next. Median price, bid summary and contract details are not emailed.
+ */
+export const STAGE_EMAIL_HEADLINES: Partial<Record<StageKind, string>> = {
+  invitation: "ประกาศเชิญชวนแล้ว",
+  awarded: "ประกาศผู้ชนะแล้ว",
+  cancelled: "ยกเลิกประกาศเชิญชวน",
+};
+
 function emailTor(tor: WithId<TorDocument>, score: number, reasons: string[], config: Config): MatchedTor {
   const deadline = tor.fields.deadline?.value;
   return {
@@ -62,6 +84,7 @@ function emailTor(tor: WithId<TorDocument>, score: number, reasons: string[], co
     matchPercent: Math.round(score * 100),
     reasons,
     url: new URL(`/tors/${tor._id.toString()}`, config.appOrigin).toString(),
+    ...(stageNoteOf(tor.stage?.kind) ? { stageNote: stageNoteOf(tor.stage?.kind) } : {}),
   };
 }
 
@@ -139,6 +162,69 @@ export class NotifyService {
   }
 
   private async dispatchVendor(vendor: EligibleVendor): Promise<{ claimed: number; sent: number }> {
+    const matches = await this.dispatchMatches(vendor);
+    // "off" is no email of any kind; stage updates go to everyone else, whatever their digest preset.
+    if ((vendor.profile.notify ?? DEFAULT_NOTIFY).preset === "off") return matches;
+    const stages = await this.dispatchStageUpdates(vendor);
+    return { claimed: matches.claimed + stages.claimed, sent: matches.sent + stages.sent };
+  }
+
+  /**
+   * TOR-239: one email per stage move of a TOR the vendor follows — emailed as a match, or saved — into a
+   * stage that changes what they do next. A move is a stage event with a `from` (a first read is not one),
+   * after the vendor started following, and within STAGE_NOTIFY_LOOKBACK_DAYS. A move within one kind (a
+   * winner announcement, then its contract details) is not emailed again.
+   */
+  private async dispatchStageUpdates(vendor: EligibleVendor): Promise<{ claimed: number; sent: number }> {
+    const now = this.now();
+    const accountId = vendor.account._id.toString();
+    const dryRun = !this.config.notifications.dispatchEnabled;
+    const followed = await this.repository.followedTors(accountId, dryRun);
+    if (followed.size === 0) return { claimed: 0, sent: 0 };
+    const since = new Date(now.getTime() - this.config.notifications.stageLookbackDays * 86_400_000);
+    const moves = (await this.repository.stageMoves([...followed.keys()], since)).filter((move) => move.at > followed.get(move.torId)!.since);
+    if (moves.length === 0) return { claimed: 0, sent: 0 };
+    const records = new Map((await this.repository.torsById([...new Set(moves.map((move) => move.torId))])).map((record) => [record._id.toString(), record]));
+
+    let claimed = 0; let sent = 0;
+    for (const move of moves) {
+      const record = records.get(move.torId);
+      if (!record || record.pipeline.state !== "published" || record.access.restricted || record.duplicateOf) continue;
+      const history = record.stageHistory ?? [];
+      const entry = [...history].reverse().find((stage) => stage.code === move.to);
+      const before = move.from ? [...history].reverse().find((stage) => stage.code === move.from) : undefined;
+      const headline = entry ? STAGE_EMAIL_HEADLINES[entry.kind] : undefined;
+      if (!entry || !headline || before?.kind === entry.kind) continue;
+      const key = `stage:${move.torId}:${move._id.toString()}`;
+      if (!await this.repository.claim({ accountId, torId: key, reason: "stage-change", dryRun, createdAt: now })) continue;
+      claimed += 1;
+      if (dryRun) continue;
+      const deadline = record.fields.deadline?.value;
+      const email = renderStageEmail({
+        vendorName: vendor.account.displayName ?? "",
+        update: {
+          reference: record.fields.referenceNo?.raw ?? record._id.toString(),
+          title: record.fields.title?.raw ?? "",
+          agency: record.fields.agency?.raw ?? "",
+          headline,
+          stageName: entry.description,
+          on: dateAtBangkokNoon(entry.on),
+          deadline: entry.kind === "invitation" && typeof deadline === "string" ? dateAtBangkokNoon(deadline) : null,
+          following: followed.get(move.torId)!.following,
+          url: new URL(`/tors/${move.torId}`, this.config.appOrigin).toString(),
+        },
+        settingsUrl: new URL("/profile", this.config.appOrigin).toString(),
+        unsubscribeUrl: new URL("/profile", this.config.appOrigin).toString(),
+        now,
+      });
+      const response = await this.mailer.send({ to: vendor.account.email, ...email });
+      await this.repository.sent(accountId, key, "stage-change", false, response.messageId);
+      sent += 1;
+    }
+    return { claimed, sent };
+  }
+
+  private async dispatchMatches(vendor: EligibleVendor): Promise<{ claimed: number; sent: number }> {
     const now = this.now(); const today = calendarDate(now, this.config.search.timeZone);
     const accountId = vendor.account._id.toString();
     const pending: Pending[] = [];

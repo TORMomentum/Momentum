@@ -311,7 +311,11 @@ export interface VendorCertifications {
 export interface NotificationDocument {
   accountId: string;
   torId: string;
-  reason: "match" | "deadline-reminder" | "daily-digest";
+  /**
+   * "stage-change" (TOR-239): `torId` is then `stage:<torId>:<event id>`, one row per stage move, so a
+   * project that moves twice is emailed twice and never once more for the same move.
+   */
+  reason: "match" | "deadline-reminder" | "daily-digest" | "stage-change";
   /** A dry-run is deliberately distinct: it must never suppress a later real send. */
   dryRun: boolean;
   period?: string;

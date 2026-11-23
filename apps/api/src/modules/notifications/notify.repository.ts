@@ -1,5 +1,5 @@
 import { ObjectId, MongoServerError, type Db, type WithId } from "mongodb";
-import { accounts, bookmarks, notificationLeases, notifications, tors, vendorProfiles, type AccountDocument, type NotificationDocument, type TorDocument, type VendorProfileDocument } from "../../core/db.js";
+import { accounts, bookmarks, notificationLeases, notifications, torEvents, tors, vendorProfiles, type AccountDocument, type NotificationDocument, type TorDocument, type TorEventDocument, type VendorProfileDocument } from "../../core/db.js";
 
 export type EligibleVendor = { account: WithId<AccountDocument>; profile: VendorProfileDocument };
 
@@ -70,6 +70,39 @@ export class NotifyRepository {
     const rows = await bookmarks(this.db).find({ accountId }, { projection: { torId: 1 } }).toArray();
     const ids = rows.map((row) => row.torId).filter(ObjectId.isValid).map((id) => new ObjectId(id));
     return ids.length ? tors(this.db).find({ _id: { $in: ids } }).toArray() : [];
+  }
+
+  /**
+   * The TORs a vendor follows, and since when (TOR-239): those they were emailed as a match — in the same
+   * mode, so a dry run follows what a dry run claimed — and those they saved. The earlier date wins.
+   */
+  async followedTors(accountId: string, dryRun: boolean): Promise<Map<string, { since: Date; following: "matched" | "bookmarked" }>> {
+    const [matched, saved] = await Promise.all([
+      notifications(this.db)
+        .find({ accountId, reason: "match", dryRun, ...(dryRun ? {} : { sentAt: { $exists: true } }) }, { projection: { torId: 1, createdAt: 1 } })
+        .toArray(),
+      bookmarks(this.db).find({ accountId }, { projection: { torId: 1, createdAt: 1 } }).toArray(),
+    ]);
+    const followed = new Map<string, { since: Date; following: "matched" | "bookmarked" }>();
+    for (const row of matched) followed.set(row.torId, { since: row.createdAt, following: "matched" });
+    for (const row of saved) {
+      const known = followed.get(row.torId);
+      if (!known || row.createdAt < known.since) followed.set(row.torId, { since: row.createdAt, following: known?.following ?? "bookmarked" });
+    }
+    return followed;
+  }
+
+  /** Stage moves of these TORs since `since`, oldest first. A first read (`from: null`) is not a move. */
+  async stageMoves(torIds: string[], since: Date): Promise<WithId<TorEventDocument>[]> {
+    if (torIds.length === 0) return [];
+    return torEvents(this.db)
+      .find({ torId: { $in: torIds }, kind: "stage", from: { $ne: null }, at: { $gte: since } }, { sort: { at: 1, _id: 1 } })
+      .toArray();
+  }
+
+  async torsById(ids: string[]): Promise<WithId<TorDocument>[]> {
+    const valid = ids.filter(ObjectId.isValid).map((id) => new ObjectId(id));
+    return valid.length ? tors(this.db).find({ _id: { $in: valid } }).toArray() : [];
   }
 
   /** The unique database key is the final authority when worker processes race. */

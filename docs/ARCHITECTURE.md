@@ -188,7 +188,7 @@ The feature modules, as of Sprint 4:
 | `accounts/` | Registration, sign-in (password, and Google through `google-signin.*`), sessions, password reset, PDPA export and deletion |
 | `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
-| `notifications/` | Match emails, the dispatch lease, and the staff "send now" |
+| `notifications/` | Match emails (with a stage note, TOR-238), stage-change emails to vendors following a TOR (TOR-239, keyed `stage:<torId>:<event id>`), the dispatch lease, and the staff "send now" |
 | `bookmarks/` | A vendor's private saved list |
 | `path/` | The company path: a field's sampled TORs read for what they ask for, against the vendor's profile; one route, stores nothing (TOR-224) |
 | `drafts/` | The AI cover-letter draft for a TOR: the prompt, the facts it is built from, one rate-limited route; stores nothing (TOR-220) |
@@ -504,7 +504,7 @@ erDiagram
     NOTIFICATIONS {
         string accountId PK
         string torId PK
-        string reason PK "match | deadline-reminder | daily-digest"
+        string reason PK "match | deadline-reminder | daily-digest | stage-change"
         bool dryRun PK "a dry run never suppresses a real send"
         date sentAt
     }
