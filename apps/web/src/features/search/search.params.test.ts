@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_FILTERS, hasActiveFilters, parseSearchParams, toSearchQuery } from "./search.params";
+import { EMPTY_FILTERS, hasActiveFilters, parseDaysLeftInput, parseSearchParams, toSearchQuery } from "./search.params";
 
 describe("search URL canonicalisation", () => {
   it("gives two spellings of one search the same URL", () => {
@@ -71,5 +71,20 @@ describe("search URL canonicalisation", () => {
   it("does not count the page position as a filter", () => {
     expect(hasActiveFilters({ ...EMPTY_FILTERS, cursor: "abc" })).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, open: true })).toBe(true);
+  });
+});
+
+describe("the typed days-left box", () => {
+  it("takes a whole number of days, clears on empty, and rejects anything else", () => {
+    expect(parseDaysLeftInput("12")).toBe(12);
+    expect(parseDaysLeftInput(" 0 ")).toBe(0);
+    expect(parseDaysLeftInput("365")).toBe(365);
+    expect(parseDaysLeftInput("")).toBeNull();
+    expect(parseDaysLeftInput("   ")).toBeNull();
+    expect(parseDaysLeftInput("366")).toBeUndefined();
+    expect(parseDaysLeftInput("-1")).toBeUndefined();
+    expect(parseDaysLeftInput("2.5")).toBeUndefined();
+    expect(parseDaysLeftInput("1e2")).toBeUndefined();
+    expect(parseDaysLeftInput("สิบ")).toBeUndefined();
   });
 });
