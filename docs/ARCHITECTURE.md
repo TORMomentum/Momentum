@@ -174,14 +174,14 @@ flowchart LR
 | `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320), e-GP's project stage table (`national-egp.stages.ts`, TOR-205) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
 | `workers/` | Extraction, statistics, notification and stages workers, and the orphan reconciler. The stages worker records each pass in `source_health`; the extraction worker checks every source hourly and alerts admins (TOR-87) | Same wiring rules as the API; a worker entry wires its own adapters, as `app.ts` does |
-| `sources/<source>/` | Clients for public sources: `bma-egp/`, and `national-egp/` (announcement list, feed, bid packages, and a project's dated stages — `stages.ts`, TOR-204) | Reached through `lib/safe-fetch`; used by `tools/` imports, never by a route |
+| `sources/<source>/` | Clients for public sources: `bma-egp/`, and `national-egp/` (announcement list, feed, bid packages, a project's dated stages — `stages.ts`, TOR-204 — and its winner announcement PDF, TOR-221) | Reached through `lib/safe-fetch`; used by `tools/` imports, never by a route |
 
 The feature modules, as of Sprint 4:
 
 | Module | Owns |
 | :--- | :--- |
 | `intake/` | The three intake routes, dedupe, immutable storage, enqueue |
-| `extraction/` | OCR and field extraction, confidence grading |
+| `extraction/` | OCR and field extraction, confidence grading; a winner announcement (`documentType: "award"`) read by `runAward` and linked onto its project's TORs and `W0`/`W2` stages (TOR-221) |
 | `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter (`tors.match-filter.ts`, shared with `export/`) |
 | `export/` | CSV of the filtered list (`GET /export/tors.csv`, TOR-69): pages through `TorsService.search`, adds provenance, writes RFC 4180 with a formula guard |
 | `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
@@ -410,6 +410,8 @@ erDiagram
         object stage "newest stage {code, kind, on} · a final kind decides the badge"
         date stagesCheckedAt "last read from the source"
         date stagesDueAt "next read · null when final or too old"
+        string documentType "tor | invitation | award · the last two are supporting documents"
+        object award "winner, winnerKind, price, announcedOn, unverified, provenance · TOR-221"
         date createdAt "when WE ingested it"
     }
     TOR_PEER_STATS {
@@ -510,7 +512,7 @@ erDiagram
         date sentAt
     }
     SOURCE_HEALTH {
-        string _id PK "national-egp-stages | national-egp-import | bma-egp-import"
+        string _id PK "national-egp-stages | national-egp-import | national-egp-awards | bma-egp-import"
         date lastSeenAt "any run, or an idle worker's heartbeat"
         date lastSuccessAt
         date lastFailureAt
@@ -616,7 +618,7 @@ Three shapes are load-bearing:
 | `tor_classifications.torId`, unique · `classification.leaves.id + updatedAt` · `classification.coarse + updatedAt` | One classification per TOR; the two candidate reads matching runs in parallel (precise leaf, broad coarse group) |
 | `match_labels.accountId + torId`, unique | A re-judgement overwrites, so a pair counts once in the figures |
 | `notifications.accountId + torId + reason + dryRun`, unique | An email is sent at most once per reason, even with two workers |
-| `source_health._id` (the source id) | One document per source; the registry has three, so nothing else is indexed |
+| `source_health._id` (the source id) | One document per source; the registry has four, so nothing else is indexed |
 | `admin_audit.accountId + at` | One vendor's audit trail, newest first |
 | `tor_rollups.agency + month` · `category + month` | The dashboard's two filter shapes. A single `agency + category + month` compound cannot serve "one agency across months with no category", because category sits between the two fields used |
 

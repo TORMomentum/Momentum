@@ -308,10 +308,15 @@ oldest first, as the source gives them (TOR-205): `[{ "code": "B0", "kind": "dra
 exactly as the source wrote them, `on` the Bangkok day, `recordId` our record of that stage's document
 when we hold one (its original at `GET /api/v1/tors/{recordId}/document`). Empty when no stage is known.
 `stagesCheckedAt` is when the stages were last read from the source (ISO time), `null` before the first read
-(TOR-206: the detail page says how fresh its timeline is). When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
+(TOR-206: the detail page says how fresh its timeline is). `award` is the project's winner announcement as AI
+read it (TOR-221), `null` when none was collected: `{ "recordId", "winner": {raw, value, confidence},
+"winnerKind": "juristic" | "individual", "price": {raw, value, confidence}, "announcedOn", "unverified",
+"provenance" }` — the announcement's original at `GET /api/v1/tors/{recordId}/document`, and the project's
+`W0`/`W2` stages carry the same `recordId`. A winner who is a natural person, or whose name the rule cannot
+place, is returned as `"บุคคลธรรมดา"` in both `raw` and `value` (`FR-B-5`, redaction serializer). When the record was extracted with `EXTRACT_BIDDING_FIELDS_ENABLED` on, `fields` also holds
 `evaluationMethod`, `evaluationWeights` and `requiredDocuments` in the same `{raw, value, confidence, verified}`
-shape (`value` is the structured list; see the extraction spec §13); they are absent from older records. Invitations
-themselves are supporting documents: never listed, counted, or served as a record of their own. Contact data passes through the public
+shape (`value` is the structured list; see the extraction spec §13); they are absent from older records. Invitations and
+winner announcements are supporting documents: never listed, counted, or served as a record of their own. Contact data passes through the public
 redaction serializer (`FR-B-5`); evidence quotes are not returned. A restricted or unpublished record
 is a 404.
 
@@ -494,7 +499,7 @@ appears in a public response, which is why the signed-out site shows no MATCH %.
 | :--- | :--- |
 | `GET /admin/overview` · `GET /admin/events` | The overview counts (stored, published, failed, stuck, …) and the recent transitions |
 | `GET /admin/queue` | Low-confidence records awaiting review (`FR-G-1`) |
-| `GET /admin/tors?q=&status=&kind=&page=` | Every TOR. `status` is `all`, `public`, `restricted`, `unverified`, `processing`, `stuck` or `failed`. **Stuck** is queued or extracting with no change for `ADMIN_STUCK_AFTER_MS` (default: the job lock × 5) — a job that died rather than one still running |
+| `GET /admin/tors?q=&status=&kind=&page=` | Every TOR. `status` is `all`, `public`, `restricted`, `unverified`, `processing`, `stuck` or `failed`. **Stuck** is queued or extracting with no change for `ADMIN_STUCK_AFTER_MS` (default: the job lock × 5) — a job that died rather than one still running. `kind` is `tor` (default), `invitation`, `award` (winner announcements, TOR-221) or `all` |
 | `GET /admin/tors/ids?q=&status=&kind=` | "Select everything matching": `{ ids, total, chunk }` — up to `ADMIN_SELECT_ALL_MAX` ids behind the current filters, and `chunk`, the size the screen must send them in |
 | `POST /admin/tors/bulk` | `{ action, ids, reason? }` with `action` one of `reextract`, `reject`, `restore`; at most `ADMIN_BULK_MAX` ids; `reject` needs a reason. Each TOR goes through the single-TOR path, so each keeps its own history entry. Returns `{ done, failed: [{ id, reason }] }` — one TOR that cannot take the action does not stop the rest |
 | `GET /admin/tors/:id` | One record with everything a reviewer needs |
