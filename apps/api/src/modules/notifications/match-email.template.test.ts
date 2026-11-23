@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatThaiDate, matchSubject, renderMatchEmail, type MatchedTor } from "./match-email.template.js";
+import { formatThaiDate, matchSubject, renderMatchEmail, renderStageEmail, stageSubject, type MatchedTor, type StageUpdate } from "./match-email.template.js";
 
 const NOW = new Date("2026-08-12T09:42:00+07:00");
 
@@ -113,5 +113,50 @@ describe("match email", () => {
     // Outlook drops colours it cannot parse, and a dropped colour on a dark band
     // is black on black.
     expect(html).not.toContain("rgba(");
+  });
+});
+
+describe("stage note on a match (TOR-238)", () => {
+  it("shows where the project stands in both parts, escaped, and nothing when no stage is known", () => {
+    const withNote = render([tor({ stageNote: "ขั้นร่าง TOR · <ยังไม่เปิด>" })]);
+    expect(withNote.html).toContain("ขั้นร่าง TOR · &lt;ยังไม่เปิด&gt;");
+    expect(withNote.text).toContain("ขั้นร่าง TOR · <ยังไม่เปิด>");
+    expect(render([tor()]).html).not.toContain("ขั้นร่าง TOR");
+  });
+});
+
+describe("stage-change email (TOR-239)", () => {
+  const update = (over: Partial<StageUpdate> = {}): StageUpdate => ({
+    reference: "69109234234",
+    title: "จ้างก่อสร้าง <script>อาคาร</script>",
+    agency: "กรมชลประทาน",
+    headline: "ประกาศเชิญชวนแล้ว",
+    stageName: "ประกาศเชิญชวน",
+    on: new Date("2026-08-14T12:00:00+07:00"),
+    deadline: new Date("2026-08-25T12:00:00+07:00"),
+    following: "matched",
+    url: "https://torradar.th/tors/abc",
+    ...over,
+  });
+  const renderStage = (over: Partial<StageUpdate> = {}) =>
+    renderStageEmail({ vendorName: "คุณนก", update: update(over), settingsUrl: "https://torradar.th/profile", unsubscribeUrl: "https://torradar.th/profile", now: NOW });
+
+  it("names the move in the subject and the stage as the source wrote it, with its day and the deadline", () => {
+    const email = renderStage();
+    expect(email.subject).toBe(stageSubject("ประกาศเชิญชวนแล้ว"));
+    expect(email.text).toContain("ขั้นตอนล่าสุด: ประกาศเชิญชวน · 14 ส.ค. 2569");
+    expect(email.text).toContain("ยื่นภายใน 25 ส.ค. 2569");
+    expect(email.text).toContain("คุณได้รับแจ้งโครงการนี้เพราะตรงกับโปรไฟล์ของคุณ");
+    expect(email.html).toContain("ดูขั้นตอนทั้งหมดของโครงการ");
+    expect(email.html).toContain('href="https://torradar.th/profile"');
+  });
+
+  it("escapes what the source wrote, falls back to the headline for an unnamed stage, and says why a saver hears", () => {
+    const email = renderStage({ stageName: null, deadline: null, following: "bookmarked", headline: "ประกาศผู้ชนะแล้ว" });
+    expect(email.html).not.toContain("<script>");
+    expect(email.html).toContain("&lt;script&gt;");
+    expect(email.text).toContain("ขั้นตอนล่าสุด: ประกาศผู้ชนะแล้ว · 14 ส.ค. 2569");
+    expect(email.text).not.toContain("ยื่นภายใน");
+    expect(email.text).toContain("คุณบันทึกโครงการนี้ไว้");
   });
 });
