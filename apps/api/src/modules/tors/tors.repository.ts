@@ -26,6 +26,12 @@ export interface SearchCriteria extends Omit<SearchFilter, "open"> {
    * deadline lead the list, closing soonest first (see `closingOn`).
    */
   closingFirstOn?: string;
+  /**
+   * `YYYY-MM-DD`, with `closingFirstOn`: TORs closing before this date (too
+   * little time to prepare) follow those closing on or after it. Unset = one
+   * closing segment.
+   */
+  prepFrom?: string;
 }
 
 /** One search result row — only what a list renders (spec §2). */
@@ -231,13 +237,21 @@ function closingOn(today: string): Filter<TorDocument> {
   return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
 }
 
+/** Within `closingOn(today)`: enough time to prepare (on or after `prepFrom`), or closing sooner. */
+function closingBand(today: string, prepFrom: string | undefined, band: "closing" | "soon"): Filter<TorDocument> {
+  if (!prepFrom || prepFrom <= today) return band === "closing" ? closingOn(today) : { _id: { $exists: false } };
+  return band === "closing"
+    ? { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: prepFrom } }
+    : { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: prepFrom } };
+}
+
 /** The first two segments hold only records whose critical fields are verified (SRS §4.2.1). */
 const VERIFIED: Filter<TorDocument> = { unverified: { $ne: true } };
 /** The last segment: records marked "unverified extraction" — listed, after everything confirmed. */
 const UNVERIFIED: Filter<TorDocument> = { unverified: true };
 
 /** Resumes after `cursor` in `(deadline asc, _id asc)`. */
-function afterClosing(cursor: Extract<SearchCursor, { segment: "closing" }>): Filter<TorDocument> {
+function afterClosing(cursor: Extract<SearchCursor, { segment: "closing" | "soon" }>): Filter<TorDocument> {
   return {
     $or: [
       { "fields.deadline.value": { $gt: cursor.deadline } },
@@ -265,8 +279,8 @@ function afterCursor(cursor: Extract<SearchCursor, { segment: "rest" | "unverifi
 
 /** The position just after `doc`, in whichever segment it was read from. */
 function cursorAt(doc: WithId<TorDocument>, segment: SearchCursor["segment"]): SearchCursor {
-  return segment === "closing"
-    ? { segment: "closing", deadline: String(doc.fields?.deadline?.value), id: doc._id }
+  return segment === "closing" || segment === "soon"
+    ? { segment, deadline: String(doc.fields?.deadline?.value), id: doc._id }
     : { segment, announcedAt: doc.announcedAt ?? null, id: doc._id };
 }
 
@@ -292,33 +306,52 @@ export class TorsRepository {
   }
 
   /**
-   * One page of the list. With `closingFirstOn`, the closing segment is read
-   * first and the rest fills whatever room the page has left; each segment
-   * reads its order straight from an index, so neither sorts in memory.
+   * One page of the list. With `closingFirstOn`, the closing segments are read
+   * first (time to prepare, then closing soon, split at `prepFrom`) and the rest
+   * fills whatever room the page has left; each segment reads its order straight
+   * from an index, so none sorts in memory. A cursor resumes in its own segment
+   * and skips the ones before it.
    */
   async search(criteria: SearchCriteria, pageSize: number, cursor: SearchCursor | null): Promise<SearchPage> {
     const textIds =
       criteria.q && this.atlas?.atlasEnabled ? await this.textIds(criteria.q, this.atlas) : null;
     const filter = buildFilter(criteria, textIds);
-    const closing = criteria.closingFirstOn ? closingOn(criteria.closingFirstOn) : null;
+    const today = criteria.closingFirstOn;
+    const closing = today ? closingOn(today) : null;
     // One extra row says whether another page exists without a second count.
     const wanted = pageSize + 1;
+    const order: SearchCursor["segment"][] = ["closing", "soon", "rest", "unverified"];
+    /** A segment is read when the cursor is in it or in one before it. */
+    const reads = (segment: SearchCursor["segment"]) =>
+      cursor === null || order.indexOf(cursor.segment) <= order.indexOf(segment);
 
-    const [closingDocs, total, latest] = await Promise.all([
-      closing && (cursor === null || cursor.segment === "closing")
+    const band = (segment: "closing" | "soon", limit: number) =>
+      today && reads(segment) && limit > 0
         ? tors(this.db)
             .find(
-              { $and: [filter, VERIFIED, closing, ...(cursor?.segment === "closing" ? [afterClosing(cursor)] : [])] },
-              { sort: { "fields.deadline.value": 1, _id: 1 }, limit: wanted, projection: LIST_PROJECTION },
+              {
+                $and: [
+                  filter,
+                  VERIFIED,
+                  closingBand(today, criteria.prepFrom, segment),
+                  ...(cursor?.segment === segment ? [afterClosing(cursor)] : []),
+                ],
+              },
+              { sort: { "fields.deadline.value": 1, _id: 1 }, limit, projection: LIST_PROJECTION },
             )
             .toArray()
-        : Promise.resolve([]),
+        : Promise.resolve([]);
+
+    const [prepDocs, total, latest] = await Promise.all([
+      band("closing", wanted),
       tors(this.db).countDocuments(filter),
       tors(this.db).findOne(VISIBLE, { sort: { createdAt: -1 }, projection: { createdAt: 1 } }),
     ]);
+    const soonDocs = await band("soon", wanted - prepDocs.length);
+    const closingDocs = [...prepDocs, ...soonDocs];
 
     const restDocs =
-      closingDocs.length < wanted && cursor?.segment !== "unverified"
+      closingDocs.length < wanted && reads("rest")
         ? await tors(this.db)
             .find(
               {
@@ -377,7 +410,16 @@ export class TorsRepository {
       })),
       next:
         docs.length > pageSize && last
-          ? cursorAt(last, closingDocs.includes(last) ? "closing" : restDocs.includes(last) ? "rest" : "unverified")
+          ? cursorAt(
+              last,
+              prepDocs.includes(last)
+                ? "closing"
+                : soonDocs.includes(last)
+                  ? "soon"
+                  : restDocs.includes(last)
+                    ? "rest"
+                    : "unverified",
+            )
           : null,
       total,
       lastUpdatedAt: latest?.createdAt ?? null,

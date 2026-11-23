@@ -84,7 +84,15 @@ export class TorsService {
 
     const page = await this.deps.repo.search(
       // A vendor's first question is what they can still bid on, so those lead.
-      { ...filter, matchIds, openOn: open ? today : undefined, closingFirstOn: today, today },
+      // Among those, the ones a vendor still has time to prepare for come first (2026-10-15 review).
+      {
+        ...filter,
+        matchIds,
+        openOn: open ? today : undefined,
+        closingFirstOn: today,
+        prepFrom: config.search.minPrepDays > 0 ? addDays(today, config.search.minPrepDays) : undefined,
+        today,
+      },
       request.pageSize,
       request.cursor,
     );

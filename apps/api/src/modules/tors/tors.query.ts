@@ -42,14 +42,16 @@ export interface SearchFilter {
 }
 
 /**
- * A position in the list, which has three segments: verified TORs still taking bids
- * with a stated deadline, in `(deadline asc, _id asc)` — closing soonest first —
- * then every other verified record, then every unverified one ("ยังไม่ยืนยันการสกัด"),
- * each of the last two in `(announcedAt desc, _id desc)`. Unverified records stay
- * listed — confidence controls marking, not visibility (SRS §4.2.1) — just not first.
+ * A position in the list, which has four segments: verified TORs still taking bids
+ * with at least `SEARCH_MIN_PREP_DAYS` left ("closing"), then those closing sooner
+ * ("soon"), each in `(deadline asc, _id asc)` — closing soonest first — then every
+ * other verified record, then every unverified one ("ยังไม่ยืนยันการสกัด"), each of
+ * the last two in `(announcedAt desc, _id desc)`. Unverified records stay listed —
+ * confidence controls marking, not visibility (SRS §4.2.1) — just not first.
  */
 export type SearchCursor =
   | { segment: "closing"; deadline: string; id: ObjectId }
+  | { segment: "soon"; deadline: string; id: ObjectId }
   | { segment: "rest"; announcedAt: Date | null; id: ObjectId }
   | { segment: "unverified"; announcedAt: Date | null; id: ObjectId };
 
@@ -164,8 +166,8 @@ export function parseSearchQuery(query: unknown, config: SearchConfig): SearchRe
 /** Opaque to callers: base64url JSON, so its shape can change without a contract change. */
 export function encodeCursor(cursor: SearchCursor): string {
   const payload =
-    cursor.segment === "closing"
-      ? { s: "c", d: cursor.deadline, i: cursor.id.toHexString() }
+    cursor.segment === "closing" || cursor.segment === "soon"
+      ? { s: cursor.segment === "closing" ? "c" : "k", d: cursor.deadline, i: cursor.id.toHexString() }
       : {
           // "rest" keeps its original shape, so a link made before this segment existed still works.
           ...(cursor.segment === "unverified" ? { s: "u" } : {}),
@@ -186,9 +188,9 @@ export function decodeCursor(value: string): SearchCursor {
     if (typeof payload.i !== "string" || !ObjectId.isValid(payload.i)) throw new Error("id");
     const id = new ObjectId(payload.i);
 
-    if (payload.s === "c") {
+    if (payload.s === "c" || payload.s === "k") {
       if (typeof payload.d !== "string" || payload.d.length > 40) throw new Error("deadline");
-      return { segment: "closing", deadline: payload.d, id };
+      return { segment: payload.s === "c" ? "closing" : "soon", deadline: payload.d, id };
     }
 
     if (payload.a !== null && typeof payload.a !== "string") throw new Error("announcedAt");
