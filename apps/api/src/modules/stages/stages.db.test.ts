@@ -148,6 +148,34 @@ describe("stages worker pass (TOR-205)", () => {
     expect(await tors(db).countDocuments({ stagesCheckedAt: { $exists: true } })).toBe(0);
   });
 
+  it("closes on a cancelled invitation, keeps following it, and reopens when the agency invites again; stops at a winner", async () => {
+    const tor = await seed("69069300968");
+    const draft: SourceStage = { code: "B3", description: "ร่างเอกสารประกวดราคา(e-Bidding)", on: "2026-08-17" };
+    const invited: SourceStage = { code: "D0", description: "ประกาศเชิญชวน", on: "2026-08-24" };
+    const cancelled: SourceStage = { code: "D1", description: "ยกเลิกประกาศเชิญชวน", on: "2026-11-23" };
+    const table: Record<string, SourceStage[]> = { "69069300968": [draft, invited, cancelled] };
+    const { source } = fakeSource(table);
+    await service(source).seed();
+    await service(source).runPass();
+    let record = await read(tor);
+    expect(record?.stage).toEqual({ code: "D1", kind: "cancelled", on: "2026-11-23" });
+    expect(record?.stagesDueAt).toEqual(new Date(NOW.getTime() + config.stages.refreshMs));
+
+    table["69069300968"] = [draft, invited, cancelled, { code: "D0", description: "ประกาศเชิญชวน", on: "2026-11-23" }];
+    await tors(db).updateMany({}, { $set: { stagesDueAt: NOW } });
+    await service(source).runPass();
+    record = await read(tor);
+    // Same day as the cancellation, listed after it: the newer stage.
+    expect(record?.stage?.kind).toBe("invitation");
+
+    table["69069300968"] = [...table["69069300968"]!, { code: "W0", description: "ประกาศรายชื่อผู้ชนะการเสนอราคา", on: "2026-11-23" }];
+    await tors(db).updateMany({}, { $set: { stagesDueAt: NOW } });
+    await service(source).runPass();
+    record = await read(tor);
+    expect(record?.stage?.kind).toBe("awarded");
+    expect(record?.stagesDueAt).toBeNull();
+  });
+
   it("never claims a record another pass is holding", async () => {
     await seed("69109000003");
     const repo = new StagesRepository(db);

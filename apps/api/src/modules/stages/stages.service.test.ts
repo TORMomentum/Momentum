@@ -14,8 +14,7 @@ describe("stageHistoryOf (TOR-205)", () => {
       { code: "B0", kind: "draft", description: "ร่างเอกสารประกวดราคา(e-Bidding)", on: "2026-10-21", recordId: "tor1" },
       { code: "BOQ", kind: "median-price", description: null, on: "2026-10-21" },
       { code: "D0", kind: "invitation", description: "ประกาศเชิญชวน", on: "2026-10-30", recordId: "inv1" },
-      // Not confirmed on a sampled project yet: kept, named `other`, never a final stage.
-      { code: "W0", kind: "other", description: "ประกาศผู้ชนะ", on: "2026-11-20" },
+      { code: "W0", kind: "awarded", description: "ประกาศผู้ชนะ", on: "2026-11-20" },
     ]);
   });
 
@@ -38,9 +37,11 @@ describe("nextDueAt (TOR-205)", () => {
     expect(nextDueAt({ kind: "other", on: "2026-11-20" }, "2026-10-21", "2026-11-23", now, settings)).not.toBeNull();
   });
 
-  it("stops once the stage is final", () => {
+  it("stops once a winner is announced, but keeps following a cancelled invitation that may be issued again", () => {
     expect(nextDueAt({ kind: "awarded", on: "2026-11-20" }, "2026-10-21", "2026-11-23", now, settings)).toBeNull();
-    expect(nextDueAt({ kind: "cancelled", on: "2026-11-20" }, "2026-10-21", "2026-11-23", now, settings)).toBeNull();
+    expect(nextDueAt({ kind: "cancelled", on: "2026-11-20" }, "2026-10-21", "2026-11-23", now, settings)).toEqual(
+      new Date("2026-11-24T03:00:00Z"),
+    );
   });
 
   it("stops following a project whose newest stage is older than the limit, and counts from the record when none is listed", () => {
