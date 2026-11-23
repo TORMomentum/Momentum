@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseProjectStages, torAnnouncedOn } from "./stages.js";
+import { latestStage, parseProjectStages, stageKindOf, torAnnouncedOn } from "./stages.js";
 import { projectStagesUrl } from "./client.js";
 
 const TZ = "Asia/Bangkok";
@@ -79,5 +79,22 @@ describe("e-GP project stages (TOR-204)", () => {
     ];
     expect(torAnnouncedOn(noDraft)).toBe("2026-10-20");
     expect(torAnnouncedOn([...noDraft, { type: "B0", description: null, announcedOn: "2026-10-28" }])).toBe("2026-10-28");
+  });
+
+  it("names only the codes confirmed on a real project, and keeps any other as `other` (TOR-205)", () => {
+    expect(["B0", "BOQ", "D0"].map(stageKindOf)).toEqual(["draft", "median-price", "invitation"]);
+    expect(stageKindOf("W0")).toBe("other");
+    // An inherited property is not a code.
+    expect(stageKindOf("constructor")).toBe("other");
+    expect(stageKindOf("toString")).toBe("other");
+  });
+
+  it("takes the latest day as the current stage, and on a tie the one e-GP lists last", () => {
+    const stages = parseProjectStages(RESPONSE, TZ);
+    expect(latestStage(stages)?.type).toBe("D0");
+    // B0 and BOQ share a day: BOQ is listed after B0, so it is the newer.
+    expect(latestStage(stages.slice(0, 2))?.type).toBe("BOQ");
+    expect(latestStage([...stages].reverse())?.type).toBe("D0");
+    expect(latestStage([])).toBeNull();
   });
 });

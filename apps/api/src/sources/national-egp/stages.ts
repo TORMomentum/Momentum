@@ -1,3 +1,4 @@
+import type { StageKind } from "@tor-radar/shared";
 import { calendarDate } from "../../lib/calendar-date.js";
 
 /** One published stage of an e-GP project: the draft TOR (B0), the median price (BOQ), the invitation (D0)… */
@@ -63,4 +64,30 @@ const earliestOf = (stages: ProjectStage[], codes: readonly string[]): string | 
  */
 export function torAnnouncedOn(stages: ProjectStage[]): string | null {
   return earliestOf(stages, DRAFT_TOR_CODES) ?? earliestOf(stages, [INVITATION_CODE]);
+}
+
+/**
+ * e-GP announcement codes whose meaning has been confirmed on a sampled project (spec
+ * 2026-11-23-project-stages §3). A code is added here only from a real project page, never guessed:
+ * a wrong `awarded` or `cancelled` would close a project that is still taking bids.
+ */
+export const STAGE_KINDS: Readonly<Record<string, StageKind>> = {
+  B0: "draft",
+  BOQ: "median-price",
+  D0: "invitation",
+};
+
+/** The kind of an e-GP stage code; `other` for a code not in `STAGE_KINDS`. */
+export function stageKindOf(code: string): StageKind {
+  return Object.hasOwn(STAGE_KINDS, code) ? STAGE_KINDS[code]! : "other";
+}
+
+/**
+ * The newest stage: the latest day, and on a tie the one e-GP lists last (its table is in publication
+ * order). Null when there are no stages.
+ */
+export function latestStage<T extends { announcedOn: string }>(stages: readonly T[]): T | null {
+  let latest: T | null = null;
+  for (const stage of stages) if (!latest || stage.announcedOn >= latest.announcedOn) latest = stage;
+  return latest;
 }
