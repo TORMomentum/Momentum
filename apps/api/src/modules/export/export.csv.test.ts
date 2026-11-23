@@ -35,6 +35,7 @@ describe("one exported row", () => {
     confidenceLevel: "medium",
     unverified: true,
     open: true,
+    torState: "open" as const,
     title: { raw: "ประกวดราคาจ้างพัฒนาระบบ", verified: true },
     referenceNo: { raw: "69109019390", verified: true },
     agency: { raw: "การรถไฟแห่งประเทศไทย", value: "การรถไฟแห่งประเทศไทย", verified: true },
@@ -92,12 +93,10 @@ describe("one exported row", () => {
   });
 
   it("words the state exactly as the badge on /search does", () => {
-    const at = (torStatus: string, open: boolean, deadline: string | null) =>
-      stateLabel({ open, torStatus: { value: torStatus, verified: true }, deadline: { value: deadline, verified: true } });
-    expect(at("announced", true, "2026-11-30")).toBe("เปิดรับข้อเสนอ");
-    expect(at("announced", true, null)).toBe("รอประกาศเชิญชวน");
-    expect(at("announced", false, "2026-01-01")).toBe("ปิดรับแล้ว");
-    expect(at("awarded", false, "2026-01-01")).toBe("ประกาศผู้ชนะแล้ว");
-    expect(at("cancelled", false, null)).toBe("ยกเลิกแล้ว");
+    expect(stateLabel({ torState: "open" })).toBe("เปิดรับข้อเสนอ");
+    expect(stateLabel({ torState: "awaiting-invitation" })).toBe("รอประกาศเชิญชวน");
+    expect(stateLabel({ torState: "closed" })).toBe("ปิดรับแล้ว");
+    expect(stateLabel({ torState: "awarded" })).toBe("ประกาศผู้ชนะแล้ว");
+    expect(stateLabel({ torState: "cancelled" })).toBe("ยกเลิกแล้ว");
   });
 });
