@@ -80,6 +80,22 @@ project collected by the specific method can list `W0` alone. Changes: the parse
 the TOR's announcement date is the earliest of `B0` and `B3` (`DRAFT_TOR_CODES`), so the backfill's
 "no B0" count (315 in the first dry run) was in part `B3` projects. `W0` and `D1` are used by TOR-205.
 
+## 3b. Revision 2026-11-23 (evening) — a project with no draft stage
+
+Once the stages worker (TOR-205) had read the first 240 projects, 111 of the 188 undated TOR records
+belonged to projects that list **no draft stage at all**: their tables start at `D0` (61 `D0 BOQ`, the rest
+with `price`, `W0`, `D1`, `I0` after it). No other draft code was hiding among them. These projects skipped
+the draft-TOR hearing and published the TOR together with the invitation to bid, so the invitation's day is
+the TOR's first publication.
+
+Change: `torAnnouncedOn` returns the earliest `B0`/`B3` day as before and, when there is none, the earliest
+`D0` day (`INVITATION_CODE`), the first invitation, not a re-invitation after a `D1`. It returns null only
+when e-GP lists neither. The importer and the backfill both use it, so both pick this up. A draft stage, when
+listed, still wins.
+
+Codes seen by then and kept as `other`: `price`, `I0` ข้อมูลสาระสำคัญในสัญญา (contract key details), `W1`
+ยกเลิกประกาศรายชื่อผู้ชนะการเสนอราคา (winner announcement cancelled).
+
 ## 4. Open for TOR-205 to decide
 
 - Which other `announceType` codes appear (plan, winner `W0`?, cancellation) — sample a cancelled and an
