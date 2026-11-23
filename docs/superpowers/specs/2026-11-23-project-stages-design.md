@@ -167,11 +167,14 @@ shows "ยกเลิกแล้ว" meanwhile (decision 7 is unchanged: both 
 
 ## 11. Revision 2026-11-24 — codes seen across the whole corpus
 
+The stage is the **newest** listed one (decision 4), so a code published after the winner must itself be
+`awarded`, or it reopens the badge.
+
 The first full read of the 991 e-GP projects logged four codes outside the table:
 
 | Code | e-GP's name | Kind | Why |
 | :---- | :---- | :---- | :---- |
 | `W2` | เปลี่ยนแปลงประกาศรายชื่อผู้ชนะการเสนอราคา | `awarded` | The winner announcement amended after a `W0`: there is still a winner (69109402570) |
 | `W1` | ยกเลิกประกาศรายชื่อผู้ชนะการเสนอราคา | `other` | The winner announcement withdrawn: the project is no longer awarded, but not over either. It may be awarded again, or its invitation cancelled (`D1`, as in 69099682131), so the badge falls back to the extracted status and the project is still followed |
-| `I0` | ข้อมูลสาระสำคัญในสัญญา | `other` | Contract key details. It follows a `W0`, which already decides |
+| `I0` | ข้อมูลสาระสำคัญในสัญญา | `awarded` | The signed contract's key details, published after the winner. 33 projects list it after their `W0`; as the newest stage it would otherwise have taken them out of `awarded` |
 | `price` | สรุปข้อมูลการเสนอราคาเบื้องต้น | `other` | Unchanged (§10) |
