@@ -836,7 +836,14 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
     20 minutes. W2 and I0 named `awarded` (spec §11), W1 and `price` stay `other`
   - [ ] a deployed stages worker — it ran from a laptop for the first read; without one, stages stop
     refreshing
-- [ ] TOR-87 Ingestion-source health per adapter (F12)
+- [x] TOR-87 Ingestion-source health per adapter (F12, spec 2026-11-24-source-health)
+  - [x] TOR-292 each source's runs in `source_health`: the stages worker every pass (an idle one a heartbeat
+    an hour), both import tools when a run ends
+  - [x] TOR-293 `/admin/sources` and `GET /admin/sources`: status, last success, last failure and why,
+    failures in a row, last run, records collected
+  - [x] TOR-294 admin email once when an automatic source is failing (3 in a row) or stale (48 h), once when
+    it recovers; checked hourly by the extraction worker
+  - [ ] a deployed stages worker — the stages source shows stale wherever it is not running
 - [x] TOR-206 stage timeline on the TOR page (spec 2026-11-23-project-stages §12): `StagePanel` — the
   project's stages by day, the source's own names (no codes), the current one marked, "ดูเอกสาร" for a stage
   we hold the original of, the e-GP project link and the last-read time (`stagesCheckedAt` on the detail).
