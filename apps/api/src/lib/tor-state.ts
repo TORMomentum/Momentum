@@ -1,3 +1,5 @@
+import { FINAL_STAGE_KINDS, type StageKind } from "@tor-radar/shared";
+
 /** As extracted. Mirrors `TorFields["torStatus"]`'s value in the shared types. */
 type TorStatus = "announced" | "closed" | "awarded" | "cancelled";
 
@@ -15,10 +17,17 @@ export type TorState = "open" | "awaiting-invitation" | "closed" | "awarded" | "
 
 export const TOR_STATES: readonly TorState[] = ["open", "awaiting-invitation", "closed", "awarded", "cancelled"];
 
+/**
+ * The project's stage, when the source states one, decides first if it is final (TOR-205, spec
+ * 2026-11-23-project-stages decision 7): the source saying a winner is announced outranks a model's
+ * reading of a TOR published before it. A stage that is not final changes nothing.
+ */
 export function torStateOf(
-  record: { torStatus: TorStatus | null; deadline: string | null },
+  record: { torStatus: TorStatus | null; deadline: string | null; stageKind?: StageKind | null },
   today: string,
 ): TorState {
+  if (record.stageKind === "cancelled") return "cancelled";
+  if (record.stageKind === "awarded") return "awarded";
   if (record.torStatus === "cancelled") return "cancelled";
   if (record.torStatus === "awarded") return "awarded";
   if (record.torStatus !== "announced") return "closed";
@@ -40,21 +49,42 @@ export function torStateOf(
 export function stateFilter(state: TorState, today: string): Record<string, unknown> {
   switch (state) {
     case "open":
-      return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
+      return { ...NOT_FINAL, "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
     case "awaiting-invitation":
       // The scope is published; the invitation that carries the deadline is not.
-      return { "fields.torStatus.value": "announced", "fields.deadline.value": null };
+      return { ...NOT_FINAL, "fields.torStatus.value": "announced", "fields.deadline.value": null };
     case "awarded":
     case "cancelled":
-      return { "fields.torStatus.value": state };
+      // The stage says so, or extraction does and no final stage says otherwise.
+      return { $or: [{ "stage.kind": state }, { ...NOT_FINAL, "fields.torStatus.value": state }] };
     case "closed":
       // Anything not announced, awarded or cancelled, plus an announcement whose
       // deadline has passed. A missing deadline is NOT closed — it is awaiting.
       return {
+        ...NOT_FINAL,
         $or: [
           { "fields.torStatus.value": { $nin: ["announced", "awarded", "cancelled"] } },
           { "fields.torStatus.value": "announced", "fields.deadline.value": { $ne: null, $lt: today } },
         ],
       };
   }
+}
+
+/**
+ * No final stage. `$nin` also matches a record with no stage at all, which is every record the stages
+ * worker has not read and every non-e-GP record.
+ */
+export const NOT_FINAL = { "stage.kind": { $nin: [...FINAL_STAGE_KINDS] } } as const;
+
+/**
+ * Still taking bids on `today`: `open` and `awaiting-invitation` together (announced, the deadline today or
+ * later or not yet stated) and no final stage. The list's open filter and its days-left bands start from
+ * this rather than writing `fields.torStatus.value: "announced"` by hand.
+ */
+export function openFilter(today: string): Record<string, unknown> {
+  return {
+    ...NOT_FINAL,
+    "fields.torStatus.value": "announced",
+    $or: [{ "fields.deadline.value": null }, { "fields.deadline.value": { $gte: today } }],
+  };
 }
