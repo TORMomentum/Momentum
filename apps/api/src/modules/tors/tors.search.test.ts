@@ -348,8 +348,9 @@ describe("GET /tors — pagination", () => {
 });
 
 describe("GET /tors — what can still be bid on comes first", () => {
-  it("lists TORs still taking bids first, closing soonest, then the rest newest first", async () => {
-    // NOW is 2026-09-16 in Bangkok.
+  it("lists TORs with time to prepare first, then those closing within the prep window, then the rest", async () => {
+    // NOW is 2026-09-16 in Bangkok; with SEARCH_MIN_PREP_DAYS=5 the prep window ends 2026-09-21.
+    expect(config.search.minPrepDays).toBe(5);
     const newestNoDeadline = await seed({ announcedAt: "2026-09-15", deadline: null });
     const closed = await seed({ announcedAt: "2026-09-14", deadline: "2026-09-10" });
     const closingLater = await seed({ announcedAt: "2026-08-01", deadline: "2026-09-30" });
@@ -360,9 +361,9 @@ describe("GET /tors — what can still be bid on comes first", () => {
     const body = await search("");
 
     expect(body.items.map((item) => item.id)).toEqual([
+      closingLater,
       closingToday,
       closingSoon,
-      closingLater,
       newestNoDeadline,
       closed,
       statusClosed,
@@ -431,9 +432,58 @@ describe("GET /tors — what can still be bid on comes first", () => {
 
     expect(pages).toBe(4);
     expect(walked.map((item) => item.id).sort()).toEqual(seeded.sort());
+    // 2026-09-21 has time to prepare and leads; 2026-09-20 is inside the prep window and follows.
     const leading = walked.slice(0, 5).map((item) => item.deadline.value as string);
-    expect(leading).toEqual([...leading].sort());
-    expect(leading.every((deadline) => deadline >= "2026-09-16")).toBe(true);
+    expect(leading).toEqual(["2026-09-21", "2026-09-21", "2026-09-20", "2026-09-20", "2026-09-20"]);
+  });
+
+  it("walks all four segments by cursor at every page size, each record once and in order", async () => {
+    // NOW 2026-09-16; prep window ends 2026-09-21.
+    const prep = [
+      await seed({ deadline: "2026-09-21" }),
+      await seed({ deadline: "2026-09-21" }),
+      await seed({ deadline: "2026-10-05" }),
+    ];
+    const soon = [
+      await seed({ deadline: "2026-09-16" }),
+      await seed({ deadline: "2026-09-18" }),
+      await seed({ deadline: "2026-09-20" }),
+    ];
+    const rest = [
+      await seed({ announcedAt: "2026-08-20", deadline: "2026-09-01" }),
+      await seed({ announcedAt: "2026-08-10", deadline: null }),
+    ];
+    const unverified = [
+      await seed({ announcedAt: "2026-08-25", deadline: "2026-09-19", confidenceLevel: "medium" }),
+      await seed({ announcedAt: null, confidenceLevel: "low" }),
+    ];
+    // Deadline ties break on _id, which follows insertion here.
+    const expected = [...prep, ...soon, ...rest, ...unverified];
+
+    for (const pageSize of [1, 2, 3, 4, 5, 11]) {
+      const walked: string[] = [];
+      let cursor: string | null = null;
+      let pages = 0;
+      do {
+        const response = await request(buildTestApp()).get(
+          `/api/v1/tors?pageSize=${pageSize}${cursor ? `&cursor=${cursor}` : ""}`,
+        );
+        expect(response.status).toBe(200);
+        walked.push(...response.body.items.map((item: { id: string }) => item.id));
+        cursor = response.body.nextCursor;
+        pages += 1;
+      } while (cursor && pages < 20);
+
+      expect(walked, `pageSize=${pageSize}`).toEqual(expected);
+      expect(pages, `pageSize=${pageSize}`).toBe(Math.ceil(expected.length / pageSize));
+    }
+  });
+
+  it("drops the split when minDaysLeft already asks for time to prepare", async () => {
+    const soon = await seed({ deadline: "2026-09-18" });
+    const prep = await seed({ deadline: "2026-09-25" });
+    expect((await search("")).items.map((item) => item.id)).toEqual([prep, soon]);
+    expect((await search("minDaysLeft=5")).items.map((item) => item.id)).toEqual([prep]);
   });
 });
 
