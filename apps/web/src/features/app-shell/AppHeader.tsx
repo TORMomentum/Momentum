@@ -26,6 +26,7 @@ const ADMIN_TABS = [
   { href: "/admin/vendors", label: "ผู้ใช้" },
   { href: "/admin/terms", label: "คำที่ผู้ใช้เพิ่มเอง" },
   { href: "/admin/upload", label: "อัปโหลดเอกสาร" },
+  { href: "/admin/sources", label: "แหล่งข้อมูล" },
   { href: "/admin/log", label: "บันทึกกิจกรรม" },
 ];
 
