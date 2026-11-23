@@ -323,6 +323,15 @@ export class TorsRepository {
    * from an index, so none sorts in memory. A cursor resumes in its own segment
    * and skips the ones before it.
    */
+  /** Extraction provenance (NFR-F6) for the given records, keyed by id; a record without it is absent. */
+  async provenanceFor(ids: ObjectId[]): Promise<Map<string, Provenance>> {
+    if (ids.length === 0) return new Map();
+    const docs = await tors(this.db)
+      .find({ _id: { $in: ids } }, { projection: { provenance: 1 } })
+      .toArray();
+    return new Map(docs.flatMap((doc) => (doc.provenance ? [[doc._id.toString(), doc.provenance] as const] : [])));
+  }
+
   async search(criteria: SearchCriteria, pageSize: number, cursor: SearchCursor | null): Promise<SearchPage> {
     const textIds =
       criteria.q && this.atlas?.atlasEnabled ? await this.textIds(criteria.q, this.atlas) : null;

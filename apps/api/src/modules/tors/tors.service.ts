@@ -14,7 +14,7 @@ import type { CohortKey } from "../stats/cohort.js";
 import { eligibilityOf } from "../stats/eligibility.js";
 import { encodeCursor, type SearchRequest } from "./tors.query.js";
 import type { TorsRepository } from "./tors.repository.js";
-import type { ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 
 export interface TorsServiceDeps {
   repo: TorsRepository;
@@ -70,6 +70,11 @@ type VerdictRow = {
 /** Public reads for published TOR records. */
 export class TorsService {
   constructor(private readonly deps: TorsServiceDeps) {}
+
+  /** Extraction provenance for the given record ids (NFR-F6); used by the CSV export. */
+  async provenanceFor(ids: string[]) {
+    return this.deps.repo.provenanceFor(ids.map((id) => new ObjectId(id)));
+  }
 
   async search(request: SearchRequest, matchIds?: ObjectId[]) {
     const { config } = this.deps;
