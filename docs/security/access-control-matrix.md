@@ -123,6 +123,7 @@ test: keep the first three columns exactly `METHOD`, `` `path` ``, caller.
 | POST | `/api/v1/admin/accounts/:id/match-email` | admin-key | as above | any account, by design |
 | POST | `/api/v1/admin/accounts/:id/password-reset` | admin-key | as above | any account, by design |
 | GET | `/api/v1/admin/match-quality` | admin-key | `router.use(requireKey)` ([match-quality.routes.ts:13](../../apps/api/src/modules/match-quality/match-quality.routes.ts)) | all accounts |
+| GET | `/api/v1/admin/sources` | admin-key | `router.use(requireKey)` ([sources.routes.ts:11](../../apps/api/src/modules/sources/sources.routes.ts)) | all sources (TOR-87) |
 | GET | `/api/v1/admin/accounts/:id/labels` | admin-key | as above | any account, by design |
 | PUT | `/api/v1/admin/accounts/:id/labels/:torId` | admin-key | as above | any account, by design |
 
@@ -139,7 +140,7 @@ and the API decides. It does enforce the two things the API cannot see.
 | `/api/export/tors.csv` ([route.ts](../../apps/web/app/api/export/tors.csv/route.ts)) | public and vendor | relays the API's CSV through the document proxy unbuffered, forwarding the session cookie as `x-session-id` only so the match filter works; the API's `attachment`, `no-store` and `nosniff` headers pass through |
 | `/tors/[id]/document` | public | proxies the public API route |
 | `/admin/tors/[id]/document`, `/admin/tors/[id]/pages/[page]` | staff | `isStaff()` first, then the server-held admin key is attached; otherwise 404 ([staff-session.ts:132](../../apps/web/src/shared/lib/staff-session.ts)) |
-| every `/admin/*` page (overview, log, review, terms, tors, tors/[id], upload, vendors, vendors/[id], vendors/[id]/labels) | staff | `isStaff()` else redirect to `/admin/login` |
+| every `/admin/*` page (overview, log, review, sources, terms, tors, tors/[id], upload, vendors, vendors/[id], vendors/[id]/labels) | staff | `isStaff()` else redirect to `/admin/login` |
 | every Server Action in `admin.actions.ts` and `admin-accounts.actions.ts` | staff | `requireStaff()` first |
 | `/admin/login` | public | accepts `STAFF_ACCESS_SECRET` (constant-time), sets a signed 8-hour cookie |
 | `/profile`, `/account`, `/notifications`, `/profile/path` | vendor | render a sign-in prompt without a session; data comes only from the API, which answers 401 |

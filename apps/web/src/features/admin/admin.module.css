@@ -562,6 +562,18 @@
 .logReason { color: var(--ink-70); }
 .logEmpty { padding: 40px 0; color: var(--ink-62); font-size: 13px; }
 
+/* ---------- source health (TOR-87) ---------- */
+.sourceName { font-weight: 600; }
+.sourceKind { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-62); }
+.sourceStatus { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.sourceOk { background: var(--verified-wash); color: var(--verified); }
+.sourceFailing { background: var(--danger-wash); color: var(--danger); }
+.sourceStale { background: var(--anomaly-wash); color: var(--anomaly); }
+.sourceNever { background: var(--ink-12); color: var(--ink-70); }
+.sourceError { display: block; margin-top: 4px; font: 11px var(--data); color: var(--danger); overflow-wrap: anywhere; }
+.sourceNote { margin: 18px 0 0; font-size: 12px; color: var(--ink-62); line-height: 1.8; }
+.sourceTableWrap { overflow-x: auto; }
+
 /* ---------- all TORs: search every record, open any in the review screen ---------- */
 .torsFilters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 

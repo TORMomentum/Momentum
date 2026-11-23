@@ -54,6 +54,18 @@ export interface StagesPassResult {
   failed: number;
   /** True when the pass stopped on FAILURES_BEFORE_BACKOFF failures in a row: wait `backoffMs`. */
   backOff: boolean;
+  /** The last lookup's failure message, when one failed (TOR-87). */
+  lastError?: string;
+}
+
+/**
+ * What a pass tells source health (TOR-87, spec 2026-11-24-source-health decision 3): failed when it backed
+ * off or every project in it failed; `null` when nothing was due, which is a heartbeat, not a success.
+ */
+export function passOutcome(pass: StagesPassResult): { ok: boolean; items: number; failed: number; error: string | null } | null {
+  if (pass.projects === 0 && !pass.backOff) return null;
+  const ok = !pass.backOff && pass.failed < pass.projects;
+  return { ok, items: pass.projects, failed: pass.failed, error: ok ? null : (pass.lastError ?? "unknown") };
 }
 
 /** Reads due projects' stages from the source and stores them on their TOR records (TOR-205). */
@@ -106,6 +118,7 @@ export class StagesService {
       } catch (error) {
         // The claim's hold is the retry delay: the record comes due again after STAGES_CLAIM_MS.
         result.failed += 1;
+        result.lastError = error instanceof Error ? error.message : "unknown";
         failuresInARow += 1;
         logger.warn("stages_lookup_failed", { projectId, error: error instanceof Error ? error.message : "unknown" });
         if (failuresInARow >= FAILURES_BEFORE_BACKOFF) {

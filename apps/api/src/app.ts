@@ -21,6 +21,9 @@ import { buildAdminRouter } from "./modules/admin/admin.routes.js";
 import { buildAdminAccountsRouter } from "./modules/admin/admin-accounts.routes.js";
 import { AdminAccountsRepository } from "./modules/admin/admin-accounts.repository.js";
 import { AdminAccountsService } from "./modules/admin/admin-accounts.service.js";
+import { SourceHealthRepository } from "./modules/sources/source-health.repository.js";
+import { SourceHealthService } from "./modules/sources/source-health.service.js";
+import { buildSourcesRouter } from "./modules/sources/sources.routes.js";
 import { NotifyService } from "./modules/notifications/notify.service.js";
 import { MatchLabelsRepository } from "./modules/match-quality/match-labels.repository.js";
 import { buildMatchQualityRouter } from "./modules/match-quality/match-quality.routes.js";
@@ -234,6 +237,15 @@ export function buildApp(config: Config, db: Db): Express {
         matching: new MatchingRepository(db, config),
         labels: new MatchLabelsRepository(db),
       }),
+      adminKeys: config.adminApiKeys,
+    }),
+  );
+
+  // Ingestion-source health (TOR-87): read here; recorded by the sources and alerted on by the worker.
+  app.use(
+    `${API_PREFIX}/admin`,
+    buildSourcesRouter({
+      service: new SourceHealthService({ repo: new SourceHealthRepository(db), config }),
       adminKeys: config.adminApiKeys,
     }),
   );

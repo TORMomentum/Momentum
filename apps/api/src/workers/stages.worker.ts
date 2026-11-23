@@ -6,7 +6,10 @@ import { connect, ensureIndexes } from "../core/db.js";
 import { configureLogger, logger } from "../core/logger.js";
 import { installProcessErrorHandlers } from "../core/process-errors.js";
 import { StagesRepository } from "../modules/stages/stages.repository.js";
-import { StagesService } from "../modules/stages/stages.service.js";
+import { passOutcome, StagesService } from "../modules/stages/stages.service.js";
+import { SourceHealthRepository } from "../modules/sources/source-health.repository.js";
+import { SourceHealthService } from "../modules/sources/source-health.service.js";
+import { STAGES_SOURCE_ID } from "../modules/sources/sources.registry.js";
 
 const pause = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
@@ -24,6 +27,16 @@ export async function startStagesWorker(config: ReturnType<typeof loadConfig>): 
     source: new NationalEgpStages(config.search.timeZone),
     config,
   });
+  const health = new SourceHealthService({ repo: new SourceHealthRepository(db), config });
+  // Health is reported, never relied on: a failed write is logged and the pass goes on (TOR-87).
+  const report = async (work: () => Promise<void>) => {
+    try {
+      await work();
+    } catch (error) {
+      logger.error("source_health_write_failed", { source: STAGES_SOURCE_ID, error: error instanceof Error ? error.message : "unknown" });
+    }
+  };
+  let lastHeartbeat = 0;
   const seeded = await service.seed();
   logger.info("stages_worker_started", { seeded, refreshMs: config.stages.refreshMs, requestDelayMs: config.stages.requestDelayMs });
 
@@ -31,6 +44,14 @@ export async function startStagesWorker(config: ReturnType<typeof loadConfig>): 
     try {
       const pass = await service.runPass();
       if (pass.projects > 0) logger.info("stages_pass", { ...pass });
+      const outcome = passOutcome(pass);
+      if (outcome) {
+        await report(() => health.recordRun(STAGES_SOURCE_ID, outcome));
+        lastHeartbeat = Date.now();
+      } else if (Date.now() - lastHeartbeat > config.sources.heartbeatMs) {
+        await report(() => health.heartbeat(STAGES_SOURCE_ID));
+        lastHeartbeat = Date.now();
+      }
       if (pass.backOff) {
         // e-GP is refusing (429 under load): wait, rather than add to it.
         logger.warn("stages_backing_off", { backoffMs: config.stages.backoffMs });
@@ -45,6 +66,7 @@ export async function startStagesWorker(config: ReturnType<typeof loadConfig>): 
       }
     } catch (error) {
       logger.error("stages_failed", { error: error instanceof Error ? error.message : "unknown" });
+      await report(() => health.recordRun(STAGES_SOURCE_ID, { ok: false, items: 0, failed: 0, error: error instanceof Error ? error.message : "unknown" }));
       await pause(config.jobPollMs);
     }
   }

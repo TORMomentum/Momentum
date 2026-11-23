@@ -173,7 +173,7 @@ flowchart LR
 | `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords`, `GoogleOidc`, `ProjectStagesSource` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
 | `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320), e-GP's project stage table (`national-egp.stages.ts`, TOR-205) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
-| `workers/` | Extraction, statistics, notification and stages workers, and the orphan reconciler | Same wiring rules as the API; a worker entry wires its own adapters, as `app.ts` does |
+| `workers/` | Extraction, statistics, notification and stages workers, and the orphan reconciler. The stages worker records each pass in `source_health`; the extraction worker checks every source hourly and alerts admins (TOR-87) | Same wiring rules as the API; a worker entry wires its own adapters, as `app.ts` does |
 | `sources/<source>/` | Clients for public sources: `bma-egp/`, and `national-egp/` (announcement list, feed, bid packages, and a project's dated stages — `stages.ts`, TOR-204) | Reached through `lib/safe-fetch`; used by `tools/` imports, never by a route |
 
 The feature modules, as of Sprint 4:
@@ -196,6 +196,7 @@ The feature modules, as of Sprint 4:
 | `behaviour/` | What a consenting vendor viewed, saved, dismissed or prepared, recorded and turned into per-work-type points for the score; the worker's reconcile pass deletes rows of accounts without live consent |
 | `admin/` | The review queue, record correction, bulk actions, vendor accounts and their audit |
 | `match-quality/` | The labelled benchmark that gates match emails (matching design §7.8) |
+| `sources/` | Ingestion-source health (TOR-87): the source registry, each run's outcome in `source_health`, `GET /admin/sources`, and the admin alert email the extraction worker sends when an automatic source is failing or stale, and when it recovers |
 | `history/` | `tor_events`, the append-only transition log |
 | `stages/` | A project's published stages on its TOR records (TOR-205): claims due records, reads the source through `ProjectStagesSource`, writes `stageHistory` and `stage`, logs a stage change to `tor_events` (`kind: "stage"`), and backs off when the source refuses. Run by `npm run stages-worker` |
 
@@ -508,6 +509,16 @@ erDiagram
         bool dryRun PK "a dry run never suppresses a real send"
         date sentAt
     }
+    SOURCE_HEALTH {
+        string _id PK "national-egp-stages | national-egp-import | bma-egp-import"
+        date lastSeenAt "any run, or an idle worker's heartbeat"
+        date lastSuccessAt
+        date lastFailureAt
+        string lastError "cut to 300 characters"
+        int consecutiveFailures
+        object lastRun "at, items, failed"
+        object alert "kind, sentAt · open while admins were told"
+    }
     BOOKMARKS {
         string accountId PK
         string torId PK
@@ -605,6 +616,7 @@ Three shapes are load-bearing:
 | `tor_classifications.torId`, unique · `classification.leaves.id + updatedAt` · `classification.coarse + updatedAt` | One classification per TOR; the two candidate reads matching runs in parallel (precise leaf, broad coarse group) |
 | `match_labels.accountId + torId`, unique | A re-judgement overwrites, so a pair counts once in the figures |
 | `notifications.accountId + torId + reason + dryRun`, unique | An email is sent at most once per reason, even with two workers |
+| `source_health._id` (the source id) | One document per source; the registry has three, so nothing else is indexed |
 | `admin_audit.accountId + at` | One vendor's audit trail, newest first |
 | `tor_rollups.agency + month` · `category + month` | The dashboard's two filter shapes. A single `agency + category + month` compound cannot serve "one agency across months with no category", because category sits between the two fields used |
 

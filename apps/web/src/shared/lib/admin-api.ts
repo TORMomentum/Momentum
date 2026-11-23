@@ -229,6 +229,33 @@ export function fetchMatchQuality(): Promise<MatchQualityFigures> {
   return call("/admin/match-quality");
 }
 
+/** One collecting source's health (TOR-87, `GET /admin/sources`). Dates are ISO strings. */
+export interface AdminSource {
+  id: string;
+  name: string;
+  kind: "automatic" | "manual";
+  status: "ok" | "failing" | "stale" | "never";
+  lastSeenAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  lastRun: { at: string; items: number; failed: number } | null;
+  records: number;
+  latestRecordAt: string | null;
+  alertSentAt: string | null;
+}
+
+export interface AdminSources {
+  checkedAt: string;
+  settings: { alertFailures: number; staleHours: number };
+  sources: AdminSource[];
+}
+
+export function fetchSources(): Promise<AdminSources> {
+  return call<AdminSources>("/admin/sources");
+}
+
 export interface AdminOtherTerms {
   /** Work vendors do that the taxonomy has no node for. */
   work: Array<{ text: string; vendors: number }>;

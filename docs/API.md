@@ -28,7 +28,7 @@ flowchart LR
         read["GET /tors ✅<br/>GET /tors/:id ✅<br/>GET /tors/:id/document ✅"]
         stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ✅"]
         me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅<br/>/me/vault ✅<br/>/me/tors/:id/draft ✅<br/>/me/path ✅"]
-        adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅"]
+        adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅<br/>/admin/sources ✅"]
         health["GET /health ✅"]
     end
 
@@ -512,6 +512,7 @@ appears in a public response, which is why the signed-out site shows no MATCH %.
 | `GET /admin/reports/other-terms` | What vendors typed under อื่นๆ (work and certifications), counted — the taxonomy's missing vocabulary |
 | `GET /admin/accounts/:id/labels` · `PUT /admin/accounts/:id/labels/:torId` | The labelling worksheet for one vendor (what email would send, and a sample it would not), and one judgement: `relevant`, `not-relevant` or `unsure` |
 | `GET /admin/match-quality` | Precision, recall and the unsure rate over every label (matching design §7.8) |
+| `GET /admin/sources` | Every collecting source's health (TOR-87, spec 2026-11-24-source-health §3): `checkedAt`, `settings` (`alertFailures`, `staleHours`) and `sources[]`, each with `id`, `name`, `kind` (`automatic` · `manual`), `status` (`ok` · `failing` · `stale` · `never`), `lastSeenAt`, `lastSuccessAt`, `lastFailureAt`, `lastError`, `consecutiveFailures`, `lastRun` (`at`, `items`, `failed`), `records`, `latestRecordAt` and `alertSentAt` |
 
 Every route is under `/api/v1`.
 
