@@ -88,6 +88,7 @@ test: keep the first three columns exactly `METHOD`, `` `path` ``, caller.
 | POST | `/api/v1/me/tors/:id/draft` | vendor | `req.auth` ([drafts.routes.ts:20](../../apps/api/src/modules/drafts/drafts.routes.ts)), same-origin, per-account rate limit | the caller's own profile and vault |
 | GET | `/api/v1/tors` | public | none; `minMatch`/`maxMatch` additionally need `req.auth` ([tors.routes.ts:44](../../apps/api/src/modules/tors/tors.routes.ts)) | the filter scores the caller's own profile |
 | GET | `/api/v1/tors/facets` | public | none | none |
+| GET | `/api/v1/export/tors.csv` | public | own rate limit (`EXPORT_RATE_LIMIT_PER_MIN`); `minMatch`/`maxMatch` need `req.auth` ([export.routes.ts:32](../../apps/api/src/modules/export/export.routes.ts)) | the list serializer, so nothing `GET /tors` does not show; restricted records excluded; the match filter scores the caller's own profile |
 | HEAD | `/api/v1/tors/:id/document` | public | none; restricted records answer 404 ([tors.service.ts:199](../../apps/api/src/modules/tors/tors.service.ts)) | none |
 | GET | `/api/v1/tors/:id/document` | public | as above | none |
 | GET | `/api/v1/tors/:id` | public | none | none |
@@ -135,6 +136,7 @@ and the API decides. It does enforce the two things the API cannot see.
 | `/api/auth/[...path]` ([route.ts](../../apps/web/app/api/auth/[...path]/route.ts)) | public and vendor | same-origin check on every write, then forwards under `/auth` with the session cookie. Sets the session cookie on login and clears the staff cookie |
 | `/api/vault`, `/api/vault/[id]` | vendor | no cookie gives 401 before the API is called; same-origin on writes; the API answers 404 for another account's file and only 404/401 are passed on |
 | `/api/tors/[id]/draft` | vendor | same-origin; no cookie gives 401; the TOR is the only thing taken from the request |
+| `/api/export/tors.csv` ([route.ts](../../apps/web/app/api/export/tors.csv/route.ts)) | public and vendor | relays the API's CSV through the document proxy unbuffered, forwarding the session cookie as `x-session-id` only so the match filter works; the API's `attachment`, `no-store` and `nosniff` headers pass through |
 | `/tors/[id]/document` | public | proxies the public API route |
 | `/admin/tors/[id]/document`, `/admin/tors/[id]/pages/[page]` | staff | `isStaff()` first, then the server-held admin key is attached; otherwise 404 ([staff-session.ts:132](../../apps/web/src/shared/lib/staff-session.ts)) |
 | every `/admin/*` page (overview, log, review, terms, tors, tors/[id], upload, vendors, vendors/[id], vendors/[id]/labels) | staff | `isStaff()` else redirect to `/admin/login` |
