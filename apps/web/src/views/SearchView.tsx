@@ -13,6 +13,7 @@ import {
   hasActiveFilters,
   SEARCH_STATES,
   toSearchQuery,
+  DAYS_LEFT_PRESETS,
   type SearchFilters,
   type SearchState,
 } from "../features/search/search.params";
@@ -270,7 +271,7 @@ export function SearchView({
     filters.agencies.length > 0 && "หน่วยงาน",
     filters.categories.length > 0 && "หมวดหมู่",
     (filters.minBudget !== null || filters.maxBudget !== null) && "งบประมาณ",
-    (filters.deadlineFrom || filters.deadlineTo) && "กำหนดยื่นข้อเสนอ",
+    (filters.deadlineFrom || filters.deadlineTo || filters.minDaysLeft !== null) && "กำหนดยื่นข้อเสนอ",
     filters.open && "ยังเปิดรับ",
   ].filter(Boolean);
 
@@ -288,6 +289,9 @@ export function SearchView({
       : []),
     ...(filters.deadlineFrom || filters.deadlineTo
       ? [{ key: "deadline", label: `ยื่นภายใน ${filters.deadlineFrom ? dateLabel(filters.deadlineFrom) : "…"} – ${filters.deadlineTo ? dateLabel(filters.deadlineTo) : "…"}`, onRemove: () => update({ deadlineFrom: null, deadlineTo: null }) }]
+      : []),
+    ...(filters.minDaysLeft !== null
+      ? [{ key: "daysLeft", label: `เหลือเวลาเตรียมอย่างน้อย ${filters.minDaysLeft} วัน`, onRemove: () => update({ minDaysLeft: null }) }]
       : []),
   ];
 
@@ -356,7 +360,29 @@ export function SearchView({
           </FilterSection>
         )}
 
-        <FilterSection title="กำหนดยื่นข้อเสนอ" active={filters.deadlineFrom || filters.deadlineTo ? 1 : 0}>
+        <FilterSection
+          title="กำหนดยื่นข้อเสนอ"
+          active={(filters.deadlineFrom || filters.deadlineTo ? 1 : 0) + (filters.minDaysLeft !== null ? 1 : 0)}
+        >
+          <div className={styles.daysLeft} role="group" aria-label="เหลือเวลาเตรียมอย่างน้อย">
+            <span className={styles.dateLabel}>เหลือเวลาเตรียมอย่างน้อย</span>
+            <div className={styles.daysLeftOptions}>
+              {DAYS_LEFT_PRESETS.map((days) => {
+                const selected = filters.minDaysLeft === days;
+                return (
+                  <button
+                    key={days}
+                    type="button"
+                    className={`${styles.daysLeftOption} ${selected ? styles.daysLeftOptionOn : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => update({ minDaysLeft: selected ? null : days })}
+                  >
+                    {days} วัน
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className={styles.dateRange}>
             <label className={styles.dateField}>
               <span className={styles.dateLabel}>ตั้งแต่</span>

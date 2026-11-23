@@ -216,6 +216,23 @@ describe("GET /tors — each filter", () => {
     expect(ids(await search("deadlineFrom=2026-09-20&deadlineTo=2026-09-30"))).toEqual([first, last].sort());
   });
 
+  it("filters by days left to prepare, counted from today in Bangkok (TOR-203)", async () => {
+    // NOW is 2026-09-16 in Bangkok.
+    await seed({ deadline: "2026-09-15" });
+    const today = await seed({ deadline: "2026-09-16" });
+    const sixDays = await seed({ deadline: "2026-09-22" });
+    const sevenDays = await seed({ deadline: "2026-09-23" });
+    const month = await seed({ deadline: "2026-10-20" });
+    await seed({ deadline: null });
+
+    expect(ids(await search("minDaysLeft=0"))).toEqual([today, sixDays, sevenDays, month].sort());
+    expect(ids(await search("minDaysLeft=7"))).toEqual([sevenDays, month].sort());
+    expect(ids(await search("minDaysLeft=30"))).toEqual([month]);
+    // The later bound wins when both are given.
+    expect(ids(await search("minDaysLeft=7&deadlineFrom=2026-10-01"))).toEqual([month]);
+    expect(ids(await search("minDaysLeft=0&deadlineFrom=2026-09-20&deadlineTo=2026-09-22"))).toEqual([sixDays]);
+  });
+
   it("filters by announcement date — the agency's date, never ingestion time", async () => {
     const august = await seed({ announcedAt: "2026-08-31" });
     await seed({ announcedAt: "2026-09-01" });
@@ -432,6 +449,10 @@ describe("GET /tors — input is primitives only", () => {
     [`pageSize=${config.search.maxPageSize + 1}`],
     ["minBudget=-5"],
     ["deadlineFrom=2026-02-30"],
+    ["minDaysLeft=-1"],
+    ["minDaysLeft=7.5"],
+    ["minDaysLeft=week"],
+    [`minDaysLeft=${config.search.maxDaysLeft + 1}`],
     ["from=16/09/2026"],
     ["status=suspicious"],
     ["open=yes"],

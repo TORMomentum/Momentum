@@ -51,6 +51,13 @@ export function isOpenOn(
   return item.torStatus.value === "announced" && (item.deadline.value === null || item.deadline.value >= today);
 }
 
+/** `YYYY-MM-DD` plus whole days, on the calendar (no time zone involved). */
+export function addDays(day: string, days: number): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 /** What the verdict needs from a record. A search row and a detail record both supply it. */
 type VerdictRow = {
   cohort: CohortKey | null;
@@ -66,8 +73,14 @@ export class TorsService {
 
   async search(request: SearchRequest, matchIds?: ObjectId[]) {
     const { config } = this.deps;
-    const { open, minMatch: _minMatch, maxMatch: _maxMatch, ...filter } = request.filter;
+    const { open, minMatch: _minMatch, maxMatch: _maxMatch, minDaysLeft, ...filter } = request.filter;
     const today = calendarDate(this.deps.now?.() ?? new Date(), config.search.timeZone);
+    if (minDaysLeft !== undefined) {
+      // "At least N days to prepare" is a lower deadline bound; the later of it and
+      // any explicit deadlineFrom wins, so both constraints hold.
+      const earliest = addDays(today, minDaysLeft);
+      filter.deadlineFrom = filter.deadlineFrom && filter.deadlineFrom > earliest ? filter.deadlineFrom : earliest;
+    }
 
     const page = await this.deps.repo.search(
       // A vendor's first question is what they can still bid on, so those lead.

@@ -267,6 +267,25 @@
 
 .dateLabel { color: rgba(18, 35, 60, 0.7); }
 
+/* "Days left to prepare" presets (TOR-203): one choice at a time, pressed again to clear. */
+.daysLeft { display: grid; gap: 6px; margin-bottom: 10px; font-size: 12px; }
+
+.daysLeftOptions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.daysLeftOption {
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font: 12px var(--body);
+  color: var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.daysLeftOption:hover { border-color: var(--blue); }
+
+.daysLeftOptionOn { border-color: var(--blue); background: var(--blue); color: var(--paper); }
+
 .dateInput {
   width: 100%;
   border: 1px solid rgba(18, 35, 60, 0.35);

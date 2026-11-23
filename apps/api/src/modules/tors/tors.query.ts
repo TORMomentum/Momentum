@@ -27,6 +27,12 @@ export interface SearchFilter {
   /** Inclusive `YYYY-MM-DD` bounds on the extracted submission deadline. */
   deadlineFrom?: string;
   deadlineTo?: string;
+  /**
+   * At least this many whole days left before the deadline, counted from today in
+   * the configured time zone: 0 = closes today or later. The service turns it into
+   * a lower deadline bound, so a TOR without a stated deadline never matches.
+   */
+  minDaysLeft?: number;
   /** Inclusive `YYYY-MM-DD` bounds on `announcedAt` — the agency's date, never ingestion time. */
   from?: string;
   to?: string;
@@ -109,6 +115,12 @@ export function buildSearchQuerySchema(config: SearchConfig) {
     maxBudget: baht.optional(),
     deadlineFrom: isoDate.optional(),
     deadlineTo: isoDate.optional(),
+    minDaysLeft: z
+      .string()
+      .regex(/^\d+$/)
+      .transform(Number)
+      .pipe(z.number().int().min(0).max(config.maxDaysLeft))
+      .optional(),
     from: isoDate.optional(),
     to: isoDate.optional(),
     minMatch: matchBound.optional(),
@@ -138,6 +150,7 @@ export function parseSearchQuery(query: unknown, config: SearchConfig): SearchRe
       maxBudget: parsed.maxBudget,
       deadlineFrom: parsed.deadlineFrom,
       deadlineTo: parsed.deadlineTo,
+      minDaysLeft: parsed.minDaysLeft,
       from: parsed.from,
       to: parsed.to,
       minMatch: parsed.minMatch,

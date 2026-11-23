@@ -253,6 +253,8 @@ const schema = z.object({
   SEARCH_INDEX_NAME: z.string().min(1).default("tors_text"),
   /** Most ids one keyword query may hand to the filter; bounds the $in list. */
   SEARCH_MAX_HITS: z.coerce.number().int().positive().default(1000),
+  /** Largest `minDaysLeft` a search accepts: "at least N days left to prepare" (TOR-203). */
+  SEARCH_MAX_DAYS_LEFT: z.coerce.number().int().positive().default(365),
   /** Whose calendar decides "today" — when a deadline has passed. */
   TIME_ZONE: z.string().min(1).default("Asia/Bangkok"),
 
@@ -485,6 +487,7 @@ export interface SearchConfig {
   atlasEnabled: boolean;
   indexName: string;
   maxHits: number;
+  maxDaysLeft: number;
   timeZone: string;
 }
 
@@ -630,6 +633,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       atlasEnabled: parsed.SEARCH_ATLAS_ENABLED,
       indexName: parsed.SEARCH_INDEX_NAME,
       maxHits: parsed.SEARCH_MAX_HITS,
+      maxDaysLeft: parsed.SEARCH_MAX_DAYS_LEFT,
       timeZone: parsed.TIME_ZONE,
     },
     matching: {
