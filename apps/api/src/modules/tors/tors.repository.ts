@@ -210,7 +210,10 @@ function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filt
     // is the next day, exclusive, so a value carrying a time still counts.
     const range: Record<string, string> = {};
     if (criteria.deadlineFrom) range.$gte = criteria.deadlineFrom;
-    if (criteria.deadlineTo) range.$lt = dayAfter(criteria.deadlineTo).toISOString().slice(0, 10);
+    // A lower bound alone would also match a deadline stored as text that
+    // extraction did not turn into a date ("วันที่ 8 ตุลาคม 2569" sorts after
+    // every ISO date); the cap keeps the range to dates.
+    range.$lt = criteria.deadlineTo ? dayAfter(criteria.deadlineTo).toISOString().slice(0, 10) : NO_DATE_AFTER;
     clauses.push({ "fields.deadline.value": range });
   }
   if (criteria.from || criteria.to) {
@@ -234,14 +237,22 @@ function buildFilter(criteria: SearchCriteria, textIds: ObjectId[] | null): Filt
  * Deadlines are ISO strings, so string order is date order.
  */
 function closingOn(today: string): Filter<TorDocument> {
-  return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today } };
+  return { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: NO_DATE_AFTER } };
 }
+
+/**
+ * Exclusive upper bound for an ISO deadline: ":" is the character after "9", so
+ * every "YYYY-MM-DD" sorts below it, while a value that is not a date (Thai text
+ * extraction left as written, or any letter) sorts above it. Such a record never
+ * reads as a deadline far in the future; it falls to the "rest" segment instead.
+ */
+const NO_DATE_AFTER = ":";
 
 /** Within `closingOn(today)`: enough time to prepare (on or after `prepFrom`), or closing sooner. */
 function closingBand(today: string, prepFrom: string | undefined, band: "closing" | "soon"): Filter<TorDocument> {
   if (!prepFrom || prepFrom <= today) return band === "closing" ? closingOn(today) : { _id: { $exists: false } };
   return band === "closing"
-    ? { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: prepFrom } }
+    ? { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: prepFrom, $lt: NO_DATE_AFTER } }
     : { "fields.torStatus.value": "announced", "fields.deadline.value": { $gte: today, $lt: prepFrom } };
 }
 
