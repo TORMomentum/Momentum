@@ -142,6 +142,10 @@
 
 .resultCount { white-space: nowrap; font: 11px var(--data); color: var(--ink-65); }
 
+.exportLink { white-space: nowrap; font: 12px var(--body); color: var(--blue); text-decoration: underline; }
+
+.exportLink:hover { text-decoration: none; }
+
 .resultList { display: flex; flex-direction: column; }
 
 .resultRow {

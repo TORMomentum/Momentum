@@ -13,6 +13,7 @@ import {
   hasActiveFilters,
   SEARCH_STATES,
   toSearchQuery,
+  exportHref,
   DAYS_LEFT_PRESETS,
   MAX_DAYS_LEFT,
   parseDaysLeftInput,
@@ -502,6 +503,11 @@ export function SearchView({
             aria-label="ค้นหา TOR"
           />
           {results && <span className={styles.resultCount}>{results.total} ผลลัพธ์</span>}
+          {results && results.total > 0 && (
+            <a className={styles.exportLink} href={exportHref(filters)} download>
+              ดาวน์โหลด CSV
+            </a>
+          )}
         </form>
 
         <AppliedFilters filters={applied} onClearAll={clearFilters} />
