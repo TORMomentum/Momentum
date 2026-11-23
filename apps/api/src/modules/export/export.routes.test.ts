@@ -1,7 +1,7 @@
 import "../../test/env.js";
 
 import express from "express";
-import { type Db } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ExtractedField, TorFields } from "@tor-radar/shared";
@@ -205,6 +205,22 @@ describe("GET /export/tors.csv (TOR-69)", () => {
     expect(await stateOf("")).toEqual({ [open]: "เปิดรับข้อเสนอ", [awarded]: "ประกาศผู้ชนะแล้ว" });
     expect(await stateOf("open=true")).toEqual({ [open]: "เปิดรับข้อเสนอ" });
     expect(await stateOf("state=awarded")).toEqual({ [awarded]: "ประกาศผู้ชนะแล้ว" });
+  });
+
+  it("fills empty text cells and explains an empty deadline by the state, leaving date columns empty (spec §8)", async () => {
+    const awaiting = await seed({ deadline: null });
+    const closed = await seed({ deadline: null, stage: { code: "D1", kind: "cancelled", on: "2026-11-20" } });
+    await tors(db).updateOne({ _id: new ObjectId(awaiting) }, { $set: { "fields.agency.raw": "", announcedAt: null } });
+    const [header, ...rows] = parseCsv((await exportCsv("")).text.replace(/^\uFEFF/, ""));
+    const byId = Object.fromEntries(rows.map((row) => [row[header!.indexOf("หน้า TOR")]!.split("/").pop(), Object.fromEntries(header!.map((name, i) => [name, row[i]]))]));
+    expect(byId[awaiting]).toMatchObject({
+      หน่วยงาน: "ไม่พบข้อมูล",
+      วันที่ประกาศ: "",
+      กำหนดยื่นข้อเสนอ: "",
+      กำหนดยื่นข้อเสนอตามเอกสาร: "ยังไม่มีประกาศเชิญชวน",
+      สถานะ: "รอประกาศเชิญชวน",
+    });
+    expect(byId[closed]).toMatchObject({ กำหนดยื่นข้อเสนอ: "", กำหนดยื่นข้อเสนอตามเอกสาร: "ไม่พบข้อมูล", สถานะ: "ยกเลิกแล้ว" });
   });
 
   it("refuses a malformed filter, and a match filter without a signed-in vendor", async () => {
