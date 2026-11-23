@@ -39,6 +39,7 @@ describe("e-GP project stages (TOR-204)", () => {
     expect(parseProjectStages({ response: { responseCode: 0 }, data: { greenBookAnnouncementTypeLinkDto: null } }, TZ)).toEqual([]);
     expect(parseProjectStages(null, TZ)).toEqual([]);
     expect(torAnnouncedOn([])).toBeNull();
+    expect(torAnnouncedOn([{ type: "BOQ", description: null, announcedOn: "2026-10-01" }])).toBeNull();
   });
 
   it("dates the draft TOR from B3 too, and keeps lower-case codes such as the bid summary (sampled 2026-11-23)", () => {
@@ -65,5 +66,18 @@ describe("e-GP project stages (TOR-204)", () => {
     const url = new URL(projectStagesUrl("69109234234"));
     expect(url.pathname).toBe("/egp-oann10-service/pb/a-egp-allt-project/announcement/greenBook");
     expect(Object.fromEntries(url.searchParams)).toEqual({ mode: "LINK", tempProjectId: "69109234234", pageAnnounceType: "B0" });
+  });
+
+  it("dates a TOR with no draft stage from its first invitation, and a draft still wins when listed (sampled 2026-11-23)", () => {
+    // A project that skipped the draft hearing: its TOR went out with the invitation. Listed out of order,
+    // cancelled and invited again: the first invitation is the day.
+    const noDraft = [
+      { type: "D0", description: "ประกาศเชิญชวน", announcedOn: "2026-11-02" },
+      { type: "BOQ", description: null, announcedOn: "2026-10-20" },
+      { type: "D1", description: "ยกเลิกประกาศเชิญชวน", announcedOn: "2026-10-25" },
+      { type: "D0", description: "ประกาศเชิญชวน", announcedOn: "2026-10-20" },
+    ];
+    expect(torAnnouncedOn(noDraft)).toBe("2026-10-20");
+    expect(torAnnouncedOn([...noDraft, { type: "B0", description: null, announcedOn: "2026-10-28" }])).toBe("2026-10-28");
   });
 });

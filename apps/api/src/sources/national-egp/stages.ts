@@ -45,8 +45,22 @@ export function parseProjectStages(json: unknown, timeZone: string): ProjectStag
  */
 export const DRAFT_TOR_CODES: readonly string[] = ["B0", "B3"];
 
-/** The day the draft TOR was announced, if e-GP lists one; the earliest when it lists more than one. */
-export function torAnnouncedOn(stages: ProjectStage[]): string | null {
-  const days = stages.filter((stage) => DRAFT_TOR_CODES.includes(stage.type)).map((stage) => stage.announcedOn);
+/**
+ * e-GP's code for the invitation to bid, `D0` "ประกาศเชิญชวน". A project that skips the draft-TOR hearing
+ * publishes its TOR first with this announcement (sampled 2026-11-23: 111 of 240 projects list no draft).
+ */
+export const INVITATION_CODE = "D0";
+
+const earliestOf = (stages: ProjectStage[], codes: readonly string[]): string | null => {
+  const days = stages.filter((stage) => codes.includes(stage.type)).map((stage) => stage.announcedOn);
   return days.length > 0 ? days.sort()[0]! : null;
+};
+
+/**
+ * The day the TOR was first published: the draft TOR's day when e-GP lists one (the earliest when it
+ * lists more than one); otherwise, for a project with no draft-TOR stage, the day of its first
+ * invitation, which is when that TOR went out. Null when e-GP lists neither.
+ */
+export function torAnnouncedOn(stages: ProjectStage[]): string | null {
+  return earliestOf(stages, DRAFT_TOR_CODES) ?? earliestOf(stages, [INVITATION_CODE]);
 }

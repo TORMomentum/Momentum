@@ -262,7 +262,7 @@ async function importProject(target: Target) {
   const base = { target, source: found.ref, knownFields };
 
   // From the invitation list or a D0 item the listed date is not the TOR's. e-GP's project page lists
-  // the draft TOR's own date (TOR-204); without it the TOR has no announcement date at all.
+  // the draft TOR's own date (TOR-204), or, when the project had no draft hearing, its first invitation's.
   let torPublishedAt = datesTor ? listedOn : undefined;
   if (!torPublishedAt) {
     try {
