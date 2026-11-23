@@ -29,6 +29,11 @@ export interface MatchedTor {
   reasons: string[];
   /** Absolute link to the TOR detail page. */
   url: string;
+  /**
+   * Where the project stands, when its stages are known (TOR-238): a draft-stage TOR says the vendor has
+   * time to prepare. Our wording, not the source's.
+   */
+  stageNote?: string;
 }
 
 export interface MatchEmailInput {
@@ -190,6 +195,11 @@ function torCard(tor: MatchedTor, now: Date, primary: boolean): string {
         </table>
         ${matchMeter(tor.matchPercent)}
 
+        ${
+          tor.stageNote
+            ? `<div style="margin-top:14px"><span style="display:inline-block;font-family:${FONT};font-size:11px;font-weight:600;color:${BRAND.blueDark};background:${BRAND.blueWash};border-radius:3px;padding:3px 8px">${escapeHtml(tor.stageNote)}</span></div>`
+            : ""
+        }
         <div style="font-family:${FONT};font-size:16px;font-weight:600;line-height:1.55;color:${BRAND.ink};margin:16px 0 12px">
           ${escapeHtml(tor.title)}
         </div>
@@ -327,6 +337,7 @@ export function renderMatchEmail(input: MatchEmailInput): RenderedEmail {
     ``,
     ...tors.flatMap((tor) => [
       `[จับคู่ ${tor.matchPercent}%] ${tor.reference}`,
+      ...(tor.stageNote ? [tor.stageNote] : []),
       tor.title,
       `${tor.agency} · ${tor.budgetThb === null ? "ไม่ระบุงบประมาณ" : formatBaht(tor.budgetThb)} · ${textDeadline(tor.deadline, now)}`,
       ...(tor.reasons.length ? [`ทำไมงานนี้ตรงกับคุณ: ${tor.reasons.slice(0, 3).join(", ")}`] : []),
@@ -341,4 +352,160 @@ export function renderMatchEmail(input: MatchEmailInput): RenderedEmail {
   ].join("\n");
 
   return { subject: matchSubject(tors.length), html, text };
+}
+
+/** One stage move of a TOR the vendor follows (TOR-239). */
+export interface StageUpdate {
+  reference: string;
+  title: string;
+  agency: string;
+  /** The headline of the move, ours: "ประกาศเชิญชวนแล้ว", "ประกาศผู้ชนะแล้ว", "ยกเลิกประกาศเชิญชวน". */
+  headline: string;
+  /** The stage as the source named it, verbatim (NFR-F7); null when it gave none. */
+  stageName: string | null;
+  /** The stage's announcement day. */
+  on: Date;
+  /** The deadline, when the move is an invitation that states one. */
+  deadline: Date | null;
+  /** Why this vendor hears about it: they were emailed it, or they saved it. */
+  following: "matched" | "bookmarked";
+  url: string;
+}
+
+export interface StageEmailInput {
+  vendorName: string;
+  update: StageUpdate;
+  settingsUrl: string;
+  unsubscribeUrl: string;
+  now?: Date;
+}
+
+/** "อัปเดตโครงการที่คุณติดตาม: ประกาศเชิญชวนแล้ว" */
+export function stageSubject(headline: string): string {
+  return `อัปเดตโครงการที่คุณติดตาม: ${headline}`;
+}
+
+const FOLLOWING_LABELS: Record<StageUpdate["following"], string> = {
+  matched: "คุณได้รับแจ้งโครงการนี้เพราะตรงกับโปรไฟล์ของคุณ",
+  bookmarked: "คุณบันทึกโครงการนี้ไว้",
+};
+
+/**
+ * TOR-239: a project the vendor follows moved to a stage that changes what they do — the invitation (the
+ * deadline is known), a winner, or a cancellation. Same shell as the match email; one project per email.
+ */
+export function renderStageEmail(input: StageEmailInput): RenderedEmail {
+  const now = input.now ?? new Date();
+  const update = input.update;
+  const subject = stageSubject(update.headline);
+  const deadline = update.deadline ? textDeadline(update.deadline, now) : null;
+
+  const html = `<!doctype html>
+<html lang="th">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:${BRAND.page}">
+
+<div style="display:none;font-size:1px;color:${BRAND.page};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden">
+  ${escapeHtml(update.headline)} · ${escapeHtml(update.title)}
+  ${"&#847;&zwnj;&nbsp;".repeat(60)}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BRAND.page}">
+  <tr><td align="center" style="padding:28px 12px">
+
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+           style="width:600px;max-width:100%;background:${BRAND.paper};border:1px solid ${BRAND.line};border-radius:10px">
+
+      <tr><td bgcolor="${BRAND.navy}" style="background:${BRAND.navy};padding:22px 26px;border-radius:10px 10px 0 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-family:${FONT};font-size:15px;font-weight:700;color:#ffffff;letter-spacing:.04em">TOR RADAR</td>
+            <td align="right" style="font-family:${MONO};font-size:9.5px;color:#93a4bd;letter-spacing:.08em">อัปเดตขั้นตอนโครงการ</td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:26px 26px 4px">
+        <div style="font-family:${FONT};font-size:19px;font-weight:700;color:${BRAND.ink};line-height:1.5">
+          ${escapeHtml(update.headline)}
+        </div>
+        <div style="font-family:${FONT};font-size:13px;color:${BRAND.ink70};line-height:1.8;margin-top:8px">
+          สวัสดี${escapeHtml(input.vendorName)} — ${FOLLOWING_LABELS[update.following]} และโครงการมีขั้นตอนใหม่
+        </div>
+      </td></tr>
+
+      <tr><td style="padding:22px 26px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="border:1px solid ${BRAND.line};border-radius:8px;margin-bottom:16px;background:${BRAND.paper}">
+          <tr>
+            <td width="4" bgcolor="${BRAND.blue}" style="width:4px;background:${BRAND.blue};font-size:0;line-height:0">&nbsp;</td>
+            <td style="padding:20px 22px">
+              <div style="font-family:${MONO};font-size:10px;color:${BRAND.ink60};letter-spacing:.06em">${escapeHtml(update.reference)}</div>
+              <div style="font-family:${FONT};font-size:16px;font-weight:600;line-height:1.55;color:${BRAND.ink};margin:10px 0 12px">
+                ${escapeHtml(update.title)}
+              </div>
+              <div style="font-family:${FONT};font-size:12.5px;color:${BRAND.ink70};line-height:1.7;padding-bottom:14px;border-bottom:1px solid ${BRAND.lineSoft}">
+                ${escapeHtml(update.agency)}
+              </div>
+              <div style="font-family:${FONT};font-size:11px;color:${BRAND.ink60};padding-top:14px">ขั้นตอนล่าสุด</div>
+              <div style="font-family:${FONT};font-size:14px;font-weight:600;color:${BRAND.ink};line-height:1.6;margin-top:2px">
+                ${escapeHtml(update.stageName ?? update.headline)} · ${formatThaiDate(update.on)}
+              </div>
+              ${deadline ? `<div style="font-family:${FONT};font-size:13px;color:${BRAND.ink};line-height:1.6;margin-top:6px">${escapeHtml(deadline)}</div>` : ""}
+              <div style="margin-top:16px">
+                <a href="${escapeHtml(update.url)}"
+                   style="display:inline-block;font-family:${FONT};font-size:13px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:5px;background:${BRAND.blue};color:#ffffff;border:1px solid ${BRAND.blue}">
+                  ดูขั้นตอนทั้งหมดของโครงการ →
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:6px 26px 26px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:${BRAND.blueWash};border:1px solid #d6e2f7;border-radius:6px">
+          <tr><td style="padding:14px 16px;font-family:${FONT};font-size:11.5px;color:${BRAND.ink70};line-height:1.8">
+            ขั้นตอนโครงการจากระบบ e-GP —
+            <strong style="color:${BRAND.ink};font-weight:600">ตรวจสอบกับประกาศต้นฉบับก่อนยื่นข้อเสนอเสมอ</strong>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td bgcolor="${BRAND.footer}" style="padding:18px 26px;border-top:1px solid ${BRAND.line};background:${BRAND.footer};font-family:${MONO};font-size:10px;color:${BRAND.ink60};line-height:2;border-radius:0 0 10px 10px">
+        TOR RADAR · แพลตฟอร์มอิสระ ไม่ใช่หน่วยงานราชการ<br>
+        <a href="${escapeHtml(input.settingsUrl)}" style="color:${BRAND.blue};text-decoration:none">ตั้งค่าการแจ้งเตือน</a> ·
+        <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:${BRAND.blue};text-decoration:none">ยกเลิกการรับอีเมล</a> ·
+        PDPA
+      </td></tr>
+
+    </table>
+
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+  const text = [
+    `TOR RADAR`,
+    ``,
+    `สวัสดี${input.vendorName} — ${FOLLOWING_LABELS[update.following]} และโครงการมีขั้นตอนใหม่`,
+    ``,
+    update.headline,
+    update.reference,
+    update.title,
+    update.agency,
+    `ขั้นตอนล่าสุด: ${update.stageName ?? update.headline} · ${formatThaiDate(update.on)}`,
+    ...(deadline ? [deadline] : []),
+    update.url,
+    ``,
+    `ขั้นตอนโครงการจากระบบ e-GP — ตรวจสอบกับประกาศต้นฉบับก่อนยื่นข้อเสนอเสมอ`,
+    ``,
+    `TOR RADAR · แพลตฟอร์มอิสระ ไม่ใช่หน่วยงานราชการ`,
+    `ตั้งค่าการแจ้งเตือน: ${input.settingsUrl}`,
+    `ยกเลิกการรับอีเมล: ${input.unsubscribeUrl}`,
+  ].join("\n");
+
+  return { subject, html, text };
 }
