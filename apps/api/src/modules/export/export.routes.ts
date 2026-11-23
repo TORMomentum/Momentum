@@ -43,6 +43,9 @@ export function buildExportRouter(deps: ExportRouterDeps): Router {
       "X-Export-Total": String(file.total),
       "X-Export-Truncated": String(file.truncated),
     });
+    // The body is CSV served as text/csv with nosniff and as an attachment, so a browser downloads it and
+    // never renders it as HTML; cells are RFC 4180-quoted and formula-guarded in export.csv.ts.
+    // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write -- CSV download, not HTML: text/csv + nosniff + attachment
     res.send(file.csv);
   });
 
