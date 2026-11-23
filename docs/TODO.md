@@ -806,6 +806,8 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
 - [x] A deadline left as text by extraction no longer counts as a future date in the closing segments,
   `minDaysLeft` or `deadlineFrom`. Verified against the Atlas corpus: 7 / 14 / 30 days return 90 / 29 / 1,
   none of them undated
+- [x] Days left can also be typed ("หรือระบุเอง", 0–365) beside the 7 / 14 / 30 presets. Verified on the
+  running app: `/search?minDaysLeft=12` renders the box with 12 and the chip
 - [ ] Extraction leaves some deadlines as Thai text instead of an ISO date; normalise them at extraction
 - [ ] TOR-69 CSV export of the filtered TOR list (F11)
 - [ ] TOR-87 Ingestion-source health per adapter (F12)

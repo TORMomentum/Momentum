@@ -174,3 +174,12 @@ a vendor cannot prepare a bid in that time. The leading "still taking bids" segm
   deadline extraction left as text ("วันที่ 8 ตุลาคม 2569") sorts after every ISO string, so an
   open-ended range used to read it as far in the future; ranges are now capped below `":"`, and such a
   record falls to segment 3. The stored value is untouched (NFR-F7).
+
+## 11. Revision 2026-11-23 — days left can be typed
+
+§9's preset buttons stay (7, 14, 30). Beside them, "หรือระบุเอง" takes any whole number from 0 to
+365 days. It commits on Enter or when the box loses focus, so typing "14" never searches for 1 first.
+An empty box clears the filter; anything else (a fraction, a negative, above 365, text) puts the box
+back to the filter in force. Pressing a preset fills the box with its number. Bid windows on the
+collected corpus are short — on 2026-11-23, 91 open TORs had a deadline, 30 of them 14 days or more
+away and 1 of them 30 — so a reader whose preparation time falls between presets needs the box.
