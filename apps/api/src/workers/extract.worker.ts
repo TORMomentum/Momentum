@@ -21,6 +21,9 @@ import { VaultRepository } from "../modules/vault/vault.repository.js";
 import { VaultService } from "../modules/vault/vault.service.js";
 import { createVaultStorage } from "../adapters/storage.factory.js";
 import { StatsRepository } from "../modules/stats/stats.repository.js";
+import { SourceHealthRepository } from "../modules/sources/source-health.repository.js";
+import { SourceHealthService } from "../modules/sources/source-health.service.js";
+import { createMailer } from "../adapters/mailer.factory.js";
 import { configureLogger, logger } from "../core/logger.js";
 import { installProcessErrorHandlers } from "../core/process-errors.js";
 
@@ -194,6 +197,9 @@ export async function startWorker(
   }
 
   let lastReconcile = 0;
+  // Source health (TOR-87): checked here because this worker always runs, so a stopped source is noticed.
+  const sourceHealth = new SourceHealthService({ repo: new SourceHealthRepository(db), config, mailer: createMailer(config) });
+  let lastSourceCheck = 0;
   logger.info("worker_started", { pollMs: config.jobPollMs });
 
   for (;;) {
@@ -215,6 +221,15 @@ export async function startWorker(
         logger.error("vault_sweep_failed", { error: error instanceof Error ? error.message : "unknown" });
       }
       lastReconcile = Date.now();
+    }
+
+    if (Date.now() - lastSourceCheck > config.sources.checkIntervalMs) {
+      try {
+        await sourceHealth.checkSources();
+      } catch (error) {
+        logger.error("source_check_failed", { error: error instanceof Error ? error.message : "unknown" });
+      }
+      lastSourceCheck = Date.now();
     }
 
     const result = await runCycle(deps, resolved);
