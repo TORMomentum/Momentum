@@ -79,6 +79,9 @@ export const STAGE_KINDS: Readonly<Record<string, StageKind>> = {
   D0: "invitation",
   // ประกาศรายชื่อผู้ชนะการเสนอราคา: 69029401277, 69119388625.
   W0: "awarded",
+  // เปลี่ยนแปลงประกาศรายชื่อผู้ชนะการเสนอราคา, after a W0: the winner announcement amended, still a winner.
+  // 69109402570 (W0 2026-11-11, W2 2026-11-19).
+  W2: "awarded",
   // ยกเลิกประกาศเชิญชวน: 69069300968, 69099528942.
   D1: "cancelled",
 };
