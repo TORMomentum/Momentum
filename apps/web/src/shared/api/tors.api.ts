@@ -124,6 +124,8 @@ export interface TorDetail {
   /** The project's published stages as the source lists them, and the newest (TOR-205, shown by TOR-206). */
   stageHistory?: ProjectStageEntry[];
   stage?: { code: string; kind: StageKind; on: string } | null;
+  /** When the stages were last read from the source (TOR-206); null before the first read. */
+  stagesCheckedAt?: string | null;
   provenance: {
     ocrModel: string;
     extractModel: string;

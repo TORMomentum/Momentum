@@ -245,6 +245,8 @@ export class TorsService {
       // The project's published stages as the source lists them, and the badge's state (TOR-205).
       stageHistory: record.stageHistory,
       stage: record.stage,
+      // How fresh the stages are: the detail page says when they were last read (TOR-206).
+      stagesCheckedAt: record.stagesCheckedAt,
       torState: torStateOfRow(
         {
           torStatus: { value: typeof record.fields.torStatus?.value === "string" ? record.fields.torStatus.value : null },
