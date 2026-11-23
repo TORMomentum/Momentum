@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CSV_BOM, csvCell, csvLine, EXPORT_HEADER, exportRow } from "./export.csv.js";
+import { CSV_BOM, csvCell, csvLine, EXPORT_HEADER, exportRow, stateLabel } from "./export.csv.js";
 
 describe("CSV cells (RFC 4180)", () => {
   it("quotes commas, quotes and line breaks, and leaves plain text alone", () => {
@@ -34,6 +34,7 @@ describe("one exported row", () => {
     announcedAt: "2026-10-07T00:00:00.000Z",
     confidenceLevel: "medium",
     unverified: true,
+    open: true,
     title: { raw: "ประกวดราคาจ้างพัฒนาระบบ", verified: true },
     referenceNo: { raw: "69109019390", verified: true },
     agency: { raw: "การรถไฟแห่งประเทศไทย", value: "การรถไฟแห่งประเทศไทย", verified: true },
@@ -42,42 +43,61 @@ describe("one exported row", () => {
     deadline: { raw: "๓๐ พฤศจิกายน ๒๕๖๙", value: "2026-11-30", verified: true },
     torStatus: { value: "announced", verified: false },
   };
-  const provenance = {
-    ocrModel: "documentai",
-    extractModel: "gemini-x",
-    modelVersion: "gemini-x-001",
-    extractedAt: "2026-11-23T08:00:00.000Z",
-    thresholdsVersion: "1",
+  const details = {
+    provenance: {
+      ocrModel: "documentai",
+      extractModel: "gemini-x",
+      modelVersion: "gemini-x-001",
+      extractedAt: "2026-11-23T08:00:00.000Z",
+      thresholdsVersion: "1",
+    },
+    source: "https://process5.gprocurement.go.th/egp-agpc01-web/announcement?projectId=69109019390",
   };
+  const byHeader = (row: Array<string | number | null>) => Object.fromEntries(EXPORT_HEADER.map((header, i) => [header, row[i]]));
 
-  it("lines up with the header, keeps values as extracted, and links to the source", () => {
-    const row = exportRow(item, provenance, "https://tor-radar.example");
+  it("lines up with the header, in Thai, keeps values as extracted, and links to the source", () => {
+    const row = exportRow(item, details, "https://tor-radar.example");
     expect(row).toHaveLength(EXPORT_HEADER.length);
-    const byHeader = Object.fromEntries(EXPORT_HEADER.map((header, i) => [header, row[i]]));
-    expect(byHeader).toMatchObject({
-      รหัสระเบียน: item.id,
+    expect(byHeader(row)).toEqual({
       เลขที่โครงการ: "69109019390",
+      ชื่อโครงการ: "ประกวดราคาจ้างพัฒนาระบบ",
+      หน่วยงาน: "การรถไฟแห่งประเทศไทย",
       หมวดหมู่: "ซื้อคอมพิวเตอร์และอุปกรณ์ไอที",
       หมวดหมู่ตามเอกสาร: "โครงการจ้างพัฒนาระบบ",
       "งบประมาณ (บาท)": 96500000,
-      งบประมาณตามเอกสาร: "96,500,000.00",
       กำหนดยื่นข้อเสนอ: "2026-11-30",
       กำหนดยื่นข้อเสนอตามเอกสาร: "๓๐ พฤศจิกายน ๒๕๖๙",
+      สถานะ: "เปิดรับข้อเสนอ",
       วันที่ประกาศ: "2026-10-07",
-      ระดับความมั่นใจ: "medium",
+      ระดับความมั่นใจ: "กลาง",
       ยังไม่ยืนยันการสกัด: "ใช่",
-      ฟิลด์ที่ยังไม่ยืนยัน: "category;torStatus",
-      โมเดลที่สกัด: "gemini-x",
-      เวอร์ชันโมเดล: "gemini-x-001",
+      ฟิลด์ที่ยังไม่ยืนยัน: "หมวดหมู่; สถานะ",
+      "โมเดล AI ที่สกัด": "gemini-x (gemini-x-001)",
       เวลาที่สกัด: "2026-11-23T08:00:00.000Z",
       "หน้า TOR": "https://tor-radar.example/tors/6ac65474caacd671072bf14b",
       เอกสารต้นฉบับ: "https://tor-radar.example/tors/6ac65474caacd671072bf14b/document",
+      ประกาศต้นทาง: details.source,
     });
   });
 
-  it("leaves provenance empty rather than inventing it", () => {
-    const row = exportRow({ ...item, announcedAt: null }, undefined, "https://tor-radar.example");
-    const byHeader = Object.fromEntries(EXPORT_HEADER.map((header, i) => [header, row[i]]));
-    expect(byHeader).toMatchObject({ โมเดลที่สกัด: "", เวอร์ชันโมเดล: "", เวลาที่สกัด: "", วันที่ประกาศ: "" });
+  it("names the model once when the version adds nothing, and leaves what is unknown empty", () => {
+    const same = { ...details, provenance: { ...details.provenance, modelVersion: "gemini-x" } };
+    expect(byHeader(exportRow(item, same, "https://tor-radar.example"))["โมเดล AI ที่สกัด"]).toBe("gemini-x");
+    expect(byHeader(exportRow({ ...item, announcedAt: null }, undefined, "https://tor-radar.example"))).toMatchObject({
+      "โมเดล AI ที่สกัด": "",
+      เวลาที่สกัด: "",
+      วันที่ประกาศ: "",
+      ประกาศต้นทาง: "",
+    });
+  });
+
+  it("words the state exactly as the badge on /search does", () => {
+    const at = (torStatus: string, open: boolean, deadline: string | null) =>
+      stateLabel({ open, torStatus: { value: torStatus, verified: true }, deadline: { value: deadline, verified: true } });
+    expect(at("announced", true, "2026-11-30")).toBe("เปิดรับข้อเสนอ");
+    expect(at("announced", true, null)).toBe("รอประกาศเชิญชวน");
+    expect(at("announced", false, "2026-01-01")).toBe("ปิดรับแล้ว");
+    expect(at("awarded", false, "2026-01-01")).toBe("ประกาศผู้ชนะแล้ว");
+    expect(at("cancelled", false, null)).toBe("ยกเลิกแล้ว");
   });
 });

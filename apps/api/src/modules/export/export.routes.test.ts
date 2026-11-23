@@ -152,7 +152,9 @@ describe("GET /export/tors.csv (TOR-69)", () => {
       expect(response.status, query).toBe(200);
       const rows = parseCsv(text.replace(/^\uFEFF/, ""));
       expect(rows[0]).toEqual([...EXPORT_HEADER]);
-      expect(rows.slice(1).map((row) => row[0]), query).toEqual(await listedIds(query));
+      // Rows carry their TOR page link; the id at its end is the record.
+      const exported = rows.slice(1).map((row) => row[EXPORT_HEADER.indexOf("หน้า TOR")]!.split("/").pop());
+      expect(exported, query).toEqual(await listedIds(query));
     }
   });
 
@@ -182,7 +184,10 @@ describe("GET /export/tors.csv (TOR-69)", () => {
     const [header, row] = parseCsv(text.replace(/^\uFEFF/, ""));
     const byHeader = Object.fromEntries(header!.map((name, i) => [name, row![i]]));
     expect(byHeader["ชื่อโครงการ"]).toBe(`'=cmd|"/c calc"!A1`);
-    expect(byHeader["โมเดลที่สกัด"]).toBe("gemini-test");
+    expect(byHeader["โมเดล AI ที่สกัด"]).toBe("gemini-test (gemini-test-001)");
+    expect(byHeader["สถานะ"]).toBe("รอประกาศเชิญชวน");
+    expect(byHeader["ระดับความมั่นใจ"]).toBe("สูง");
+    expect(byHeader["ประกาศต้นทาง"]).toBe("https://webportal.bangkok.go.th/tor.pdf");
     expect(byHeader["หน้า TOR"]).toBe(`${ORIGIN}/tors/${id}`);
     expect(byHeader["เอกสารต้นฉบับ"]).toBe(`${ORIGIN}/tors/${id}/document`);
     // The contact line is extracted but never listed publicly; the export must not carry it either.
