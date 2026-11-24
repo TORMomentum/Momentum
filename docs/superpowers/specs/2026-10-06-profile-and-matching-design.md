@@ -569,4 +569,25 @@ less competition) needs winner data and is not built.
   a person, as in the scorer. Past work is shown as a fact, the field's median stated budget beside the vendor's largest past
   project value, with no verdict: no rule says how much past work a TOR needs, and the extraction does not read one.
 - **Not built.** A "gap" for past work by field (past projects carry no category), and the less-competitive
-  categories (TOR-284, needs the winner announcements of TOR-221).
+  categories (TOR-284, needs the winner announcements of TOR-221). _Less-competitive categories are built in §15._
+
+## 15. Revision 10 — the winners' spread by category on the path, 2026-11-25 (TOR-284)
+
+TOR-221's winner announcements and TOR-223's per-category figures
+([competition design](2026-11-25-competition-by-category-design.md)) are now in, so the path shows the last of what
+the 2026-10-15 review asked for.
+
+- **What it shows.** `winnerSpread` on `GET /me/path`: the field's own TOR categories (the union of `torCategories`
+  of its leaves, so a group shows several and a single kind of work usually one) with awarded projects, different
+  winners and the share the top `COMPETITION_TOP_WINNERS` winners took. Widest spread (lowest share) first.
+- **Same figures as the dashboard.** They come from `competitionByCategory`, so a category reads the same on both
+  screens, with the same bar for being comparable (`PEER_MIN_N` awarded projects). A category under it is counted as
+  "not comparable" and never given a share to rank by.
+- **Why not "less competitive".** The ticket's name is shorthand. Bidders are out of scope (FR-B-2), so how many
+  firms bid is not known; what is known is how the wins were spread. The screen says so, says it does not mean a
+  category is easy or hard to enter, and no winner is named (NFR-F5, FR-B-5).
+- **No new stored data.** The target is still only in the URL; the figures are read per request.
+- **Open.** The categories are TOR categories, coarser than a leaf of work (the road leaf maps to one category, shared
+  with other work in it), so a share describes the category and not that exact kind of work. A catch-all category such as
+  จ้างเหมาบริการ (40 awarded projects on 2026-11-25, which "it" also maps to) mixes many kinds of work, and its share is the
+  least informative of them.

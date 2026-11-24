@@ -544,7 +544,10 @@ Branch `feat/tor-224-company-path`._
       in the URL and not stored
 - [x] **TOR-283 — gap analysis against the profile** — `GET /me/path`: what the field's TORs ask for (certifications,
       registrations) and whether the vendor holds it; "not stated" is never "missing"
-- [ ] **TOR-284 — less-competitive categories** — its inputs are in: winner announcements on 254 awarded projects (TOR-221) and the stage key (TOR-204/205)
+- [x] **TOR-284 — winners' spread by category on the path** (spec profile-and-matching §15): `winnerSpread` on `GET /me/path`, the field's own TOR
+      categories widest spread first, from the same figures as the dashboard; a path view section. Route tests on real MongoDB
+  - [ ] shown as the winners' spread, not as "less competitive": bidders are out of scope, so how many bid is not known
+  - [ ] categories are TOR categories, coarser than a leaf of work; not seen in a browser
 - [ ] No past-work gap by field: past projects carry no category and the extraction reads no experience requirement
 - [ ] The sample is the newest `PATH_SAMPLE_CAP` TORs of the field; a thin field says so but is not widened
 - [ ] The sample reads every classified TOR id of the field before capping (so the cap follows announcement date); not timed on a real-size corpus
