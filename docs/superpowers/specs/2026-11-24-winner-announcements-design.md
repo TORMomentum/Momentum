@@ -88,6 +88,18 @@ and time caps). e-GP's search page is behind Cloudflare Turnstile, and the bidde
 - The four classed individual include a university and a school: the rule keeps an unplaceable name out, and
   widening it is a later change, never a guess at publication time.
 
+## 9. Revision 2026-11-25 — price against the budget (TOR-278)
+
+- The bid-result block gains one row, "เทียบกับงบประมาณ": the announcement's price against the budget the TOR
+  states, as baht and as a percentage of that budget, "ต่ำกว่า" (below), "สูงกว่า" (above) or "เท่ากับ" (equal).
+  It is computed in the browser from two values already on the page (`award.price`, `fields.budget`); no API change.
+- Shown only when both are real, positive numbers. It inherits the doubt: marked "ยังไม่ยืนยัน" when either the
+  award or the budget is unconfirmed. Both figures are repeated under it with where each came from.
+- The budget is labelled "งบประมาณ… ตามที่สกัดจาก TOR", not "ราคากลาง". The extraction reads one budget field and does
+  not tell the median price from the project's budget, so the row does not claim which it is.
+- Arithmetic only. The row says nothing about whether a gap is good or bad (NFR-F5). The average bid and the bidder
+  list the ticket also named are out of scope with the bidders (§3, decision 1).
+
 ## 8. Revision 2026-11-24 — public bodies
 
 - `winnerKindOf` also names a public body or school by how its name begins (มหาวิทยาลัย, โรงเรียน, วิทยาลัย,

@@ -291,7 +291,7 @@ export function TorRecordView({
           referenceNo={previewProps.referenceNo}
         />
 
-        <AwardPanel award={tor.award} originals={originals} title={previewProps.title} referenceNo={previewProps.referenceNo} />
+        <AwardPanel award={tor.award} budget={fields.budget} originals={originals} title={previewProps.title} referenceNo={previewProps.referenceNo} />
 
         <BiddingPanel
           evaluationMethod={fields.evaluationMethod}
