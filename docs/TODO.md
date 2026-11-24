@@ -737,9 +737,13 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
       (`docs/corpus/BENCHMARK.md`, NFR-F3). Promoted from `OPEN_VALUES` to real config in TOR-89.
-- [ ] O2 — `MIN_BID_WINDOW_DAYS`; checklist C2 reports "not evaluated" until then
-- [ ] O3 — `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`
-- [ ] O4 — IQR or ZSCORE as the active anomaly method
+- [x] O2 — `MIN_BID_WINDOW_DAYS` = 8 (TOR-302), 10th percentile of 347 confirmed windows; checklist C2 now evaluates
+- [x] O3 — `MIN_SCOPE_CHARS` = 112, `MIN_SCOPE_SECTIONS` = 6 (TOR-303), 10th percentiles of 986 and 175 confirmed values; C3 now evaluates
+- [x] O4 — IQR stays the active anomaly method (TOR-304): Z-score flagged 14 of 737 and none IQR missed
+- [x] Derivations recorded in `core/config.ts` and the quality-checklist spec §8 (TOR-305); `tools/calibrate_open_values.mts` re-measures
+  - [ ] the 10th-percentile rule is a convention, not a measured-against-truth cut: it fails about a tenth of TORs by construction. Review it before the thresholds are quoted publicly
+  - [ ] `MIN_SCOPE_CHARS` measures the AI's scope summary, a proxy for the scope itself; `scopeItems` exists for 175 of 1028 TORs (older records have none)
+  - [ ] not seen in a browser; API route tests were not run against a database
 
 ## 3b. Carried debt — small, keeps costing time
 
