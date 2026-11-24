@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "./config.js";
+import { loadConfig, OPEN_VALUES } from "./config.js";
 
 const base = {
   MONGO_URL: "mongodb://mongo:27017/tor_radar",
@@ -149,6 +149,17 @@ describe("loadConfig", () => {
     expect(loadConfig({ ...base, COMPETITION_TOP_WINNERS: "5" }).stats.competitionTopWinners).toBe(5);
     expect(() => loadConfig({ ...base, COMPETITION_TOP_WINNERS: "0" })).toThrow();
     expect(() => loadConfig({ ...base, COMPETITION_TOP_WINNERS: "-1" })).toThrow();
+  });
+
+  it("carries the checklist thresholds TOR-200 settled, and lets each be overridden", () => {
+    expect(loadConfig(base).checklist).toEqual({ minBidWindowDays: 8, minScopeChars: 112, minScopeSections: 6 });
+    expect(loadConfig({ ...base, MIN_BID_WINDOW_DAYS: "14", MIN_SCOPE_CHARS: "150", MIN_SCOPE_SECTIONS: "10" }).checklist)
+      .toEqual({ minBidWindowDays: 14, minScopeChars: 150, minScopeSections: 10 });
+    expect(() => loadConfig({ ...base, MIN_SCOPE_SECTIONS: "0" })).toThrow();
+  });
+
+  it("has no open values left", () => {
+    expect(OPEN_VALUES).toEqual([]);
   });
 
   it("carries the budget sanity bounds", () => {

@@ -25,7 +25,7 @@ function dashboard(overrides: Partial<DashboardPayload> = {}): DashboardPayload 
     ],
     points: [{ id: "tor-1", category: "งานก่อสร้าง", month: "2026-09", budget: 1000, verdict: { kind: "normal" }, confidence: 0.9, verified: true, modelVersion: "model-1" }],
     bounds: [{ category: "งานก่อสร้าง", month: "2026-09", n: 8, q1: 100, q3: 900, lowBound: 0, highBound: 1000, eligible: true }],
-    rule: { method: "IQR", iqrMultiplier: 1.5, zScoreLimit: 3, peerMinN: 8, windowMonths: 12, cohortTimezone: "Asia/Bangkok" },
+    rule: { method: "IQR", iqrMultiplier: 1.5, zScoreLimit: 3, peerMinN: 8, windowMonths: 12, cohortTimezone: "Asia/Bangkok", checklist: { minBidWindowDays: 8, minScopeChars: 112, minScopeSections: 6 } },
     meta: { lastIntakeAt: "2026-09-01T00:00:00.000Z", statsComputedAt: "2026-09-01T00:00:00.000Z", stale: false, corpusSize: 1 },
     checklist: null,
     ...overrides,

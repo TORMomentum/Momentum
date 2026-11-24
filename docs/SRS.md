@@ -401,7 +401,7 @@ Covers feature **F8**. The checklist measures how completely a TOR specifies its
 | C4 | Qualifications stated | At least one qualification was extracted and mapped to the taxonomy | — |
 | C5 | Budget within peer norm | The budget is unflagged, or the peer group is smaller than PEER_MIN_N | Reuses §4.5.1 |
 
-Until MIN_BID_WINDOW_DAYS is calibrated against real data, C2 shall report "not evaluated" rather than a pass or a fail.
+C2 shall report "not evaluated", rather than a pass or a fail, when the announcement date or a confirmed deadline is missing. MIN_BID_WINDOW_DAYS was calibrated against the collected corpus on 2026-11-24 (§8 O2).
 
 ## 4.7 FR-G — Admin Tools
 
@@ -513,9 +513,9 @@ Four values depend on data the team does not yet have.
 | # | Open point | Used by | Settled by |
 | :---- | :---- | :---- | :---- |
 | O1 | T_low and T_high | §4.2.1 | The accuracy measurement of NFR-F3 |
-| O2 | MIN_BID_WINDOW_DAYS | §4.6.1 C2 | Calibration against the collected corpus. Until then C2 reports "not evaluated" |
-| O3 | MIN_SCOPE_CHARS, MIN_SCOPE_SECTIONS | §4.6.1 C3 | Calibration against the collected corpus |
-| O4 | Whether IQR or ZSCORE is the active method | §4.5.1 | Comparison of both on real budget data |
+| O2 | MIN_BID_WINDOW_DAYS | §4.6.1 C2 | **Settled 2026-11-24 (TOR-200): 8 days**, the 10th percentile of the collected corpus. C2 reports "not evaluated" only when a date is missing or unconfirmed |
+| O3 | MIN_SCOPE_CHARS, MIN_SCOPE_SECTIONS | §4.6.1 C3 | **Settled 2026-11-24 (TOR-200): 112 characters and 6 requirements**, each the 10th percentile of the collected corpus |
+| O4 | Whether IQR or ZSCORE is the active method | §4.5.1 | **Settled 2026-11-24 (TOR-200): IQR.** Z-score flagged none that IQR did not, and cannot flag at all in a peer group under 11 |
 
 ---
 

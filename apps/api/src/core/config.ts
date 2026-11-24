@@ -232,7 +232,17 @@ const schema = z.object({
   BUDGET_MAX_THB: z.coerce.number().positive().default(100_000_000_000),
 
 
-  // Statistics (Dashboard anomaly rule). ANOMALY_METHOD remains open value O4.
+  // Checklist C2 and C3 (SRS §4.6.1), set in TOR-200 from the collected corpus on 2026-11-24. Each is the
+  // 10th percentile of its own measure, so a TOR that fails sits in the lowest tenth of what was collected.
+  // The measurements and their limits are in docs/superpowers/specs/2026-10-06-quality-checklist-design.md §8.
+  /** Calendar days from the announcement to the bid deadline. The corpus's 10th percentile (and its mode). */
+  MIN_BID_WINDOW_DAYS: z.coerce.number().int().nonnegative().default(8),
+  /** Characters in the AI-read scope summary. The 10th percentile of 986 verified summaries. */
+  MIN_SCOPE_CHARS: z.coerce.number().int().positive().default(112),
+  /** Concrete requirements the scope lists. The 10th percentile of 175 verified counts. */
+  MIN_SCOPE_SECTIONS: z.coerce.number().int().positive().default(6),
+
+  // Statistics (Dashboard anomaly rule). ANOMALY_METHOD was settled as IQR in TOR-200 (spec §8).
   PEER_GROUP_WINDOW_MONTHS: z.coerce.number().int().positive().default(12),
   PEER_MIN_N: z.coerce.number().int().positive().default(8),
   /** Competition by category (TOR-280): how many of the most frequent winners the "top winners' share" counts. */
@@ -482,6 +492,8 @@ export interface Config {
   thresholdsVersion: string;
   budgetMinThb: number;
   budgetMaxThb: number;
+  /** Quality-checklist thresholds (C2, C3). Null would leave the check "not evaluated". */
+  checklist: { minBidWindowDays: number; minScopeChars: number; minScopeSections: number };
   stats: {
     peerWindowMonths: number;
     peerMinN: number;
@@ -540,16 +552,11 @@ export interface SearchConfig {
 /**
  * Values awaiting measurement or calibration (SRS §8). They are declared here so
  * no later slice writes them as literals, and are read only once settled.
- * O1 (T_LOW / T_HIGH) is closed — measured by TOR-18, now a real config field.
- * O2 MIN_BID_WINDOW_DAYS · O3 MIN_SCOPE_CHARS / MIN_SCOPE_SECTIONS
- * O4 ANOMALY_METHOD (IQR or ZSCORE)
+ * All four are closed. O1 (T_LOW / T_HIGH) was measured by TOR-18; O2 MIN_BID_WINDOW_DAYS,
+ * O3 MIN_SCOPE_CHARS / MIN_SCOPE_SECTIONS and O4 ANOMALY_METHOD (IQR) by TOR-200 on 2026-11-24, with the
+ * derivations in docs/superpowers/specs/2026-10-06-quality-checklist-design.md §8. A new open value goes here.
  */
-export const OPEN_VALUES = [
-  "MIN_BID_WINDOW_DAYS",
-  "MIN_SCOPE_CHARS",
-  "MIN_SCOPE_SECTIONS",
-  "ANOMALY_METHOD",
-] as const;
+export const OPEN_VALUES = [] as const;
 
 function parseTrustProxy(value: string): false | number | string {
   if (value.toLowerCase() === "false") return false;
@@ -671,6 +678,11 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     thresholdsVersion: parsed.THRESHOLDS_VERSION,
     budgetMinThb: parsed.BUDGET_MIN_THB,
     budgetMaxThb: parsed.BUDGET_MAX_THB,
+    checklist: {
+      minBidWindowDays: parsed.MIN_BID_WINDOW_DAYS,
+      minScopeChars: parsed.MIN_SCOPE_CHARS,
+      minScopeSections: parsed.MIN_SCOPE_SECTIONS,
+    },
     stats: {
       peerWindowMonths: parsed.PEER_GROUP_WINDOW_MONTHS,
       peerMinN: parsed.PEER_MIN_N,

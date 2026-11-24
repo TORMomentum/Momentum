@@ -92,6 +92,32 @@ describe("public dashboard route", () => {
   });
 });
 
+describe("GET /api/v1/stats/dashboard checklist C2 and C3 (TOR-200)", () => {
+  const field = (value: unknown) => ({ raw: String(value), value, confidence: 0.97, verified: true });
+
+  it("evaluates the bid window and the scope of a plotted TOR and reports the minimums in force", async () => {
+    const base = record();
+    await tors(db).insertOne(record({
+      announcedAt: new Date("2026-01-05T00:00:00Z"),
+      fields: {
+        ...base.fields,
+        deadline: field("2026-01-09"),
+        scopeSummary: field("สั้น"),
+        scopeItems: field(2),
+        scopeLocation: field("in_documents"),
+      },
+    }) as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/dashboard");
+
+    const byCheck = Object.fromEntries(response.body.checklist.byCheck.map((row: { id: string; failed: number; notEvaluated: number }) => [row.id, row]));
+    // A 4-day window and a thin scope both fall under the minimums: C2 and C3 failed, and neither was left unevaluated.
+    expect(byCheck.C2).toMatchObject({ failed: 1, notEvaluated: 0 });
+    expect(byCheck.C3).toMatchObject({ failed: 1, notEvaluated: 0 });
+    expect(response.body.rule.checklist).toEqual({ minBidWindowDays: 8, minScopeChars: 112, minScopeSections: 6 });
+  });
+});
+
 describe("GET /api/v1/stats/dashboard freshness", () => {
   it("reports statistics that have never run as stale, not as current", async () => {
     // The banner exists to disclose figures nobody has recalculated. A dashboard

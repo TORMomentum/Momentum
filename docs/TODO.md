@@ -737,9 +737,14 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 
 - [x] O1 — `T_low` = 0.80 / `T_high` = 0.95, from the TOR-18 accuracy measurement
       (`docs/corpus/BENCHMARK.md`, NFR-F3). Promoted from `OPEN_VALUES` to real config in TOR-89.
-- [ ] O2 — `MIN_BID_WINDOW_DAYS`; checklist C2 reports "not evaluated" until then
-- [ ] O3 — `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS`
-- [ ] O4 — IQR or ZSCORE as the active anomaly method
+- [x] O2 — `MIN_BID_WINDOW_DAYS` = 8 (TOR-302), 10th percentile of 347 confirmed windows; checklist C2 now evaluates
+- [x] O3 — `MIN_SCOPE_CHARS` = 112, `MIN_SCOPE_SECTIONS` = 6 (TOR-303), 10th percentiles of 986 and 175 confirmed values; C3 now evaluates
+- [x] O4 — IQR stays the active anomaly method (TOR-304): Z-score flagged 14 of 737 and none IQR missed
+- [x] Derivations recorded in `core/config.ts` and the quality-checklist spec §8 (TOR-305); `tools/calibrate_open_values.mts` re-measures
+  - [ ] the 10th-percentile rule is a convention, not a measured-against-truth cut: it fails about a tenth of TORs by construction. Review it before the thresholds are quoted publicly
+  - [ ] `MIN_SCOPE_CHARS` measures the AI's scope summary, a proxy for the scope itself; `scopeItems` exists for 175 of 1028 TORs (older records have none)
+  - [x] `GET /tors/:id` checked against real MongoDB (route tests, 2026-11-25): C2 and C3 pass, fail and not-evaluate as specified
+  - [ ] not seen in a browser; not run through the full Compose stack
 
 ## 3b. Carried debt — small, keeps costing time
 
@@ -860,6 +865,11 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   who bookmarked it, once, within `STAGE_NOTIFY_LOOKBACK_DAYS` (TOR-239); tests (TOR-240). Checked live to
   Mailpit; on Atlas all 991 stage events are first reads, so nothing would be sent today
   - [ ] the emails go out only once `NOTIFY_DISPATCH_ENABLED` is turned on (the match benchmark)
+- [x] TOR-278 Price against the budget on the TOR page (spec 2026-11-24-winner-announcements §9): a row in the bid-result
+  block, computed in the browser from the award price and the extracted budget; unit-tested
+  - [ ] TOR-279 Bidder list and the average bid: not built. Bidders were taken out of scope on 2026-11-24 (FR-B-2), so TOR-222 is
+    done only for the winner and price. Needs a decision, and a data source, before it can be built
+  - [ ] not seen in a browser
 - [x] TOR-221 Winner announcements: winner and price (spec 2026-11-24-winner-announcements)
   - [x] the announcement PDF from e-GP's public template service, no captcha; `tools/collect_egp_awards.mts`,
     recorded as source `national-egp-awards`

@@ -9,7 +9,7 @@ import { torStateOf, type TorState } from "../../lib/tor-state.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import { buildProjectUrl } from "../../sources/bma-egp/client.js";
 import { buildProjectSearchUrl } from "../../sources/national-egp/client.js";
-import { evaluateChecklist } from "../checklist/checklist.js";
+import { checklistFieldsOf, evaluateChecklist } from "../checklist/checklist.js";
 import { verdictFor, type AnomalyVerdict, type PeerBounds } from "../stats/anomaly.rule.js";
 import type { CohortKey } from "../stats/cohort.js";
 import { eligibilityOf } from "../stats/eligibility.js";
@@ -210,6 +210,8 @@ export class TorsService {
     const checklist = evaluateChecklist({
       budget,
       budgetRange: { min: this.deps.config.budgetMinThb, max: this.deps.config.budgetMaxThb },
+      ...checklistFieldsOf(record, this.deps.config.stats.timezone),
+      thresholds: this.deps.config.checklist,
       qualificationTags: record.fields.qualifications?.tags ?? [],
       qualificationsVerified: record.fields.qualifications?.verified ?? false,
       verdict,

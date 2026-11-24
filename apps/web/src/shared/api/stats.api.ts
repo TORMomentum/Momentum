@@ -24,7 +24,7 @@ export interface DashboardPayload {
   byState: Array<{ state: TorState; torCount: number; budgetSum: number }>;
   points: Array<{ id: string; category: string; month: string; budget: number; verdict: DashboardVerdict; confidence: number | null; verified: boolean; modelVersion: string | null }>;
   bounds: Array<{ category: string; month: string; n: number; q1: number | null; q3: number | null; lowBound: number | null; highBound: number | null; eligible: boolean }>;
-  rule: { method: "IQR" | "ZSCORE"; iqrMultiplier: number; zScoreLimit: number; peerMinN: number; windowMonths: number; cohortTimezone: string };
+  rule: { method: "IQR" | "ZSCORE"; iqrMultiplier: number; zScoreLimit: number; peerMinN: number; windowMonths: number; cohortTimezone: string; checklist?: { minBidWindowDays: number; minScopeChars: number; minScopeSections: number } };
   meta: { lastIntakeAt: string | null; statsComputedAt: string | null; stale: boolean; corpusSize: number };
   /** FR-F-4: failed checks over the plotted TORs; null from an API that predates the checklist. */
   checklist: ChecklistSummary | null;
