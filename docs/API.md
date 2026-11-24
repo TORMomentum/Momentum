@@ -320,6 +320,8 @@ winner announcements are supporting documents: never listed, counted, or served 
 redaction serializer (`FR-B-5`); evidence quotes are not returned. A restricted or unpublished record
 is a 404.
 
+`checklist` is the specification-quality check (`FR-F-1`): `{ passed, evaluated, checks: [{ id: "C1"…"C5", label, result: "pass"\|"fail"\|"not-evaluated", reason }] }`, every result with a named Thai reason. C2 (bid window: days from the announcement to a confirmed deadline, against `MIN_BID_WINDOW_DAYS`) and C3 (scope: confirmed summary length and requirement count, against `MIN_SCOPE_CHARS` and `MIN_SCOPE_SECTIONS`) are evaluated since TOR-200; each is `not-evaluated` when its inputs are missing or unconfirmed.
+
 ### `GET`, `HEAD` `/api/v1/tors/:id/document`
 
 Streams the original — no signed link, no redirect. `HEAD` answers with the same status and headers
@@ -372,11 +374,12 @@ Same filters as `GET /api/v1/tors`, minus paging.
                  "q1": 1675000, "q3": 2700000, "lowBound": -862500, "highBound": 4237500,
                  "eligible": true } ],
   "rule":    { "method": "IQR", "iqrMultiplier": 1.5, "zScoreLimit": 3,
-               "peerMinN": 8, "windowMonths": 12, "cohortTimezone": "Asia/Bangkok" },
+               "peerMinN": 8, "windowMonths": 12, "cohortTimezone": "Asia/Bangkok",
+               "checklist": { "minBidWindowDays": 8, "minScopeChars": 112, "minScopeSections": 6 } },
   "byState": [ { "state": "open", "torCount": 9, "budgetSum": 153650000 } ],
   "meta":    { "lastIntakeAt": "2026-09-16T21:07:24.665Z", "statsComputedAt": "2026-09-17T03:10:11.000Z",
                "stale": false, "corpusSize": 22 },
-  "checklist": null }
+  "checklist": { "tors": 1, "byCheck": [ { "id": "C2", "label": "…", "failed": 0, "notEvaluated": 1 } ], "flagged": [] } }
 ```
 
 Every figure on this response derives from the records the route already reads
@@ -413,8 +416,7 @@ active rule rather than a copy of it.
 
 `meta.lastIntakeAt` is the most recent successful intake, which is what `FR-E-6` asks for;
 `meta.statsComputedAt` is the last statistics run, and `meta.stale` is true when that run is older
-than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` is reserved for `FR-F-4` in
-sprint 4.
+than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` (`FR-F-4`) counts, over the plotted TORs, how many failed or could not be evaluated on each of C1 to C5, and lists the flagged budgets with the checks they failed; C2 and C3 are evaluated (TOR-200) against `rule.checklist`, the minimums in force.
 
 ### `GET /api/v1/stats/competition` ✅ (TOR-280)
 

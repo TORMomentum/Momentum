@@ -742,9 +742,7 @@ are complete.
 | Value | Waits on |
 | :--- | :--- |
 | `T_low` / `T_high` confidence thresholds | The accuracy measurement in NFR-F3 — see [corpus/BENCHMARK.md](corpus/BENCHMARK.md) |
-| `MIN_BID_WINDOW_DAYS` | Calibration; until then checklist C2 reports "not evaluated" |
-| `MIN_SCOPE_CHARS`, `MIN_SCOPE_SECTIONS` | Calibration |
-| IQR vs Z-score as the anomaly method | Comparison on real budget data |
+| _none_ | `MIN_BID_WINDOW_DAYS` (8), `MIN_SCOPE_CHARS` (112), `MIN_SCOPE_SECTIONS` (6) and IQR as the anomaly method were settled in TOR-200 on 2026-11-24; derivation in the [quality-checklist spec](superpowers/specs/2026-10-06-quality-checklist-design.md) §8. They remain overridable config |
 
 They are declared in `core/config.ts` with their open status recorded. Inventing one is a defect,
 not a shortcut. The full register, including the design questions that block slices, is
