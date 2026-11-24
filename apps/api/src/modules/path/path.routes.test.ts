@@ -13,6 +13,7 @@ import { hashPassword } from "../accounts/password.js";
 import { SessionsRepository } from "../accounts/sessions.js";
 import { MatchingRepository } from "../matching/matching.repository.js";
 import { ProfileRepository } from "../profile/profile.repository.js";
+import { StatsRepository } from "../stats/stats.repository.js";
 import { buildPathRouter } from "./path.routes.js";
 
 const config = loadConfig(process.env);
@@ -23,7 +24,7 @@ function testApp() {
   const result = express();
   result.use(express.json());
   result.use(sessionContext(sessionsRepository));
-  result.use("/api/v1", buildPathRouter({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config) }));
+  result.use("/api/v1", buildPathRouter({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config), stats: new StatsRepository(db) }));
   result.use(errorMiddleware);
   return result;
 }
@@ -108,12 +109,64 @@ describe("company path", () => {
     expect(some.yourLargestProjectThb).toBe(7_000_000);
   });
 
+  describe("winner spread by category (TOR-284)", () => {
+    const ROAD = "งานก่อสร้าง-ทาง สะพาน";
+    const BUILDING = "งานก่อสร้าง-อาคาร";
+    const award = (id: string, winner: string, over: Record<string, unknown> = {}) => ({
+      recordId: id, winner: { raw: winner, value: winner, confidence: 0.97 }, winnerKind: "juristic",
+      price: { raw: "1", value: 1, confidence: 0.97 }, announcedOn: "2026-01-20", unverified: false,
+      provenance: { extractModel: "m", modelVersion: "m-1", extractedAt: new Date("2026-02-01T00:00:00Z") }, ...over,
+    });
+    // `winners` lists who won each awarded project, one TOR record per entry.
+    async function awardedIn(category: string, winners: string[]) {
+      for (const [index, winner] of winners.entries()) {
+        await tors(db).insertOne({
+          contentHash: `spread-${category}-${index}`, storage: { bucket: "test", key: `s${index}`, contentType: "application/pdf", bytes: 1 }, sourceRefs: [], pipeline: { state: "published", attempts: 1 },
+          fields: { title: field(`${category} ${index}`), category: field(category), budget: field(1_000_000), torStatus: field("awarded") },
+          cohort: { category, month: "2026-01" }, award: award(`${category}-${index}`, winner),
+          announcedAt: null, sourceUrl: null, unverified: false, statusHistory: [], access: { restricted: false }, duplicateOf: null, createdAt: new Date(), updatedAt: new Date(),
+        } as never);
+      }
+    }
+
+    it("lists the field's comparable categories, widest spread first, and counts the rest as not comparable", async () => {
+      // Road: eight different winners, so the top three hold 3 of 8. Building: eight projects, one winner has all of them.
+      await awardedIn(ROAD, ["A", "B", "C", "D", "E", "F", "G", "H"].map((name) => `บริษัท ${name} จำกัด`));
+      await awardedIn(BUILDING, Array.from({ length: 8 }, () => "บริษัท ใหญ่ จำกัด"));
+      await awardedIn("งานก่อสร้าง-อื่น ๆ", ["บริษัท เอ จำกัด", "บริษัท บี จำกัด"]);
+      // Another field's category must not appear.
+      await awardedIn("ซื้อยานพาหนะ", Array.from({ length: 9 }, (_, index) => `บริษัท ${index} จำกัด`));
+      const current = await vendor("a@example.test");
+
+      const body = (await get(current.sessionId, "construction")).body;
+
+      expect(body.winnerSpread).toEqual({
+        topWinners: 3, minAwarded: 8,
+        comparable: [
+          { category: ROAD, awarded: 8, winners: 8, topShare: 0.375 },
+          { category: BUILDING, awarded: 8, winners: 1, topShare: 1 },
+        ],
+        // อื่น ๆ has only two awarded projects and ชลประทานและระบบน้ำ has none: neither is given a share.
+        notComparable: 2,
+        lastAwardAt: "2026-02-01T00:00:00.000Z",
+      });
+      expect(JSON.stringify(body.winnerSpread)).not.toContain("บริษัท");
+    });
+
+    it("is empty, not invented, for a field with no awarded projects, and for one category when the target is a single kind of work", async () => {
+      const current = await vendor("a@example.test");
+      expect((await get(current.sessionId, "construction.road")).body.winnerSpread).toEqual({ topWinners: 3, minAwarded: 8, comparable: [], notComparable: 1, lastAwardAt: null });
+      await awardedIn(ROAD, Array.from({ length: 8 }, (_, index) => `บริษัท ${index} จำกัด`));
+      expect((await get(current.sessionId, "construction.road")).body.winnerSpread.comparable.map((row: { category: string }) => row.category)).toEqual([ROAD]);
+    });
+  });
+
   it("takes the newest usable TORs up to the cap, however the cache was refreshed and whatever else sits in it", async () => {
     const capped = { ...config, matching: { ...config.matching, pathSampleCap: 2 } };
     const cappedApp = express();
     cappedApp.use(express.json());
     cappedApp.use(sessionContext(sessionsRepository));
-    cappedApp.use("/api/v1", buildPathRouter({ config: capped, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, capped) }));
+    cappedApp.use("/api/v1", buildPathRouter({ config: capped, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, capped), stats: new StatsRepository(db) }));
     cappedApp.use(errorMiddleware);
     const day = (n: number) => new Date(Date.UTC(2026, 0, n));
     await seed("ปรับปรุงผิวจราจร เก่า", 1_000_000, iso(), { announcedAt: day(1) });

@@ -33,6 +33,77 @@ const result = (over: Partial<FieldPath> = {}): FieldPath => ({
   ...over,
 });
 
+const spread = (over: Partial<NonNullable<FieldPath["winnerSpread"]>> = {}): NonNullable<FieldPath["winnerSpread"]> => ({
+  topWinners: 3,
+  minAwarded: 8,
+  comparable: [
+    { category: "งานก่อสร้าง-ทาง สะพาน", awarded: 32, winners: 27, topShare: 0.19 },
+    { category: "งานก่อสร้าง-อาคาร", awarded: 14, winners: 11, topShare: 0.429 },
+  ],
+  notComparable: 2,
+  lastAwardAt: "2026-11-23T21:33:18.735Z",
+  ...over,
+});
+
+describe("PathView winner spread (TOR-284)", () => {
+  it("lists the field's categories in the order the API gave, each with its counts and share", async () => {
+    await render("construction", result({ winnerSpread: spread() }));
+    const section = container.querySelector("[aria-labelledby='path-spread-title']")!;
+    const rows = [...section.querySelectorAll("li")].map((row) => row.textContent);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toContain("งานก่อสร้าง-ทาง สะพาน");
+    expect(rows[0]).toContain("ประกาศผล 32 โครงการ · ผู้ชนะที่ต่างกัน 27 ราย");
+    expect(rows[0]).toContain("ผู้ชนะ 3 รายแรกได้ 19%");
+    expect(rows[1]).toContain("43%");
+  });
+
+  it("says what it covers, that bidders are not counted and that it is not a measure of difficulty, and how many categories are left out", async () => {
+    await render("construction", result({ winnerSpread: spread() }));
+    const text = container.querySelector("[aria-labelledby='path-spread-title']")!.textContent!;
+
+    expect(text).toContain("AI อ่านและยืนยันแล้ว");
+    expect(text).toContain("ไม่รวมจำนวนผู้ยื่นซอง");
+    expect(text).toContain("ไม่ได้บอกว่าหมวดใดเข้าได้ง่ายหรือยาก");
+    expect(text).toContain("อีก 2 หมวดยังมีประกาศผลไม่ถึง 8 โครงการ");
+    expect(text).toContain("อ่านประกาศล่าสุด");
+  });
+
+  it("uses none of the forbidden wording and names no winner", async () => {
+    await render("construction", result({ winnerSpread: spread() }));
+    const text = container.querySelector("[aria-labelledby='path-spread-title']")!.textContent!;
+
+    for (const word of ["น่าสงสัย", "ทุจริต", "ผิดปกติ", "suspicious", "บริษัท", "แข่งขันน้อย"]) expect(text).not.toContain(word);
+  });
+
+  it("says no category can be compared when none has enough announcements, and omits the section from an older API", async () => {
+    await render("construction", result({ winnerSpread: spread({ comparable: [], notComparable: 4 }) }));
+    const empty = container.querySelector("[aria-labelledby='path-spread-title']")!.textContent!;
+    expect(empty).toContain("ยังไม่มีหมวดในสาขานี้ที่มีประกาศผู้ชนะถึง 8 โครงการ จึงยังเทียบกันไม่ได้ (4 หมวด)");
+    // Nothing is listed, so nothing is "ordered" and no "other" categories are left over.
+    expect(empty).not.toContain("เรียงจากหมวด");
+    expect(empty).not.toContain("อีก 4 หมวด");
+
+    await render("construction", result());
+    expect(container.querySelector("[aria-labelledby='path-spread-title']")).toBeNull();
+  });
+});
+
+describe("PathView winner spread placement (TOR-284)", () => {
+  it("still shows the spread when the field has no sampled TOR, since it is read separately", async () => {
+    await render("construction", result({ sample: 0, requirements: [], budget: null, winnerSpread: spread() }));
+
+    expect(container.textContent).toContain("ยังไม่มี TOR ในสาขานี้ที่เก็บไว้");
+    expect(container.querySelector("[aria-labelledby='path-spread-title']")).not.toBeNull();
+  });
+
+  it("groups thousands the way the dashboard does", async () => {
+    await render("construction", result({ winnerSpread: spread({ comparable: [{ category: "ยา", awarded: 1234, winners: 1000, topShare: 0.1 }] }) }));
+
+    expect(container.textContent).toContain("ประกาศผล 1,234 โครงการ · ผู้ชนะที่ต่างกัน 1,000 ราย");
+  });
+});
+
 describe("PathView", () => {
   it("offers every group and field in a plain GET form, so the choice lives in the URL", async () => {
     await render(null, null);

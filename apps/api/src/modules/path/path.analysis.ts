@@ -5,13 +5,31 @@ import type { VendorProfileDocument } from "../../core/db.js";
 import { certificationsMentioned, qualificationText } from "../matching/certifications.js";
 import { cgdBranchOf } from "../matching/registration.js";
 import type { ClassifiedCandidate } from "../matching/matching.repository.js";
+import type { CategoryCompetition } from "../stats/competition.js";
 
 /** A group id covers every leaf in it, as it does on a profile; a leaf id covers itself; anything else is not a field. */
-export function fieldOf(id: string): { id: string; th: string; leafIds: string[] } | null {
+export function fieldOf(id: string): { id: string; th: string; leafIds: string[]; torCategories: string[] } | null {
   const group = WORK_CATEGORIES.find((item) => item.id === id);
-  if (group) return { id: group.id, th: group.th, leafIds: group.children.map((leaf) => leaf.id) };
+  if (group) return { id: group.id, th: group.th, leafIds: group.children.map((leaf) => leaf.id), torCategories: [...new Set(group.children.flatMap((leaf) => leaf.torCategories))] };
   const leaf = WORK_CATEGORY_LEAVES.find((item) => item.id === id);
-  return leaf ? { id: leaf.id, th: leaf.th, leafIds: [leaf.id] } : null;
+  return leaf ? { id: leaf.id, th: leaf.th, leafIds: [leaf.id], torCategories: [...new Set(leaf.torCategories)] } : null;
+}
+
+/**
+ * TOR-284: the field's own TOR categories picked out of the whole corpus's winner figures. A category with too few
+ * awarded projects, or none at all, is counted as not comparable and never given a share to rank by.
+ */
+export function winnerSpreadOf(
+  torCategories: string[],
+  all: CategoryCompetition[],
+  rule: { topWinners: number; minAwarded: number },
+): Omit<FieldPath["winnerSpread"], "lastAwardAt"> {
+  const byCategory = new Map(all.map((row) => [row.category, row]));
+  const comparable = torCategories
+    .flatMap((category) => { const row = byCategory.get(category); return row?.eligible ? [row] : []; })
+    .map(({ category, awarded, winners, topShare }) => ({ category, awarded, winners, topShare }))
+    .sort((left, right) => left.topShare - right.topShare || right.awarded - left.awarded || left.category.localeCompare(right.category, "th"));
+  return { ...rule, comparable, notComparable: torCategories.length - comparable.length };
 }
 
 const certificationName = new Map<string, string>(CERTIFICATIONS.map((item) => [item.id, item.th]));
@@ -39,7 +57,7 @@ export function analyseField(
   sample: ClassifiedCandidate[],
   profile: VendorProfileDocument | null,
   config: Pick<Config, "tLow" | "budgetMinThb" | "budgetMaxThb"> & { matching: Pick<Config["matching"], "registrationMinBudgetThb"> },
-): FieldPath {
+): Omit<FieldPath, "winnerSpread"> {
   const sure = (field: { confidence: number } | undefined) => Boolean(field) && field!.confidence >= config.tLow;
   const asked = new Map<string, number>();
   const count = (key: string) => asked.set(key, (asked.get(key) ?? 0) + 1);
