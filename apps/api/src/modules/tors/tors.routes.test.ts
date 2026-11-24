@@ -90,6 +90,54 @@ afterAll(async () => {
   await disconnect();
 });
 
+describe("GET /tors/:id checklist C2 and C3 (TOR-200)", () => {
+  const field = <T,>(value: T, verified = true) => ({ raw: String(value), value, confidence: 0.97, verified });
+  async function seedWith(fields: Record<string, unknown>, announcedAt: Date | null): Promise<string> {
+    const id = await seedRecord();
+    await tors(db).updateOne({ _id: new ObjectId(id) }, { $set: { fields: fields as never, announcedAt } });
+    return id;
+  }
+  const checksOf = async (id: string) =>
+    Object.fromEntries(((await request(buildTestApp()).get(`/api/v1/tors/${id}`)).body.checklist.checks as { id: string; result: string; reason: string }[]).map((check) => [check.id, check]));
+
+  it("evaluates the bid window and the scope from the stored record", async () => {
+    const id = await seedWith({
+      deadline: field("2026-03-19"),
+      scopeSummary: field("จ้างก่อสร้างถนนคอนกรีตเสริมเหล็กพร้อมระบบระบายน้ำและงานทาสีตีเส้นจราจรตามแบบแปลนที่กำหนดไว้ในเอกสารแนบท้ายประกาศ".repeat(2)),
+      scopeItems: field(16),
+      scopeLocation: field("in_documents"),
+    }, new Date("2026-03-05T00:00:00Z"));
+
+    const checks = await checksOf(id);
+
+    expect(checks.C2).toMatchObject({ result: "pass" });
+    expect(checks.C2!.reason).toContain("14 วัน");
+    expect(checks.C3).toMatchObject({ result: "pass" });
+  });
+
+  it("fails a window below the configured minimum and a scope below its minimums", async () => {
+    const id = await seedWith({
+      deadline: field("2026-03-09"),
+      scopeSummary: field("สั้นมาก"),
+      scopeItems: field(2),
+      scopeLocation: field("in_documents"),
+    }, new Date("2026-03-05T00:00:00Z"));
+
+    const checks = await checksOf(id);
+
+    expect(checks.C2).toMatchObject({ result: "fail" });
+    expect(checks.C3).toMatchObject({ result: "fail" });
+  });
+
+  it("leaves both not evaluated, with the reason, for a record that states neither", async () => {
+    const checks = await checksOf(await seedWith({}, null));
+
+    expect(checks.C2).toMatchObject({ result: "not-evaluated" });
+    expect(checks.C2!.reason).toContain("วันที่ประกาศ");
+    expect(checks.C3).toMatchObject({ result: "not-evaluated" });
+  });
+});
+
 describe("public TOR document route", () => {
   it("streams a published record's document with nosniff and no-store", async () => {
     const id = await seedRecord();
