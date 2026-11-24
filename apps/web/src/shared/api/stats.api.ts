@@ -30,6 +30,13 @@ export interface DashboardPayload {
   checklist: ChecklistSummary | null;
 }
 
+/** TOR-280: how the announced winners are spread across categories. Counts of the collected corpus; no winner is named. */
+export interface CompetitionPayload {
+  categories: Array<{ category: string; awarded: number; winners: number; topShare: number; eligible: boolean }>;
+  rule: { topWinners: number; minAwarded: number };
+  meta: { awardedProjects: number; lastAwardAt: string | null };
+}
+
 export class StatsApiUnavailable extends Error {}
 export class StatsApiFailed extends Error {}
 
@@ -57,4 +64,21 @@ export async function fetchDashboard(filters: DashboardFilters = {}): Promise<Da
     });
   if (!response.ok) throw new StatsApiFailed(`GET /stats/dashboard → ${response.status}`);
   return response.json() as Promise<DashboardPayload>;
+}
+
+/** The winner spread by category. A failure here must not take the dashboard down, so the caller treats it as absent. */
+export async function fetchCompetition(): Promise<CompetitionPayload> {
+  const base = apiBaseUrl();
+  const response = await identityToken(base)
+    .then(async (token) =>
+      fetch(`${base}/api/v1/stats/competition`, {
+        cache: "no-store",
+        headers: { ...(await forwardedClientHeaders()), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      }),
+    )
+    .catch((error: unknown) => {
+      throw new StatsApiUnavailable(String(error));
+    });
+  if (!response.ok) throw new StatsApiFailed(`GET /stats/competition → ${response.status}`);
+  return response.json() as Promise<CompetitionPayload>;
 }

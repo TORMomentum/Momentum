@@ -1,6 +1,6 @@
 import { DashboardView } from "../../../src/views/DashboardView";
 import { fetchOwnMatches } from "../../../src/shared/api/matches.api";
-import { fetchDashboard, StatsApiUnavailable } from "../../../src/shared/api/stats.api";
+import { fetchCompetition, fetchDashboard, StatsApiUnavailable } from "../../../src/shared/api/stats.api";
 import { parseDashboardFilters } from "../../../src/shared/lib/dashboard-filters";
 
 /**
@@ -23,9 +23,14 @@ export default async function DashboardPage({
   // A signed-in vendor also sees what may be relevant to them; anyone else sees
   // the public dashboard only (FR-E-1). Fetched alongside, never instead.
   const matches = fetchOwnMatches();
+  // Read beside the dashboard but never required by it: if it fails the panel is simply absent.
+  const competition = fetchCompetition().catch((error: unknown) => {
+    console.error("[dashboard] competition load failed", error);
+    return null;
+  });
   try {
     const dashboard = await fetchDashboard(filters);
-    return <DashboardView dashboard={dashboard} filters={filters} matches={await matches} />;
+    return <DashboardView dashboard={dashboard} filters={filters} matches={await matches} competition={await competition} />;
   } catch (error) {
     console.error("[dashboard] load failed", error);
     return <DashboardView filters={filters} error={error instanceof StatsApiUnavailable} />;
