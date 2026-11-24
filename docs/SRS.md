@@ -516,7 +516,7 @@ Four values depend on data the team does not yet have, and one requirement on a 
 | O2 | MIN_BID_WINDOW_DAYS | §4.6.1 C2 | Calibration against the collected corpus. Until then C2 reports "not evaluated" |
 | O3 | MIN_SCOPE_CHARS, MIN_SCOPE_SECTIONS | §4.6.1 C3 | Calibration against the collected corpus |
 | O4 | Whether IQR or ZSCORE is the active method | §4.5.1 | Comparison of both on real budget data |
-| O5 | The bidders of FR-B-2 (added 2026-11-24, TOR-221) | §4.2 | National e-GP serves the winner announcement publicly but the bidders' price report only behind a captcha, which the system does not pass. Settled by a source that publishes the bidders without one (for example an open-data release), or by admins entering them by hand |
+| O5 | The bidders of FR-B-2 (added 2026-11-24, TOR-221) | §4.2 | National e-GP's project page opens the bidders' price report only behind a captcha, which the system does not pass. The Comptroller General's e-GP Data Gateway (opened 2026-11-16) publishes every bidder, with price and vendor type, in a monthly CSV ("ข้อมูลผู้เสนอราคาของโครงการที่ทำสัญญา"), but only for projects whose contract is announced. Settled by importing that file, or by admins entering bidders by hand |
 
 ---
 

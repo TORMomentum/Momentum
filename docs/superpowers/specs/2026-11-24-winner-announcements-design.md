@@ -96,4 +96,6 @@ and time caps). e-GP's search page is behind Cloudflare Turnstile, and the bidde
 - `tools/recompute_winner_kind.mts` re-classes every stored award with the current rule and copies a changed one
   onto its TORs; no model call. Dry run by default, `--apply` to write. On Atlas it changed 2 of 254 (a
   university and a school), both now named; the other 2 stay unnamed.
-- The bidders are recorded in the SRS as open issue O5 (FR-B-2 extended to say why), not as work in progress.
+- The bidders are recorded in the SRS as open issue O5 (FR-B-2 extended to say why), not as work in progress. A
+  public source exists: the e-GP Data Gateway's monthly CSV of every bidder for projects with an announced
+  contract (checked 2026-11-24: 433,257 rows; 1 of our 991 projects present, since ours are not yet contracted).
