@@ -87,3 +87,13 @@ and time caps). e-GP's search page is behind Cloudflare Turnstile, and the bidde
   cap; at 8,192, the cap a TOR reading has, both read.
 - The four classed individual include a university and a school: the rule keeps an unplaceable name out, and
   widening it is a later change, never a guess at publication time.
+
+## 8. Revision 2026-11-24 — public bodies and the bidders
+
+- `winnerKindOf` also names a public body or school by how its name begins (มหาวิทยาลัย, โรงเรียน, วิทยาลัย,
+  สถาบัน, กระทรวง, สำนักงาน, เทศบาล, องค์การ, องค์กร, โรงพยาบาล, การไฟฟ้า, การประปา, and their English forms). Only at
+  the start, so a surname cannot match. "ศูนย์…" stays out: a copy shop can be one person's business.
+- `tools/recompute_winner_kind.mts` re-classes every stored award with the current rule and copies a changed one
+  onto its TORs; no model call. Dry run by default, `--apply` to write. On Atlas it changed 2 of 254 (a
+  university and a school), both now named; the other 2 stay unnamed.
+- The bidders are recorded in the SRS as open issue O5 (FR-B-2 extended to say why), not as work in progress.
