@@ -586,7 +586,10 @@ the 2026-10-15 review asked for.
 - **Why not "less competitive".** The ticket's name is shorthand. Bidders are out of scope (FR-B-2), so how many
   firms bid is not known; what is known is how the wins were spread. The screen says so, says it does not mean a
   category is easy or hard to enter, and no winner is named (NFR-F5, FR-B-5).
-- **No new stored data.** The target is still only in the URL; the figures are read per request.
+- **No new stored data.** The target is still only in the URL; the figures are read per request, and only for the field's own
+  categories (the awarded read takes the category list, so it uses the `award.recordId` index and the `cohort.category` bound).
+  The response carries `lastAwardAt` and the page shows it (FR-E-6). The section shows even when the field has no sampled TOR:
+  the spread and the sample are read separately.
 - **Open.** The categories are TOR categories, coarser than a leaf of work (the road leaf maps to one category, shared
   with other work in it), so a share describes the category and not that exact kind of work. A catch-all category such as
   จ้างเหมาบริการ (40 awarded projects on 2026-11-25, which "it" also maps to) mixes many kinds of work, and its share is the
