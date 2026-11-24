@@ -25,7 +25,7 @@ and time caps). e-GP's search page is behind Cloudflare Turnstile, and the bidde
 
 | # | Question | Decision |
 | :--- | :--- | :--- |
-| 1 | What is read? | The winner's name, the winning price (baht, VAT included; several lots summed), and the announcement date. **Not** the bidders: their list is behind a captcha (§2). FR-B-2's bidders stay open |
+| 1 | What is read? | The winner's name, the winning price (baht, VAT included; several lots summed), and the announcement date. **Not** the bidders: out of scope, and removed from FR-B-2 (2026-11-24) |
 | 2 | Where is it stored? | The PDF is its own record, `documentType: "award"`, a supporting document like the invitation (immutable original, intake dedupe, its own extraction job). Its reading is `award` on that record and is copied to every TOR of the project |
 | 3 | Is an award record public? | Not as a record: `SUPPORTING_DOCUMENT_TYPES` (`invitation`, `award`) is excluded wherever records are listed, counted, matched, staged or put into statistics. Its original is served through the TOR that links it, as the invitation's is |
 | 4 | How is it read? | One Gemini call (`Ai.extractAward`) with its own schema of three fields. The prompt forbids officials' and signatories' names; the schema has no place for them |
@@ -87,3 +87,12 @@ and time caps). e-GP's search page is behind Cloudflare Turnstile, and the bidde
   cap; at 8,192, the cap a TOR reading has, both read.
 - The four classed individual include a university and a school: the rule keeps an unplaceable name out, and
   widening it is a later change, never a guess at publication time.
+
+## 8. Revision 2026-11-24 — public bodies
+
+- `winnerKindOf` also names a public body or school by how its name begins (มหาวิทยาลัย, โรงเรียน, วิทยาลัย,
+  สถาบัน, กระทรวง, สำนักงาน, เทศบาล, องค์การ, องค์กร, โรงพยาบาล, การไฟฟ้า, การประปา, and their English forms). Only at
+  the start, so a surname cannot match. "ศูนย์…" stays out: a copy shop can be one person's business.
+- `tools/recompute_winner_kind.mts` re-classes every stored award with the current rule and copies a changed one
+  onto its TORs; no model call. Dry run by default, `--apply` to write. On Atlas it changed 2 of 254 (a
+  university and a school), both now named; the other 2 stay unnamed.

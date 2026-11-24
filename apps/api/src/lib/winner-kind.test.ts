@@ -17,6 +17,18 @@ describe("winnerKindOf (TOR-221, FR-B-5)", () => {
     }
   });
 
+  it("names a public body or a school by how its name begins", () => {
+    for (const name of ["มหาวิทยาลัยธรรมศาสตร์", "โรงเรียนคอมพิวเตอร์อัจฉริยะภาพ", "วิทยาลัยเทคนิคนนทบุรี", "สำนักงานสถิติแห่งชาติ", "เทศบาลนครนนทบุรี", "องค์การเภสัชกรรม", "โรงพยาบาลศิริราช"]) {
+      expect(winnerKindOf(name), name).toBe("juristic");
+    }
+  });
+
+  it("keeps a shop name that may be one person's business, and a surname containing a body's word, out of view", () => {
+    expect(winnerKindOf("ศูนย์ถ่ายเอกสารบุญเรือง")).toBe("individual");
+    expect(winnerKindOf("นายสมชาย โรงเรียนดี")).toBe("individual");
+    expect(winnerKindOf("สมชาย สำนักงานดี")).toBe("individual");
+  });
+
   it("treats a person's name as an individual's, even one with a company word in the surname", () => {
     for (const name of ["นายสมชาย ใจดี", "นางสาวสุดา มีสุข", "น.ส. วิภา รักไทย", "นายสมชาย จำกัดพันธ์", "Mr. John Smith"]) {
       expect(winnerKindOf(name), name).toBe("individual");
