@@ -237,3 +237,63 @@ describe("filtering by state and month", () => {
     expect(byMonth.body.totals.torCount).toBe(1);
   });
 });
+
+describe("GET /api/v1/stats/competition (TOR-280)", () => {
+  // The Settings the route reads: top 3 winners, and at least PEER_MIN_N (8) awarded projects to rank a category.
+  const awardBlock = (awardId: string, winner: string) => ({
+    recordId: awardId,
+    winner: { raw: winner, value: winner, confidence: 0.97 }, winnerKind: "juristic",
+    price: { raw: "100", value: 100, confidence: 0.97 }, announcedOn: "2026-01-20", unverified: false,
+    provenance: { extractModel: "m", modelVersion: "m-1", extractedAt: new Date("2026-02-01T00:00:00Z") },
+  });
+  const awarded = (category: string, awardId: string, winner: string, over: Record<string, unknown> = {}) => record({
+    fields: { ...record().fields, category: { raw: category, value: category, confidence: 1, verified: true } },
+    cohort: { category, month: "2026-01" },
+    award: awardBlock(awardId, winner),
+    ...over,
+  });
+
+  it("counts awarded projects, distinct winners and the top winners' share, naming nobody", async () => {
+    const names = ["A", "A", "A", "B", "B", "C", "D", "E"];
+    await tors(db).insertMany(names.map((name, index) => awarded("ก่อสร้าง", `award-${index}`, `บริษัท ${name} จำกัด`)) as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/competition");
+
+    expect(response.status).toBe(200);
+    // A wins 3, B 2, then one each: the top three hold 6 of 8.
+    expect(response.body.categories).toEqual([{ category: "ก่อสร้าง", awarded: 8, winners: 5, topShare: 0.75, eligible: true }]);
+    expect(response.body.rule).toEqual({ topWinners: 3, minAwarded: 8 });
+    expect(response.body.meta).toEqual({ awardedProjects: 8, lastAwardAt: "2026-02-01T00:00:00.000Z" });
+    expect(JSON.stringify(response.body)).not.toContain("บริษัท");
+  });
+
+  it("counts a project once when its award sits on several TOR records", async () => {
+    await tors(db).insertMany([awarded("ก่อสร้าง", "same", "บริษัท A จำกัด"), awarded("ก่อสร้าง", "same", "บริษัท A จำกัด")] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/competition");
+
+    expect(response.body.categories[0]).toMatchObject({ awarded: 1, winners: 1, eligible: false });
+  });
+
+  it("leaves out unconfirmed awards, restricted records, supporting documents and records with no award", async () => {
+    await tors(db).insertMany([
+      awarded("ก่อสร้าง", "ok", "บริษัท A จำกัด"),
+      awarded("ก่อสร้าง", "unconfirmed", "บริษัท B จำกัด", { award: { ...awardBlock("unconfirmed", "บริษัท B จำกัด"), unverified: true } }),
+      awarded("ก่อสร้าง", "restricted", "บริษัท C จำกัด", { access: { restricted: true } }),
+      awarded("ก่อสร้าง", "invitation", "บริษัท D จำกัด", { documentType: "invitation" }),
+      awarded("ก่อสร้าง", "no-winner", "ignored", { award: { ...awardBlock("no-winner", "ignored"), winner: { raw: "", value: null, confidence: 0 } } }),
+      record(),
+    ] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/competition");
+
+    expect(response.body.categories).toEqual([{ category: "ก่อสร้าง", awarded: 1, winners: 1, topShare: 1, eligible: false }]);
+    expect(response.body.meta.awardedProjects).toBe(1);
+  });
+
+  it("reports an empty corpus honestly", async () => {
+    const response = await request(buildTestApp()).get("/api/v1/stats/competition");
+
+    expect(response.body).toEqual({ categories: [], rule: { topWinners: 3, minAwarded: 8 }, meta: { awardedProjects: 0, lastAwardAt: null } });
+  });
+});

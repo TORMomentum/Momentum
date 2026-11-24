@@ -10,6 +10,7 @@ import type { PeerBounds } from "./anomaly.rule.js";
 import { parseDashboardFilters, publicTorFilter, UNKNOWN } from "./stats.filters.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { TOR_STATES, torStateOf } from "../../lib/tor-state.js";
+import { competitionByCategory } from "./competition.js";
 
 export interface StatsRouterDeps { db: Db; config: Config; }
 
@@ -208,6 +209,20 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       // reporting them as current would be the failure it guards against.
       stale: !meta?.statsComputedAt || Date.now() - meta.statsComputedAt.getTime() > deps.config.stats.staleAfterMs, corpusSize },
       checklist: summariseChecklists(checklists),
+    });
+  });
+
+  /**
+   * TOR-280: how the announced winners are spread across categories. Public, and the same kind of figure as the
+   * dashboard: counts of the collected corpus only. No winner is named here; the names stay on each TOR's page.
+   */
+  router.get("/competition", async (_req, res) => {
+    const { projects, lastAwardAt } = await repository.awardedProjects();
+    const settings = { topWinners: deps.config.stats.competitionTopWinners, minAwarded: deps.config.stats.peerMinN };
+    res.json({
+      categories: competitionByCategory(projects, settings),
+      rule: { topWinners: settings.topWinners, minAwarded: settings.minAwarded },
+      meta: { awardedProjects: new Set(projects.map((project) => project.awardId)).size, lastAwardAt: iso(lastAwardAt ?? undefined) },
     });
   });
   return router;
