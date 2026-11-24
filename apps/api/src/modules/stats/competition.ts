@@ -28,6 +28,15 @@ export interface CategoryCompetition {
 /** The same name written with different spacing is one winner; the text itself is not changed. */
 const winnerKey = (name: string) => name.replace(/\s+/g, " ").trim();
 
+/**
+ * How many projects the figures above are drawn from: the distinct awards among the rows `competitionByCategory`
+ * keeps. The same rule as there (a row with no category or no winner name is dropped), so a count headed over the
+ * table never claims more projects than the table can account for.
+ */
+export function countedProjects(projects: AwardedProject[]): number {
+  return new Set(projects.filter(({ category, winner }) => category && winnerKey(winner)).map(({ awardId }) => awardId)).size;
+}
+
 export function competitionByCategory(
   projects: AwardedProject[],
   settings: { topWinners: number; minAwarded: number },

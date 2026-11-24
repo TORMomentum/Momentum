@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { competitionByCategory, type AwardedProject } from "./competition.js";
+import { competitionByCategory, countedProjects, type AwardedProject } from "./competition.js";
 
 const win = (category: string, awardId: string, winner: string): AwardedProject => ({ category, awardId, winner });
 const settings = { topWinners: 3, minAwarded: 4 };
@@ -66,5 +66,26 @@ describe("competitionByCategory (TOR-280)", () => {
     const rows = competitionByCategory([win("ยา", "a", "x"), win("ก่อสร้าง", "b", "y")], settings);
 
     expect(rows.map((row) => row.category)).toEqual(["ก่อสร้าง", "ยา"]);
+  });
+});
+
+describe("countedProjects (TOR-280)", () => {
+  it("counts a project once however many rows carry it, and not a row the figures drop", () => {
+    expect(countedProjects([
+      win("ก่อสร้าง", "a1", "บริษัท เอ จำกัด"),
+      win("ก่อสร้าง", "a1", "บริษัท เอ จำกัด"),
+      win("ยา", "a1", "บริษัท เอ จำกัด"),
+      win("ก่อสร้าง", "a2", "   "),
+      win("", "a3", "บริษัท บี จำกัด"),
+      win("ยา", "a4", "บริษัท ซี จำกัด"),
+    ])).toBe(2);
+    expect(countedProjects([])).toBe(0);
+  });
+
+  it("never exceeds what the per-category rows add up to", () => {
+    const rows = [win("ก", "a1", "x"), win("ก", "a2", "y"), win("ข", "a2", "y"), win("ข", "a3", " ")];
+    const tableTotal = competitionByCategory(rows, settings).reduce((sum, row) => sum + row.awarded, 0);
+
+    expect(countedProjects(rows)).toBeLessThanOrEqual(tableTotal);
   });
 });

@@ -25,6 +25,7 @@ describe("CompetitionPanel (TOR-281)", () => {
 
     expect(html).toContain("ผู้ชนะตามหมวดหมู่");
     expect(html).toContain("จากประกาศผู้ชนะ 70 โครงการ");
+    expect(html).toContain("ทั้งระบบ ไม่เปลี่ยนตามตัวกรอง");
     expect(html).toContain("ผู้ชนะ 3 รายแรกได้");
     expect(html.indexOf("จ้างเหมาบริการ")).toBeLessThan(html.indexOf("ซื้อยานพาหนะ"));
     expect(html.indexOf("ซื้อยานพาหนะ")).toBeLessThan(html.indexOf("งานก่อสร้าง-อาคาร"));

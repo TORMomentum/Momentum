@@ -197,7 +197,7 @@ export class StatsRepository {
   /**
    * Every public TOR whose winner announcement was read and confirmed, one row each, for TOR-280. The category is the
    * one the dashboard groups by, so it must be a confirmed one. An unconfirmed award is left out as an unconfirmed
-   * budget is left out of the anomaly figures. Not indexed: the awarded set is a small part of the corpus.
+   * budget is left out of the anomaly figures. Served by the partial `award.recordId` index, so the read touches only records with a confirmed award.
    */
   async awardedProjects(): Promise<{ projects: AwardedProject[]; lastAwardAt: Date | null }> {
     const records = await tors(this.db).find({
@@ -206,6 +206,8 @@ export class StatsRepository {
       "fields.category.verified": true,
       "cohort.category": { $type: "string" },
       "award.unverified": false,
+      // The key of the partial index in core/db.ts: without a predicate on it the planner would not choose that index.
+      "award.recordId": { $type: "string" },
       "award.winner.value": { $type: "string" },
       ...NOT_SUPPORTING_DOCUMENT,
     }, { projection: { "cohort.category": 1, "award.recordId": 1, "award.winner.value": 1, "award.provenance.extractedAt": 1 } }).toArray();

@@ -291,6 +291,34 @@ describe("GET /api/v1/stats/competition (TOR-280)", () => {
     expect(response.body.meta.awardedProjects).toBe(1);
   });
 
+  it("counts a project once in the header and no more than the table accounts for", async () => {
+    await tors(db).insertMany([
+      awarded("ก่อสร้าง", "p1", "บริษัท A จำกัด"),
+      awarded("ยา", "p1", "บริษัท A จำกัด"),
+      awarded("ก่อสร้าง", "p2", "   "),
+    ] as never);
+
+    const response = await request(buildTestApp()).get("/api/v1/stats/competition");
+    const tableTotal = response.body.categories.reduce((sum: number, row: { awarded: number }) => sum + row.awarded, 0);
+
+    // p1 sits in two categories (two rows in the table) but is one project; p2 has no usable winner.
+    expect(response.body.meta.awardedProjects).toBe(1);
+    expect(response.body.meta.awardedProjects).toBeLessThanOrEqual(tableTotal);
+  });
+
+  it("answers an empty 429 past the per-client limit, like search", async () => {
+    const limited = loadConfig({ ...process.env, PUBLIC_SEARCH_RATE_LIMIT_PER_MIN: "2" });
+    const app = express();
+    app.use("/api/v1/stats", buildStatsRouter({ db, config: limited }));
+    app.use(errorMiddleware);
+
+    expect((await request(app).get("/api/v1/stats/competition")).status).toBe(200);
+    expect((await request(app).get("/api/v1/stats/competition")).status).toBe(200);
+    const third = await request(app).get("/api/v1/stats/competition");
+    expect(third.status).toBe(429);
+    expect(third.text).toBe("");
+  });
+
   it("reports an empty corpus honestly", async () => {
     const response = await request(buildTestApp()).get("/api/v1/stats/competition");
 

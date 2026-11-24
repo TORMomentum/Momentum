@@ -23,7 +23,7 @@ export function CompetitionPanel({ competition }: { competition: CompetitionPayl
     <section className={styles.competition} aria-labelledby="dashboard-competition-title">
       <div className={styles.panelHead}>
         <h2 id="dashboard-competition-title" className={styles.panelTitle}>ผู้ชนะตามหมวดหมู่</h2>
-        <span className={styles.panelHint}>จากประกาศผู้ชนะ {count(meta.awardedProjects)} โครงการ</span>
+        <span className={styles.panelHint}>ทั้งระบบ ไม่เปลี่ยนตามตัวกรอง · จากประกาศผู้ชนะ {count(meta.awardedProjects)} โครงการ</span>
       </div>
       {ranked.length > 0 ? (
         <table className={`${styles.checklistTable} ${styles.competitionTable}`}>

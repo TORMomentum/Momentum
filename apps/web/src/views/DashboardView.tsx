@@ -303,8 +303,9 @@ export function DashboardView({
             {dashboard.checklist && <ChecklistSummaryPanel summary={dashboard.checklist} />}
           </section>
         </div>
-        {competition && <CompetitionPanel competition={competition} />}
       </>}
+      {/* Not part of the filtered figures: it answers for the whole collected corpus, so it stays when a filter matches nothing. */}
+      {competition && <CompetitionPanel competition={competition} />}
     </main>
   );
 }

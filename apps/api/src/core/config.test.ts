@@ -144,6 +144,13 @@ describe("loadConfig", () => {
     expect(config.vertex.model).toBe("gemini-3.5-flash");
   });
 
+  it("takes the number of top winners from COMPETITION_TOP_WINNERS, three by default", () => {
+    expect(loadConfig(base).stats.competitionTopWinners).toBe(3);
+    expect(loadConfig({ ...base, COMPETITION_TOP_WINNERS: "5" }).stats.competitionTopWinners).toBe(5);
+    expect(() => loadConfig({ ...base, COMPETITION_TOP_WINNERS: "0" })).toThrow();
+    expect(() => loadConfig({ ...base, COMPETITION_TOP_WINNERS: "-1" })).toThrow();
+  });
+
   it("carries the budget sanity bounds", () => {
     const config = loadConfig(base);
     expect(config.budgetMinThb).toBe(10_000);
