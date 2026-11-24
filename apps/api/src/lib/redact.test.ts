@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ExtractedField } from "@tor-radar/shared";
-import { redactContactString, redactTor } from "./redact.js";
+import type { AwardResult, ExtractedField } from "@tor-radar/shared";
+import { INDIVIDUAL_WINNER, redactAward, redactContactString, redactTor } from "./redact.js";
 
 const field = (raw: string): ExtractedField => ({ raw, value: raw, confidence: 0.9, verified: false });
 
@@ -56,5 +56,34 @@ describe("redactTor", () => {
   it("handles a record with no contact field", () => {
     const bare = { fields: { title: field("x") } };
     expect(() => redactTor(bare, "public")).not.toThrow();
+  });
+});
+
+describe("redactAward (TOR-221)", () => {
+  const award = (winnerKind: "juristic" | "individual", name: string): AwardResult => ({
+    recordId: "65a000000000000000000001",
+    winner: { raw: name, value: name, confidence: 0.97 },
+    winnerKind,
+    price: { raw: "1,250,000.00 บาท", value: 1_250_000, confidence: 0.98 },
+    announcedOn: "2026-11-20",
+    unverified: false,
+    provenance: { ocrModel: "m", extractModel: "m", modelVersion: "m-001", extractedAt: "2026-11-24T00:00:00.000Z", thresholdsVersion: "t" },
+  });
+
+  it("shows a juristic winner as extracted", () => {
+    const company = award("juristic", "บริษัท สยามก่อสร้าง จำกัด");
+    expect(redactAward(company, "public")).toEqual(company);
+  });
+
+  it("replaces a natural person's name, raw text included, and keeps the rest", () => {
+    const shown = redactAward(award("individual", "นายสมชาย ใจดี"), "public")!;
+    expect(shown.winner).toEqual({ raw: INDIVIDUAL_WINNER, value: INDIVIDUAL_WINNER, confidence: 0.97 });
+    expect(JSON.stringify(shown)).not.toContain("สมชาย");
+    expect(shown.price.value).toBe(1_250_000);
+  });
+
+  it("leaves an admin's view whole, and returns null for no award", () => {
+    expect(redactAward(award("individual", "นายสมชาย ใจดี"), "admin")!.winner.value).toBe("นายสมชาย ใจดี");
+    expect(redactAward(undefined, "public")).toBeNull();
   });
 });

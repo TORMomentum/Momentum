@@ -64,3 +64,15 @@ describe("passOutcome (TOR-87)", () => {
     expect(passOutcome({ projects: 2, failed: 2, backOff: false })).toEqual({ ok: false, items: 2, failed: 2, error: "unknown" });
   });
 });
+
+describe("stageHistoryOf — the winner announcement (TOR-221)", () => {
+  it("links W0 and its amendment W2 to the award record we hold, and no other awarded code", () => {
+    const history = stageHistoryOf(
+      [...STAGES, { code: "W2", description: "แก้ไขประกาศผู้ชนะ", on: "2026-11-22" }, { code: "I0", description: null, on: "2026-11-25" }],
+      { torId: "tor1", invitationId: "inv1", awardId: "award1" },
+      20,
+    );
+    expect(history.filter((row) => row.recordId === "award1").map((row) => row.code)).toEqual(["W0", "W2"]);
+    expect(history.find((row) => row.code === "I0")?.recordId).toBeUndefined();
+  });
+});

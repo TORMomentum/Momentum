@@ -4,7 +4,7 @@ import { NotFoundError } from "../../core/errors.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { budgetYearOf } from "../../lib/budget-year.js";
 import { extensionFor } from "../../lib/content-disposition.js";
-import { redactTor } from "../../lib/redact.js";
+import { redactAward, redactTor } from "../../lib/redact.js";
 import { torStateOf, type TorState } from "../../lib/tor-state.js";
 import type { StreamableDocument } from "../../lib/stream-document.js";
 import { buildProjectUrl } from "../../sources/bma-egp/client.js";
@@ -247,6 +247,8 @@ export class TorsService {
       stage: record.stage,
       // How fresh the stages are: the detail page says when they were last read (TOR-206).
       stagesCheckedAt: record.stagesCheckedAt,
+      // Who won and at what price, from the winner announcement (TOR-221); an individual is not named (FR-B-5).
+      award: redactAward(record.award, "public"),
       torState: torStateOfRow(
         {
           torStatus: { value: typeof record.fields.torStatus?.value === "string" ? record.fields.torStatus.value : null },

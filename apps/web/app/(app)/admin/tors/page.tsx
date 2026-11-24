@@ -12,7 +12,7 @@ import { isStaff } from "../../../../src/shared/lib/staff-session";
 export const dynamic = "force-dynamic";
 
 const STATUSES: AdminTorStatus[] = ["all", "public", "restricted", "unverified", "processing", "stuck", "failed"];
-const KINDS: AdminTorKind[] = ["tor", "invitation", "all"];
+const KINDS: AdminTorKind[] = ["tor", "invitation", "award", "all"];
 
 /**
  * Every record, not only the ones the review queue holds — a published TOR that turns out wrong,

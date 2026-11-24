@@ -3,7 +3,7 @@ import type { Config } from "../../core/config.js";
 import { logger } from "../../core/logger.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import type { ProjectStagesSource, SourceStage } from "../../ports/project-stages.port.js";
-import { latestStage, stageKindOf } from "../../sources/national-egp/stages.js";
+import { AWARD_STAGE_CODES, latestStage, stageKindOf } from "../../sources/national-egp/stages.js";
 import type { StagesRepository } from "./stages.repository.js";
 
 /** Lookups in a row that may fail before the worker backs off (spec 2026-11-23-project-stages decision 5). */
@@ -17,13 +17,20 @@ const DAY_MS = 86_400_000;
  */
 export function stageHistoryOf(
   stages: readonly SourceStage[],
-  links: { torId: string | null; invitationId: string | null },
+  links: { torId: string | null; invitationId: string | null; awardId?: string | null },
   max: number,
 ): ProjectStageEntry[] {
   return stages
     .map((stage): ProjectStageEntry => {
       const kind = stageKindOf(stage.code);
-      const recordId = kind === "draft" ? links.torId : kind === "invitation" ? links.invitationId : null;
+      const recordId =
+        kind === "draft"
+          ? links.torId
+          : kind === "invitation"
+            ? links.invitationId
+            : AWARD_STAGE_CODES.includes(stage.code)
+              ? (links.awardId ?? null)
+              : null;
       return { code: stage.code, kind, description: stage.description, on: stage.on, ...(recordId ? { recordId } : {}) };
     })
     .slice(-max);
@@ -143,7 +150,11 @@ export class StagesService {
 
     const records = await repo.projectRecords(source.system, projectId);
     if (records.length === 0) return;
-    const links = { torId: records[0]!._id.toString(), invitationId: await repo.invitationOf(source.system, projectId) };
+    const links = {
+      torId: records[0]!._id.toString(),
+      invitationId: await repo.invitationOf(source.system, projectId),
+      awardId: await repo.awardOf(source.system, projectId),
+    };
     const stageHistory = stageHistoryOf(stages, links, config.stages.historyMax);
     const latest = latestStage(stageHistory.map((entry) => ({ ...entry, announcedOn: entry.on })));
     const stage = latest ? { code: latest.code, kind: latest.kind, on: latest.on } : null;

@@ -1,5 +1,6 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import { ObjectId, type Db, type Filter } from "mongodb";
-import type { ExtractedField, TorFields } from "@tor-radar/shared";
+import type { DocumentType, ExtractedField, TorFields } from "@tor-radar/shared";
 import { corrections, torEvents, tors, type TorDocument } from "../../core/db.js";
 import { escapeRegExp } from "../../lib/escape-regexp.js";
 import { NotFoundError } from "../../core/errors.js";
@@ -31,7 +32,7 @@ export interface ReviewRecord extends QueueEntry {
   state: string;
   restricted: boolean;
   restrictedReason?: string;
-  documentType: "tor" | "invitation";
+  documentType: DocumentType;
 }
 
 /** Which records the all-TORs list shows. */
@@ -41,8 +42,8 @@ export interface AdminTorQuery {
   /** Words in the title or agency, or a project number. */
   q?: string;
   status: AdminTorStatus;
-  /** "tor" leaves out invitations to bid, which are supporting documents. */
-  kind: "tor" | "invitation" | "all";
+  /** "tor" leaves out invitations to bid and winner announcements, which are supporting documents. */
+  kind: "tor" | "invitation" | "award" | "all";
   page: number;
   pageSize: number;
 }
@@ -52,7 +53,7 @@ export interface AdminTorRow {
   id: string;
   title: string;
   agency: string;
-  documentType: "tor" | "invitation";
+  documentType: DocumentType;
   state: string;
   restricted: boolean;
   unverified: boolean;
@@ -171,7 +172,7 @@ export class AdminRepository {
     return {
       "pipeline.state": "published",
       "access.restricted": { $ne: true },
-      documentType: { $ne: "invitation" },
+      documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] },
       duplicateOf: null,
       confidenceLevel: { $ne: "low" },
       $or: [{ "fields.category.verified": false }, { "fields.qualifications.verified": false }],
@@ -246,8 +247,9 @@ export class AdminRepository {
   /** The all-TORs filter, built once for both the page and "select everything matching". */
   private allTorsFilter(query: Pick<AdminTorQuery, "kind" | "status" | "q">): Filter<TorDocument> {
     const and: Filter<TorDocument>[] = [];
-    if (query.kind === "tor") and.push({ documentType: { $ne: "invitation" } });
+    if (query.kind === "tor") and.push({ documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] } });
     if (query.kind === "invitation") and.push({ documentType: "invitation" });
+    if (query.kind === "award") and.push({ documentType: "award" });
     const status: Record<Exclude<AdminTorStatus, "all">, Filter<TorDocument>> = {
       public: { "pipeline.state": "published", "access.restricted": { $ne: true } },
       restricted: { "access.restricted": true },

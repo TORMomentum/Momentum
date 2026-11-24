@@ -1,3 +1,4 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 export type NotEvaluatedReason =
   | "no-budget"
   | "unverified-budget"
@@ -61,7 +62,7 @@ export function eligibilityOf(record: EligibilityRecord, bounds: BudgetBounds): 
  * eligibleFilter(), because a partial index cannot express `$ne` — queries add
  * it, and the index still serves them, since they select a subset of it.
  */
-export const NOT_SUPPORTING_DOCUMENT = { documentType: { $ne: "invitation" } } as const;
+export const NOT_SUPPORTING_DOCUMENT = { documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] } } as const;
 
 export function eligibleFilter() {
   return {

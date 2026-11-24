@@ -11,7 +11,7 @@ import { isStaff } from "../../../../../src/shared/lib/staff-session";
 export const dynamic = "force-dynamic";
 
 const STATUSES: AdminTorStatus[] = ["all", "public", "restricted", "unverified", "processing", "failed"];
-const KINDS: AdminTorKind[] = ["tor", "invitation", "all"];
+const KINDS: AdminTorKind[] = ["tor", "invitation", "award", "all"];
 
 /** Server-only routing and fetching: the admin API key never enters the client bundle. */
 export default async function AdminTorRecordPage({

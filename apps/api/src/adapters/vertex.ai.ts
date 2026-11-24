@@ -2,7 +2,7 @@ import { GoogleAuth, type GoogleAuth as GoogleAuthType } from "google-auth-libra
 import { TOR_CATEGORIES, normalizeCategory } from "@tor-radar/shared";
 import type { EvaluationCriterion, EvaluationMethod, RequiredDocument } from "@tor-radar/shared";
 import { DocumentUnreadableError, ExtractionError } from "../core/errors.js";
-import type { Ai, ExtractionInput, RawExtraction, RawField, TorStatus } from "../ports/ai.port.js";
+import type { Ai, ExtractionInput, RawAward, RawExtraction, RawField, TorStatus } from "../ports/ai.port.js";
 
 export interface VertexConfig {
   model: string;
@@ -282,6 +282,39 @@ function parseLenient(text: string): unknown {
 interface GenerateResponse {
   candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   modelVersion?: string;
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+}
+
+/** A winner announcement's three values (TOR-221). The signatories are deliberately not in the schema (FR-B-5). */
+export const AWARD_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    winner: field({ type: "string", nullable: true }),
+    price_thb: field({ type: "number", nullable: true }),
+    announcement_date: field({ type: "string", nullable: true }),
+  },
+  required: ["winner", "price_thb", "announcement_date"],
+};
+
+export const AWARD_SYSTEM_PROMPT = `คุณเป็นผู้ช่วยสกัดข้อมูลจากประกาศผู้ชนะการเสนอราคาของหน่วยงานราชการไทย
+ตอบเป็น JSON ตาม schema เท่านั้น แต่ละช่องมี raw (ข้อความตามเอกสารทุกตัวอักษร), value (ค่าที่ปรับรูปแบบแล้ว), confidence (0-1), evidence (ข้อความสั้นที่อ้างจากเอกสาร)
+- winner: ชื่อผู้เสนอราคาที่ชนะ ตามที่เขียนในประกาศ value = ชื่อเดียวกัน ถ้ามีผู้ชนะหลายรายหรือหลายรายการ ให้ใส่ทุกชื่อคั่นด้วย " / " ห้ามใส่ชื่อเจ้าหน้าที่หรือผู้ลงนามในประกาศ
+- price_thb: ราคาที่ผู้ชนะเสนอ เป็นบาท รวมภาษีมูลค่าเพิ่ม value = ตัวเลขอารบิก ไม่มีจุลภาค ถ้ามีหลายรายการให้รวมกัน
+- announcement_date: วันที่ประกาศ ("ประกาศ ณ วันที่") value = YYYY-MM-DD ปฏิทินสากล (พ.ศ. ลบ 543)
+ถ้าเอกสารไม่ระบุค่าใด value = null และ confidence = 0 ห้ามเดา`;
+
+/** Maps the model's JSON for a winner announcement. Pure, so it is tested without a network call. */
+export function parseAward(modelJson: unknown, modelVersion: string): RawAward {
+  if (typeof modelJson !== "object" || modelJson === null) throw new DocumentUnreadableError("model response was not a JSON object");
+  const m = modelJson as Record<string, ModelField | undefined>;
+  const award: RawAward = {
+    winner: toField(m.winner, asStringOrNull(m.winner?.value)),
+    price: toField(m.price_thb, (() => { const n = asNumberOrNull(m.price_thb?.value); return n !== null && n > 0 ? n : null; })()),
+    announcementDate: toField(m.announcement_date, (() => { const v = asStringOrNull(m.announcement_date?.value); return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; })()),
+    modelVersion,
+  };
+  if (award.winner.value === null && award.price.value === null) throw new DocumentUnreadableError("no winner and no price in the announcement");
+  return award;
 }
 
 export class VertexAi implements Ai {
@@ -330,6 +363,30 @@ export class VertexAi implements Ai {
     const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
     if (!text) throw new ExtractionError("model returned an empty response");
     return parseExtraction(parseLenient(text), data.modelVersion ?? this.config.model);
+  }
+
+  async extractAward(input: Pick<ExtractionInput, "bytes" | "contentType">): Promise<RawAward> {
+    const url =
+      `https://${vertexHost(this.config.location)}/v1/projects/${this.config.project}` +
+      `/locations/${this.config.location}/publishers/google/models/${this.config.model}:generateContent`;
+    const data = await this.callWithRetry(url, {
+      systemInstruction: { parts: [{ text: AWARD_SYSTEM_PROMPT }] },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: input.contentType, data: input.bytes.toString("base64") } },
+            { text: "สกัดผู้ชนะ ราคา และวันที่ประกาศจากประกาศผู้ชนะการเสนอราคานี้" },
+          ],
+        },
+      ],
+      generationConfig: { responseMimeType: "application/json", responseSchema: AWARD_RESPONSE_SCHEMA, temperature: 0, maxOutputTokens: 8192 },
+    });
+    const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
+    if (!text) throw new ExtractionError("model returned an empty response");
+    const award = parseAward(parseLenient(text), data.modelVersion ?? this.config.model);
+    const usage = data.usageMetadata;
+    return usage ? { ...award, usage: { inputTokens: usage.promptTokenCount ?? 0, outputTokens: usage.candidatesTokenCount ?? 0 } } : award;
   }
 
   private async callWithRetry(url: string, body: unknown, tries = 4): Promise<GenerateResponse> {

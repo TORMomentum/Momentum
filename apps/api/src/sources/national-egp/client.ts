@@ -13,6 +13,10 @@ import {
   SITE_BASE,
   type ListKind,
   MAX_PACKAGE_BYTES,
+  AWARD_PDF_PATH,
+  AWARD_TEMPLATE_PATH,
+  AWARD_TEMPLATE_TYPE,
+  MAX_AWARD_BYTES,
   REQUEST_TIMEOUT_MS,
   RETRY_DELAY_MS,
   SERVICE_BASE,
@@ -172,6 +176,29 @@ export function buildProjectSearchUrl(projectId: string): string {
 
 export async function downloadPackage(fileId: string): Promise<Buffer> {
   return getBytes(packageUrl(fileId), MAX_PACKAGE_BYTES);
+}
+
+/** The permanent URL of a winner announcement's PDF — the source link its record keeps (FR-A-2). */
+export function awardPdfUrl(templateId: string): string {
+  const url = new URL(AWARD_PDF_PATH, SERVICE_BASE);
+  url.searchParams.set("templateId", templateId);
+  return url.toString();
+}
+
+/** The project's winner announcement template id, or null when e-GP holds none (TOR-221). */
+export async function getAwardTemplateId(projectId: string): Promise<string | null> {
+  const url = new URL(AWARD_TEMPLATE_PATH, SERVICE_BASE);
+  url.searchParams.set("projectId", projectId);
+  url.searchParams.set("templateType", AWARD_TEMPLATE_TYPE);
+  const body = JSON.parse((await getBytes(url.toString(), JSON_MAX_BYTES)).toString("utf8")) as Envelope<{ templateId?: string }>;
+  const templateId = body.data?.templateId;
+  // responseCode "1" with data null is the upstream's "no such data", not a failure.
+  if (body.response?.responseCode !== "0" || !templateId || !/^[0-9a-f-]{36}$/i.test(templateId)) return null;
+  return templateId;
+}
+
+export async function downloadAward(templateId: string): Promise<Buffer> {
+  return getBytes(awardPdfUrl(templateId), MAX_AWARD_BYTES);
 }
 
 /**

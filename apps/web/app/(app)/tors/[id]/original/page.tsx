@@ -17,8 +17,9 @@ export const metadata: Metadata = {
  * served inline rather than as a download (CLAUDE.md, security baseline).
  *
  * `?doc=invitation` shows the project's invitation to bid instead, but only the
- * one this TOR's deadline was read from: the id comes from the record, never
- * from the URL, so the page cannot be pointed at an arbitrary stored file.
+ * one this TOR's deadline was read from; `?doc=award` its winner announcement
+ * (TOR-221). The id comes from the record, never from the URL, so the page
+ * cannot be pointed at an arbitrary stored file.
  *
  * Like the record page, this segment has no loading.tsx, so an unknown or
  * taken-down record answers 404 rather than a 404 screen with a 200.
@@ -37,8 +38,8 @@ export default async function TorOriginalPage({
   if (!tor) notFound();
 
   const documents = originalDocuments(tor);
-  const wantsInvitation = (await searchParams).doc === "invitation";
-  const active = wantsInvitation && documents.some((document) => document.key === "invitation") ? "invitation" : "tor";
+  const wanted = (await searchParams).doc;
+  const active = documents.find((document) => document.key !== "tor" && document.key === wanted)?.key ?? "tor";
 
   return <TorOriginalView tor={tor} documents={documents} active={active} />;
 }

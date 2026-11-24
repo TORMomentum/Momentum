@@ -10,12 +10,18 @@ import styles from "./admin.module.css";
 export interface AdminTorsTableRow {
   id: string;
   title: string;
-  invitation: boolean;
+  documentType: "tor" | "invitation" | "award";
   agency: string;
   projectNumber: string | null;
   status: { label: string; tone: string };
   createdAt: string;
 }
+
+/** The tag beside a supporting document's title: it is not a TOR, and shows on its project's TOR (TOR-221). */
+const SUPPORTING_LABELS: Record<"invitation" | "award", string> = {
+  invitation: "ประกาศเชิญชวน",
+  award: "ประกาศผู้ชนะ",
+};
 
 const ACTIONS: Record<AdminBulkAction, { button: string; title: string; body: string; confirm: string; tone: "danger" | "primary" }> = {
   reextract: {
@@ -184,7 +190,7 @@ export function AdminTorsTable({
               </td>
               <td>
                 <Link href={`/admin/tors/${row.id}${linkSuffix}`}>{row.title || "ยังไม่มีชื่อ — ยังไม่ได้สกัด"}</Link>
-                {row.invitation && <span className={styles.torsKind}>ประกาศเชิญชวน</span>}
+                {row.documentType !== "tor" && <span className={styles.torsKind}>{SUPPORTING_LABELS[row.documentType]}</span>}
               </td>
               <td>{row.agency || "—"}</td>
               <td className={styles.logWhen}>{row.projectNumber ?? "—"}</td>

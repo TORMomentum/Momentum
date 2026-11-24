@@ -853,4 +853,16 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   who bookmarked it, once, within `STAGE_NOTIFY_LOOKBACK_DAYS` (TOR-239); tests (TOR-240). Checked live to
   Mailpit; on Atlas all 991 stage events are first reads, so nothing would be sent today
   - [ ] the emails go out only once `NOTIFY_DISPATCH_ENABLED` is turned on (the match benchmark)
-- [ ] TOR-221 Winner announcements: winner, price, bidders
+- [ ] TOR-221 Winner announcements: winner, price, bidders (spec 2026-11-24-winner-announcements)
+  - [x] the announcement PDF from e-GP's public template service, no captcha; `tools/collect_egp_awards.mts`,
+    recorded as source `national-egp-awards`
+  - [x] `documentType: "award"` as a supporting document; Gemini reads winner, price and date; graded by
+    `T_low`/`T_high`; linked onto the project's TORs and `W0`/`W2` stages
+  - [x] a natural person's name never public (`redactAward`); "ผลการประกวดราคา" block and the announcement as
+    an original on the TOR page; the award kind in the admin list
+  - [x] live trial on Atlas: 5 announcements, all high confidence, checked on the page
+  - [x] every awarded project on Atlas (2026-11-24): 254 collected and published, 253 high, 1 medium; 4
+    winners not named (individual or unplaceable)
+  - [ ] widen `winnerKindOf` for public bodies the rule cannot place (a university, a school), then
+    recompute `winnerKind`
+  - [ ] the bidders and their prices — behind e-GP's captcha, not automated; FR-B-2's bidders stay open

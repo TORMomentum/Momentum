@@ -1,5 +1,6 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import { ObjectId, type Db, type Filter, type WithId } from "mongodb";
-import type { ConfidenceLevel, ExtractedField, ProjectStageEntry, Provenance, SourceProject, StageKind, TorFields } from "@tor-radar/shared";
+import type { AwardResult, ConfidenceLevel, ExtractedField, ProjectStageEntry, Provenance, SourceProject, StageKind, TorFields } from "@tor-radar/shared";
 import type { SearchConfig } from "../../core/config.js";
 import { SEARCH_PATHS, torPeerStats, tors, type TorDocument } from "../../core/db.js";
 import type { CohortKey } from "../stats/cohort.js";
@@ -100,6 +101,8 @@ export interface PublicTorRecord {
   stage: { code: string; kind: StageKind; on: string } | null;
   /** When the stages were last read from the source; null before the first read. */
   stagesCheckedAt: Date | null;
+  /** The project's winner announcement as read (TOR-221), before redaction; null when none was collected. */
+  award: AwardResult | null;
   provenance: Provenance | null;
   confidenceLevel: ConfidenceLevel | null;
   unverified: boolean;
@@ -127,7 +130,7 @@ export const VISIBLE: Filter<TorDocument> = {
   "access.restricted": { $ne: true },
   duplicateOf: null,
   // An invitation to bid is a supporting document: its deadline is shown on its TOR.
-  documentType: { $ne: "invitation" },
+  documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] },
 };
 
 const LIST_PROJECTION = {
@@ -525,6 +528,7 @@ export class TorsRepository {
           stageHistory: 1,
           stage: 1,
           stagesCheckedAt: 1,
+          award: 1,
           provenance: 1,
           confidenceLevel: 1,
           unverified: 1,
@@ -546,6 +550,7 @@ export class TorsRepository {
       stageHistory: doc.stageHistory ?? [],
       stage: doc.stage ?? null,
       stagesCheckedAt: doc.stagesCheckedAt ?? null,
+      award: doc.award ?? null,
       provenance: doc.provenance ?? null,
       confidenceLevel: doc.confidenceLevel ?? null,
       unverified: doc.unverified,

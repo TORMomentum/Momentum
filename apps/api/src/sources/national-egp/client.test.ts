@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { announcementListUrl, buildProjectSearchUrl, decodeFeed, fileIdFromLink, packageUrl, parseFeed, parseFeedDate } from "./client.js";
+import { announcementListUrl, awardPdfUrl, buildProjectSearchUrl, decodeFeed, fileIdFromLink, packageUrl, parseFeed, parseFeedDate } from "./client.js";
 
 // The item as e-GP published it for project 69099218130 on 2026-09-08.
 const feed = `<?xml version="1.0" encoding="Windows-874" ?>
@@ -99,5 +99,14 @@ describe("buildProjectSearchUrl", () => {
     expect(buildProjectSearchUrl("68039469567")).toBe(
       "https://process5.gprocurement.go.th/egp-agpc01-web/announcement?keywordSearch=68039469567",
     );
+  });
+});
+
+describe("awardPdfUrl (TOR-221)", () => {
+  it("is the template service's public PDF for one template id", () => {
+    const url = new URL(awardPdfUrl("0f8e2c1a-1111-4222-8333-944455556666"));
+    expect(url.origin).toBe("https://process5.gprocurement.go.th");
+    expect(url.pathname).toBe("/egp-template-service/dwnt/view-pdf-file");
+    expect(url.searchParams.get("templateId")).toBe("0f8e2c1a-1111-4222-8333-944455556666");
   });
 });

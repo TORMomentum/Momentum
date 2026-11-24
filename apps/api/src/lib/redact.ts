@@ -1,4 +1,4 @@
-import type { ExtractedField, TorRecord } from "@tor-radar/shared";
+import type { AwardResult, ExtractedField, TorRecord } from "@tor-radar/shared";
 
 /**
  * FR-B-5 / NFR-S2: minimise personal data in anything shown publicly. The one
@@ -56,6 +56,20 @@ export function redactTor<T extends Pick<TorRecord, "fields">>(record: T, audien
     ...record,
     fields: { ...record.fields, contact: redactField(record.fields.contact) },
   };
+}
+
+/** What the public is shown in place of a winner who is a natural person (TOR-221, FR-B-5). */
+export const INDIVIDUAL_WINNER = "บุคคลธรรมดา";
+
+/**
+ * A winner announcement as the public sees it (TOR-221). A juristic winner's name is public record and shown
+ * as extracted; a natural person's name, or a name the rule cannot place, is replaced and its raw text dropped.
+ * The award's own document stays reachable through its source link (NFR-S3).
+ */
+export function redactAward(award: AwardResult | null | undefined, audience: Audience): AwardResult | null {
+  if (!award) return null;
+  if (audience === "admin" || award.winnerKind === "juristic") return award;
+  return { ...award, winner: { raw: INDIVIDUAL_WINNER, value: INDIVIDUAL_WINNER, confidence: award.winner.confidence } };
 }
 
 export { redactContactString };

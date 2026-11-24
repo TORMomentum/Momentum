@@ -1,3 +1,4 @@
+import { SUPPORTING_DOCUMENT_TYPES } from "@tor-radar/shared";
 import { cosine } from "../../ports/embeddings.port.js";
 import { ObjectId, type Db, type WithId } from "mongodb";
 import { WORK_CATEGORY_LEAVES } from "@tor-radar/seeds";
@@ -154,7 +155,7 @@ export class MatchingRepository {
     const byId = new Map(cached.map((entry) => [entry.torId, entry.classification]));
     const records = await tors(this.db)
       .find(
-        { _id: { $in: [...byId.keys()].filter(ObjectId.isValid).map((id) => new ObjectId(id)) }, "pipeline.state": "published", "access.restricted": false, documentType: { $ne: "invitation" }, duplicateOf: null },
+        { _id: { $in: [...byId.keys()].filter(ObjectId.isValid).map((id) => new ObjectId(id)) }, "pipeline.state": "published", "access.restricted": false, documentType: { $nin: [...SUPPORTING_DOCUMENT_TYPES] }, duplicateOf: null },
         { sort: { announcedAt: -1, _id: -1 }, limit: this.config.matching.pathSampleCap, projection: MATCH_PROJECTION },
       )
       .toArray();

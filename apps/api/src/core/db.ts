@@ -1,5 +1,5 @@
 import { MongoClient, MongoServerError, ObjectId, type Collection, type Db } from "mongodb";
-import type { ConfidenceLevel, DocumentType, ProjectStageEntry, Provenance, SourceProject, StageKind, TorFields, StoredAnnex } from "@tor-radar/shared";
+import type { AwardResult, ConfidenceLevel, DocumentType, ProjectStageEntry, Provenance, SourceProject, StageKind, TorFields, StoredAnnex } from "@tor-radar/shared";
 import type { CohortKey } from "../modules/stats/cohort.js";
 import { eligibleFilter } from "../modules/stats/eligibility.js";
 import type { TorClassification } from "../modules/matching/tor-classifier.js";
@@ -43,6 +43,8 @@ export interface TorDocument {
   stage?: { code: string; kind: StageKind; on: string };
   /** When the stages were last read from the source. */
   stagesCheckedAt?: Date;
+  /** The project's winner announcement, read from its award record (TOR-221). Only public TOR records carry it. */
+  award?: AwardResult;
   /** When the stages worker should read them again; null once the stage is final or too old to follow. */
   stagesDueAt?: Date | null;
   /** The TOR's other files, stored as originals and read together with it (checklist C3). */

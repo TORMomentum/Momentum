@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AwardPanel } from "../features/tor-detail/AwardPanel";
 import { BiddingPanel } from "../features/tor-detail/BiddingPanel";
 import { ChecklistPanel } from "../features/tor-detail/ChecklistPanel";
 import { StagePanel } from "../features/tor-detail/StagePanel";
@@ -289,6 +290,8 @@ export function TorRecordView({
           title={previewProps.title}
           referenceNo={previewProps.referenceNo}
         />
+
+        <AwardPanel award={tor.award} originals={originals} title={previewProps.title} referenceNo={previewProps.referenceNo} />
 
         <BiddingPanel
           evaluationMethod={fields.evaluationMethod}
