@@ -417,7 +417,6 @@ active rule rather than a copy of it.
 `meta.lastIntakeAt` is the most recent successful intake, which is what `FR-E-6` asks for;
 `meta.statsComputedAt` is the last statistics run, and `meta.stale` is true when that run is older
 than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` (`FR-F-4`) counts, over the plotted TORs, how many failed or could not be evaluated on each of C1 to C5, and lists the flagged budgets with the checks they failed; C2 and C3 are evaluated (TOR-200) against `rule.checklist`, the minimums in force.
-sprint 4.
 
 ### `GET /api/v1/export/tors.csv` ✅ (TOR-69)
 
