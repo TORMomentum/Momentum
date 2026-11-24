@@ -544,7 +544,7 @@ Branch `feat/tor-224-company-path`._
       in the URL and not stored
 - [x] **TOR-283 — gap analysis against the profile** — `GET /me/path`: what the field's TORs ask for (certifications,
       registrations) and whether the vendor holds it; "not stated" is never "missing"
-- [ ] **TOR-284 — less-competitive categories** — its inputs are in: winner announcements on 254 awarded projects (TOR-221) and the stage key (TOR-204/205); the number of bidders is not collected (SRS O5: the e-GP Data Gateway's monthly bidders CSV has it once a contract is announced)
+- [ ] **TOR-284 — less-competitive categories** — its inputs are in: winner announcements on 254 awarded projects (TOR-221) and the stage key (TOR-204/205)
 - [ ] No past-work gap by field: past projects carry no category and the extraction reads no experience requirement
 - [ ] The sample is the newest `PATH_SAMPLE_CAP` TORs of the field; a thin field says so but is not widened
 - [ ] The sample reads every classified TOR id of the field before capping (so the cap follows announcement date); not timed on a real-size corpus
@@ -853,7 +853,7 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   who bookmarked it, once, within `STAGE_NOTIFY_LOOKBACK_DAYS` (TOR-239); tests (TOR-240). Checked live to
   Mailpit; on Atlas all 991 stage events are first reads, so nothing would be sent today
   - [ ] the emails go out only once `NOTIFY_DISPATCH_ENABLED` is turned on (the match benchmark)
-- [x] TOR-221 Winner announcements: winner and price (spec 2026-11-24-winner-announcements); bidders not collected (SRS O5)
+- [x] TOR-221 Winner announcements: winner and price (spec 2026-11-24-winner-announcements)
   - [x] the announcement PDF from e-GP's public template service, no captcha; `tools/collect_egp_awards.mts`,
     recorded as source `national-egp-awards`
   - [x] `documentType: "award"` as a supporting document; Gemini reads winner, price and date; graded by
@@ -865,5 +865,3 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
     winners not named (individual or unplaceable)
   - [x] public bodies and schools named (`winnerKindOf`), re-classed on Atlas with
     `tools/recompute_winner_kind.mts --apply`: 2 of 254 changed, both checked on the page
-  - [x] the bidders recorded as SRS open issue O5: the project page's price report is behind a captcha; the
-    CGD e-GP Data Gateway publishes every bidder in a monthly CSV, but only once a contract is announced

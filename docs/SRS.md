@@ -314,7 +314,7 @@ Covers feature **F2**, **F3**, and **F10**. Realises **UC-8**.
 | ID | Requirement | Verify |
 | :---- | :---- | :---- |
 | **FR-B-1** | The system shall perform Thai and English OCR on scanned and photographed documents using a Thai-capable model. | T, A |
-| **FR-B-2** | The system shall extract nine fields from each TOR: title, issuing agency, budget, category, scope summary, required qualifications, submission deadline, contact, and status. A TOR document does not usually state its submission deadline; where the source links the TOR to its project's invitation to bid, the deadline shall be read from that invitation and marked with the document it came from. Values the source system itself states are recorded as source values, not as extractions. Where the document states them, the system shall also extract the evaluation method with its score weights, and the required documents and certifications; these follow the same confidence rules as the nine fields (§4.2.1). The winner, the winning price and the bidders shall be read from the project's winner announcement, linked and marked with its source document in the same way as the deadline. Where a source publishes the bidders only behind a human-verification step (a captcha), they are not collected automatically (assumption A1); the winner and the winning price still are — see O5. | T |
+| **FR-B-2** | The system shall extract nine fields from each TOR: title, issuing agency, budget, category, scope summary, required qualifications, submission deadline, contact, and status. A TOR document does not usually state its submission deadline; where the source links the TOR to its project's invitation to bid, the deadline shall be read from that invitation and marked with the document it came from. Values the source system itself states are recorded as source values, not as extractions. Where the document states them, the system shall also extract the evaluation method with its score weights, and the required documents and certifications; these follow the same confidence rules as the nine fields (§4.2.1). The winner and the winning price shall be read from the project's winner announcement, linked and marked with its source document in the same way as the deadline. | T |
 | **FR-B-3** | The system shall record a confidence value for every extracted field and apply §4.2.1 to it. | T, D |
 | **FR-B-4** | The system shall map extracted qualifications onto the shared skill taxonomy of FR-G-3. | T |
 | **FR-B-5** | The system shall minimise personal data in what it displays, while keeping the original document reachable through its source link. | I, T |
@@ -508,7 +508,7 @@ How every feature, use case, requirement and user class connects.
 
 # 8. Open Issues
 
-Four values depend on data the team does not yet have, and one requirement on a source.
+Four values depend on data the team does not yet have.
 
 | # | Open point | Used by | Settled by |
 | :---- | :---- | :---- | :---- |
@@ -516,7 +516,6 @@ Four values depend on data the team does not yet have, and one requirement on a 
 | O2 | MIN_BID_WINDOW_DAYS | §4.6.1 C2 | Calibration against the collected corpus. Until then C2 reports "not evaluated" |
 | O3 | MIN_SCOPE_CHARS, MIN_SCOPE_SECTIONS | §4.6.1 C3 | Calibration against the collected corpus |
 | O4 | Whether IQR or ZSCORE is the active method | §4.5.1 | Comparison of both on real budget data |
-| O5 | The bidders of FR-B-2 (added 2026-11-24, TOR-221) | §4.2 | National e-GP's project page opens the bidders' price report only behind a captcha, which the system does not pass. The Comptroller General's e-GP Data Gateway (opened 2026-11-16) publishes every bidder, with price and vendor type, in a monthly CSV ("ข้อมูลผู้เสนอราคาของโครงการที่ทำสัญญา"), but only for projects whose contract is announced. Settled by importing that file, or by admins entering bidders by hand |
 
 ---
 
