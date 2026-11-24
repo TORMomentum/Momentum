@@ -245,6 +245,8 @@ const schema = z.object({
   // Statistics (Dashboard anomaly rule). ANOMALY_METHOD was settled as IQR in TOR-200 (spec §8).
   PEER_GROUP_WINDOW_MONTHS: z.coerce.number().int().positive().default(12),
   PEER_MIN_N: z.coerce.number().int().positive().default(8),
+  /** Competition by category (TOR-280): how many of the most frequent winners the "top winners' share" counts. */
+  COMPETITION_TOP_WINNERS: z.coerce.number().int().positive().default(3),
   ANOMALY_METHOD: z.enum(["IQR", "ZSCORE"]).default("IQR"),
   // Fractional on purpose: the SRS fence is 1.5 x IQR. An int() schema here
   // still passes its own default (zod does not validate defaults) and then
@@ -495,6 +497,7 @@ export interface Config {
   stats: {
     peerWindowMonths: number;
     peerMinN: number;
+    competitionTopWinners: number;
     method: "IQR" | "ZSCORE";
     iqrMultiplier: number;
     zScoreLimit: number;
@@ -683,6 +686,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     stats: {
       peerWindowMonths: parsed.PEER_GROUP_WINDOW_MONTHS,
       peerMinN: parsed.PEER_MIN_N,
+      competitionTopWinners: parsed.COMPETITION_TOP_WINNERS,
       method: parsed.ANOMALY_METHOD,
       iqrMultiplier: parsed.ANOMALY_IQR_MULTIPLIER,
       zScoreLimit: parsed.ANOMALY_ZSCORE_LIMIT,

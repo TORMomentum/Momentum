@@ -93,6 +93,7 @@ test: keep the first three columns exactly `METHOD`, `` `path` ``, caller.
 | GET | `/api/v1/tors/:id/document` | public | as above | none |
 | GET | `/api/v1/tors/:id` | public | none | none |
 | GET | `/api/v1/stats/dashboard` | public | none | none, aggregate |
+| GET | `/api/v1/stats/competition` | public | own rate limit (`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN`, [stats.routes.ts](../../apps/api/src/modules/stats/stats.routes.ts)) | none, aggregate: counts and a share per category, no winner named |
 | POST | `/api/v1/intake/upload` | admin-key | `requireKey` ([intake.routes.ts:105](../../apps/api/src/modules/intake/intake.routes.ts)), IP rate limit | none |
 | POST | `/api/v1/intake/url` | admin-key | `requireKey` ([intake.routes.ts:115](../../apps/api/src/modules/intake/intake.routes.ts)), SSRF helper | none |
 | POST | `/api/v1/intake` | intake-key | `requireKey` with the intake keys ([intake.routes.ts:128](../../apps/api/src/modules/intake/intake.routes.ts)) | none |

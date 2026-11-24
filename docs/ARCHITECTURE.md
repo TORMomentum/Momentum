@@ -184,7 +184,7 @@ The feature modules, as of Sprint 4:
 | `extraction/` | OCR and field extraction, confidence grading; a winner announcement (`documentType: "award"`) read by `runAward` and linked onto its project's TORs and `W0`/`W2` stages (TOR-221) |
 | `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter (`tors.match-filter.ts`, shared with `export/`) |
 | `export/` | CSV of the filtered list (`GET /export/tors.csv`, TOR-69): pages through `TorsService.search`, adds provenance, writes RFC 4180 with a formula guard |
-| `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
+| `stats/` · `checklist/` | Dashboard figures and the anomaly rule, and the winners' spread by category (`competition.ts`, `GET /stats/competition`) · the specification-quality checklist |
 | `accounts/` | Registration, sign-in (password, and Google through `google-signin.*`), sessions, password reset, PDPA export and deletion |
 | `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
@@ -611,6 +611,7 @@ Three shapes are load-bearing:
 | `tors.stagesDueAt`, partial on a date | The stages worker's claim: records due for a re-read, oldest due first. Records never re-read (final, too old, not from e-GP) are left out of it (TOR-205) |
 | `tors.stage.kind` | The open filters exclude a final stage (`lib/tor-state.ts`) |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
+| `tors.award.recordId`, partial on `award.unverified: false` | The winners-by-category read (TOR-280): only records with a confirmed award, so the read grows with the awarded set and not the corpus |
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
 | `tor_peer_stats.category + month`, unique | One bounds document per peer group, which is what makes a recompute idempotent |
 | `tor_peer_stats.dirty + dirtyAt`, partial | The statistics worker's claim query |

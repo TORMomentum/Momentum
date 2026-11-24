@@ -659,6 +659,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
     { partialFilterExpression: eligibleFilter() },
   );
   await tors(db).createIndex({ "fields.agency.value": 1, "cohort.month": 1 });
+  // The winners-by-category read (TOR-280): only records with a confirmed award. Partial, so the many records with none
+  // are not in it, and the read grows with the awarded set and not with the corpus.
+  await tors(db).createIndex({ "award.recordId": 1 }, { partialFilterExpression: { "award.unverified": false } });
   await tors(db).createIndex({ "cohort.category": 1, "cohort.month": 1 });
   // Every audit read is "this TOR, newest first". A collection growing to
   // millions of small documents is ordinary; a document growing is not.

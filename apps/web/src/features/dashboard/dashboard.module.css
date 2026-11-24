@@ -588,3 +588,16 @@
   .checklistTable thead th { white-space: normal; }
 }
 
+
+/* ---------- winners by category (TOR-281): the checklist table's rhythm, with a share bar in the last column ---------- */
+.competition { margin-top: 36px; border-top: var(--rule); padding-top: 24px; }
+
+.competitionTable thead th { white-space: normal; }
+
+.competitionShare { width: 168px; }
+
+.competitionValue { display: block; margin-bottom: 4px; }
+
+@media (max-width: 640px) {
+  .competitionShare { width: 110px; }
+}

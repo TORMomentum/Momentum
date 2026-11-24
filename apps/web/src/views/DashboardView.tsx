@@ -5,11 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { ChecklistSummaryPanel } from "../features/dashboard/ChecklistSummaryPanel";
+import { CompetitionPanel } from "../features/dashboard/CompetitionPanel";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
 import { MatchedTorsPanel } from "../features/dashboard/MatchedTorsPanel";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { OwnMatches } from "../shared/api/matches.api";
-import type { DashboardPayload, TorState } from "../shared/api/stats.api";
+import type { CompetitionPayload, DashboardPayload, TorState } from "../shared/api/stats.api";
 import { formatBudgetShort, formatThaiMonth, thaiDigitsToArabic } from "../shared/lib/format";
 import { serialiseDashboardFilters, UNKNOWN, type DashboardFilters } from "../shared/lib/dashboard-filters";
 
@@ -52,12 +53,15 @@ export function DashboardView({
   filters,
   error = false,
   matches,
+  competition,
 }: {
   dashboard?: DashboardPayload;
   filters: DashboardFilters;
   error?: boolean;
   /** The signed-in vendor's matches; undefined for a visitor, who sees the public dashboard only. */
   matches?: OwnMatches | null;
+  /** TOR-280: the winners' spread by category; absent when the read failed or the API predates it. */
+  competition?: CompetitionPayload | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -300,6 +304,8 @@ export function DashboardView({
           </section>
         </div>
       </>}
+      {/* Not part of the filtered figures: it answers for the whole collected corpus, so it stays when a filter matches nothing. */}
+      {competition && <CompetitionPanel competition={competition} />}
     </main>
   );
 }

@@ -144,6 +144,13 @@ describe("loadConfig", () => {
     expect(config.vertex.model).toBe("gemini-3.5-flash");
   });
 
+  it("takes the number of top winners from COMPETITION_TOP_WINNERS, three by default", () => {
+    expect(loadConfig(base).stats.competitionTopWinners).toBe(3);
+    expect(loadConfig({ ...base, COMPETITION_TOP_WINNERS: "5" }).stats.competitionTopWinners).toBe(5);
+    expect(() => loadConfig({ ...base, COMPETITION_TOP_WINNERS: "0" })).toThrow();
+    expect(() => loadConfig({ ...base, COMPETITION_TOP_WINNERS: "-1" })).toThrow();
+  });
+
   it("carries the checklist thresholds TOR-200 settled, and lets each be overridden", () => {
     expect(loadConfig(base).checklist).toEqual({ minBidWindowDays: 8, minScopeChars: 112, minScopeSections: 6 });
     expect(loadConfig({ ...base, MIN_BID_WINDOW_DAYS: "14", MIN_SCOPE_CHARS: "150", MIN_SCOPE_SECTIONS: "10" }).checklist)

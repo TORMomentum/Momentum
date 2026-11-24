@@ -849,6 +849,13 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   - [x] TOR-294 admin email once when an automatic source is failing (3 in a row) or stale (48 h), once when
     it recovers; checked hourly by the extraction worker
   - [ ] a deployed stages worker — the stages source shows stale wherever it is not running
+- [x] TOR-223 Winners by category (spec 2026-11-25-competition-by-category)
+  - [x] TOR-280 `GET /stats/competition`: awarded projects, different winners and the top 3 winners' share per category, from the confirmed award
+    readings; a category under `PEER_MIN_N` is listed, not ranked; no winner is named. Read on Atlas (read-only): 193 awarded projects, 12 categories, 9 comparable
+  - [x] TOR-281 `CompetitionPanel` on the dashboard, with the coverage note and the time of the last announcement read
+  - [x] checked live: the real API on a scratch database, and the Next server rendering `/dashboard` from it
+  - [ ] the number of bidders is not here (bidders are out of scope, 2026-11-24); the ticket's "average bidders" is not built
+  - [ ] not seen in a browser; the read is unindexed (fine at 193 awarded projects)
 - [x] TOR-206 stage timeline on the TOR page (spec 2026-11-23-project-stages §12): `StagePanel` — the
   project's stages by day, the source's own names (no codes), the current one marked, "ดูเอกสาร" for a stage
   we hold the original of, the e-GP project link and the last-read time (`stagesCheckedAt` on the detail).
