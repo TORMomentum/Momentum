@@ -13,6 +13,17 @@ export interface PathRequirement {
   holds: boolean | null;
 }
 
+/** One category of the field and how the announced wins in it are spread (TOR-284); the same figures as the dashboard's panel. */
+export interface PathCategorySpread {
+  category: string;
+  /** Awarded projects with a named winner. */
+  awarded: number;
+  /** Different winners among them. */
+  winners: number;
+  /** Share of those projects the most frequent winners took, 0 to 1. */
+  topShare: number;
+}
+
 export interface FieldPath {
   target: { id: string; th: string };
   /** The TORs the figures come from: published, public, with the fields read well enough to count. */
@@ -23,4 +34,10 @@ export interface FieldPath {
   budget: { n: number; medianThb: number } | null;
   /** The largest value among the vendor's own past projects, null when they stated none with a value. */
   yourLargestProjectThb: number | null;
+  /**
+   * TOR-284: the TOR categories this field's kinds of work fall in, with how the announced wins are spread in each.
+   * `comparable` holds those with enough awarded projects, widest spread (lowest share) first; `notComparable` counts
+   * the rest. Counts and a share only: it does not say a category is easy to enter.
+   */
+  winnerSpread: { topWinners: number; minAwarded: number; comparable: PathCategorySpread[]; notComparable: number };
 }

@@ -135,7 +135,7 @@ export function buildApp(config: Config, db: Db): Express {
     }),
   });
   const matchingRouter = buildMatchingRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config), behaviour: behaviourRepository });
-  const pathRouter = buildPathRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config) });
+  const pathRouter = buildPathRouter({ config, profiles: profileRepository, matching: new MatchingRepository(db, config), stats: statsRepository });
   if (googleRouter) app.use("/auth", googleRouter);
   for (const prefix of ["/auth", API_PREFIX]) {
     app.use(prefix, accountsRouter);
