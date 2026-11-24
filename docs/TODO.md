@@ -743,7 +743,8 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [x] Derivations recorded in `core/config.ts` and the quality-checklist spec §8 (TOR-305); `tools/calibrate_open_values.mts` re-measures
   - [ ] the 10th-percentile rule is a convention, not a measured-against-truth cut: it fails about a tenth of TORs by construction. Review it before the thresholds are quoted publicly
   - [ ] `MIN_SCOPE_CHARS` measures the AI's scope summary, a proxy for the scope itself; `scopeItems` exists for 175 of 1028 TORs (older records have none)
-  - [ ] not seen in a browser; API route tests were not run against a database
+  - [x] `GET /tors/:id` checked against real MongoDB (route tests, 2026-11-25): C2 and C3 pass, fail and not-evaluate as specified
+  - [ ] not seen in a browser; not run through the full Compose stack
 
 ## 3b. Carried debt — small, keeps costing time
 
