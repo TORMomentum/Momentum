@@ -99,7 +99,7 @@ try {
   console.log(JSON.stringify({
     measuredAt: new Date().toISOString(),
     publishedTors: records.length,
-    c2BidWindowDays: describe(windows),
+    c2BidWindowDays: describe(windows.filter((days) => days >= 0)),
     c2ShorterThanDefault: windows.filter((days) => days >= 0 && days < config.checklist.minBidWindowDays).length,
     c2DeadlineBeforeAnnouncement: windows.filter((days) => days < 0).length,
     c3ScopeSummaryChars: describe(chars),

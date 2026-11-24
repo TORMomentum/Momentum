@@ -210,7 +210,7 @@ export class TorsService {
     const checklist = evaluateChecklist({
       budget,
       budgetRange: { min: this.deps.config.budgetMinThb, max: this.deps.config.budgetMaxThb },
-      ...checklistFieldsOf(record, this.deps.config.search.timeZone),
+      ...checklistFieldsOf(record, this.deps.config.stats.timezone),
       thresholds: this.deps.config.checklist,
       qualificationTags: record.fields.qualifications?.tags ?? [],
       qualificationsVerified: record.fields.qualifications?.verified ?? false,

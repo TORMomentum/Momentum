@@ -84,7 +84,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
         checklist: evaluateChecklist({
           budget: { value: budget, verified: record.fields.budget?.verified ?? false },
           budgetRange: { min: deps.config.budgetMinThb, max: deps.config.budgetMaxThb },
-          ...checklistFieldsOf(record, deps.config.search.timeZone),
+          ...checklistFieldsOf(record, deps.config.stats.timezone),
           thresholds: deps.config.checklist,
           qualificationTags: record.fields.qualifications?.tags ?? [],
           qualificationsVerified: record.fields.qualifications?.verified ?? false,
@@ -204,6 +204,8 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
         peerMinN: deps.config.stats.peerMinN,
         windowMonths: deps.config.stats.peerWindowMonths,
         cohortTimezone: deps.config.stats.timezone,
+        // TOR-200: the checklist minimums, so the methodology page states what actually ran.
+        checklist: deps.config.checklist,
       },
       meta: { lastIntakeAt: iso(meta?.lastIntakeAt), statsComputedAt: iso(meta?.statsComputedAt), // Never computed counts as stale, not as fresh: figures nothing has ever
       // recalculated are exactly what the banner exists to disclose, and

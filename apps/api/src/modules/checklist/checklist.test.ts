@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateChecklist, summariseChecklists, type ChecklistInput } from "./checklist.js";
+import { checklistFieldsOf, evaluateChecklist, summariseChecklists, type ChecklistInput } from "./checklist.js";
 
 const healthy: ChecklistInput = {
   budget: { value: 1_500_000, verified: true },
@@ -57,6 +57,11 @@ describe("evaluateChecklist", () => {
 
     it("does not judge a deadline that falls before the announcement: that is a misread date", () => {
       expect(withWindow("2026-03-05", "2026-02-05")?.result).toBe("not-evaluated");
+    });
+
+    it("does not read an impossible date as the day it rolls over to", () => {
+      expect(withWindow("2026-03-05", "2026-02-30")?.result).toBe("not-evaluated");
+      expect(withWindow("2026-03-05", "2026-03-19T00:00:00Z")?.result).toBe("not-evaluated");
     });
 
     it("follows the configured minimum", () => {
@@ -160,6 +165,38 @@ describe("evaluateChecklist", () => {
     });
 
     expect(checklist).toMatchObject({ passed: 3, evaluated: 5 });
+  });
+});
+
+describe("checklistFieldsOf", () => {
+  const field = <T,>(value: T, verified = true) => ({ raw: String(value), value, confidence: 0.9, verified });
+
+  it("counts the announcement as its calendar day in the given zone, not its UTC day", () => {
+    // 17:00 UTC on the 4th is already the 5th in Bangkok.
+    const fields = checklistFieldsOf({ announcedAt: new Date("2026-03-04T17:00:00Z"), fields: {} }, "Asia/Bangkok");
+
+    expect(fields.bidWindow.announcedOn).toBe("2026-03-05");
+    expect(checklistFieldsOf({ announcedAt: new Date("2026-03-04T17:00:00Z"), fields: {} }, "UTC").bidWindow.announcedOn).toBe("2026-03-04");
+  });
+
+  it("accepts the announcement as the ISO string the detail route holds, and has none for a missing or invalid one", () => {
+    expect(checklistFieldsOf({ announcedAt: "2026-03-05T00:00:00.000Z", fields: {} }, "Asia/Bangkok").bidWindow.announcedOn).toBe("2026-03-05");
+    expect(checklistFieldsOf({ announcedAt: null, fields: {} }, "Asia/Bangkok").bidWindow.announcedOn).toBeNull();
+    expect(checklistFieldsOf({ announcedAt: "garbage", fields: {} }, "Asia/Bangkok").bidWindow.announcedOn).toBeNull();
+  });
+
+  it("uses the scope location only once it is confirmed, so a doubtful reading cannot switch C3 off", () => {
+    const record = (verified: boolean) => ({ announcedAt: null, fields: { scopeLocation: field("none" as const, verified) } });
+
+    expect(checklistFieldsOf(record(false), "Asia/Bangkok").scope.location).toBeNull();
+    expect(checklistFieldsOf(record(true), "Asia/Bangkok").scope.location).toBe("none");
+  });
+
+  it("carries a missing field as null and unconfirmed", () => {
+    expect(checklistFieldsOf({ announcedAt: null, fields: {} }, "Asia/Bangkok")).toEqual({
+      bidWindow: { announcedOn: null, deadline: { value: null, verified: false } },
+      scope: { summary: { value: null, verified: false }, items: { value: null, verified: false }, location: null },
+    });
   });
 });
 

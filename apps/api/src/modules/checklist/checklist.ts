@@ -42,7 +42,8 @@ export function checklistFieldsOf(
     scope: {
       summary: { value: scopeSummary?.value ?? null, verified: scopeSummary?.verified ?? false },
       items: { value: scopeItems?.value ?? null, verified: scopeItems?.verified ?? false },
-      location: scopeLocation?.value ?? null,
+      // Like the summary and the count, it counts only once confirmed: a doubtful "none" must not switch C3 off.
+      location: scopeLocation?.verified ? (scopeLocation.value ?? null) : null,
     },
   };
 }
@@ -111,9 +112,16 @@ function budgetWithinPeerNorm(verdict: AnomalyVerdict): ChecklistCheck {
 
 /** Whole days from one `YYYY-MM-DD` to another; null when either is not a real calendar date. */
 function daysBetween(from: string, to: string): number | null {
-  const start = Date.parse(`${from}T00:00:00Z`);
-  const end = Date.parse(`${to}T00:00:00Z`);
-  return Number.isNaN(start) || Number.isNaN(end) ? null : Math.round((end - start) / DAY_MS);
+  const start = calendarDayMs(from);
+  const end = calendarDayMs(to);
+  return start === null || end === null ? null : Math.round((end - start) / DAY_MS);
+}
+
+/** UTC midnight of a `YYYY-MM-DD` that names a real day; null for anything else, so 2026-02-30 is not read as 2 March. */
+function calendarDayMs(day: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const at = Date.parse(`${day}T00:00:00Z`);
+  return Number.isNaN(at) || new Date(at).toISOString().slice(0, 10) !== day ? null : at;
 }
 
 function bidWindowWorkable(input: ChecklistInput): ChecklistCheck {
