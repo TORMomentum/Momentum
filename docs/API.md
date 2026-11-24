@@ -26,7 +26,7 @@ flowchart LR
     subgraph api["API · /api/v1"]
         intake["POST /intake/upload ✅<br/>POST /intake/url ✅<br/>POST /intake ✅"]
         read["GET /tors ✅<br/>GET /tors/:id ✅<br/>GET /tors/:id/document ✅"]
-        stats["GET /stats/dashboard ✅<br/>GET /export/tors.csv ✅"]
+        stats["GET /stats/dashboard ✅<br/>GET /stats/competition ✅<br/>GET /export/tors.csv ✅"]
         me["/me/profile ✅<br/>/me/matches ✅<br/>/me/bookmarks ✅<br/>/me/vault ✅<br/>/me/tors/:id/draft ✅<br/>/me/path ✅"]
         adminq["/admin/tors ✅<br/>/admin/accounts ✅<br/>/admin/match-quality ✅<br/>/admin/sources ✅"]
         health["GET /health ✅"]
@@ -415,6 +415,30 @@ active rule rather than a copy of it.
 `meta.statsComputedAt` is the last statistics run, and `meta.stale` is true when that run is older
 than `STATS_STALE_AFTER_MS` **or has never happened**. `checklist` is reserved for `FR-F-4` in
 sprint 4.
+
+### `GET /api/v1/stats/competition` ✅ (TOR-280)
+
+Public, no parameters, not cached. How the announced winners are spread across categories, from the
+winner announcements read by TOR-221. It counts only public TORs whose award is confirmed (not
+`unverified`) and whose category is confirmed, and counts a project once however many TOR records carry its award.
+
+```jsonc
+{
+  "categories": [
+    { "category": "งานก่อสร้าง-อาคาร",
+      "awarded": 14,      // projects with a named winner
+      "winners": 11,      // different winners among them (names compared with whitespace collapsed)
+      "topShare": 0.429,  // share of those projects won by the `topWinners` most frequent winners, 0..1
+      "eligible": true }  // awarded >= rule.minAwarded; below it the row is listed but not comparable
+  ],                      // ordered by category name
+  "rule": { "topWinners": 3, "minAwarded": 8 },   // COMPETITION_TOP_WINNERS, PEER_MIN_N
+  "meta": { "awardedProjects": 193, "lastAwardAt": "2026-11-23T21:33:18.735Z" }  // lastAwardAt is null with no awards
+}
+```
+
+No winner is named in the response (names stay on each TOR's page, where a natural person is redacted), and
+the number of bidders is not in it: bidders are not collected (FR-B-2). The figures describe how wins are spread;
+they say nothing about whether a category is easy or hard (NFR-F5).
 
 ### `GET /api/v1/export/tors.csv` ✅ (TOR-69)
 

@@ -184,7 +184,7 @@ The feature modules, as of Sprint 4:
 | `extraction/` | OCR and field extraction, confidence grading; a winner announcement (`documentType: "award"`) read by `runAward` and linked onto its project's TORs and `W0`/`W2` stages (TOR-221) |
 | `tors/` | Public search, facets, detail and document streaming; the signed-in match-range filter (`tors.match-filter.ts`, shared with `export/`) |
 | `export/` | CSV of the filtered list (`GET /export/tors.csv`, TOR-69): pages through `TorsService.search`, adds provenance, writes RFC 4180 with a formula guard |
-| `stats/` · `checklist/` | Dashboard figures and the anomaly rule · the specification-quality checklist |
+| `stats/` · `checklist/` | Dashboard figures and the anomaly rule, and the winners' spread by category (`competition.ts`, `GET /stats/competition`) · the specification-quality checklist |
 | `accounts/` | Registration, sign-in (password, and Google through `google-signin.*`), sessions, password reset, PDPA export and deletion |
 | `profile/` | The vendor profile, and its separately saved past projects, certifications and personnel |
 | `matching/` | TOR classification, the scorer and its signals, a vendor's scored list |
