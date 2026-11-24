@@ -148,13 +148,14 @@ describe("company path", () => {
         ],
         // อื่น ๆ has only two awarded projects and ชลประทานและระบบน้ำ has none: neither is given a share.
         notComparable: 2,
+        lastAwardAt: "2026-02-01T00:00:00.000Z",
       });
       expect(JSON.stringify(body.winnerSpread)).not.toContain("บริษัท");
     });
 
     it("is empty, not invented, for a field with no awarded projects, and for one category when the target is a single kind of work", async () => {
       const current = await vendor("a@example.test");
-      expect((await get(current.sessionId, "construction.road")).body.winnerSpread).toEqual({ topWinners: 3, minAwarded: 8, comparable: [], notComparable: 1 });
+      expect((await get(current.sessionId, "construction.road")).body.winnerSpread).toEqual({ topWinners: 3, minAwarded: 8, comparable: [], notComparable: 1, lastAwardAt: null });
       await awardedIn(ROAD, Array.from({ length: 8 }, (_, index) => `บริษัท ${index} จำกัด`));
       expect((await get(current.sessionId, "construction.road")).body.winnerSpread.comparable.map((row: { category: string }) => row.category)).toEqual([ROAD]);
     });

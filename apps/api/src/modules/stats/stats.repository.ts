@@ -199,12 +199,13 @@ export class StatsRepository {
    * one the dashboard groups by, so it must be a confirmed one. An unconfirmed award is left out as an unconfirmed
    * budget is left out of the anomaly figures. Served by the partial `award.recordId` index, so the read touches only records with a confirmed award.
    */
-  async awardedProjects(): Promise<{ projects: AwardedProject[]; lastAwardAt: Date | null }> {
+  async awardedProjects(categories?: string[]): Promise<{ projects: AwardedProject[]; lastAwardAt: Date | null }> {
     const records = await tors(this.db).find({
       "pipeline.state": "published",
       "access.restricted": false,
       "fields.category.verified": true,
-      "cohort.category": { $type: "string" },
+      // The company path asks for its own field's categories only, so it does not read the whole awarded set.
+      "cohort.category": categories ? { $in: categories } : { $type: "string" },
       "award.unverified": false,
       // The key of the partial index in core/db.ts: without a predicate on it the planner would not choose that index.
       "award.recordId": { $type: "string" },

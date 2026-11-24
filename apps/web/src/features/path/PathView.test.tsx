@@ -41,6 +41,7 @@ const spread = (over: Partial<NonNullable<FieldPath["winnerSpread"]>> = {}): Non
     { category: "งานก่อสร้าง-อาคาร", awarded: 14, winners: 11, topShare: 0.429 },
   ],
   notComparable: 2,
+  lastAwardAt: "2026-11-23T21:33:18.735Z",
   ...over,
 });
 
@@ -65,6 +66,7 @@ describe("PathView winner spread (TOR-284)", () => {
     expect(text).toContain("ไม่รวมจำนวนผู้ยื่นซอง");
     expect(text).toContain("ไม่ได้บอกว่าหมวดใดเข้าได้ง่ายหรือยาก");
     expect(text).toContain("อีก 2 หมวดยังมีประกาศผลไม่ถึง 8 โครงการ");
+    expect(text).toContain("อ่านประกาศล่าสุด");
   });
 
   it("uses none of the forbidden wording and names no winner", async () => {
@@ -76,10 +78,29 @@ describe("PathView winner spread (TOR-284)", () => {
 
   it("says no category can be compared when none has enough announcements, and omits the section from an older API", async () => {
     await render("construction", result({ winnerSpread: spread({ comparable: [], notComparable: 4 }) }));
-    expect(container.querySelector("[aria-labelledby='path-spread-title']")!.textContent).toContain("ยังไม่มีหมวดในสาขานี้ที่มีประกาศผู้ชนะถึง 8 โครงการ");
+    const empty = container.querySelector("[aria-labelledby='path-spread-title']")!.textContent!;
+    expect(empty).toContain("ยังไม่มีหมวดในสาขานี้ที่มีประกาศผู้ชนะถึง 8 โครงการ จึงยังเทียบกันไม่ได้ (4 หมวด)");
+    // Nothing is listed, so nothing is "ordered" and no "other" categories are left over.
+    expect(empty).not.toContain("เรียงจากหมวด");
+    expect(empty).not.toContain("อีก 4 หมวด");
 
     await render("construction", result());
     expect(container.querySelector("[aria-labelledby='path-spread-title']")).toBeNull();
+  });
+});
+
+describe("PathView winner spread placement (TOR-284)", () => {
+  it("still shows the spread when the field has no sampled TOR, since it is read separately", async () => {
+    await render("construction", result({ sample: 0, requirements: [], budget: null, winnerSpread: spread() }));
+
+    expect(container.textContent).toContain("ยังไม่มี TOR ในสาขานี้ที่เก็บไว้");
+    expect(container.querySelector("[aria-labelledby='path-spread-title']")).not.toBeNull();
+  });
+
+  it("groups thousands the way the dashboard does", async () => {
+    await render("construction", result({ winnerSpread: spread({ comparable: [{ category: "ยา", awarded: 1234, winners: 1000, topShare: 0.1 }] }) }));
+
+    expect(container.textContent).toContain("ประกาศผล 1,234 โครงการ · ผู้ชนะที่ต่างกัน 1,000 ราย");
   });
 });
 

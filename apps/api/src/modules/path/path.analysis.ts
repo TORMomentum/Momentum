@@ -23,7 +23,7 @@ export function winnerSpreadOf(
   torCategories: string[],
   all: CategoryCompetition[],
   rule: { topWinners: number; minAwarded: number },
-): FieldPath["winnerSpread"] {
+): Omit<FieldPath["winnerSpread"], "lastAwardAt"> {
   const byCategory = new Map(all.map((row) => [row.category, row]));
   const comparable = torCategories
     .flatMap((category) => { const row = byCategory.get(category); return row?.eligible ? [row] : []; })

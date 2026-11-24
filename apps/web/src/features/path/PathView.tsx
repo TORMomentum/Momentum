@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { WORK_CATEGORIES } from "@tor-radar/seeds";
 import type { FieldPath, PathRequirement } from "../../shared/api/path.api";
-import { formatBaht } from "../../shared/lib/format";
+import { formatBaht, formatThaiDateTime } from "../../shared/lib/format";
 import styles from "./path.module.css";
+
+const count = (value: number) => value.toLocaleString("th-TH");
 
 const HOLDS: Record<string, string> = { true: "คุณมีแล้ว", false: "ยังไม่มีในโปรไฟล์", null: "ยังไม่ได้ระบุในโปรไฟล์" };
 
@@ -14,16 +16,19 @@ const HOLDS: Record<string, string> = { true: "คุณมีแล้ว", fal
 function WinnerSpread({ spread }: { spread: NonNullable<FieldPath["winnerSpread"]> }) {
   return (
     <section aria-labelledby="path-spread-title">
-      <h3 id="path-spread-title" className={styles.subtitle}>การกระจายของผู้ชนะในหมวดของสาขานี้</h3>
+      <h3 id="path-spread-title" className={`${styles.subtitle} ${styles.spreadTitle}`}>การกระจายของผู้ชนะในหมวดของสาขานี้</h3>
       {spread.comparable.length === 0 ? (
-        <p className={styles.note}>ยังไม่มีหมวดในสาขานี้ที่มีประกาศผู้ชนะถึง {spread.minAwarded} โครงการ จึงยังเทียบกันไม่ได้</p>
+        <p className={styles.note}>
+          ยังไม่มีหมวดในสาขานี้ที่มีประกาศผู้ชนะถึง {count(spread.minAwarded)} โครงการ จึงยังเทียบกันไม่ได้
+          {spread.notComparable > 0 && ` (${count(spread.notComparable)} หมวด)`}
+        </p>
       ) : (
         <ul className={styles.list}>
           {spread.comparable.map((row) => (
             <li key={row.category} className={styles.row}>
               <div className={styles.rowMain}>
                 <div className={styles.name}>{row.category}</div>
-                <div className={styles.meta}>ประกาศผล {row.awarded} โครงการ · ผู้ชนะที่ต่างกัน {row.winners} ราย</div>
+                <div className={styles.meta}>ประกาศผล {count(row.awarded)} โครงการ · ผู้ชนะที่ต่างกัน {count(row.winners)} ราย</div>
               </div>
               <span className={styles.status}>ผู้ชนะ {spread.topWinners} รายแรกได้ {Math.round(row.topShare * 100)}%</span>
             </li>
@@ -31,8 +36,9 @@ function WinnerSpread({ spread }: { spread: NonNullable<FieldPath["winnerSpread"
         </ul>
       )}
       <p className={styles.note}>
-        เรียงจากหมวดที่ผู้ชนะกระจายกว้างที่สุด นับจากประกาศผู้ชนะที่ AI อ่านและยืนยันแล้วของ TOR ที่ระบบเก็บไว้เท่านั้น ไม่รวมจำนวนผู้ยื่นซอง ตัวเลขนี้บอกการกระจายของผู้ชนะ ไม่ได้บอกว่าหมวดใดเข้าได้ง่ายหรือยาก
-        {spread.notComparable > 0 && ` · อีก ${spread.notComparable} หมวดยังมีประกาศผลไม่ถึง ${spread.minAwarded} โครงการ`}
+        {spread.comparable.length > 0 && "เรียงจากหมวดที่ผู้ชนะกระจายกว้างที่สุด "}นับจากประกาศผู้ชนะที่ AI อ่านและยืนยันแล้วของ TOR ที่ระบบเก็บไว้เท่านั้น ไม่รวมจำนวนผู้ยื่นซอง ตัวเลขนี้บอกการกระจายของผู้ชนะ ไม่ได้บอกว่าหมวดใดเข้าได้ง่ายหรือยาก
+        {spread.comparable.length > 0 && spread.notComparable > 0 && ` · อีก ${count(spread.notComparable)} หมวดยังมีประกาศผลไม่ถึง ${count(spread.minAwarded)} โครงการ`}
+        {spread.lastAwardAt && ` · อ่านประกาศล่าสุด ${formatThaiDateTime(spread.lastAwardAt)}`}
       </p>
     </section>
   );
@@ -95,7 +101,10 @@ export function PathView({ target, result }: { target: string | null; result: Fi
         <section className={styles.result} aria-label={`ช่องว่างของสาขา ${result.target.th}`}>
           <h2 className={styles.subtitle}>{result.target.th}</h2>
           {result.sample === 0 ? (
-            <p className={styles.note}>ยังไม่มี TOR ในสาขานี้ที่เก็บไว้ จึงยังสรุปไม่ได้</p>
+            <>
+              <p className={styles.note}>ยังไม่มี TOR ในสาขานี้ที่เก็บไว้ จึงยังสรุปไม่ได้</p>
+              {result.winnerSpread && <WinnerSpread spread={result.winnerSpread} />}
+            </>
           ) : (
             <>
               <p className={styles.note}>

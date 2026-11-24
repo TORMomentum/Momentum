@@ -39,5 +39,12 @@ export interface FieldPath {
    * `comparable` holds those with enough awarded projects, widest spread (lowest share) first; `notComparable` counts
    * the rest. Counts and a share only: it does not say a category is easy to enter.
    */
-  winnerSpread: { topWinners: number; minAwarded: number; comparable: PathCategorySpread[]; notComparable: number };
+  winnerSpread: {
+    topWinners: number;
+    minAwarded: number;
+    comparable: PathCategorySpread[];
+    notComparable: number;
+    /** When the latest winner announcement among the field's categories was read (FR-E-6); null when none was. */
+    lastAwardAt: string | null;
+  };
 }

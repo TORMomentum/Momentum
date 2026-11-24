@@ -26,7 +26,7 @@ export interface FieldPath {
   budget: { n: number; medianThb: number } | null;
   yourLargestProjectThb: number | null;
   /** Absent from an API that predates TOR-284. */
-  winnerSpread?: { topWinners: number; minAwarded: number; comparable: PathCategorySpread[]; notComparable: number };
+  winnerSpread?: { topWinners: number; minAwarded: number; comparable: PathCategorySpread[]; notComparable: number; lastAwardAt: string | null };
 }
 
 /** What the TORs in one field ask for, against the signed-in vendor's profile. Null when it cannot be read. */

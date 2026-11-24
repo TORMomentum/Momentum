@@ -25,13 +25,16 @@ export function buildPathRouter(deps: { config: Config; profiles: ProfileReposit
     const [profile, sample, awarded] = await Promise.all([
       deps.profiles.findByAccountId(req.auth.account._id.toString()),
       deps.matching.fieldSample(field.leafIds),
-      deps.stats.awardedProjects(),
+      deps.stats.awardedProjects(field.torCategories),
     ]);
     // The same rule as the dashboard's panel (TOR-280), so a category reads the same wherever it is shown.
     const rule = { topWinners: deps.config.stats.competitionTopWinners, minAwarded: deps.config.stats.peerMinN };
     res.json({
       ...analyseField({ id: field.id, th: field.th }, sample, profile, deps.config),
-      winnerSpread: winnerSpreadOf(field.torCategories, competitionByCategory(awarded.projects, rule), rule),
+      winnerSpread: {
+        ...winnerSpreadOf(field.torCategories, competitionByCategory(awarded.projects, rule), rule),
+        lastAwardAt: awarded.lastAwardAt?.toISOString() ?? null,
+      },
     });
   });
   return router;
