@@ -28,7 +28,8 @@ export interface PriceComparison {
  */
 export function comparePrice(price: unknown, budget: unknown): PriceComparison | null {
   if (typeof price !== "number" || typeof budget !== "number" || !Number.isFinite(price) || !Number.isFinite(budget) || price <= 0 || budget <= 0) return null;
-  const difference = Math.abs(budget - price);
+  // Whole satang: 1,500,000.10 - 1,250,000.05 must not print as 250000.04999999993.
+  const difference = Math.round(Math.abs(budget - price) * 100) / 100;
   return {
     price,
     budget,
@@ -64,7 +65,8 @@ export function AwardPanel({
   const document = originals.find((doc) => doc.key === "award");
   const comparison = comparePrice(award.price.value, budget?.value);
   // Either reading may be one the pipeline has not confirmed; the comparison inherits the doubt.
-  const comparisonUnconfirmed = award.unverified || budget?.verified === false;
+  // A budget that does not say it is confirmed is not taken as confirmed.
+  const comparisonUnconfirmed = award.unverified || budget?.verified !== true;
 
   return (
     <section className={styles.awardBlock} aria-labelledby="award-heading">
@@ -97,7 +99,7 @@ export function AwardPanel({
                 <>เท่ากับงบประมาณ {formatBaht(comparison.budget)}</>
               ) : (
                 <>
-                  {SIDE_TH[comparison.side]}งบประมาณ {formatBaht(comparison.difference)} ({comparison.percent}%)
+                  {SIDE_TH[comparison.side]}งบประมาณ {formatBaht(comparison.difference)} ({comparison.percent === 0 ? "<0.1" : comparison.percent}%)
                 </>
               )}
               {comparisonUnconfirmed && <span className={styles.unconfirmedMark}> · ยังไม่ยืนยัน</span>}

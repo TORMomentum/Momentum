@@ -64,6 +64,11 @@ describe("comparePrice (TOR-278)", () => {
     expect(comparePrice(1_500_000, 1_500_000)).toEqual({ price: 1_500_000, budget: 1_500_000, side: "equal", difference: 0, percent: 0 });
   });
 
+  it("rounds the gap to whole satang and never shows a below-or-above gap as 0%", () => {
+    expect(comparePrice(1_250_000.05, 1_500_000.1)?.difference).toBe(250_000.05);
+    expect(comparePrice(9_999_900, 10_000_000)).toMatchObject({ side: "below", difference: 100, percent: 0 });
+  });
+
   it("compares nothing unless both numbers are real and positive", () => {
     expect(comparePrice(null, 1_500_000)).toBeNull();
     expect(comparePrice(1_250_000, null)).toBeNull();
@@ -98,6 +103,13 @@ describe("AwardPanel price comparison (TOR-278)", () => {
     expect(renderWith(award({ unverified: true }), { value: 1_500_000, verified: true })).toContain("เทียบกับงบประมาณ");
     expect(renderWith(award({ unverified: true }), { value: 1_500_000, verified: true }).match(/ยังไม่ยืนยัน/g)).toHaveLength(2);
     expect(renderWith(award(), { value: 1_500_000, verified: false }).match(/ยังไม่ยืนยัน/g)).toHaveLength(1);
+  });
+
+  it("shows a tiny gap as under 0.1% rather than 0%, and treats a budget that does not say it is confirmed as unconfirmed", () => {
+    const tiny = renderWith(award({ price: { raw: "9,999,900", value: 9_999_900, confidence: 0.9 } }), { value: 10_000_000 });
+
+    expect(tiny).toContain("ต่ำกว่างบประมาณ ฿100 (&lt;0.1%)");
+    expect(tiny.match(/ยังไม่ยืนยัน/g)).toHaveLength(1);
   });
 
   it("leaves the row out when there is no budget or no price to compare", () => {
