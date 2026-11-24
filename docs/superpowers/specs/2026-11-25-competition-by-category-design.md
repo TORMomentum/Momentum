@@ -27,9 +27,10 @@ awarded project (TOR-221), which gives the second half.
 
 ## 3. Shape
 
-- `GET /stats/competition` (API.md §5). Computed per request from the awarded set, which is a small part of the
-  corpus (193 projects of 1028 TORs on 2026-11-25); not cached and not indexed. Revisit with an index on `award.recordId`
-  if the awarded set grows large.
+- `GET /stats/competition` (API.md §5). Computed per request, not cached, from a partial index on `award.recordId` (confirmed awards only), and
+  limited per client like search. `meta.awardedProjects` is the distinct awards among the rows the figures keep, so the
+  count over the table never exceeds what the table accounts for; a project whose TOR records fall in two categories is
+  counted once there and in each category's own row.
 - `competitionByCategory` (`modules/stats/competition.ts`) is pure; `StatsRepository.awardedProjects` is the read.
 - Web: `CompetitionPanel` in `features/dashboard`, fetched beside the dashboard by the page. A failed read leaves the
   panel out; it never takes the dashboard down and never shows placeholder figures.

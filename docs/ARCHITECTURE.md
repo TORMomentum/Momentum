@@ -611,6 +611,7 @@ Three shapes are load-bearing:
 | `tors.stagesDueAt`, partial on a date | The stages worker's claim: records due for a re-read, oldest due first. Records never re-read (final, too old, not from e-GP) are left out of it (TOR-205) |
 | `tors.stage.kind` | The open filters exclude a final stage (`lib/tor-state.ts`) |
 | `ingest_jobs.state + nextRunAt` | The worker's claim query |
+| `tors.award.recordId`, partial on `award.unverified: false` | The winners-by-category read (TOR-280): only records with a confirmed award, so the read grows with the awarded set and not the corpus |
 | `tors.cohort.category + cohort.month + fields.budget.value`, partial | The peer-statistics scan. Its partial filter IS the eligibility predicate, asserted by a test, so the query and the index cannot drift into disagreeing about what counts |
 | `tor_peer_stats.category + month`, unique | One bounds document per peer group, which is what makes a recompute idempotent |
 | `tor_peer_stats.dirty + dirtyAt`, partial | The statistics worker's claim query |

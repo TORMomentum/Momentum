@@ -418,7 +418,7 @@ sprint 4.
 
 ### `GET /api/v1/stats/competition` ✅ (TOR-280)
 
-Public, no parameters, not cached. How the announced winners are spread across categories, from the
+Public, no parameters, not cached, and limited per client address to `PUBLIC_SEARCH_RATE_LIMIT_PER_MIN` (an empty `429` past it, TOR-318). How the announced winners are spread across categories, from the
 winner announcements read by TOR-221. It counts only public TORs whose award is confirmed (not
 `unverified`) and whose category is confirmed, and counts a project once however many TOR records carry its award.
 
