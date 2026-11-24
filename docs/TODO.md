@@ -853,6 +853,11 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   who bookmarked it, once, within `STAGE_NOTIFY_LOOKBACK_DAYS` (TOR-239); tests (TOR-240). Checked live to
   Mailpit; on Atlas all 991 stage events are first reads, so nothing would be sent today
   - [ ] the emails go out only once `NOTIFY_DISPATCH_ENABLED` is turned on (the match benchmark)
+- [x] TOR-278 Price against the budget on the TOR page (spec 2026-11-24-winner-announcements §9): a row in the bid-result
+  block, computed in the browser from the award price and the extracted budget; unit-tested
+  - [ ] TOR-279 Bidder list and the average bid: not built. Bidders were taken out of scope on 2026-11-24 (FR-B-2), so TOR-222 is
+    done only for the winner and price. Needs a decision, and a data source, before it can be built
+  - [ ] not seen in a browser
 - [x] TOR-221 Winner announcements: winner and price (spec 2026-11-24-winner-announcements)
   - [x] the announcement PDF from e-GP's public template service, no captcha; `tools/collect_egp_awards.mts`,
     recorded as source `national-egp-awards`
