@@ -5,7 +5,7 @@ import { redactTor } from "../../lib/redact.js";
 import { StatsRepository } from "./stats.repository.js";
 import { eligibilityOf } from "./eligibility.js";
 import { verdictFor } from "./anomaly.rule.js";
-import { evaluateChecklist, summariseChecklists, type PlottedChecklist } from "../checklist/checklist.js";
+import { checklistFieldsOf, evaluateChecklist, summariseChecklists, type PlottedChecklist } from "../checklist/checklist.js";
 import type { PeerBounds } from "./anomaly.rule.js";
 import { parseDashboardFilters, publicTorFilter, UNKNOWN } from "./stats.filters.js";
 import { calendarDate } from "../../lib/calendar-date.js";
@@ -84,6 +84,8 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
         checklist: evaluateChecklist({
           budget: { value: budget, verified: record.fields.budget?.verified ?? false },
           budgetRange: { min: deps.config.budgetMinThb, max: deps.config.budgetMaxThb },
+          ...checklistFieldsOf(record, deps.config.search.timeZone),
+          thresholds: deps.config.checklist,
           qualificationTags: record.fields.qualifications?.tags ?? [],
           qualificationsVerified: record.fields.qualifications?.verified ?? false,
           verdict,

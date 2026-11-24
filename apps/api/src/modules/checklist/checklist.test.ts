@@ -4,6 +4,13 @@ import { evaluateChecklist, summariseChecklists, type ChecklistInput } from "./c
 const healthy: ChecklistInput = {
   budget: { value: 1_500_000, verified: true },
   budgetRange: { min: 10_000, max: 100_000_000_000 },
+  bidWindow: { announcedOn: "2026-03-05", deadline: { value: "2026-03-19", verified: true } },
+  scope: {
+    summary: { value: "จ้างก่อสร้างถนนคอนกรีตเสริมเหล็ก ความยาว 1.2 กิโลเมตร พร้อมระบบระบายน้ำและงานทาสีตีเส้นจราจรตามแบบแปลนที่กำหนด".repeat(2), verified: true },
+    items: { value: 16, verified: true },
+    location: "in_documents",
+  },
+  thresholds: { minBidWindowDays: 8, minScopeChars: 112, minScopeSections: 6 },
   qualificationTags: ["it-software"],
   qualificationsVerified: true,
   verdict: { kind: "normal" },
@@ -13,22 +20,90 @@ const resultOf = (input: ChecklistInput, id: string) =>
   evaluateChecklist(input).checks.find((check) => check.id === id);
 
 describe("evaluateChecklist", () => {
-  it("passes the evaluable checks and leaves C2 and C3 not evaluated", () => {
+  it("passes all five checks for a healthy record", () => {
     const checklist = evaluateChecklist(healthy);
 
-    expect(checklist.checks.map((check) => check.result)).toEqual([
-      "pass",
-      "not-evaluated",
-      "not-evaluated",
-      "pass",
-      "pass",
-    ]);
-    expect(checklist).toMatchObject({ passed: 3, evaluated: 3 });
+    expect(checklist.checks.map((check) => check.result)).toEqual(["pass", "pass", "pass", "pass", "pass"]);
+    expect(checklist).toMatchObject({ passed: 5, evaluated: 5 });
   });
 
-  it("never claims C2 or C3 either way, whatever the record holds", () => {
-    expect(resultOf({ ...healthy, budget: { value: null, verified: false } }, "C2")?.result).toBe("not-evaluated");
-    expect(resultOf({ ...healthy, qualificationTags: [] }, "C3")?.result).toBe("not-evaluated");
+  describe("C2, the bid window", () => {
+    const withWindow = (announcedOn: string | null, value: string | null, verified = true) =>
+      resultOf({ ...healthy, bidWindow: { announcedOn, deadline: { value, verified } } }, "C2");
+
+    it("passes a window at exactly the minimum and fails one day short of it", () => {
+      expect(withWindow("2026-03-05", "2026-03-13")?.result).toBe("pass");
+      expect(withWindow("2026-03-05", "2026-03-12")?.result).toBe("fail");
+    });
+
+    it("counts calendar days across a month and a year boundary", () => {
+      expect(withWindow("2026-12-28", "2027-01-05")?.result).toBe("pass");
+      expect(withWindow("2026-12-28", "2027-01-04")?.result).toBe("fail");
+    });
+
+    it("states the days it counted and the minimum, so the result explains itself", () => {
+      const reason = withWindow("2026-03-05", "2026-03-10")?.reason;
+
+      expect(reason).toContain("5 วัน");
+      expect(reason).toContain("ขั้นต่ำ 8 วัน");
+    });
+
+    it("does not judge a window it cannot measure, and says why", () => {
+      expect(withWindow(null, "2026-03-19")).toMatchObject({ result: "not-evaluated", reason: expect.stringContaining("วันที่ประกาศ") });
+      expect(withWindow("2026-03-05", null)).toMatchObject({ result: "not-evaluated", reason: expect.stringContaining("กำหนดยื่น") });
+      expect(withWindow("2026-03-05", "2026-03-19", false)).toMatchObject({ result: "not-evaluated", reason: expect.stringContaining("ยังไม่ได้รับการยืนยัน") });
+      expect(withWindow("2026-03-05", "not-a-date")?.result).toBe("not-evaluated");
+    });
+
+    it("does not judge a deadline that falls before the announcement: that is a misread date", () => {
+      expect(withWindow("2026-03-05", "2026-02-05")?.result).toBe("not-evaluated");
+    });
+
+    it("follows the configured minimum", () => {
+      const strict = { ...healthy, thresholds: { ...healthy.thresholds, minBidWindowDays: 30 } };
+
+      expect(resultOf(strict, "C2")?.result).toBe("fail");
+    });
+  });
+
+  describe("C3, the scope", () => {
+    const withScope = (scope: Partial<ChecklistInput["scope"]>) => resultOf({ ...healthy, scope: { ...healthy.scope, ...scope } }, "C3");
+    const text = (length: number) => "ก".repeat(length);
+
+    it("passes a scope at both minimums and fails one short on either", () => {
+      expect(withScope({ summary: { value: text(112), verified: true }, items: { value: 6, verified: true } })?.result).toBe("pass");
+      expect(withScope({ summary: { value: text(111), verified: true } })?.result).toBe("fail");
+      expect(withScope({ items: { value: 5, verified: true } })?.result).toBe("fail");
+    });
+
+    it("counts Thai characters, not UTF-16 units or bytes", () => {
+      // 112 Thai letters are 112 characters; a length in bytes would be 336.
+      expect(withScope({ summary: { value: text(112), verified: true }, items: { value: null, verified: false } })?.result).toBe("pass");
+    });
+
+    it("judges on length alone when the extraction found no count (older records), and says so", () => {
+      const check = withScope({ items: { value: null, verified: false } });
+
+      expect(check?.result).toBe("pass");
+      expect(check?.reason).toContain("ไม่มีจำนวนรายการ");
+    });
+
+    it("does not use a count the pipeline has not confirmed", () => {
+      expect(withScope({ items: { value: 1, verified: false } })?.result).toBe("pass");
+    });
+
+    it("does not judge a scope that is missing from what was read: not found is not vague", () => {
+      expect(withScope({ location: "in_annex_not_provided" })?.result).toBe("not-evaluated");
+      expect(withScope({ location: "none" })?.result).toBe("not-evaluated");
+      expect(withScope({ summary: { value: null, verified: false } })?.result).toBe("not-evaluated");
+      expect(withScope({ summary: { value: text(300), verified: false } })?.result).toBe("not-evaluated");
+    });
+
+    it("names which measure fell short", () => {
+      expect(withScope({ summary: { value: text(10), verified: true } })?.reason).toContain("ด้านความยาว");
+      expect(withScope({ items: { value: 1, verified: true } })?.reason).toContain("ด้านจำนวนรายการ");
+      expect(withScope({ summary: { value: text(10), verified: true }, items: { value: 1, verified: true } })?.reason).toContain("ทั้งสองข้อ");
+    });
   });
 
   it("fails C1 when no budget was extracted", () => {
@@ -84,7 +159,7 @@ describe("evaluateChecklist", () => {
       verdict: { kind: "anomaly", side: "low", distance: 1 },
     });
 
-    expect(checklist).toMatchObject({ passed: 1, evaluated: 3 });
+    expect(checklist).toMatchObject({ passed: 3, evaluated: 5 });
   });
 });
 
@@ -101,8 +176,8 @@ describe("summariseChecklists", () => {
     expect(summary.tors).toBe(2);
     expect(summary.byCheck.map(({ id, failed, notEvaluated }) => [id, failed, notEvaluated])).toEqual([
       ["C1", 0, 0],
-      ["C2", 0, 2],
-      ["C3", 0, 2],
+      ["C2", 0, 0],
+      ["C3", 0, 0],
       ["C4", 1, 0],
       ["C5", 0, 0],
     ]);

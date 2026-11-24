@@ -1,19 +1,51 @@
-import type { Checklist, ChecklistCheck, ChecklistSummary } from "@tor-radar/shared";
+import type { Checklist, ChecklistCheck, ChecklistSummary, TorFields } from "@tor-radar/shared";
+import { calendarDate } from "../../lib/calendar-date.js";
 import type { AnomalyVerdict } from "../stats/anomaly.rule.js";
 import type { NotEvaluatedReason } from "../stats/eligibility.js";
 
 export interface ChecklistInput {
   budget: { value: number | null; verified: boolean };
   budgetRange: { min: number; max: number };
+  /** C2: the announcement's calendar day and the bid deadline, both `YYYY-MM-DD`. */
+  bidWindow: { announcedOn: string | null; deadline: { value: string | null; verified: boolean } };
+  /** C3: what the extraction read of the scope. `items` is the count of concrete requirements. */
+  scope: {
+    summary: { value: string | null; verified: boolean };
+    items: { value: number | null; verified: boolean };
+    location: "in_documents" | "in_annex_not_provided" | "none" | null;
+  };
+  /** TOR-200: the calibrated minimums (Config.checklist). */
+  thresholds: { minBidWindowDays: number; minScopeChars: number; minScopeSections: number };
   qualificationTags: string[];
   qualificationsVerified: boolean;
   verdict: AnomalyVerdict;
 }
 
-const NOT_EVALUATED_DEADLINE =
-  "ยังไม่ประเมิน: เกณฑ์ระยะเวลายื่นข้อเสนอขั้นต่ำยังไม่ได้ปรับเทียบจากข้อมูลจริง";
-const NOT_EVALUATED_SCOPE =
-  "ยังไม่ประเมิน: เกณฑ์ความยาวและจำนวนหัวข้อของขอบเขตงานยังไม่ได้ปรับเทียบจากข้อมูลจริง";
+const DAY_MS = 86_400_000;
+
+/**
+ * The C2 and C3 inputs of a record, built in one place so the dashboard and the TOR page read the same fields.
+ * The announcement is reduced to its calendar day in `timeZone`, the way the cohort month is, so a bid window
+ * is counted in whole days however the announcement time was stored.
+ */
+export function checklistFieldsOf(
+  record: { announcedAt: Date | string | null; fields: Partial<TorFields> },
+  timeZone: string,
+): Pick<ChecklistInput, "bidWindow" | "scope"> {
+  const announced = record.announcedAt ? new Date(record.announcedAt) : null;
+  const { deadline, scopeSummary, scopeItems, scopeLocation } = record.fields;
+  return {
+    bidWindow: {
+      announcedOn: announced && !Number.isNaN(announced.getTime()) ? calendarDate(announced, timeZone) : null,
+      deadline: { value: deadline?.value ?? null, verified: deadline?.verified ?? false },
+    },
+    scope: {
+      summary: { value: scopeSummary?.value ?? null, verified: scopeSummary?.verified ?? false },
+      items: { value: scopeItems?.value ?? null, verified: scopeItems?.verified ?? false },
+      location: scopeLocation?.value ?? null,
+    },
+  };
+}
 
 const NOT_EVALUATED_REASON: Record<NotEvaluatedReason, string> = {
   "no-budget": "ไม่มีงบประมาณที่ใช้เปรียบเทียบได้",
@@ -77,12 +109,63 @@ function budgetWithinPeerNorm(verdict: AnomalyVerdict): ChecklistCheck {
   };
 }
 
+/** Whole days from one `YYYY-MM-DD` to another; null when either is not a real calendar date. */
+function daysBetween(from: string, to: string): number | null {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Number.isNaN(start) || Number.isNaN(end) ? null : Math.round((end - start) / DAY_MS);
+}
+
+function bidWindowWorkable(input: ChecklistInput): ChecklistCheck {
+  const label = "ระยะเวลายื่นข้อเสนอเพียงพอ";
+  const { announcedOn, deadline } = input.bidWindow;
+  const minimum = input.thresholds.minBidWindowDays;
+  const notEvaluated = (reason: string): ChecklistCheck => ({ id: "C2", label, result: "not-evaluated", reason: `ยังไม่ประเมิน: ${reason}` });
+  if (!announcedOn) return notEvaluated("ไม่พบวันที่ประกาศ จึงนับระยะเวลาไม่ได้");
+  if (!deadline.value) return notEvaluated("ไม่พบกำหนดยื่นข้อเสนอในเอกสาร");
+  // The same bar C1 and C4 set: a value the pipeline has not confirmed does not decide a result.
+  if (!deadline.verified) return notEvaluated("กำหนดยื่นข้อเสนอยังไม่ได้รับการยืนยัน");
+  const days = daysBetween(announcedOn, deadline.value);
+  if (days === null) return notEvaluated("อ่านวันที่ไม่ได้");
+  // A deadline before the announcement is far likelier a misread date than a real window, so it is not judged.
+  if (days < 0) return notEvaluated("กำหนดยื่นข้อเสนออยู่ก่อนวันที่ประกาศ ควรตรวจเอกสารต้นฉบับ");
+  return days >= minimum
+    ? { id: "C2", label, result: "pass", reason: `ระยะเวลา ${days} วันนับจากวันที่ประกาศ (ขั้นต่ำ ${minimum} วัน)` }
+    : { id: "C2", label, result: "fail", reason: `ระยะเวลา ${days} วันนับจากวันที่ประกาศ น้อยกว่าขั้นต่ำ ${minimum} วัน` };
+}
+
+/**
+ * C3 reads two measures of the scope the extraction produced: the length of its summary and the number of
+ * concrete requirements it lists. Each counts only when the pipeline confirmed it, and the count only when
+ * the extraction found one (older records have none). A scope that is not in the documents read, or has
+ * nothing to measure, is not judged: "not found" is never taken as "vague".
+ */
+function scopeSpecific(input: ChecklistInput): ChecklistCheck {
+  const label = "ขอบเขตงานเจาะจง";
+  const { summary, items, location } = input.scope;
+  const { minScopeChars, minScopeSections } = input.thresholds;
+  const notEvaluated = (reason: string): ChecklistCheck => ({ id: "C3", label, result: "not-evaluated", reason: `ยังไม่ประเมิน: ${reason}` });
+  if (location === "in_annex_not_provided") return notEvaluated("ขอบเขตงานอยู่ในเอกสารแนบที่ไม่ได้รับมา");
+  if (location === "none") return notEvaluated("ไม่พบขอบเขตงานในเอกสาร");
+  if (!summary.verified || summary.value === null) return notEvaluated("สรุปขอบเขตงานยังไม่ได้รับการยืนยัน");
+
+  const chars = [...summary.value.trim()].length;
+  const counted = items.verified && typeof items.value === "number" ? items.value : null;
+  const short = chars < minScopeChars;
+  const fewItems = counted !== null && counted < minScopeSections;
+  const stated = `สรุปขอบเขต ${chars} อักขระ (ขั้นต่ำ ${minScopeChars})${counted === null ? "" : ` · ${counted} รายการ (ขั้นต่ำ ${minScopeSections})`}`;
+  if (short || fewItems) {
+    return { id: "C3", label, result: "fail", reason: `${stated} ต่ำกว่าเกณฑ์${short && fewItems ? "ทั้งสองข้อ" : short ? "ด้านความยาว" : "ด้านจำนวนรายการ"}` };
+  }
+  return { id: "C3", label, result: "pass", reason: `${stated}${counted === null ? " · ไม่มีจำนวนรายการให้เทียบ" : ""}` };
+}
+
 /** SRS §4.6.1. Pure: the caller supplies the record's fields and its anomaly verdict. */
 export function evaluateChecklist(input: ChecklistInput): Checklist {
   const checks: ChecklistCheck[] = [
     budgetStated(input),
-    { id: "C2", label: "ระยะเวลายื่นข้อเสนอเพียงพอ", result: "not-evaluated", reason: NOT_EVALUATED_DEADLINE },
-    { id: "C3", label: "ขอบเขตงานเจาะจง", result: "not-evaluated", reason: NOT_EVALUATED_SCOPE },
+    bidWindowWorkable(input),
+    scopeSpecific(input),
     qualificationsStated(input),
     budgetWithinPeerNorm(input.verdict),
   ];
