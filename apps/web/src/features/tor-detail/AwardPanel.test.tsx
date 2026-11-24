@@ -3,7 +3,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { TorAward, TorDetail } from "../../shared/api/tors.api";
-import { AwardPanel } from "./AwardPanel";
+import { AwardPanel, comparePrice } from "./AwardPanel";
 import type { OriginalDocument } from "./OriginalPreview";
 import { originalDocuments } from "./original-documents";
 import { StagePanel } from "./StagePanel";
@@ -54,6 +54,56 @@ describe("AwardPanel (TOR-221)", () => {
   it("says a value was not found rather than inventing one", () => {
     const html = render(award({ price: { raw: "", value: null, confidence: 0 } }));
     expect(html).toContain("ไม่พบในเอกสาร");
+  });
+});
+
+describe("comparePrice (TOR-278)", () => {
+  it("states how far below or above the budget the price is, in baht and in percent of the budget", () => {
+    expect(comparePrice(1_250_000, 1_500_000)).toEqual({ price: 1_250_000, budget: 1_500_000, side: "below", difference: 250_000, percent: 16.7 });
+    expect(comparePrice(1_650_000, 1_500_000)).toEqual({ price: 1_650_000, budget: 1_500_000, side: "above", difference: 150_000, percent: 10 });
+    expect(comparePrice(1_500_000, 1_500_000)).toEqual({ price: 1_500_000, budget: 1_500_000, side: "equal", difference: 0, percent: 0 });
+  });
+
+  it("compares nothing unless both numbers are real and positive", () => {
+    expect(comparePrice(null, 1_500_000)).toBeNull();
+    expect(comparePrice(1_250_000, null)).toBeNull();
+    expect(comparePrice(1_250_000, undefined)).toBeNull();
+    expect(comparePrice(0, 1_500_000)).toBeNull();
+    expect(comparePrice(1_250_000, 0)).toBeNull();
+    expect(comparePrice(Number.NaN, 1_500_000)).toBeNull();
+    expect(comparePrice(1_250_000, "1,500,000")).toBeNull();
+  });
+});
+
+describe("AwardPanel price comparison (TOR-278)", () => {
+  const renderWith = (value: TorAward, budget: { value?: unknown; verified?: boolean } | null) =>
+    renderToStaticMarkup(<AwardPanel award={value} budget={budget} originals={originalDocuments(tor({ award: value }))} title="จ้างก่อสร้างอาคาร" />);
+
+  it("shows the gap with both figures and where each came from, and no verdict on it", () => {
+    const html = renderWith(award(), { value: 1_500_000, verified: true });
+    expect(html).toContain("เทียบกับงบประมาณ");
+    expect(html).toContain("ต่ำกว่างบประมาณ ฿250,000 (16.7%)");
+    expect(html).toContain("งบประมาณ ฿1,500,000 ตามที่สกัดจาก TOR");
+    expect(html).toContain("ราคาที่เสนอ ฿1,250,000 ตามประกาศผู้ชนะ");
+    expect(html).not.toContain("ยังไม่ยืนยัน");
+    for (const word of ["น่าสงสัย", "ผิดปกติ", "ทุจริต", "suspicious"]) expect(html).not.toContain(word);
+  });
+
+  it("says above when the price is above the budget, and equal when they match", () => {
+    expect(renderWith(award({ price: { raw: "1,650,000", value: 1_650_000, confidence: 0.9 } }), { value: 1_500_000, verified: true })).toContain("สูงกว่างบประมาณ ฿150,000 (10%)");
+    expect(renderWith(award({ price: { raw: "1,500,000", value: 1_500_000, confidence: 0.9 } }), { value: 1_500_000, verified: true })).toContain("เท่ากับงบประมาณ ฿1,500,000");
+  });
+
+  it("marks the comparison unconfirmed when either reading is", () => {
+    expect(renderWith(award({ unverified: true }), { value: 1_500_000, verified: true })).toContain("เทียบกับงบประมาณ");
+    expect(renderWith(award({ unverified: true }), { value: 1_500_000, verified: true }).match(/ยังไม่ยืนยัน/g)).toHaveLength(2);
+    expect(renderWith(award(), { value: 1_500_000, verified: false }).match(/ยังไม่ยืนยัน/g)).toHaveLength(1);
+  });
+
+  it("leaves the row out when there is no budget or no price to compare", () => {
+    expect(renderWith(award(), null)).not.toContain("เทียบกับงบประมาณ");
+    expect(renderWith(award(), { value: null })).not.toContain("เทียบกับงบประมาณ");
+    expect(renderWith(award({ price: { raw: "", value: null, confidence: 0 } }), { value: 1_500_000 })).not.toContain("เทียบกับงบประมาณ");
   });
 });
 
