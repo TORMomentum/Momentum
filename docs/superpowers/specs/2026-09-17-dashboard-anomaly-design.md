@@ -538,7 +538,8 @@ The route read every public record whole (1,721 records, about 10 MB of extracte
 text) and Atlas returned it at about 100 KB/s. Two changes, neither altering a figure:
 
 1. **Projection.** `dashboardRecords` reads only the paths the route, `eligibilityOf` and the checklist use
-   (`DASHBOARD_PROJECTION`). First request: 47 s.
+   (`DASHBOARD_PROJECTION`), the checklist's `announcedAt` and scope fields included. First request: 47–70 s.
+   On one Atlas snapshot, the projected and whole-document answers were identical.
 2. **Answer cache.** One answer per filter set for `STATS_DASHBOARD_CACHE_MS` (120 s), bounded by
    `STATS_DASHBOARD_CACHE_ENTRIES`; concurrent requests share one read. Later requests: under 10 ms.
    §5's "every figure from one snapshot" still holds: a cached answer is one snapshot, `meta` included.
