@@ -26,31 +26,34 @@ export function CompetitionPanel({ competition }: { competition: CompetitionPayl
         <span className={styles.panelHint}>ทั้งระบบ ไม่เปลี่ยนตามตัวกรอง · จากประกาศผู้ชนะ {count(meta.awardedProjects)} โครงการ</span>
       </div>
       {ranked.length > 0 ? (
-        <table className={`${styles.checklistTable} ${styles.competitionTable}`}>
+        // Two columns at a bounded width: the category with its counts beneath it, then the share as a bar with its
+        // figure beside it. Four columns across the full page left each name far from its numbers.
+        <table className={styles.competitionTable}>
           <colgroup>
             <col />
-            <col className={styles.checklistCount} />
-            <col className={styles.checklistCount} />
             <col className={styles.competitionShare} />
           </colgroup>
           <thead>
             <tr>
               <th scope="col">หมวดหมู่</th>
-              <th scope="col">โครงการที่ประกาศผล</th>
-              <th scope="col">ผู้ชนะที่ต่างกัน</th>
-              <th scope="col">ผู้ชนะ {rule.topWinners} รายแรกได้</th>
+              <th scope="col">สัดส่วนโครงการที่ผู้ชนะ {rule.topWinners} รายแรกได้</th>
             </tr>
           </thead>
           <tbody>
             {ranked.map((row) => (
               <tr key={row.category}>
-                <th scope="row">{row.category}</th>
-                <td>{count(row.awarded)}</td>
-                <td>{count(row.winners)}</td>
+                <th scope="row">
+                  <span className={styles.competitionName}>{row.category}</span>
+                  <span className={styles.competitionMeta}>
+                    ประกาศผล {count(row.awarded)} โครงการ · ผู้ชนะ {count(row.winners)} ราย
+                  </span>
+                </th>
                 <td>
-                  <span className={styles.competitionValue}>{percent(row.topShare)}</span>
-                  <span className={styles.barTrack} aria-hidden="true">
-                    <span className={styles.barFill} style={{ width: percent(row.topShare) }} />
+                  <span className={styles.competitionBar}>
+                    <span className={styles.competitionTrack} aria-hidden="true">
+                      <span className={styles.barFill} style={{ width: percent(row.topShare) }} />
+                    </span>
+                    <span className={styles.competitionValue}>{percent(row.topShare)}</span>
                   </span>
                 </td>
               </tr>

@@ -34,10 +34,18 @@ describe("CompetitionPanel (TOR-281)", () => {
     expect(html).toContain("43%");
   });
 
+  it("puts each category's counts beneath its name, and the share beside its bar", () => {
+    const html = render(payload());
+
+    expect(html).toContain("ประกาศผล 40 โครงการ · ผู้ชนะ 39 ราย");
+    expect(html).toContain("สัดส่วนโครงการที่ผู้ชนะ 3 รายแรกได้");
+    expect(html).toContain("width:10%");
+  });
+
   it("keeps a category below the minimum sample out of the table and says why", () => {
     const html = render(payload());
 
-    expect(html).not.toContain("<th scope=\"row\">ซื้อครุภัณฑ์สำนักงานและการศึกษา");
+    expect(html.split("</table>")[0]).not.toContain("ซื้อครุภัณฑ์สำนักงานและการศึกษา");
     expect(html).toContain("ยังเทียบไม่ได้ เพราะมีประกาศผลไม่ถึง 8 โครงการ: ซื้อครุภัณฑ์สำนักงานและการศึกษา (2)");
   });
 
