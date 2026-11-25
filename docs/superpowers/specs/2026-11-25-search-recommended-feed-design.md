@@ -28,7 +28,7 @@ as an old-style search form. The vendor arrives asking "is there anything for me
 ## 3. Also in this change: the winners-by-category table
 
 The dashboard's "ผู้ชนะตามหมวดหมู่" table (TOR-281) stretched four columns across the full width, leaving a wide gap
-between each category and its figures, and wrapping the column heads. It becomes two columns at a bounded width: the
+between each category and its figures, and wrapping the column heads. It becomes two columns across the panel: the
 category with its counts beneath it ("40 โครงการ · ผู้ชนะ 39 ราย"), and the top-winners' share as a bar with its
 percentage beside it. Same figures, same order, same notes (NFR-F5 wording unchanged).
 

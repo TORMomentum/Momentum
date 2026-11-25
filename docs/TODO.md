@@ -570,8 +570,8 @@ Branch `feat/tor-217-recommended-feed`._
 - [x] **TOR-265 — recommended-for-you feed**: "แนะนำสำหรับคุณ" (top 5 of `/me/matches`) leads `/search` for a
       signed-in account until a keyword or filter is set; `MatchedTorsPanel` moved to `shared/ui`
   - [ ] seen signed in, in a browser: covered by view tests only (TC-F4-3)
-- [x] Winners-by-category table (TOR-281) redesigned: category with its counts beneath it, the share as a bar beside its
-      figure, bounded width. Seen in a browser
+- [x] Winners-by-category table (TOR-281) redesigned: category with its counts beneath it, the share as a bar across the
+      panel with its figure at the end. Seen in a browser
 
 ## 2s. Admin upload reaches extraction (2026-11-12)
 
