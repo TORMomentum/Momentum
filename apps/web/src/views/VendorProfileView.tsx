@@ -14,6 +14,8 @@ import { NotifyPreferences, type Notify } from "../features/profile/NotifyPrefer
 import { ServiceAreaPicker } from "../features/profile/ServiceAreaPicker";
 import { TaxonomyPicker } from "../features/profile/TaxonomyPicker";
 import { MatchingExtras } from "../features/profile/MatchingExtras";
+import { CompletenessBar } from "../features/profile/CompletenessBar";
+import { profileCompleteness } from "../features/profile/profile-completeness";
 import { SavedTorsSection } from "../features/profile/SavedTorList";
 import type { BookmarkRow } from "../shared/api/bookmarks.api";
 import type { PastProject, PersonnelMember, VendorCertifications } from "../shared/api/profile.api";
@@ -302,7 +304,18 @@ export function VendorProfileView({ initial, bookmarks = null }: { initial: Prof
         </div>
       </div>
 
-      <section className={styles.profileCard}>
+      <CompletenessBar
+        completeness={profileCompleteness({
+          categories: profile.categories,
+          areas: profile.areas,
+          budget: profile.budget,
+          pastProjects: initial?.pastProjects ?? [],
+          certifications: initial?.certifications ?? null,
+          personnel: initial?.personnel ?? [],
+        })}
+      />
+
+      <section className={styles.profileCard} id="matching-fields">
         <h2 className={styles.profileFactTitle}>ข้อมูลที่ใช้จับคู่ TOR</h2>
         <p className={styles.profileSub}>แก้ไขได้ทุกเมื่อ มีผลกับการจับคู่ครั้งถัดไป</p>
         {adminEditedAt && (
