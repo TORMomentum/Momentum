@@ -77,8 +77,10 @@ flowchart TB
         web["<b>web</b> ✅<br/>Next.js 16 App Router<br/>:3000"]
         api["<b>api</b> ✅<br/>Express 5 REST<br/>:4000"]
         worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
-        stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells ·<br/>no Compose service yet"]
-        stages["<b>stages worker</b> ✅<br/>reads e-GP project stages<br/>once a day · TOR-205 ·<br/>no Compose service yet"]
+        stats["<b>stats-worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells"]
+        notify["<b>notify-worker</b> ✅<br/>match and deadline emails ·<br/>sends only with<br/>NOTIFY_DISPATCH_ENABLED"]
+        stages["<b>stages-worker</b> ✅<br/>reads e-GP project stages<br/>once a day · TOR-205 ·<br/>Compose profile <i>stages</i>, off by default"]
+        mail[("<b>mail</b> ✅<br/>Mailpit · inbox :8025")]
         collector["<b>collector worker</b> ✅<br/>queues new e-GP TORs, invitations<br/>and winner announcements ·<br/>every 6 h, ≤ 50 a day · F12 ·<br/>Compose profile <i>collector</i>, off by default"]
         mongo[("<b>mongo</b> ✅<br/>MongoDB 8 (Atlas Local)<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
@@ -96,7 +98,9 @@ flowchart TB
     worker -->|"claim job,<br/>write result"| mongo
     worker -->|"fetch bytes by key"| gcs
     worker -->|"OCR + extract"| vertex
-    worker -->|"match emails"| smtp
+    notify -->|"claim due vendors,<br/>read matches"| mongo
+    notify -->|"SMTP"| mail
+    mail -.->|"deployment: real SMTP"| smtp
     stats -->|"claim dirty cohort,<br/>write bounds + rollups"| mongo
     stages -->|"claim due record,<br/>write stageHistory + stage"| mongo
     stages -->|"one request per project,<br/>paced, backs off on 429"| egp["🏛️ e-GP<br/>project stage table"]
@@ -108,8 +112,8 @@ flowchart TB
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
     classDef store fill:#f1f4f9,stroke:#12233c,color:#12233c
-    class web,api,worker,stats,collector built
-    class mongo,gcs,realgcs,vertex,smtp store
+    class web,api,worker,stats,notify,stages,collector built
+    class mongo,gcs,mail,realgcs,vertex,smtp store
 ```
 
 **Why the statistics worker is separate from the extraction worker:** a stalled OCR call must not
@@ -723,9 +727,12 @@ flowchart TB
   directory it ran in, and the logs differ per machine.
 - **The GCS emulator's host port is parameterised** — `${GCS_EMULATOR_PORT:-4443}` — because a
   fixed port collides with another project on the same machine more often than not.
-- ⬜ The bullets above are the target. The Compose file has the `worker` service but still no
-  health conditions, generic names, and no service for the statistics or notification worker
-  (both run by `npm run stats-worker` / `notify-worker`). That is slice 1 task 15.
+- ⬜ The bullets above are the target. Compose now runs `worker`, `stats-worker` and `notify-worker`
+  (TOR-111, 2026-11-25), with `stages-worker` and `collector` behind profiles because both call e-GP.
+  Still open: health conditions on `depends_on`, and explicit project and container names.
+- **Extraction under Compose needs a Vertex identity.** `docker-compose.vertex.yml` mounts the host key
+  file read-only into the `worker` alone; without it the worker logs `extraction_disabled` and records
+  stay `queued`. `docker compose -f docker-compose.yml -f docker-compose.vertex.yml up`.
 
 ---
 

@@ -192,13 +192,15 @@ the last column.
 | ID | Feature | Steps (input) | Expected | Actual · Pass/Fail · date |
 | :---- | :---- | :---- | :---- | :---- |
 | TC-F1-1 | F1 | Admin → upload a TOR PDF; submit the same file again | One record; the second submit returns the existing record | |
-| TC-F1-2 | F1 | `POST /api/v1/intake/upload` without `x-api-key` | 401, nothing stored | |
-| TC-F1-3 | F1 | Intake by URL pointing at `http://127.0.0.1/…` | Refused (SSRF guard), nothing stored | |
+| TC-F1-2 | F1 | `POST /api/v1/intake/upload` without an admin session (since TOR-199; was `x-api-key`) | 401, nothing stored | 401 anonymous, 403 vendor · Pass · 2026-11-25 ([pilot hardening](security/pilot-hardening-2026-11-25.md)) |
+| TC-F1-3 | F1 | Intake by URL pointing at `http://127.0.0.1/…` | Refused (SSRF guard), nothing stored | refused, also `169.254.169.254`, `10.0.0.1`, `localtest.me`, `file://` · Pass · 2026-11-25 |
 | TC-F2-1 | F2 | Upload a scanned Thai TOR; open its record | All nine fields, each with a confidence and the model that produced it | |
 | TC-F3-1 | F3 | Admin → review queue | Only low-confidence and failed-check records; approving one clears the "unverified extraction" mark | |
 | TC-F4-1 | F4 | Search; combine category, budget, agency and date filters | Results within two seconds; every combination works | |
 | TC-F4-2 | F4 | Open a TOR | Every field shown exactly as extracted, plus a working link to the original | |
 | TC-F4-3 | F4 (TOR-217) | Open `/search` signed in as a vendor with a profile, then signed out, then on a phone; open the filters, pick one, press Escape | Signed in: "แนะนำสำหรับคุณ" above the results; signed out: no panel. Filters closed until the button is pressed; the chosen filter shows as a chip and a count on the button | |
+| TC-E2E-1 | F1–F3, F5, F9 (TOR-111) | `docker compose -f docker-compose.yml -f docker-compose.vertex.yml up`; `node tools/demo-seed.mjs`; give vendor A a category that fits a seeded TOR; `NOTIFY_DISPATCH_ENABLED=true` | Both TORs published with fields and model; dashboard figures computed; the TOR in vendor A's `/me/matches` with a reason; a match email in Mailpit | as expected; score 0.85, "TOR ใหม่ 1 รายการตรงกับทักษะของคุณ" · Pass · 2026-11-25 |
+| TC-M-1 | NFR-F4, NFR-F7 (TOR-112) | Every page at 375 px, signed out, as a vendor and as an admin | No sideways scroll; header on two rows; dashboard ≤ 3 s | 375 px on every page; dashboard load 0.47–1.1 s locally (no throttling) · Pass · 2026-11-25 |
 | TC-F5-1 | F5 | Vendor with a profile → dashboard matches | Each match shows a score and Thai reasons naming the matched work and the budget fit | |
 | TC-F5-2 | F5 | Admin → vendor → "send matches now" (dispatch enabled, test inbox) | One email within five minutes naming at least three matched tags and the budget fit | |
 | TC-F6-1 | F6 | Register without ticking consent | Refused; no account exists | |

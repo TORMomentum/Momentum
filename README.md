@@ -116,7 +116,7 @@ console steps, for local and Cloud Run, are in [docs/gcp-setup.md](docs/gcp-setu
 
 ```bash
 docker compose up --build -d
-docker compose ps           # web, api, worker, mongo, gcs, mail should all be Up (mongo: healthy)
+docker compose ps           # web, api, worker, stats-worker, notify-worker, mongo, gcs, mail Up (mongo: healthy)
 ```
 
 | What | Where (default ports) |
@@ -127,7 +127,15 @@ docker compose ps           # web, api, worker, mongo, gcs, mail should all be U
 | MongoDB / GCS emulator | `localhost:27017` / `localhost:4443` |
 
 Logs: `docker compose logs -f api` (the API writes JSON lines). Without a Vertex credential the worker logs
-`extraction_disabled`; that is expected.
+`extraction_disabled` and records stay `queued`; that is expected. To extract for real, set `GOOGLE_CLOUD_PROJECT`
+and `GOOGLE_APPLICATION_CREDENTIALS` (the key file on this machine) in `.env` and add the Vertex override — every
+document is then a billed Vertex call:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.vertex.yml up --build -d
+```
+
+Match emails are not sent unless `NOTIFY_DISPATCH_ENABLED=true`; when they are, they land in Mailpit.
 
 ### 3 · Seed demo data (optional)
 

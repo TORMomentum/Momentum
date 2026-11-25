@@ -69,6 +69,11 @@
   --app-header-h: 62px;
 }
 
+/* On a phone the header is two rows (app-shell.module.css, TOR-112). */
+@media (max-width: 640px) {
+  :root { --app-header-h: 96px; }
+}
+
 * {
   box-sizing: border-box;
 }

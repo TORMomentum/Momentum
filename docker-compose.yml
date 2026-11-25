@@ -103,6 +103,43 @@ services:
       - mongo
       - gcs
 
+  # Recomputes the dashboard figures and anomaly bounds as records publish (TOR-111: without it a Compose
+  # dashboard says "ยังไม่เคยคำนวณ" forever). Same image, its own process, so a slow recompute never stalls extraction.
+  stats-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["npm", "run", "stats-worker"]
+    environment: *api-env
+    depends_on:
+      - mongo
+
+  # Sends the match and deadline emails (F9) to the mail service, whose inbox is at :8025.
+  notify-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["npm", "run", "notify-worker"]
+    environment:
+      <<: *api-env
+      # Off unless asked: sending is gated on the matching benchmark (spec §7.8). `NOTIFY_DISPATCH_ENABLED=true` to send.
+      NOTIFY_DISPATCH_ENABLED: ${NOTIFY_DISPATCH_ENABLED:-false}
+    depends_on:
+      - mongo
+      - mail
+
+  # Reads each e-GP project's published stages (TOR-205). Not started by `docker compose up`: it calls the
+  # public e-GP site. `docker compose --profile stages up` to run it.
+  stages-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["npm", "run", "stages-worker"]
+    profiles: ["stages"]
+    environment: *api-env
+    depends_on:
+      - mongo
+
   # The scheduled e-GP collector (F12). Not started by `docker compose up`: every document it queues is a
   # billed extraction. `COLLECTOR_ENABLED=true docker compose --profile collector up` to run it.
   collector:
