@@ -21,6 +21,8 @@ import {
   type SearchState,
 } from "../features/search/search.params";
 import type { TorFacets, TorListItem, TorSearchResult } from "../shared/api/tors.api";
+import type { OwnMatches } from "../shared/api/matches.api";
+import { MatchedTorsPanel } from "../shared/ui/MatchedTorsPanel";
 import {
   DEADLINE_SOON_DAYS,
   daysLeftLabel,
@@ -117,6 +119,7 @@ export function SearchView({
   results,
   queryMaxChars,
   savedIds,
+  recommended,
 }: {
   filters: SearchFilters;
   facets: TorFacets;
@@ -124,6 +127,11 @@ export function SearchView({
   results: TorSearchResult | null;
   queryMaxChars: number;
   savedIds: string[];
+  /**
+   * The signed-in vendor's matches, read only when nothing is being searched (TOR-217). `undefined` for a
+   * signed-out visitor or a search in progress; `null` when they could not be read, which shows no panel.
+   */
+  recommended?: OwnMatches | null;
 }) {
   const router = useRouter();
   const { signedIn, ready } = useViewer();
@@ -133,6 +141,24 @@ export function SearchView({
   // own profile while the dashboard beside it listed their matches.
   const matchFilterShown = signedIn;
   const [pending, startTransition] = useTransition();
+
+  // The filters open on demand, in a drawer over the results (TOR-217, spec 2026-11-25-search-recommended-feed).
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterToggle = useRef<HTMLButtonElement>(null);
+  const drawerClose = useRef<HTMLButtonElement>(null);
+  function closeFilters() {
+    setFiltersOpen(false);
+    filterToggle.current?.focus();
+  }
+  useEffect(() => {
+    if (!filtersOpen) return;
+    drawerClose.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeFilters();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filtersOpen]);
 
   const [draftQuery, setDraftQuery] = useState(filters.q);
   const lastCommittedQuery = useRef(filters.q);
@@ -320,13 +346,29 @@ export function SearchView({
       : []),
   ];
 
+  // The keyword has its own box; the button counts what sits in the drawer.
+  const activeFilterCount = applied.filter((chip) => chip.key !== "q").length;
+  // Before a reader searches, the page answers "is there anything for me" first (TOR-217).
+  const showRecommended = recommended && !filtered && !filters.cursor;
+
   return (
     <main className={styles.searchPage}>
-      <div className={styles.sidebar}>
+      {filtersOpen && <div className={styles.drawerBackdrop} onClick={closeFilters} aria-hidden="true" />}
+      <div
+        id="search-filters"
+        className={styles.sidebar}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="search-filters-title"
+        hidden={!filtersOpen}
+      >
         <div className={styles.sidebarHead}>
-          <span className={styles.sidebarLabel}>ตัวกรอง</span>
+          <span id="search-filters-title" className={styles.sidebarLabel}>ตัวกรอง</span>
           <button type="button" className={styles.clearLink} onClick={clearFilters}>
             ล้างทั้งหมด
+          </button>
+          <button ref={drawerClose} type="button" className={styles.drawerClose} onClick={closeFilters} aria-label="ปิดตัวกรอง">
+            ✕
           </button>
         </div>
 
@@ -480,14 +522,10 @@ export function SearchView({
           </FilterSection>
         )}
 
-        <div className={styles.sidebarFoot}>
-          {results?.coverage.lastUpdatedAt && (
-            <>
-              อัปเดตข้อมูลล่าสุด {formatThaiDateTime(results.coverage.lastUpdatedAt)}
-              <br />
-            </>
-          )}
-          ครอบคลุมเฉพาะเอกสารที่ระบบรวบรวมได้ ไม่ใช่ประกาศจัดซื้อจัดจ้างทั้งหมดในประเทศ
+        <div className={styles.drawerFoot}>
+          <button type="button" className={styles.drawerDone} onClick={closeFilters}>
+            ดูผลลัพธ์{results ? ` ${results.total} รายการ` : ""}
+          </button>
         </div>
       </div>
 
@@ -509,6 +547,17 @@ export function SearchView({
             placeholder="⌕ ค้นหา เช่น ระบบสารสนเทศ, ปรับปรุงถนน…"
             aria-label="ค้นหา TOR"
           />
+          <button
+            ref={filterToggle}
+            type="button"
+            className={styles.filterToggle}
+            aria-expanded={filtersOpen}
+            aria-controls="search-filters"
+            onClick={() => setFiltersOpen(true)}
+          >
+            ตัวกรอง
+            {activeFilterCount > 0 && <span className={styles.facetSelected}>{activeFilterCount}</span>}
+          </button>
           {results && <span className={styles.resultCount}>{results.total} ผลลัพธ์</span>}
           {results && results.total > 0 && (
             <a className={styles.exportLink} href={exportHref(filters)} download>
@@ -530,6 +579,8 @@ export function SearchView({
             </Link>
           </div>
         )}
+
+        {showRecommended && <MatchedTorsPanel matches={recommended} title="แนะนำสำหรับคุณ" headingId="recommended-heading" />}
 
         {!results ? (
           <div className={styles.emptyState} role="alert">
@@ -684,6 +735,12 @@ export function SearchView({
             )}
           </div>
         )}
+
+        {/* Always on screen, not inside the drawer (FR-E-6). */}
+        <p className={styles.coverageNote}>
+          {results?.coverage.lastUpdatedAt && <>อัปเดตข้อมูลล่าสุด {formatThaiDateTime(results.coverage.lastUpdatedAt)} · </>}
+          ครอบคลุมเฉพาะเอกสารที่ระบบรวบรวมได้ ไม่ใช่ประกาศจัดซื้อจัดจ้างทั้งหมดในประเทศ
+        </p>
       </div>
     </main>
   );

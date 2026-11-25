@@ -40,6 +40,11 @@ function match(id: string, score: number) {
 }
 
 describe("MatchedTorsPanel", () => {
+  it("takes its title from the page that shows it", () => {
+    act(() => root.render(<MatchedTorsPanel matches={{ items: [match("a", 0.72)], reason: null }} title="แนะนำสำหรับคุณ" headingId="r" />));
+    expect(container.querySelector("h2#r")?.textContent).toBe("แนะนำสำหรับคุณ");
+  });
+
   it("lists the best matches with their score and why they matched", () => {
     act(() => root.render(<MatchedTorsPanel matches={{ items: [match("a", 0.72)], reason: null }} />));
     expect(container.textContent).toContain("TOR ที่ตรงกับคุณ");
@@ -65,6 +70,7 @@ describe("MatchedTorsPanel", () => {
     act(() => root.render(<MatchedTorsPanel matches={{ items, reason: null }} />));
     expect(container.querySelectorAll("ol > li").length).toBe(5);
     expect(container.textContent).toContain("และอีก 3 รายการ");
+    expect(container.querySelector('a[href="/search?minMatch=5"]')).not.toBeNull();
   });
 
   it("sends a vendor with no work chosen to their profile instead of showing nothing", () => {

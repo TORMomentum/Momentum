@@ -8,13 +8,14 @@ import {
   type TorSearchResult,
 } from "../../../src/shared/api/tors.api";
 import {
+  hasActiveFilters,
   parseSearchParams,
   toSearchQuery,
   type RawSearchParams,
 } from "../../../src/features/search/search.params";
 import { SearchView } from "../../../src/views/SearchView";
 import { fetchOwnBookmarkIds } from "../../../src/shared/api/bookmarks.api";
-import { fetchOwnMatchScores } from "../../../src/shared/api/matches.api";
+import { fetchOwnMatches, fetchOwnMatchScores } from "../../../src/shared/api/matches.api";
 
 export const metadata: Metadata = {
   title: "ค้นหา TOR",
@@ -33,6 +34,9 @@ export default async function SearchPage({
   searchParams: Promise<RawSearchParams>;
 }) {
   const filters = parseSearchParams(await searchParams);
+
+  // Before a reader searches, the page leads with their matches (TOR-217); once they search, it does not ask.
+  const recommended = hasActiveFilters(filters) || filters.cursor ? Promise.resolve(undefined) : fetchOwnMatches();
 
   // Parallel: the options and the results do not depend on each other.
   const [facets, results] = await Promise.allSettled([
@@ -73,6 +77,7 @@ export default async function SearchPage({
       results={scoredResults}
       queryMaxChars={searchQueryMaxChars()}
       savedIds={[...savedIds]}
+      recommended={await recommended}
     />
   );
 }

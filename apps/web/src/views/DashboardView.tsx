@@ -7,7 +7,7 @@ import { BudgetPlot } from "../features/dashboard/BudgetPlot";
 import { ChecklistSummaryPanel } from "../features/dashboard/ChecklistSummaryPanel";
 import { CompetitionPanel } from "../features/dashboard/CompetitionPanel";
 import { FilterDrop } from "../features/dashboard/FilterDrop";
-import { MatchedTorsPanel } from "../features/dashboard/MatchedTorsPanel";
+import { MatchedTorsPanel } from "../shared/ui/MatchedTorsPanel";
 import styles from "../features/dashboard/dashboard.module.css";
 import type { OwnMatches } from "../shared/api/matches.api";
 import type { CompetitionPayload, DashboardPayload, TorState } from "../shared/api/stats.api";
