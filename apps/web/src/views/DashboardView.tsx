@@ -216,11 +216,6 @@ export function DashboardView({
           {dashboard.flagged.count !== null && <div className={`${styles.stat} ${styles.statFlagged}`}><div className={styles.statKey}>ความผิดปกติทางสถิติ</div><div className={styles.statValue}>{dashboard.flagged.count.toLocaleString("th-TH")}</div><div className={styles.statNote}>ดูวิธีคำนวณได้ที่ <Link href="/methodology">ระเบียบวิธี</Link></div></div>}
         </div>
 
-        {/* Who has been winning in each category is a bid/no-bid input, so it sits above the charts (design
-            2026-11-25-completeness-and-persona §3). Not part of the filtered figures: it answers for the whole
-            collected corpus, so it stays when a filter matches nothing. */}
-        {competition && <CompetitionPanel competition={competition} />}
-
         <div className={styles.split}>
           <section className={styles.splitLeft}>
           <div className={styles.panelHead}>
@@ -312,6 +307,10 @@ export function DashboardView({
             {dashboard.checklist && <ChecklistSummaryPanel summary={dashboard.checklist} />}
           </section>
         </div>
+
+        {/* Winners by category answers for the whole collected corpus, not the filter above, so it sits
+            after the filtered figures and charts (design 2026-11-25-completeness-and-persona §4). */}
+        {competition && <CompetitionPanel competition={competition} />}
       </>}
     </main>
   );
