@@ -12,8 +12,14 @@ import { calendarDate } from "../../lib/calendar-date.js";
 import { TOR_STATES, torStateOf } from "../../lib/tor-state.js";
 import { competitionByCategory, countedProjects } from "./competition.js";
 import { publicRateLimit } from "../../core/public-rate-limit.js";
+import { keptAnswers } from "./kept-answers.js";
 
-export interface StatsRouterDeps { db: Db; config: Config; }
+export interface StatsRouterDeps {
+  db: Db;
+  config: Config;
+  /** Build the unfiltered answer as soon as the router exists, so the first visitor after a start does not wait. */
+  warm?: boolean;
+}
 
 const iso = (date: Date | undefined) => date?.toISOString() ?? null;
 
@@ -23,33 +29,25 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
   const repository = new StatsRepository(deps.db);
 
   /**
-   * One answer per filter set, kept `STATS_DASHBOARD_CACHE_MS`. The page reads every matching record,
-   * which is slow against Atlas; the homepage and the dashboard ask the same question on every visit.
-   * Requests arriving while an answer is being built share it. The response's `meta` still says when the
-   * figures were last recomputed, so a cached answer is never presented as newer than it is.
+   * Dashboard answers are kept (see `keptAnswers`: `STATS_DASHBOARD_CACHE_MS`, then `STATS_DASHBOARD_STALE_MS` served
+   * while rebuilt), at two levels. `answerFor` keeps one answer per filter set. `recordsFor` keeps the records read
+   * per database query, which is what makes a filter fast the first time it is used: the state, agency and month
+   * filters are applied in memory to the same read as the unfiltered page, so once that read is kept they cost no
+   * read of their own. Reading every matching record takes tens of seconds against Atlas. The response's `meta` still
+   * says when the figures were last recomputed, so a kept answer is never presented as newer than it is.
    */
-  const answers = new Map<string, { at: number; body: Promise<unknown> }>();
+  const keptFor = () => ({
+    keepMs: deps.config.stats.dashboardCacheMs,
+    staleMs: deps.config.stats.dashboardStaleMs,
+    maxEntries: deps.config.stats.dashboardCacheEntries,
+  });
+  const recordsFor = keptAnswers(keptFor, (filter: ReturnType<typeof publicTorFilter>) => repository.dashboardRecords(filter));
+  const answerFor = keptAnswers(keptFor, (filters: DashboardFilters) => dashboardBody(filters));
+  if (deps.warm) answerFor(JSON.stringify({}), {}).catch(() => undefined);
+
   router.get("/dashboard", async (req, res) => {
     const filters = parseDashboardFilters(req.query);
-    const { dashboardCacheMs: keepMs, dashboardCacheEntries: maxEntries } = deps.config.stats;
-    if (keepMs === 0) {
-      res.json(await dashboardBody(filters));
-      return;
-    }
-    const key = JSON.stringify(filters);
-    const now = Date.now();
-    let answer = answers.get(key);
-    if (!answer || now - answer.at >= keepMs) {
-      answer = { at: now, body: dashboardBody(filters) };
-      answers.delete(key);
-      answers.set(key, answer);
-      // Bounded: filter values come from the query string, so the set of keys is the caller's to choose.
-      while (answers.size > maxEntries) answers.delete(answers.keys().next().value as string);
-      const kept = answer;
-      // A failed read is not kept: the next request tries again.
-      kept.body.catch(() => { if (answers.get(key) === kept) answers.delete(key); });
-    }
-    res.json(await answer.body);
+    res.json(await answerFor(JSON.stringify(filters), filters));
   });
 
   async function dashboardBody(filters: DashboardFilters) {
@@ -59,7 +57,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     // reads could straddle a write and disagree with each other.
     const scope = { ...filters, agency: undefined, month: undefined };
     const [scopeRecords, meta] = await Promise.all([
-      repository.dashboardRecords(publicTorFilter(scope)),
+      recordsFor(JSON.stringify(publicTorFilter(scope)), publicTorFilter(scope)),
       repository.dashboardMeta(),
     ]);
     const today = calendarDate(new Date(), deps.config.search.timeZone);
@@ -252,14 +250,19 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
    */
   // A scan of the awarded records on every call, so it draws on the same per-client cap as search (TOR-318).
   const competitionLimit = publicRateLimit(deps.config.publicSearchRateLimitPerMin);
-  router.get("/competition", competitionLimit, async (_req, res) => {
+  // Takes no filters, so one kept answer serves everyone; kept like the dashboard's.
+  const competitionAnswer = keptAnswers(keptFor, async () => {
     const { projects, lastAwardAt } = await repository.awardedProjects();
     const settings = { topWinners: deps.config.stats.competitionTopWinners, minAwarded: deps.config.stats.peerMinN };
-    res.json({
+    return {
       categories: competitionByCategory(projects, settings),
       rule: { topWinners: settings.topWinners, minAwarded: settings.minAwarded },
       meta: { awardedProjects: countedProjects(projects), lastAwardAt: iso(lastAwardAt ?? undefined) },
-    });
+    };
+  });
+  if (deps.warm) competitionAnswer("competition", undefined).catch(() => undefined);
+  router.get("/competition", competitionLimit, async (_req, res) => {
+    res.json(await competitionAnswer("competition", undefined));
   });
   return router;
 }

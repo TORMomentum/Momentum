@@ -267,6 +267,7 @@ const schema = z.object({
   // How long one dashboard answer is reused (0 = never). The dashboard reads every matching record.
   STATS_DASHBOARD_CACHE_MS: z.coerce.number().int().nonnegative().default(120_000),
   STATS_DASHBOARD_CACHE_ENTRIES: z.coerce.number().int().positive().default(100),
+  STATS_DASHBOARD_STALE_MS: z.coerce.number().int().nonnegative().default(3_600_000),
   COHORT_TIMEZONE: z.string().min(1).default("Asia/Bangkok"),
 
   /** How many review-queue rows one request returns (FR-G-1). */
@@ -519,6 +520,7 @@ export interface Config {
     staleAfterMs: number;
     dashboardCacheMs: number;
     dashboardCacheEntries: number;
+    dashboardStaleMs: number;
     timezone: string;
   };
   adminQueuePageSize: number;
@@ -718,6 +720,7 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       staleAfterMs: parsed.STATS_STALE_AFTER_MS,
       dashboardCacheMs: parsed.STATS_DASHBOARD_CACHE_MS,
       dashboardCacheEntries: parsed.STATS_DASHBOARD_CACHE_ENTRIES,
+      dashboardStaleMs: parsed.STATS_DASHBOARD_STALE_MS,
       timezone: parsed.COHORT_TIMEZONE,
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,

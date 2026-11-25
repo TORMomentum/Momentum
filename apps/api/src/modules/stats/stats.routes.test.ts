@@ -381,4 +381,54 @@ describe("the dashboard answer cache (STATS_DASHBOARD_CACHE_MS)", () => {
     // The first answer was dropped to make room, so this one is read again.
     expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(2);
   });
+
+  it("serves the kept answer at once after the window, while a fresh one is built for the next request (STATS_DASHBOARD_STALE_MS)", async () => {
+    await tors(db).insertOne(record() as never);
+    const app = appWith({ dashboardCacheMs: 1, dashboardStaleMs: 60_000 });
+    expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(1);
+    await tors(db).insertOne(record() as never);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    // Past the window: the old answer comes back straight away, and the rebuild starts behind it.
+    expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(1);
+    let count = 1;
+    for (let attempt = 0; attempt < 50 && count === 1; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      count = (await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount;
+    }
+    expect(count).toBe(2);
+  });
+
+  it("answers an agency, month or state filter from the unfiltered page's kept read, reading no records of its own", async () => {
+    await tors(db).insertOne(record() as never);
+    const app = appWith({ dashboardCacheMs: 60_000 });
+    await request(app).get("/api/v1/stats/dashboard");
+    await tors(db).insertOne(record() as never);
+
+    // A new filter set, so a new answer; but the same database query, so the same kept records.
+    expect((await request(app).get("/api/v1/stats/dashboard?agency=Agency%20A")).body.totals.torCount).toBe(1);
+    expect((await request(app).get("/api/v1/stats/dashboard?month=2026-01")).body.totals.torCount).toBe(1);
+  });
+
+  it("waits for a fresh answer once the kept one is older than the stale allowance", async () => {
+    await tors(db).insertOne(record() as never);
+    const app = appWith({ dashboardCacheMs: 1, dashboardStaleMs: 0 });
+    await request(app).get("/api/v1/stats/dashboard");
+    await tors(db).insertOne(record() as never);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(2);
+  });
+
+  it("builds the unfiltered answer when the router is created with warm, so the first visit reads no records", async () => {
+    await tors(db).insertOne(record() as never);
+    const app = express();
+    app.use("/api/v1/stats", buildStatsRouter({ db, config: { ...config, stats: { ...config.stats, dashboardCacheMs: 60_000 } }, warm: true }));
+    app.use(errorMiddleware);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await tors(db).insertOne(record() as never);
+
+    // The answer was built before the second insert, so it is the one served.
+    expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(1);
+  });
 });

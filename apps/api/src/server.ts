@@ -23,7 +23,8 @@ async function main(): Promise<void> {
   await ensureIndexes(db);
   if (config.search.atlasEnabled) await ensureSearchIndex(db, config.search.indexName);
 
-  const app = buildApp(config, db);
+  // The server warms the dashboard answer at start; tests build the app without it.
+  const app = buildApp(config, db, { warmCaches: true });
   // Bind all interfaces so the container port mapping reaches it.
   const host = process.env.API_HOST ?? "0.0.0.0";
 
