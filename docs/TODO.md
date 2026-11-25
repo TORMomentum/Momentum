@@ -8,7 +8,7 @@ to be, and a parent is never ticked while a child is open. Step-level detail for
 Decisions that are NOT yet made live in [PLAN.md](PLAN.md) — this file is work,
 that file is questions.
 
-_last updated: 2026-11-24_
+_last updated: 2026-11-25_
 
 ---
 
@@ -385,7 +385,7 @@ Routes: [API.md §6–7](API.md)._
       enforced in CI by `tools/check_docs_drift.mjs` (label `docs-not-needed` for an exception);
       Mermaid parse added to CI; [TESTING.md](TESTING.md) maps features to tests and manual cases
   - [ ] **Run the TESTING.md §3 manual cases** before the demo and record the results
-  - [ ] **Source health per adapter (F12)** — not built; TESTING.md says so
+  - [x] **Source health per adapter (F12)** — built under TOR-87 (TOR-292…294); TESTING.md UT-F12-1…3
 - [ ] **Clicked through live behind the staff login** — covered by tests only; opening a vendor
       account writes an audit entry to the shared Atlas, so a person does this
 - [ ] **Label enough pairs to read the benchmark**, then decide on `NOTIFY_DISPATCH_ENABLED`
@@ -852,6 +852,16 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   - [x] TOR-294 admin email once when an automatic source is failing (3 in a row) or stale (48 h), once when
     it recovers; checked hourly by the extraction worker
   - [ ] a deployed stages worker — the stages source shows stale wherever it is not running
+- [x] F12 Scheduled e-GP collector (spec 2026-11-25-scheduled-collector) — no Jira card yet
+  - [x] `modules/collector/`: the import and award tools' per-project work in one service; the tools call it
+  - [x] `workers/collector.worker.ts` (`npm run collector-worker`, Compose profile `collector`): invitation list,
+    draft-TOR list, then award targets every `COLLECTOR_INTERVAL_HOURS`; held projects skipped before download;
+    `COLLECTOR_MAX_NEW_PER_DAY` (50) in a rolling 24 h; back-off after 3 failures; off unless `COLLECTOR_ENABLED=true`
+  - [x] the two e-GP sources count as automatic in source health only while the collector is enabled
+  - [x] checked live 2026-11-25 on local Mongo + GCS emulator against e-GP, cap 3: exactly 3 queued, health recorded
+  - [ ] a deployed collector worker (Cloud Run runs only the extraction worker) — a deployment and cost decision
+  - [ ] `COLLECTOR_ENABLED` on in a shared environment — every queued document is a billed extraction
+  - [ ] the BMA e-GP source stays manual
 - [x] TOR-223 Winners by category (spec 2026-11-25-competition-by-category)
   - [x] TOR-280 `GET /stats/competition`: awarded projects, different winners and the top 3 winners' share per category, from the confirmed award
     readings; a category under `PEER_MIN_N` is listed, not ranked; no winner is named. Read on Atlas (read-only): 193 awarded projects, 12 categories, 9 comparable

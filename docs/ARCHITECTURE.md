@@ -79,6 +79,7 @@ flowchart TB
         worker["<b>worker</b> ✅<br/>same image as api,<br/>different command"]
         stats["<b>stats worker</b> ✅<br/>recomputes peer bounds<br/>and rollup cells ·<br/>no Compose service yet"]
         stages["<b>stages worker</b> ✅<br/>reads e-GP project stages<br/>once a day · TOR-205 ·<br/>no Compose service yet"]
+        collector["<b>collector worker</b> ✅<br/>queues new e-GP TORs, invitations<br/>and winner announcements ·<br/>every 6 h, ≤ 50 a day · F12 ·<br/>Compose profile <i>collector</i>, off by default"]
         mongo[("<b>mongo</b> ✅<br/>MongoDB 8 (Atlas Local)<br/>metadata, job queue,<br/>peer statistics")]
         gcs[("<b>gcs</b> ✅<br/>fake-gcs-server emulator<br/>original documents")]
     end
@@ -99,12 +100,15 @@ flowchart TB
     stats -->|"claim dirty cohort,<br/>write bounds + rollups"| mongo
     stages -->|"claim due record,<br/>write stageHistory + stage"| mongo
     stages -->|"one request per project,<br/>paced, backs off on 429"| egp["🏛️ e-GP<br/>project stage table"]
+    collector -->|"skip held projects,<br/>submit through intake"| mongo
+    collector -->|"putIfAbsent<br/>package + documents"| gcs
+    collector -->|"announcement lists,<br/>bid packages, award PDFs"| egp
     api -->|"read bounds,<br/>judge at read"| mongo
     gcs -.->|"same client,<br/>real credentials"| realgcs
 
     classDef built fill:#e8f0fe,stroke:#1d63d8,color:#12233c,stroke-width:2px
     classDef store fill:#f1f4f9,stroke:#12233c,color:#12233c
-    class web,api,worker,stats built
+    class web,api,worker,stats,collector built
     class mongo,gcs,realgcs,vertex,smtp store
 ```
 
@@ -170,10 +174,10 @@ flowchart LR
 | `core/db.ts` | Collection handles and index creation | — |
 | `core/errors.ts` | Typed errors and the error middleware | Zod failures become 400, never 500 |
 | `lib/` | Pure helpers: `hash`, `file-type` (magic bytes), `safe-fetch` (SSRF), `escape-regexp` (user text as a literal `$regex`/`RegExp`) | No I/O beyond what the helper is for |
-| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords`, `GoogleOidc`, `ProjectStagesSource` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
-| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320), e-GP's project stage table (`national-egp.stages.ts`, TOR-205) | Imported by `app.ts` only |
+| `ports/` | `Storage`, `VaultStorage`, `Queue`, `Ai`, `TextGenerator`, `Mailer`, `BreachedPasswords`, `GoogleOidc`, `ProjectStagesSource`, `EgpCollectSource` interfaces | `Storage` exposes `putIfAbsent`, never `put`, and never deletes; `VaultStorage` adds `delete` for a vendor's own files, on a bucket of its own |
+| `adapters/` | GCS storage, Mongo-backed queue, Vertex AI (extraction, and plain text for the draft), SMTP and recording mailers, Google OIDC, Have I Been Pwned range check (`hibp.breached-passwords.ts`, k-anonymity: only a 5-hex-char SHA-1 prefix leaves the process; TOR-320), e-GP's project stage table (`national-egp.stages.ts`, TOR-205), e-GP's announcement lists, bid packages and award PDFs for the collector (`national-egp.collect.ts`, F12) | Imported by `app.ts` only |
 | `modules/<feature>/` | One feature, files prefixed with its name | `modules/` imports `ports/`, never `adapters/` |
-| `workers/` | Extraction, statistics, notification and stages workers, and the orphan reconciler. The stages worker records each pass in `source_health`; the extraction worker checks every source hourly and alerts admins (TOR-87) | Same wiring rules as the API; a worker entry wires its own adapters, as `app.ts` does |
+| `workers/` | Extraction, statistics, notification, stages and collector workers, and the orphan reconciler. The stages and collector workers record each pass in `source_health`; the extraction worker checks every source hourly and alerts admins (TOR-87) | Same wiring rules as the API; a worker entry wires its own adapters, as `app.ts` does |
 | `sources/<source>/` | Clients for public sources: `bma-egp/`, and `national-egp/` (announcement list, feed, bid packages, a project's dated stages — `stages.ts`, TOR-204 — and its winner announcement PDF, TOR-221) | Reached through `lib/safe-fetch`; used by `tools/` imports, never by a route |
 
 The feature modules, as of Sprint 4:
@@ -199,6 +203,7 @@ The feature modules, as of Sprint 4:
 | `sources/` | Ingestion-source health (TOR-87): the source registry, each run's outcome in `source_health`, `GET /admin/sources`, and the admin alert email the extraction worker sends when an automatic source is failing or stale, and when it recovers |
 | `history/` | `tor_events`, the append-only transition log |
 | `stages/` | A project's published stages on its TOR records (TOR-205): claims due records, reads the source through `ProjectStagesSource`, writes `stageHistory` and `stage`, logs a stage change to `tor_events` (`kind: "stage"`), and backs off when the source refuses. Run by `npm run stages-worker` |
+| `collector/` | Scheduled national e-GP collection (F12, spec 2026-11-25-scheduled-collector): reads the invitation and draft-TOR lists and the award targets through `EgpCollectSource`, skips projects already held before any download, submits through intake as `national-egp-collector`, stops at `COLLECTOR_MAX_NEW_PER_DAY` new records in a rolling 24 h, backs off after three failures in a row. The import and award tools call the same `importProject` / `collectAward`. Run by `npm run collector-worker`, only when `COLLECTOR_ENABLED=true` |
 
 ### `apps/web/src/`
 

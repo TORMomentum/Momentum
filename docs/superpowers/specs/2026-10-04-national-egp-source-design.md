@@ -60,5 +60,6 @@ Paging past the newest 50 rows is not implemented yet.
 - **Price documents** (`pB0`, `pB1` from `infoDocPriceestZipHis`). They add line-item reference prices and the allocated budget, but need a new supporting `documentType` and redaction of the committee and price-source names. They stay in the archived package until then.
 - **The other `Attach_TOR_n` files.** Kept in the archived package, not yet records.
 - **A direct project page link.** e-GP's project page (`announcement/procurement/:param`) takes a param the site AES-encrypts with a passphrase in its own client code; reproducing that would break whenever they change it. The detail page instead links e-GP's public search with `?keywordSearch=<project number>`, which the search runs once the visitor passes the site's bot check.
-- **The scheduled collector** (F12, FR-A-4). The importer is a one-off, like `tools/import_egp_tors.mts`.
+- ~~**The scheduled collector** (F12, FR-A-4). The importer is a one-off, like `tools/import_egp_tors.mts`.~~
+  > **Superseded 2026-11-25:** the scheduled collector is designed in [2026-11-25-scheduled-collector-design.md](2026-11-25-scheduled-collector-design.md). The importer's per-project work moved into `modules/collector/`; the tool keeps its command-line targeting.
 - **RSS item shape on a live weekday.** The parser reads the project number from the description or link; confirm against a real weekday feed.

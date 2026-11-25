@@ -11,6 +11,7 @@
     "stats-worker": "tsx src/workers/stats.worker.ts",
     "notify-worker": "tsx src/workers/notify.worker.ts",
     "stages-worker": "tsx src/workers/stages.worker.ts",
+    "collector-worker": "tsx src/workers/collector.worker.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
