@@ -32,9 +32,10 @@ Threat Model tab of `Momentum-OWASP-ASVS-5.0-Plan.xlsx`.
 
 *A subject gets only the privileges its task needs; the default is no access.*
 
-- **Separate API keys per job.** `INTAKE_API_KEYS` can only submit documents, and `ADMIN_API_KEYS`
-  can only call admin routes (`apps/api/src/core/config.ts:95-96`). A leaked intake key cannot
-  approve, restrict, or delete anything.
+- **One narrow API key; admins are people.** `INTAKE_API_KEYS` can only submit documents through
+  `POST /intake`. There is no admin key: admin routes open only to a signed-in account whose role is
+  `admin` (`requireRole("admin")`, TOR-199). A leaked intake key cannot approve, restrict, or delete
+  anything, and every admin action is recorded against the account that did it.
 - **New accounts are vendors.** Every new account starts with `role: "vendor"`
   (`accounts.repository.ts:38`). Admin is granted explicitly with `changeRole`.
 - **Vendors see only their own data.** `/me` routes take the account from the session, never from
@@ -82,7 +83,7 @@ The login flow layers controls the same way:
   - Any other error returns a generic `500 Internal server error` with no stack trace.
 - **The staff area fails closed.** If the signed-in account's role cannot be read, the answer is
   no (`apps/web/src/shared/lib/staff-session.ts`, `signedInAccountMayActAsStaff`).
-- **No default keys.** `INTAKE_API_KEYS` and `ADMIN_API_KEYS` have no `change-me-*` fallback; Compose refuses to start without them (PR #51).
+- **No default keys.** `INTAKE_API_KEYS` has no `change-me-*` fallback; Compose refuses to start without them (PR #51).
 - **Configuration fails fast.** The API refuses to start if a required key or secret is missing
   (Zod schema in `config.ts`). It never runs with an empty key.
 - **Storage writes fail rather than overwrite.** `putIfAbsent` uses `ifGenerationMatch: 0`
@@ -111,14 +112,16 @@ The login flow layers controls the same way:
 
 *Grant a privilege only when two or more conditions are met.*
 
-The admin area needs **both**:
+The admin area checks the admin role **twice, on both sides** (TOR-199):
 
-1. a valid staff pass, which is the `tor_staff` cookie: HMAC-SHA256 signed with
-   `STAFF_ACCESS_SECRET`, `httpOnly`, and expiring after 8 hours; **and**
-2. if an account is signed in, that account must have `role === "admin"`
-   (`staff-session.ts:24-32`).
+1. the Next server's staff gate asks the API `GET /me` and accepts only `role === "admin"`
+   (`staff-session.ts:24-37`); **and**
+2. the API checks the same session again on every admin route (`requireRole("admin")`), reading the role
+   from the account row, so a demoted account loses access on its next call.
 
-A vendor who obtains the staff pass still gets no admin rights while signed in as a vendor.
+Before TOR-199 a shared staff pass (`tor_staff`, signed with `STAFF_ACCESS_SECRET`) and a shared admin key
+were the two conditions; both are removed, because neither named a person. A role change revokes the
+account's sessions, so a promoted session is never reused.
 
 ## 6. Separation of Duties
 

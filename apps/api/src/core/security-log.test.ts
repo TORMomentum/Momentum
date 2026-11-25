@@ -6,6 +6,8 @@ import { errorMiddleware, ForbiddenError } from "./errors.js";
 import { setLogSink } from "./logger.js";
 import { auditAdmin, securityLog } from "./security-log.js";
 import { requireKey } from "../modules/intake/intake.auth.js";
+import { adminActor, requireRole } from "./require-role.js";
+import { AS_ADMIN, TEST_ADMIN_ID, testSession } from "../test/admin-session.js";
 
 const API_KEY = "test-admin-key-3f9a";
 const SESSION = "session-id-7c1d";
@@ -23,9 +25,15 @@ beforeEach(() => {
   app.post("/unexpected", (req) => { throw new TypeError(req.body.input); });
   app.post("/forbidden", () => { throw new ForbiddenError(); });
   app.post("/login", ...authRateLimit({ authRateLimitPerIp: 100, authRateLimitPerEmail: 1 }), (_req, res) => { res.json({ ok: true }); });
+  // A key-gated router (as POST /intake is) for the refusal log, and the admin router as it is now (TOR-199).
+  const keyed = express.Router();
+  keyed.use(requireKey([API_KEY], "api"));
+  keyed.post("/tors/:id/approve", (_req, res) => { res.json({ ok: true }); });
+  app.use("/keyed", keyed);
   const admin = express.Router();
-  admin.use(requireKey([API_KEY], "admin"));
-  admin.use(auditAdmin(() => "admin"));
+  admin.use(testSession());
+  admin.use(requireRole("admin"));
+  admin.use(auditAdmin(adminActor));
   admin.post("/tors/:id/approve", (_req, res) => { res.json({ ok: true }); });
   admin.get("/tors", (_req, res) => { res.json([]); });
   app.use("/admin", admin);
@@ -50,9 +58,9 @@ describe("security logging", () => {
     expect(raw).not.toMatch(/hunter2|abc123|cookie-value|session-id-7c1d/);
   });
 
-  it("logs a wrong admin key as auth.denied without the key", async () => {
-    await request(app).post("/admin/tors/1/approve").set("x-api-key", "wrong-key-value").expect(401);
-    expect(lines).toEqual([expect.objectContaining({ message: "auth.denied", status: 401, path: "/admin/tors/1/approve" })]);
+  it("logs a wrong API key as auth.denied without the key", async () => {
+    await request(app).post("/keyed/tors/1/approve").set("x-api-key", "wrong-key-value").expect(401);
+    expect(lines).toEqual([expect.objectContaining({ message: "auth.denied", status: 401, path: "/keyed/tors/1/approve" })]);
     expect(raw).not.toContain("wrong-key-value");
   });
 
@@ -65,13 +73,18 @@ describe("security logging", () => {
   });
 
   it("logs a state-changing admin action with the actor and target, and reads are not logged", async () => {
-    await request(app).get("/admin/tors").set("x-api-key", API_KEY).expect(200);
-    await request(app).post("/admin/tors/64b000000000000000000001/approve").set("x-api-key", API_KEY).send({ edits: [] }).expect(200);
+    await request(app).get("/admin/tors").set(AS_ADMIN).expect(200);
+    await request(app).post("/admin/tors/64b000000000000000000001/approve").set(AS_ADMIN).send({ edits: [] }).expect(200);
 
     expect(lines).toEqual([expect.objectContaining({
-      message: "admin.action", actor: "admin", authMethod: "staff-secret",
+      message: "admin.action", actor: TEST_ADMIN_ID, authMethod: "session",
       action: "POST /admin/tors/:id/approve", target: "64b000000000000000000001", status: 200,
     })]);
-    expect(raw).not.toContain(API_KEY);
+  });
+
+  it("refuses the admin router to a vendor and to no account, and logs both", async () => {
+    await request(app).post("/admin/tors/1/approve").set({ "x-test-role": "vendor" }).expect(403);
+    await request(app).post("/admin/tors/1/approve").expect(401);
+    expect(lines.map((line) => [line.message, line.status])).toEqual([["auth.denied", 403], ["auth.denied", 401]]);
   });
 });

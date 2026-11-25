@@ -164,7 +164,6 @@ export function buildApp(config: Config, db: Db, options: { warmCaches?: boolean
     `${API_PREFIX}/intake`,
     buildIntakeRouter({
       service,
-      adminKeys: config.adminApiKeys,
       intakeKeys: config.intakeApiKeys,
       maxUploadBytes: config.maxUploadBytes,
       multipartMaxFiles: config.multipartMaxFiles,
@@ -200,7 +199,6 @@ export function buildApp(config: Config, db: Db, options: { warmCaches?: boolean
         },
       }),
       storage,
-      adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
       bulkMax: config.adminBulkMax,
       selectAllMax: config.adminSelectAllMax,
@@ -222,7 +220,6 @@ export function buildApp(config: Config, db: Db, options: { warmCaches?: boolean
         resetTokenTtlMs: config.resetTokenTtlMs,
         matchEmails: new NotifyService(db, config, mailer),
       }),
-      adminKeys: config.adminApiKeys,
       pageSize: config.adminQueuePageSize,
     }),
   );
@@ -237,7 +234,6 @@ export function buildApp(config: Config, db: Db, options: { warmCaches?: boolean
         matching: new MatchingRepository(db, config),
         labels: new MatchLabelsRepository(db),
       }),
-      adminKeys: config.adminApiKeys,
     }),
   );
 
@@ -246,7 +242,6 @@ export function buildApp(config: Config, db: Db, options: { warmCaches?: boolean
     `${API_PREFIX}/admin`,
     buildSourcesRouter({
       service: new SourceHealthService({ repo: new SourceHealthRepository(db), config }),
-      adminKeys: config.adminApiKeys,
     }),
   );
 

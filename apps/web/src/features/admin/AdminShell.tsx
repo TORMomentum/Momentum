@@ -8,8 +8,8 @@
  * that card whenever the unrelated prototype viewer happened to be signed out,
  * and the card masked the server's own redirect.
  *
- * The gate is the server. Each page checks the signed staff session and
- * redirects to /admin/login, and every Server Action checks it again because
+ * The gate is the server. Each page checks that the signed-in account is an
+ * admin (TOR-199) and redirects to /admin/login, and every Server Action checks it again because
  * an action is a separate entry point. If this component renders, the request
  * was already allowed.
  *

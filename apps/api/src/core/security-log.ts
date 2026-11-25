@@ -50,7 +50,7 @@ export function securityLog(): RequestHandler {
 }
 
 /**
- * Behind the admin key. Logs every state-changing admin request with the
+ * Behind an admin account (TOR-199). Logs every state-changing admin request with the
  * acting identity, the route pattern and the target id, once it is answered.
  */
 export function auditAdmin(actorOf: (req: Request) => string): RequestHandler {
@@ -62,7 +62,7 @@ export function auditAdmin(actorOf: (req: Request) => string): RequestHandler {
       logger.security("admin.action", {
         ...requestFields(req),
         actor: actorOf(req),
-        authMethod: "staff-secret",
+        authMethod: "session",
         action: `${req.method} ${req.baseUrl}${req.route?.path ?? ""}`,
         target: req.params?.id,
         status: res.statusCode,

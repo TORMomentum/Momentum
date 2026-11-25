@@ -133,7 +133,7 @@
   <h2>Only the API touches data. <span class="tick">The browser holds one cookie.</span></h2>
   <div class="flow">
     <div class="step">Browser<small>untrusted</small></div><span class="arr">&rarr;</span>
-    <div class="step">Next.js web<small>CSP nonce · session cookie · staff pass</small></div><span class="arr">&rarr;</span>
+    <div class="step">Next.js web<small>CSP nonce · session cookie · admin role</small></div><span class="arr">&rarr;</span>
     <div class="step">Express API<small>keys · rate limits · Zod · helmet · CORS</small></div><span class="arr">&rarr;</span>
     <div class="step">MongoDB<small>only *.repository.ts</small></div>
   </div>
@@ -181,7 +181,7 @@
   <h2>Risk = likelihood &times; impact. <span class="tick">We built from the top down.</span></h2>
   <table>
     <tr><th>ID</th><th>Threat</th><th>STRIDE</th><th class="n">Risk</th><th>Addressed by</th></tr>
-    <tr><td>T02</td><td>Staff pass or admin API key stolen</td><td>Elevation</td><td class="n">15</td><td>Secrets hygiene, audit log; shared key is an accepted risk</td></tr>
+    <tr><td>T02</td><td>Admin account session stolen</td><td>Elevation</td><td class="n">15</td><td>Individual admin accounts (TOR-199), role checked on every call, audit by account id; MFA planned</td></tr>
     <tr><td>T01</td><td>Credential stuffing on vendor login</td><td>Spoofing</td><td class="n">12</td><td>argon2id, rate limits with real client IP, breached-password check</td></tr>
     <tr><td>T11</td><td>Abuse of costly operations</td><td>DoS</td><td class="n">12</td><td>Caps and per-route rate limits</td></tr>
     <tr><td>T09</td><td>Personal data exposure</td><td>Info disclosure</td><td class="n">12</td><td>One redaction serializer, log sanitizer</td></tr>
@@ -242,7 +242,7 @@
   <h2>Vendor B cannot read <span class="tick">vendor A's file.</span></h2>
   <table>
     <tr><th>Control</th><th>How</th><th>Evidence</th><th>Status</th></tr>
-    <tr><td>Roles</td><td>Separate intake and admin keys (constant-time compare); vendor sessions; admin area needs staff pass and, if signed in, the admin role</td><td>401/403 matrix</td><td><span class="tag teal">merged</span></td></tr>
+    <tr><td>Roles</td><td>Intake key only (constant-time compare); vendor sessions; admin area needs an account with the admin role, checked by web and API</td><td>401/403 matrix</td><td><span class="tag teal">merged</span></td></tr>
     <tr><td>Own-data access</td><td><code>/me</code> routes take the account from the session, never from an id in the request; other account's id returns 404</td><td>Demo: curl B &rarr; A's file id = 404 (run on <code>main</code>) &middot; matrix and test, PR #52</td><td><span class="tag teal">merged</span> <span class="tag teal">merged</span></td></tr>
     <tr><td>Input validation, NoSQL injection</td><td>Zod on every body; primitives-only filters so no operator object reaches Mongo; magic-byte check; escaped regexes (matching fixed in PR #51)</td><td>Tests</td><td><span class="tag teal">merged</span> <span class="tag teal">merged</span></td></tr>
     <tr><td>SSRF on URL intake</td><td>Scheme allowlist, every resolved address checked, re-check after redirects, size and time caps</td><td>Unit tests</td><td><span class="tag teal">merged</span></td></tr>
@@ -275,7 +275,7 @@
       <li><b>Defense in depth</b>: five layers on every upload</li>
       <li><b>Fail securely</b>: errors deny; config fails fast</li>
       <li><b>Secure defaults</b>: risky features ship off</li>
-      <li><b>Separation of privilege</b>: staff pass + role</li></ul></div>
+      <li><b>Separation of privilege</b>: role checked by web and API</li></ul></div>
     <div class="card"><ul class="tight">
       <li><b>Complete mediation</b>: no signed URLs</li>
       <li><b>Open design</b>: public anomaly method</li>

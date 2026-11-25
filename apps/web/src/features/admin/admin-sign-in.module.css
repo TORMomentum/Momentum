@@ -61,6 +61,9 @@
 }
 
 .submit {
+  display: block;
+  text-align: center;
+  text-decoration: none;
   border: 0;
   border-radius: 6px;
   padding: 13px 0;

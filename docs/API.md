@@ -18,7 +18,7 @@ scripts against the intake key.
 
 ```mermaid
 flowchart LR
-    admin["👤 Admin<br/><i>X-Api-Key: ADMIN key</i>"]
+    admin["👤 Admin<br/><i>admin account session</i>"]
     partner["🔌 Intake client<br/><i>X-Api-Key: INTAKE key</i>"]
     web["🌐 Next.js server<br/><i>public reads</i>"]
     vendor["👤 Vendor session<br/><i>cookie, via the Next server</i>"]
@@ -47,11 +47,11 @@ flowchart LR
 
 | Group | Who calls it | Auth | Slice |
 | :--- | :--- | :--- | :--- |
-| `/intake/*` | admin console, partner scripts | `X-Api-Key`, per-role | 1 ✅ |
+| `/intake/*` | admin console, partner scripts | admin session (upload, url) · `X-Api-Key` intake key (`POST /intake`) | 1 ✅ |
 | `/tors/*` | the public site, through the Next server | none (public data); the match-range filter needs a session | 3 ✅ |
 | `/stats/*`, `/export/*` | dashboard and CSV export | none; the match-range filter needs a session | dashboard ✅ · export ✅ |
 | `/me/*` | a signed-in vendor | session cookie | 4 ✅ |
-| `/admin/*` | review queue, all TORs, vendor accounts, match quality | admin key, sent by the Next server after its staff gate | 2–4 ✅ |
+| `/admin/*` | review queue, all TORs, vendor accounts, match quality | admin account session, forwarded by the Next server after its staff gate | 2–4 ✅ |
 
 ---
 
@@ -79,17 +79,21 @@ key needed a header of its own.
 
 | Key | Configured by | Opens |
 | :--- | :--- | :--- |
-| Admin | `ADMIN_API_KEYS` | `POST /intake/upload`, `POST /intake/url`, every `/admin/*` route |
 | Intake | `INTAKE_API_KEYS` | `POST /intake` |
+
+The intake key is the only API key. The admin routes (`POST /intake/upload`, `POST /intake/url`, every
+`/admin/*` route) take no key: they open to an **admin account's session** (`x-session-id`, role `admin`),
+401 without a session and 403 for any other role (`requireRole("admin")`, TOR-199). Every admin action is
+recorded with that account's id as the actor.
 
 Keys are compared in **constant time**, and every configured key is checked on every request, so
 neither the value nor which key matched can be recovered by timing the rejection. An empty key list
 opens nothing — a missing configuration fails closed, it does not disable the check.
 
-The browser never holds the admin key. A staff member signs in to the Next server (`requireStaff()`),
-and the Next server calls `/admin/*` with the key. Individual staff accounts in place of the shared
-staff code are TOR-199, not yet built; the intake key stays either way, because a partner script
-has no session.
+An admin signs in on the normal `/login` page, with their own account. The Next server checks the role
+(`requireStaff()` asks `GET /me`) and forwards the account's session id to `/admin/*`, so the API checks
+the role again on its side. `ADMIN_API_KEYS` and the shared staff code are gone (TOR-199); the first admin is
+made with `tools/grant_admin.mts`. The intake key stays, because a partner script has no session.
 
 ### Errors
 
@@ -174,7 +178,7 @@ that is what makes an overwrite impossible and ties one object to one record.
 **200 means it was already here.** A repeat submission is not new work — the response carries the
 existing `torId` and the record gains one more `sourceRef` (`FR-A-3`).
 
-### `POST /api/v1/intake/upload` — admin key
+### `POST /api/v1/intake/upload` — admin session
 
 `multipart/form-data`, exactly one file part.
 
@@ -192,7 +196,7 @@ Rejections: no file (400) · more than one file (400) · over `MAX_UPLOAD_BYTES`
 a content type that the magic bytes contradict (400 — the declared type is attacker-controlled, so
 the bytes decide).
 
-### `POST /api/v1/intake/url` — admin key
+### `POST /api/v1/intake/url` — admin session
 
 ```json
 { "url": "https://agency.go.th/announcements/2569/tor-041.pdf" }

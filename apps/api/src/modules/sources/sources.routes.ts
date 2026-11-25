@@ -1,14 +1,12 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { auditAdmin } from "../../core/security-log.js";
-import { requireKey } from "../intake/intake.auth.js";
+import { adminActor as actorOf, requireRole } from "../../core/require-role.js";
 import type { SourceHealthService } from "./source-health.service.js";
 
-const actorOf = (req: Request) => (req as Request & { actor?: string }).actor ?? "admin";
-
-/** Ingestion-source health (TOR-293). Staff only, behind the admin key like the rest of /admin. */
-export function buildSourcesRouter(deps: { service: SourceHealthService; adminKeys: string[] }): Router {
+/** Ingestion-source health (TOR-293). Staff only: an admin account, like the rest of /admin (TOR-199). */
+export function buildSourcesRouter(deps: { service: SourceHealthService }): Router {
   const router = Router();
-  router.use(requireKey(deps.adminKeys, "admin"));
+  router.use(requireRole("admin"));
   router.use(auditAdmin(actorOf));
 
   router.get("/sources", async (_req, res) => {

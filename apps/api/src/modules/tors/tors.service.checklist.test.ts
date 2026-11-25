@@ -6,7 +6,6 @@ import type { TorsRepository } from "./tors.repository.js";
 const config = loadConfig({
   MONGO_URL: "mongodb://mongo:27017/tor_radar",
   INTAKE_API_KEYS: "test-key",
-  ADMIN_API_KEYS: "admin-key",
   GCS_BUCKET: "tor-raw",
   GCS_API_ENDPOINT: "http://gcs:4443",
   SESSION_SECRET: "test-session-secret-0123456789abcdef",

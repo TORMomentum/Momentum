@@ -1,14 +1,13 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { TAXONOMY_VERSION } from "@tor-radar/seeds";
 import { profileSchema } from "../profile/profile.routes.js";
 import { auditAdmin } from "../../core/security-log.js";
-import { requireKey } from "../intake/intake.auth.js";
+import { adminActor as actorOf, requireRole } from "../../core/require-role.js";
 import type { AdminAccountsService } from "./admin-accounts.service.js";
 
 export interface AdminAccountsRouterDeps {
   service: AdminAccountsService;
-  adminKeys: string[];
   pageSize: number;
 }
 
@@ -21,14 +20,13 @@ const roleSchema = z.object({ role: z.enum(["vendor", "admin"]) });
 const disableSchema = z.object({ reason: z.string().trim().min(3).max(300) });
 
 /**
- * Vendor accounts, for staff (FR-G, NFR-S2). Behind the admin key like the rest of /admin; the
- * actor every audit entry names is read from the request, as the review queue's is.
+ * Vendor accounts, for staff (FR-G, NFR-S2). Behind an admin account like the rest of /admin
+ * (TOR-199); every audit entry names that account, as the review queue's does (TOR-300).
  */
 export function buildAdminAccountsRouter(deps: AdminAccountsRouterDeps): Router {
   const router = Router();
-  const actorOf = (req: Request) => (req as Request & { actor?: string }).actor ?? "admin";
 
-  router.use(requireKey(deps.adminKeys, "admin"));
+  router.use(requireRole("admin"));
   router.use(auditAdmin(actorOf));
 
   router.get("/reports/other-terms", async (_req, res) => {

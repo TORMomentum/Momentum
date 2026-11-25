@@ -18,6 +18,8 @@ import type { IntakeResponse } from "@tor-radar/shared";
 
 import { withArabicDigits } from "./format";
 import { identityToken } from "../api/api-client";
+import { cookies } from "next/headers";
+import { ACCOUNT_COOKIE_NAME } from "./staff-session";
 
 const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000";
 const API_PREFIX = "/api/v1";
@@ -93,9 +95,13 @@ export interface QueueView {
 /** confidence: the low-confidence queue · fields: TORs whose category or qualifications await a person. */
 export type QueueKind = "confidence" | "fields";
 
-function adminKey(): string {
-  // The API accepts a list; the web server presents the first.
-  return (process.env.ADMIN_API_KEYS ?? "").split(",")[0]?.trim() ?? "";
+/**
+ * The signed-in admin's session id (TOR-199). The admin API opens only to an admin account's session, so this is
+ * the whole credential: no shared key is held here any more. Pages and actions ask `requireStaff` first; the API
+ * checks the role again.
+ */
+async function sessionId(): Promise<string> {
+  return (await cookies()).get(ACCOUNT_COOKIE_NAME)?.value ?? "";
 }
 
 /** The API could not be reached at all — a real outage. */
@@ -152,7 +158,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      "x-api-key": adminKey(),
+      "x-session-id": await sessionId(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },

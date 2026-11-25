@@ -1,5 +1,6 @@
 import "../../test/env.js";
 
+import { AS_ADMIN, testSession } from "../../test/admin-session.js";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
@@ -18,8 +19,7 @@ import { AdminAccountsRepository } from "./admin-accounts.repository.js";
 import { AdminAccountsService } from "./admin-accounts.service.js";
 
 const config = loadConfig(process.env);
-const adminKey = config.adminApiKeys[0]!;
-const auth = { "x-api-key": adminKey };
+const auth = AS_ADMIN;
 
 let db: Db;
 let sent: MailMessage[] = [];
@@ -32,6 +32,7 @@ function buildTestApp() {
   const sessionsRepository = new SessionsRepository(db, config.session);
   const app = express();
   app.use(express.json());
+  app.use(testSession());
   app.use("/api/v1/admin", buildAdminAccountsRouter({
     service: new AdminAccountsService({
       repo: new AdminAccountsRepository(db),
@@ -45,7 +46,6 @@ function buildTestApp() {
       verifyTokenTtlMs: 60_000,
       resetTokenTtlMs: 60_000,
     }),
-    adminKeys: config.adminApiKeys,
     pageSize: 20,
   }));
   app.use(errorMiddleware);

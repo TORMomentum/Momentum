@@ -3,6 +3,7 @@ import busboy from "busboy";
 import rateLimit from "express-rate-limit";
 import { urlIntakeSchema } from "@tor-radar/shared";
 import { requireKey } from "./intake.auth.js";
+import { adminActor, requireRole } from "../../core/require-role.js";
 import { safeFetchDocument } from "../../lib/safe-fetch.js";
 import { BadRequestError, PayloadTooLargeError } from "../../core/errors.js";
 import type { IntakeService } from "./intake.service.js";
@@ -17,7 +18,6 @@ interface UploadedFile {
 
 export interface IntakeRouterDeps {
   service: IntakeService;
-  adminKeys: string[];
   intakeKeys: string[];
   maxUploadBytes: number;
   multipartMaxFiles: number;
@@ -102,23 +102,24 @@ export function buildIntakeRouter(deps: IntakeRouterDeps): Router {
   // A repeat submission is not new work, so it answers 200 rather than 202.
   const statusFor = (result: { duplicate: boolean }) => (result.duplicate ? 200 : 202);
 
-  router.post("/upload", requireKey(deps.adminKeys, "admin"), async (req, res) => {
+  router.post("/upload", requireRole("admin"), async (req, res) => {
     const file = await readSingleFile(req, deps);
     const result = await deps.service.submit(file.bytes, {
       route: "upload",
-      submittedBy: "admin",
+      // The admin account that sent it (TOR-300).
+      submittedBy: adminActor(req),
       filename: file.filename,
     });
     res.status(statusFor(result)).json(result);
   });
 
-  router.post("/url", requireKey(deps.adminKeys, "admin"), async (req, res) => {
+  router.post("/url", requireRole("admin"), async (req, res) => {
     const { url } = urlIntakeSchema.parse(req.body);
     const fetched = await safeFetchDocument(url, deps.fetchLimits);
     const result = await deps.service.submit(fetched.bytes, {
       route: "url",
       url: fetched.finalUrl,
-      submittedBy: "admin",
+      submittedBy: adminActor(req),
       // The last path segment of the fetched URL is the closest thing to a name.
       filename: decodeURIComponent(new URL(fetched.finalUrl).pathname.split("/").pop() ?? ""),
     });

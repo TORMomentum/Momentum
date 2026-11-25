@@ -1,5 +1,6 @@
 import "../../test/env.js";
 
+import { AS_ADMIN, TEST_ADMIN_ID, testSession } from "../../test/admin-session.js";
 import { Readable } from "node:stream";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
@@ -24,7 +25,6 @@ import { buildAdminRouter } from "./admin.routes.js";
 import { AdminService } from "./admin.service.js";
 
 const config = loadConfig(process.env);
-const adminKey = config.adminApiKeys[0]!;
 const BYTES = Buffer.from("%PDF-1.7 private document body");
 const recordStorage = {
   bucket: "tor-raw",
@@ -74,6 +74,7 @@ async function seedQueued(): Promise<string> {
 function buildTestApp() {
   const app = express();
   app.use(express.json());
+  app.use(testSession());
   app.use(
     "/api/v1/admin",
     buildAdminRouter({
@@ -85,7 +86,6 @@ function buildTestApp() {
         budgetMaxThb: config.budgetMaxThb,
       }),
       storage,
-      adminKeys: config.adminApiKeys,
       queuePageSize: config.adminQueuePageSize,
       bulkMax: config.adminBulkMax,
       selectAllMax: config.adminSelectAllMax,
@@ -149,8 +149,8 @@ describe("admin fields-to-confirm view", () => {
     const toConfirm = await seedFieldsToConfirm();
     await seedFieldsToConfirm({ documentType: "invitation" });
 
-    const fields = await request(buildTestApp()).get("/api/v1/admin/queue?view=fields").set("x-api-key", adminKey);
-    const confidence = await request(buildTestApp()).get("/api/v1/admin/queue").set("x-api-key", adminKey);
+    const fields = await request(buildTestApp()).get("/api/v1/admin/queue?view=fields").set(AS_ADMIN);
+    const confidence = await request(buildTestApp()).get("/api/v1/admin/queue").set(AS_ADMIN);
 
     expect(fields.status).toBe(200);
     expect(fields.body.items.map((item: { id: string }) => item.id)).toEqual([toConfirm]);
@@ -165,7 +165,7 @@ describe("admin fields-to-confirm view", () => {
     const patch = (value: string) =>
       request(buildTestApp())
         .patch(`/api/v1/admin/tors/${id}/fields`)
-        .set("x-api-key", adminKey)
+        .set(AS_ADMIN)
         .send({ edits: [{ field: "category", value }] });
 
     expect((await patch("ซื้อยา")).status).toBe(400);
@@ -177,7 +177,7 @@ describe("admin fields-to-confirm view", () => {
   it("points the reviewer at the unverified category and qualifications of such a record", async () => {
     const id = await seedFieldsToConfirm();
 
-    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}`).set("x-api-key", adminKey);
+    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}`).set(AS_ADMIN);
 
     expect(response.status).toBe(200);
     expect(response.body.flaggedFields.sort()).toEqual(["category", "qualifications"]);
@@ -187,7 +187,7 @@ describe("admin fields-to-confirm view", () => {
 describe("admin page image route", () => {
   it("serves the stored page image for staff, nosniff and no-store", async () => {
     const id = await seedQueued();
-    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/2`).set("x-api-key", adminKey);
+    const response = await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/2`).set(AS_ADMIN);
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toBe("image/jpeg");
@@ -198,15 +198,15 @@ describe("admin page image route", () => {
 
   it("refuses a page that is not a positive whole number, and a request without the key", async () => {
     const id = await seedQueued();
-    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/0`).set("x-api-key", adminKey)).status).toBe(400);
-    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/abc`).set("x-api-key", adminKey)).status).toBe(400);
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/0`).set(AS_ADMIN)).status).toBe(400);
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/abc`).set(AS_ADMIN)).status).toBe(400);
     expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/1`)).status).toBe(401);
   });
 
   it("is 404 when no image was stored for that page", async () => {
     const id = await seedQueued();
     vi.mocked(storage.exists).mockResolvedValueOnce(false);
-    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/1`).set("x-api-key", adminKey)).status).toBe(404);
+    expect((await request(buildTestApp()).get(`/api/v1/admin/tors/${id}/pages/1`).set(AS_ADMIN)).status).toBe(404);
   });
 });
 
@@ -216,7 +216,7 @@ describe("admin document route", () => {
 
     const response = await request(buildTestApp())
       .get(`/api/v1/admin/tors/${id}/document`)
-      .set("x-api-key", adminKey);
+      .set(AS_ADMIN);
 
     expect(response.status).toBe(200);
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
@@ -227,7 +227,7 @@ describe("admin document route", () => {
   it("returns 404 for an unknown record", async () => {
     const response = await request(buildTestApp())
       .get(`/api/v1/admin/tors/${new ObjectId().toString()}/document`)
-      .set("x-api-key", adminKey);
+      .set(AS_ADMIN);
 
     expect(response.status).toBe(404);
     expect(getStream).not.toHaveBeenCalled();
@@ -238,7 +238,7 @@ describe("admin document route", () => {
 
     const response = await request(buildTestApp())
       .head(`/api/v1/admin/tors/${id}/document`)
-      .set("x-api-key", adminKey);
+      .set(AS_ADMIN);
 
     expect(response.status).toBe(200);
     expect(getStream).not.toHaveBeenCalled();
@@ -262,7 +262,7 @@ describe("admin field verification route", () => {
 
     const confirmed = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields/budget/verification`)
-      .set("x-api-key", adminKey)
+      .set(AS_ADMIN)
       .send({ confirmed: true });
 
     expect(confirmed.status).toBe(200);
@@ -277,7 +277,7 @@ describe("admin field verification route", () => {
 
     const cleared = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields/budget/verification`)
-      .set("x-api-key", adminKey)
+      .set(AS_ADMIN)
       .send({ confirmed: false });
 
     expect(cleared.status).toBe(200);
@@ -287,13 +287,13 @@ describe("admin field verification route", () => {
     const events = await torEvents(db).find({ torId: id }, { sort: { at: 1 } }).toArray();
     expect(events).toHaveLength(2);
     expect(events.map(({ actor, source, reason }) => ({ actor, source, reason }))).toEqual([
-      { actor: "admin", source: "admin", reason: "field budget confirmed" },
-      { actor: "admin", source: "admin", reason: "field budget confirmation cleared" },
+      { actor: TEST_ADMIN_ID, source: "admin", reason: "field budget confirmed" },
+      { actor: TEST_ADMIN_ID, source: "admin", reason: "field budget confirmation cleared" },
     ]);
 
     const reloaded = await request(buildTestApp())
       .get(`/api/v1/admin/tors/${id}`)
-      .set("x-api-key", adminKey);
+      .set(AS_ADMIN);
     expect(cleared.body).toEqual(reloaded.body);
   });
 
@@ -302,7 +302,7 @@ describe("admin field verification route", () => {
 
     const response = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields/procurementMethod/verification`)
-      .set("x-api-key", adminKey)
+      .set(AS_ADMIN)
       .send({ confirmed: true });
 
     expect(response.status).toBe(400);
@@ -329,7 +329,7 @@ describe("admin budget correction route", () => {
 
     const response = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields`)
-      .set("x-api-key", adminKey)
+      .set(AS_ADMIN)
       .send({ edits: [{ field: "budget", value: "ไม่ระบุ" }] });
 
     expect(response.status).toBe(400);
@@ -344,7 +344,7 @@ describe("admin budget correction route", () => {
 
     const response = await request(buildTestApp())
       .patch(`/api/v1/admin/tors/${id}/fields`)
-      .set("x-api-key", adminKey)
+      .set(AS_ADMIN)
       .send({ edits: [{ field: "budget", value: "1,200,000" }] });
 
     expect(response.status).toBe(200);
@@ -355,7 +355,7 @@ describe("admin budget correction route", () => {
 });
 
 describe("admin all-TORs list", () => {
-  const list = (query: string) => request(buildTestApp()).get(`/api/v1/admin/tors${query}`).set("x-api-key", adminKey);
+  const list = (query: string) => request(buildTestApp()).get(`/api/v1/admin/tors${query}`).set(AS_ADMIN);
 
   it("lists every record, published or taken down, newest first, invitations only when asked", async () => {
     const queued = await seedQueued();
@@ -391,7 +391,7 @@ describe("admin takedown and restore", () => {
   it("restores a taken-down TOR to the public, logging both, and keeps the original", async () => {
     const id = await seedFieldsToConfirm();
     const app = buildTestApp();
-    const auth = { "x-api-key": adminKey };
+    const auth = AS_ADMIN;
 
     await request(app).post(`/api/v1/admin/tors/${id}/reject`).set(auth).send({ reason: "ไม่ใช่เอกสาร TOR" }).expect(200);
     expect((await request(app).get(`/api/v1/admin/tors/${id}`).set(auth)).body).toMatchObject({ restricted: true, restrictedReason: "ไม่ใช่เอกสาร TOR" });
@@ -407,13 +407,13 @@ describe("admin takedown and restore", () => {
   it("answers 404 for an unknown record", async () => {
     const response = await request(buildTestApp())
       .post(`/api/v1/admin/tors/${new ObjectId().toString()}/restore`)
-      .set("x-api-key", adminKey);
+      .set(AS_ADMIN);
     expect(response.status).toBe(404);
   });
 });
 
 describe("admin bulk actions", () => {
-  const auth = { "x-api-key": adminKey };
+  const auth = AS_ADMIN;
   const bulk = (body: object) => request(buildTestApp()).post("/api/v1/admin/tors/bulk").set(auth).send(body);
 
   it("takes many TORs down at once, each with its own history, and reports one it could not find", async () => {
@@ -468,7 +468,7 @@ describe("admin bulk actions", () => {
 });
 
 describe("admin pipeline health", () => {
-  const auth = { "x-api-key": adminKey };
+  const auth = AS_ADMIN;
 
   it("counts a TOR left queued or extracting too long as stuck, and lists exactly those", async () => {
     const inPipeline = async (state: string, updatedAt: Date) =>

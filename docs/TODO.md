@@ -379,7 +379,13 @@ Routes: [API.md §6–7](API.md)._
   - [x] stuck extractions shown and filterable; overview counts are links
   - [x] report of what vendors type under อื่นๆ
   - [x] match-quality benchmark: labelling worksheet, precision / recall / unsure rate
-  - [ ] **TOR-199 — individual admin accounts** instead of the shared staff code — awaiting go-ahead
+  - [ ] **TOR-199 — individual admin accounts** instead of the shared staff code ([spec](superpowers/specs/2026-11-25-admin-accounts-design.md))
+    - [x] API: every admin route and `POST /intake/upload`, `/intake/url` behind `requireRole("admin")`; actor is the account id (TOR-299, TOR-300)
+    - [x] Web: staff gate reads the account role from `GET /me`; `tor_staff`, `STAFF_ACCESS_SECRET`, `/admin/login` form removed (TOR-301)
+    - [x] `ADMIN_API_KEYS` removed from config, Compose, Cloud Run, CI; `tools/grant_admin.mts` makes the first admin
+    - [x] Verified live on a local stack (2026-11-25): admin API no session 401, old key 401, vendor 403, admin 200; web admin page opens for the admin, vendor and signed-out are sent to the notice; an upload records the account id as `submittedBy`
+    - [ ] Deploy, then grant Peerapas, Sran and Sudha on Atlas with `grant_admin --apply` (it signs them out; ask first)
+    - [ ] Delete the `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET` secrets from Secret Manager once the deploy is live
 - [x] **CI** — packages built in dependency order on install; admin tests send `x-api-key`
 - [x] **Docs kept in step with code** — rule in CLAUDE.md and AGENTS.md ("Docs stay current"),
       enforced in CI by `tools/check_docs_drift.mjs` (label `docs-not-needed` for an exception);
@@ -652,8 +658,7 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
       is read from the matrix so a route added without a row fails (`core/access-control.test.ts`)
 - [x] Run live against Compose: vendor B asking for vendor A's vault item id gets `404`, A still has the file
 - [ ] Findings left for a decision, listed in the matrix section 5: F1 public `/sources/bma-egp/*` (no auth, no rate
-      limit, outside `/api/v1`); F2 admin API is one shared key with the actor `admin`, `requireRole` unused
-      (TOR-199)
+      limit, outside `/api/v1`). F2 and F3 (shared admin key, actor `admin`) resolved by TOR-199 on 2026-11-25
 
 ## Sprint 6 — TOR-320 Block breached passwords
 
