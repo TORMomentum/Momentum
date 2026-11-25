@@ -160,6 +160,7 @@ and a look-alike origin getting no `Access-Control-*` header on a request or a p
 | UT-F7-1 | §4.5.1 | `verdictFor` (IQR, minN 8) | peers 10…80 (Q1 27.5, Q3 62.5, IQR 35); budget 200 | `anomaly`, side `high`, distance (200 − 62.5) / 35 | Pass | `anomaly.rule.test.ts` |
 | UT-F7-2 | §4.5.1 | `verdictFor` | budget exactly on the upper fence (115) | `normal` | Pass | `anomaly.rule.test.ts` |
 | UT-F7-3 | §4.5.1 | `verdictFor` | budget 999,999 with only 7 peers | `not-evaluated`, reason `insufficient-peers` | Pass | `anomaly.rule.test.ts` |
+| UT-F7-DC | FR-E-1, NFR-S7 (2026-11-25) | `GET /stats/dashboard` answer cache | a record, a request, a second record, then the same request, another filter, and the cache off; a one-entry cache asked two filter sets | the same filters within the window give the first answer; other filters and a zero window read afresh; the oldest answer dropped at the entry limit | Pass | `stats.routes.test.ts` |
 | UT-F8-1 | FR-F-2, NFR-F5 | `evaluateChecklist` | a record whose budget is a statistical anomaly | C5 fails; the reason uses only the approved wording | Pass | `checklist.test.ts` |
 | UT-F8-2 | FR-F-1 | `evaluateChecklist` | budget extracted but not verified | C1 fails | Pass | `checklist.test.ts` |
 | UT-F8-3 | FR-F-1, SRS §8 O2 | `evaluateChecklist` | a bid window at the minimum, one day short, across a month and a year, with a date missing or unconfirmed, and a deadline before the announcement | pass, fail, pass, not evaluated with the reason named, not evaluated | Pass | `checklist.test.ts` |

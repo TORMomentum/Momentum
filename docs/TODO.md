@@ -867,6 +867,12 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   - [ ] a deployed collector worker (Cloud Run runs only the extraction worker) — a deployment and cost decision
   - [ ] `COLLECTOR_ENABLED` on in a shared environment — every queued document is a billed extraction
   - [ ] the BMA e-GP source stays manual
+- [x] Dashboard read speed (dashboard spec, revision 2026-11-25): `GET /stats/dashboard` took 110–120 s
+  against Atlas, the homepage with it. It now reads only the paths it uses (47–70 s against Atlas), and keeps
+  one answer per filter set for 120 s (later requests under 10 ms; homepage 0.19 s). Checked on one Atlas
+  snapshot: the projected and whole-document answers are identical
+  - [ ] the first request after each window still reads the corpus at Atlas's ~100 KB/s; the cluster tier
+    or a precomputed answer would remove it
 - [x] TOR-223 Winners by category (spec 2026-11-25-competition-by-category)
   - [x] TOR-280 `GET /stats/competition`: awarded projects, different winners and the top 3 winners' share per category, from the confirmed award
     readings; a category under `PEER_MIN_N` is listed, not ranked; no winner is named. Read on Atlas (read-only): 193 awarded projects, 12 categories, 9 comparable

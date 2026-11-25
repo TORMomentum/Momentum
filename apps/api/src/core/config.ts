@@ -263,6 +263,9 @@ const schema = z.object({
   STATS_SWEEP_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
   STATS_LEASE_MS: z.coerce.number().int().positive().default(60_000),
   STATS_STALE_AFTER_MS: z.coerce.number().int().positive().default(3_600_000),
+  // How long one dashboard answer is reused (0 = never). The dashboard reads every matching record.
+  STATS_DASHBOARD_CACHE_MS: z.coerce.number().int().nonnegative().default(120_000),
+  STATS_DASHBOARD_CACHE_ENTRIES: z.coerce.number().int().positive().default(100),
   COHORT_TIMEZONE: z.string().min(1).default("Asia/Bangkok"),
 
   /** How many review-queue rows one request returns (FR-G-1). */
@@ -512,6 +515,8 @@ export interface Config {
     sweepIntervalMs: number;
     leaseMs: number;
     staleAfterMs: number;
+    dashboardCacheMs: number;
+    dashboardCacheEntries: number;
     timezone: string;
   };
   adminQueuePageSize: number;
@@ -708,6 +713,8 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       sweepIntervalMs: parsed.STATS_SWEEP_INTERVAL_MS,
       leaseMs: parsed.STATS_LEASE_MS,
       staleAfterMs: parsed.STATS_STALE_AFTER_MS,
+      dashboardCacheMs: parsed.STATS_DASHBOARD_CACHE_MS,
+      dashboardCacheEntries: parsed.STATS_DASHBOARD_CACHE_ENTRIES,
       timezone: parsed.COHORT_TIMEZONE,
     },
     adminQueuePageSize: parsed.ADMIN_QUEUE_PAGE_SIZE,
