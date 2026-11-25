@@ -480,6 +480,7 @@ No literals (NFR-S7). All in `core/config.ts` with open status recorded:
 | `STATS_STALE_AFTER_MS` | 3600000 | When §5.5's banner appears |
 | `STATS_DASHBOARD_CACHE_MS` | 120000 | How long one dashboard answer is reused; `0` = never (revision 2026-11-25) |
 | `STATS_DASHBOARD_CACHE_ENTRIES` | 100 | Filter sets kept at once, oldest dropped (revision 2026-11-25) |
+| `STATS_DASHBOARD_STALE_MS` | 3600000 | After the cache window, how much older a kept answer may be and still be served while a fresh one is built; `0` = always wait (revision 2026-11-25 b) |
 | `COHORT_TIMEZONE` | `Asia/Bangkok` | §2.4 |
 
 Budget plausibility bounds reuse the existing `BUDGET_MIN_THB` / `BUDGET_MAX_THB`.
@@ -545,4 +546,26 @@ text) and Atlas returned it at about 100 KB/s. Two changes, neither altering a f
    §5's "every figure from one snapshot" still holds: a cached answer is one snapshot, `meta` included.
    A new record reaches the dashboard up to the cache window after intake.
 
-Still open: the first request after the window is slow while the corpus is read from Atlas at that rate.
+~~Still open: the first request after the window is slow while the corpus is read from Atlas at that rate.~~
+Closed by revision 2026-11-25 b.
+
+## Revision 2026-11-25 b — no visitor waits for the read
+
+Measured after the revision above: the projected read still took 70 s (1,026 records, 3.2 MB; Atlas ran the
+query in 23 ms, the time is transfer). Four changes, none altering a figure:
+
+1. **Narrower projection.** Each field is read as only the sub-paths used (`value`, `verified`, the budget's
+   `confidence`, the qualifications' `tags`, the title's `raw` as its fallback), not with its raw text and evidence
+   quote: 1.3 MB, 25 s.
+2. **Stale-while-revalidate.** After `STATS_DASHBOARD_CACHE_MS`, a kept answer up to `STATS_DASHBOARD_STALE_MS`
+   (1 h) older is served at once while a fresh one is built behind it (`kept-answers.ts`). A figure can therefore
+   be up to the window plus that allowance old; `meta` says when the figures were computed, as before.
+3. **Records kept per database query.** The agency, month and state filters are applied in memory to the same
+   read as the unfiltered page (§5's single snapshot), so the read is kept by its query, and a filter used for the
+   first time costs no read: 25 s became 0.1–0.35 s. Because both levels may serve a kept value, the worst-case
+   age is two windows plus two allowances.
+4. **Warm at start.** The API server builds the unfiltered answer and `/stats/competition` when it starts
+   (`buildApp(..., { warmCaches: true })`; tests build without it). `/stats/competition` is kept the same way.
+
+Live, against Atlas: `/stats/dashboard` 0.005 s, a new filter 0.1–0.35 s, `/stats/competition` 0.005 s; web
+`/` 0.16 s and `/dashboard` 0.17 s (were 113 s and 53 s).

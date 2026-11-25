@@ -68,7 +68,7 @@ export const API_PREFIX = "/api/v1";
  * decides which implementation satisfies them, which is what keeps the feature
  * modules testable with fakes.
  */
-export function buildApp(config: Config, db: Db): Express {
+export function buildApp(config: Config, db: Db, options: { warmCaches?: boolean } = {}): Express {
   configureLogger(config.logLevel);
   const app = express();
   const storage = createStorage(config, "api");
@@ -275,7 +275,7 @@ export function buildApp(config: Config, db: Db): Express {
     }),
   );
 
-  app.use(`${API_PREFIX}/stats`, buildStatsRouter({ db, config }));
+  app.use(`${API_PREFIX}/stats`, buildStatsRouter({ db, config, warm: options.warmCaches }));
 
   // Last: it only sees what the routes above throw.
   app.use(errorMiddleware);
