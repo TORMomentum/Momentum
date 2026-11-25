@@ -351,3 +351,34 @@ describe("GET /api/v1/stats/competition (TOR-280)", () => {
     expect(response.body).toEqual({ categories: [], rule: { topWinners: 3, minAwarded: 8 }, meta: { awardedProjects: 0, lastAwardAt: null } });
   });
 });
+
+describe("the dashboard answer cache (STATS_DASHBOARD_CACHE_MS)", () => {
+  const appWith = (stats: Partial<typeof config.stats>) => {
+    const app = express();
+    app.use("/api/v1/stats", buildStatsRouter({ db, config: { ...config, stats: { ...config.stats, ...stats } } }));
+    app.use(errorMiddleware);
+    return app;
+  };
+
+  it("reuses one answer per filter set inside the window, and reads afresh outside it or for other filters", async () => {
+    await tors(db).insertOne(record() as never);
+    const app = appWith({ dashboardCacheMs: 60_000 });
+    const first = await request(app).get("/api/v1/stats/dashboard");
+    await tors(db).insertOne(record() as never);
+
+    expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(first.body.totals.torCount);
+    expect((await request(app).get("/api/v1/stats/dashboard?category=roads")).body.totals.torCount).toBe(2);
+    expect((await request(appWith({ dashboardCacheMs: 0 })).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(2);
+  });
+
+  it("keeps no more answers than STATS_DASHBOARD_CACHE_ENTRIES, dropping the oldest", async () => {
+    await tors(db).insertOne(record() as never);
+    const app = appWith({ dashboardCacheMs: 60_000, dashboardCacheEntries: 1 });
+    await request(app).get("/api/v1/stats/dashboard");
+    await request(app).get("/api/v1/stats/dashboard?category=roads");
+    await tors(db).insertOne(record() as never);
+
+    // The first answer was dropped to make room, so this one is read again.
+    expect((await request(app).get("/api/v1/stats/dashboard")).body.totals.torCount).toBe(2);
+  });
+});

@@ -7,7 +7,7 @@ import { eligibilityOf } from "./eligibility.js";
 import { verdictFor } from "./anomaly.rule.js";
 import { checklistFieldsOf, evaluateChecklist, summariseChecklists, type PlottedChecklist } from "../checklist/checklist.js";
 import type { PeerBounds } from "./anomaly.rule.js";
-import { parseDashboardFilters, publicTorFilter, UNKNOWN } from "./stats.filters.js";
+import { parseDashboardFilters, publicTorFilter, UNKNOWN, type DashboardFilters } from "./stats.filters.js";
 import { calendarDate } from "../../lib/calendar-date.js";
 import { TOR_STATES, torStateOf } from "../../lib/tor-state.js";
 import { competitionByCategory, countedProjects } from "./competition.js";
@@ -22,8 +22,37 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
   const router = Router();
   const repository = new StatsRepository(deps.db);
 
+  /**
+   * One answer per filter set, kept `STATS_DASHBOARD_CACHE_MS`. The page reads every matching record,
+   * which is slow against Atlas; the homepage and the dashboard ask the same question on every visit.
+   * Requests arriving while an answer is being built share it. The response's `meta` still says when the
+   * figures were last recomputed, so a cached answer is never presented as newer than it is.
+   */
+  const answers = new Map<string, { at: number; body: Promise<unknown> }>();
   router.get("/dashboard", async (req, res) => {
     const filters = parseDashboardFilters(req.query);
+    const { dashboardCacheMs: keepMs, dashboardCacheEntries: maxEntries } = deps.config.stats;
+    if (keepMs === 0) {
+      res.json(await dashboardBody(filters));
+      return;
+    }
+    const key = JSON.stringify(filters);
+    const now = Date.now();
+    let answer = answers.get(key);
+    if (!answer || now - answer.at >= keepMs) {
+      answer = { at: now, body: dashboardBody(filters) };
+      answers.delete(key);
+      answers.set(key, answer);
+      // Bounded: filter values come from the query string, so the set of keys is the caller's to choose.
+      while (answers.size > maxEntries) answers.delete(answers.keys().next().value as string);
+      const kept = answer;
+      // A failed read is not kept: the next request tries again.
+      kept.body.catch(() => { if (answers.get(key) === kept) answers.delete(key); });
+    }
+    res.json(await answer.body);
+  });
+
+  async function dashboardBody(filters: DashboardFilters) {
     // Read the scope WITHOUT the agency filter once. The agency breakdown needs
     // that wider set anyway (see below), and deriving the narrower one in memory
     // keeps every figure on this page computed from a single snapshot — two
@@ -183,7 +212,7 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
     const evaluated = points.filter((point) => point.verdict.kind !== "not-evaluated");
     const flagged = evaluated.length === 0 ? null : points.filter((point) => point.verdict.kind === "anomaly").length;
     const corpusSize = meta?.corpusSize ?? await repository.corpusSize();
-    res.json({
+    return {
       totals: { ...totals, agencyCount }, flagged: { count: flagged },
       trend: [...trend.values()].sort((left, right) => left.month.localeCompare(right.month)),
       byAgency: [...byAgency.values()].sort((left, right) => left.agency.localeCompare(right.agency)), points,
@@ -214,8 +243,8 @@ export function buildStatsRouter(deps: StatsRouterDeps): Router {
       // reporting them as current would be the failure it guards against.
       stale: !meta?.statsComputedAt || Date.now() - meta.statsComputedAt.getTime() > deps.config.stats.staleAfterMs, corpusSize },
       checklist: summariseChecklists(checklists),
-    });
-  });
+    };
+  }
 
   /**
    * TOR-280: how the announced winners are spread across categories. Public, and the same kind of figure as the
