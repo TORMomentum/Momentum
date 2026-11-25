@@ -410,3 +410,21 @@
 
 .modeOptionOn,
 .modeOptionOn:hover { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(18, 35, 60, 0.12), 0 0 0 1px var(--ink-12); }
+
+/*
+ * TOR-112: on a phone the brand, the tabs and the sign-in pair did not fit one 375px row, so the page scrolled
+ * sideways. The header becomes two rows: brand and account controls on top, the tabs beneath, scrolling on their
+ * own if they ever outgrow the width. --app-header-h grows with it (tokens.css) so full-height screens still fit.
+ */
+@media (max-width: 640px) {
+  .header { flex-wrap: wrap; align-content: center; column-gap: 12px; row-gap: 0; padding: 0 16px; }
+  .brand { order: 1; }
+  .adminBadge { order: 1; margin-left: 0; }
+  .headerRight { order: 2; }
+  .tabs { order: 3; width: 100%; gap: 20px; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 8px 0 10px; }
+  .registerCta { padding: 6px 10px; font-size: 11px; }
+  /* The staff header also carries the mode switch, which needs a row of its own: let it grow rather than clip. */
+  .headerAdmin { height: auto; min-height: var(--app-header-h); padding-block: 8px 0; row-gap: 6px; }
+}

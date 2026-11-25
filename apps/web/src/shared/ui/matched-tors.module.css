@@ -89,3 +89,13 @@
 
 .more { margin: 12px 0 0; font: 11px var(--data); color: var(--ink-55); }
 .more a { color: var(--blue); font-weight: 600; }
+
+/* TOR-112: at phone width the three columns left the title a 100px strip, one word a line. The score and days
+   become one line, then the title at full width, then the budget. */
+@media (max-width: 640px) {
+  .panel { padding: 16px; }
+  .row { flex-wrap: wrap; row-gap: 6px; }
+  .lead { width: 100%; flex-direction: row; align-items: center; gap: 10px; }
+  .body { flex-basis: 100%; }
+  .budget { text-align: left; }
+}
