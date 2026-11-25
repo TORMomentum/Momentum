@@ -155,9 +155,9 @@ _Each box below expands into its own sub-list when it is entered. The plan file 
 - [x] Task 14 — workspace-aware Dockerfiles — both copy the whole `packages/` tree (checked 2026-11-03)
 - [ ] Task 15 — Compose services, health gates, CI audit (found open in the 2026-11-03 docs audit)
   - [ ] `healthcheck` on mongo and gcs, and `depends_on: condition: service_healthy` for api and worker
-  - [ ] Compose services for `stats-worker` and `notify-worker` — today both run only by hand
+  - [x] Compose services for `stats-worker` and `notify-worker` (TOR-111, 2026-11-25; `stages-worker` behind the `stages` profile)
   - [ ] explicit project and container names (ARCHITECTURE §9 describes them as the target)
-  - [ ] `npm audit` step in CI — CLAUDE.md's security baseline names it; CI does not run it
+  - [x] `npm audit` step in CI (TOR-323; confirmed in `ci.yml` 2026-11-25)
 - [ ] Task 16 — live verification and documentation
 
 ## 2b. Web — mockup port (outside the slice-1 plan, done on request)
@@ -573,6 +573,25 @@ Branch `feat/tor-217-recommended-feed`._
 - [x] Winners-by-category table (TOR-281) redesigned: category with its counts beneath it, the share as a bar across the
       panel with its figure at the end. Seen in a browser
 
+## 2r-d. Sprint 5 — pilot hardening and full-stack test pass (TOR-110)
+
+_Report: [`security/pilot-hardening-2026-11-25.md`](security/pilot-hardening-2026-11-25.md). Branch `chore/tor-110-hardening`._
+
+- [x] **TOR-111 — end to end on Compose**: intake → Vertex extraction → publish → statistics → match → email, on the
+      full stack built from this branch. Needed: `docker-compose.vertex.yml` (worker's Vertex identity) and the
+      `stats-worker` and `notify-worker` services
+- [x] **TOR-112 — phone width**: header on two rows; dashboard stats, chart column and the match panel fit 375 px;
+      every page checked signed out, as a vendor and as an admin. Dashboard 0.47–1.1 s locally
+  - [ ] not measured on a throttled network or a real phone
+  - [ ] the admin tables are cramped at phone width (admin is a desktop tool; not changed)
+- [x] **TOR-113 — security baseline**: every NFR-S1 control probed live; none failed
+- [x] **TOR-114 — burn-down**: stale API.md intake example and rate-limit name, `.env.example` missing `INTAKE_RATE_LIMIT`,
+      ARCHITECTURE's email arrow and Compose notes
+  - [ ] the worker's `MaxListenersExceededWarning` on a storage `PassThrough` (inside the storage client; jobs still publish)
+  - [ ] an unknown API path answers Express's default HTML 404
+  - [ ] `depends_on` without health conditions: web started before a recreated api was listening and showed the
+        "ยังเปิดข้อมูลภาพรวมไม่ได้" state until reload
+
 ## 2r-c. Sprint 5 — what matching can use, and the page order for the bid decider (TOR-214, TOR-225)
 
 _Spec: [`specs/2026-11-25-completeness-and-persona-design.md`](superpowers/specs/2026-11-25-completeness-and-persona-design.md).
@@ -594,8 +613,8 @@ Branch `feat/tor-214-225-completeness-persona`. Decisions made without a team me
 - [x] `npm run dev` starts the extraction worker; before, a dev upload sat `queued` with no consumer
 - [ ] Not yet shown live: upload in the admin screen, watch the record reach `published` (needs Docker + Vertex)
 - [ ] The Cloud Run worker's credential and project were not checked in this change
-- [ ] Match emails: `notify-worker` is in neither Compose nor Cloud Run, and the ARCHITECTURE diagram draws the
-      match-email arrow from the extraction worker — both to settle with the email check
+- [x] Match emails under Compose: `notify-worker` is a Compose service and the ARCHITECTURE diagram draws the arrow from it (TOR-111); a match email reached Mailpit
+- [ ] `notify-worker` and `stats-worker` are still not Cloud Run services
 
 ## Sprint 6 — Continuous deployment to Cloud Run
 
@@ -720,7 +739,7 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [ ] Not verified: the entries Google's front end really appends on the web-to-api call in Cloud Run; confirm
       `TRUST_PROXY=2` / `TRUSTED_PROXY_HOPS=1` against a request log after the next deploy
 - [ ] The dashboard `/stats` routes and `GET /tors/:id` are not limited (cheap, cached reads); revisit if abused
-- [ ] Compose web has no `APP_ORIGIN`, so `/api/auth/*` returns 500 there until it is set (found while testing; not changed here)
+- [x] Compose web receives `APP_ORIGIN` (checked 2026-11-25: register, login and profile saves work on the Compose stack)
 
 ## Sprint 6 — TOR-316 Security event logging
 
@@ -730,7 +749,7 @@ Submit by Sun 22 Nov 2026 20:00 (the course deadline is 23:59); present Mon 23 N
 - [x] TOR-336 `admin.action` with the acting identity, route pattern and target for every state-changing `/admin` request
 - [x] TOR-337 Tests: no password, email, session id, cookie, query token or API key in any captured log line
 - [x] Shown live in Compose: bad login, good login, 401 on an admin route, an admin action, 429 after the limit
-- [ ] No route returns 403 today (`requireRole` is not mounted), so `auth.denied` with 403 is tested but not shown live
+- [x] Admin routes answer 403 to a vendor session since TOR-199 (shown live 2026-11-25, pilot hardening §3)
 - [ ] `GET /me` without a session is a 401 and so logs `auth.denied`; watch the volume once the web app is live
 - [ ] Web (Next.js) handlers still use their own logging; only the API and workers are covered
 - [x] Uncaught exceptions and unhandled rejections are logged as ERROR before the process exits (`core/process-errors.ts`; API and workers)
@@ -891,8 +910,8 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
     `COLLECTOR_MAX_NEW_PER_DAY` (50) in a rolling 24 h; back-off after 3 failures; off unless `COLLECTOR_ENABLED=true`
   - [x] the two e-GP sources count as automatic in source health only while the collector is enabled
   - [x] checked live 2026-11-25 on local Mongo + GCS emulator against e-GP, cap 3: exactly 3 queued, health recorded
-  - [ ] a deployed collector worker (Cloud Run runs only the extraction worker) — a deployment and cost decision
-  - [ ] `COLLECTOR_ENABLED` on in a shared environment — every queued document is a billed extraction
+  - [x] a deployed collector worker — confirmed running 2026-11-25: both e-GP sources show automatic on `/admin/sources`
+  - [x] `COLLECTOR_ENABLED` on in the deployed environment (api and extraction worker too) — every queued document is a billed extraction
   - [ ] the BMA e-GP source stays manual
 - [x] Dashboard read speed (dashboard spec, revision 2026-11-25): `GET /stats/dashboard` took 110–120 s
   against Atlas, the homepage with it. It now reads only the paths it uses (47–70 s against Atlas), and keeps

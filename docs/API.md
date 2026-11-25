@@ -121,7 +121,7 @@ Validation failures add the failing paths, so a caller can fix the request witho
 
 ### Rate limiting
 
-Every `/intake` route is limited to `INTAKE_RATE_LIMIT_PER_MINUTE` requests per minute per client,
+Every `/intake` route is limited to `INTAKE_RATE_LIMIT` (default 60) requests per minute per client,
 reported in the standard `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` headers.
 
 ### Security headers and CORS (TOR-317)
@@ -184,7 +184,7 @@ existing `torId` and the record gains one more `sourceRef` (`FR-A-3`).
 
 ```bash
 curl -X POST https://api.example/api/v1/intake/upload \
-  -H "X-Api-Key: $ADMIN_API_KEY" \
+  -H "x-session-id: $ADMIN_SESSION_ID" \
   -F "file=@tor.pdf"
 ```
 
