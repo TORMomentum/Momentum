@@ -564,8 +564,8 @@ Branch `feat/tor-224-company-path`._
 _Spec: [`specs/2026-11-25-search-recommended-feed-design.md`](superpowers/specs/2026-11-25-search-recommended-feed-design.md).
 Branch `feat/tor-217-recommended-feed`._
 
-- [x] **TOR-266 — filters collapsed by default**: the search sidebar is a drawer behind a "ตัวกรอง" button that counts
-      the active filters; the chips stay above the results; the coverage note moved under the results (FR-E-6).
+- [x] **TOR-266 — filters collapsed by default**: the search sidebar is a drawer behind a funnel icon button whose badge
+      counts the active filters; the chips stay above the results; the coverage note moved under the results (FR-E-6).
       Seen in a browser (desktop and phone width): opens, applies a filter, closes with Escape
 - [x] **TOR-265 — recommended-for-you feed**: "แนะนำสำหรับคุณ" (top 5 of `/me/matches`) leads `/search` for a
       signed-in account until a keyword or filter is set; `MatchedTorsPanel` moved to `shared/ui`

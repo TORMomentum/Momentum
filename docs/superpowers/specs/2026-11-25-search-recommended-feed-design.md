@@ -15,7 +15,7 @@ as an old-style search form. The vendor arrives asking "is there anything for me
 
 | # | Question | Decision |
 | :--- | :--- | :--- |
-| 1 | Where do the filters go? | **Into a drawer**, closed when the page opens (TOR-266). A "ตัวกรอง" button beside the search box opens it, with the number of active filters ("ตัวกรอง · 2"). The drawer slides in from the left over the results with a backdrop; Escape, the backdrop, ✕ and "ดูผลลัพธ์" close it, and focus returns to the button. Filters still apply as they change, so the results behind it update live |
+| 1 | Where do the filters go? | **Into a drawer**, closed when the page opens (TOR-266). A filter (funnel) icon button beside the search box opens it, named "ตัวกรอง" for screen readers, with the number of active filters as a badge on its corner. The drawer slides in from the left over the results with a backdrop; Escape, the backdrop, ✕ and "ดูผลลัพธ์" close it, and focus returns to the button. Filters still apply as they change, so the results behind it update live |
 | 2 | How does a reader see what is filtering? | Unchanged: the applied-filter chips above the results, each removable without opening the drawer |
 | 3 | Where do the coverage note and last-updated time go? | Under the result list, always visible (FR-E-6). They were in the sidebar's footer |
 | 4 | What leads the page? | **"แนะนำสำหรับคุณ"** (TOR-265): the vendor's top 5 from `/me/matches`, the same rows, score, days left and work reason as the dashboard panel |
