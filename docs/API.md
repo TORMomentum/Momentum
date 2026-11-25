@@ -448,6 +448,9 @@ Requests arriving while an answer is built share it; a failed read is not kept. 
 therefore appear up to that long after intake; `meta` is part of the cached answer, so it never claims
 newer figures than it holds. The route reads only the record paths it uses (`DASHBOARD_PROJECTION` in
 `stats.repository.ts`), not whole documents.
+After the window, an answer up to `STATS_DASHBOARD_STALE_MS` (3600000) older is served at once while a fresh
+one is built; the records read are kept per database query, so the agency, month and state filters reuse the
+unfiltered read. `GET /stats/competition` is kept the same way, and the server builds both when it starts.
 
 ### `GET /api/v1/export/tors.csv` ✅ (TOR-69)
 

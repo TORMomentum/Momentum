@@ -866,8 +866,10 @@ TOR-316 review: unexpected errors log only a classified type, internal code and 
   against Atlas, the homepage with it. It now reads only the paths it uses (47–70 s against Atlas), and keeps
   one answer per filter set for 120 s (later requests under 10 ms; homepage 0.19 s). Checked on one Atlas
   snapshot: the projected and whole-document answers are identical
-  - [ ] the first request after each window still reads the corpus at Atlas's ~100 KB/s; the cluster tier
-    or a precomputed answer would remove it
+  - [x] the first request after each window no longer waits (spec revision 2026-11-25 b): narrower projection
+    (70 s → 25 s), stale-while-revalidate (`STATS_DASHBOARD_STALE_MS`), records kept per query so a new filter
+    is 0.1–0.35 s, both answers warmed at start. Live: `/` 0.16 s, `/dashboard` 0.17 s
+  - [ ] `/search` still takes ~1 s per request against Atlas from a local machine
 - [x] TOR-223 Winners by category (spec 2026-11-25-competition-by-category)
   - [x] TOR-280 `GET /stats/competition`: awarded projects, different winners and the top 3 winners' share per category, from the confirmed award
     readings; a category under `PEER_MIN_N` is listed, not ranked; no winner is named. Read on Atlas (read-only): 193 awarded projects, 12 categories, 9 comparable
