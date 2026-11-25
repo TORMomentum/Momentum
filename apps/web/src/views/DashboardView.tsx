@@ -173,6 +173,10 @@ export function DashboardView({
       {empty ? <>
         {filterBar}
         <section className={styles.dataState} aria-live="polite"><div className={styles.dataStateContent}><h2 className={styles.dataStateTitle}>ยังไม่มี TOR สำหรับตัวกรองนี้</h2><p className={styles.dataStateBody}>ลองล้างตัวกรองเพื่อดูเอกสารที่ระบบรวบรวมได้</p></div></section>
+        {/* Who has been winning in each category is a bid/no-bid input, so it sits above the charts (design
+            2026-11-25-completeness-and-persona §3). Not part of the filtered figures: it answers for the whole
+            collected corpus, so it stays when a filter matches nothing. */}
+        {competition && <CompetitionPanel competition={competition} />}
       </> : <>
         {/* One toolbar, read as one filter: what to narrow by, then the states it
             narrows across as a segmented control. It sits above the figures
@@ -211,6 +215,11 @@ export function DashboardView({
           <div className={styles.stat}><div className={styles.statKey}>หน่วยงาน</div><div className={styles.statValue}>{dashboard.totals.agencyCount.toLocaleString("th-TH")}</div><div className={styles.statNote}>หน่วยงานรัฐทั่วประเทศ</div></div>
           {dashboard.flagged.count !== null && <div className={`${styles.stat} ${styles.statFlagged}`}><div className={styles.statKey}>ความผิดปกติทางสถิติ</div><div className={styles.statValue}>{dashboard.flagged.count.toLocaleString("th-TH")}</div><div className={styles.statNote}>ดูวิธีคำนวณได้ที่ <Link href="/methodology">ระเบียบวิธี</Link></div></div>}
         </div>
+
+        {/* Who has been winning in each category is a bid/no-bid input, so it sits above the charts (design
+            2026-11-25-completeness-and-persona §3). Not part of the filtered figures: it answers for the whole
+            collected corpus, so it stays when a filter matches nothing. */}
+        {competition && <CompetitionPanel competition={competition} />}
 
         <div className={styles.split}>
           <section className={styles.splitLeft}>
@@ -304,8 +313,6 @@ export function DashboardView({
           </section>
         </div>
       </>}
-      {/* Not part of the filtered figures: it answers for the whole collected corpus, so it stays when a filter matches nothing. */}
-      {competition && <CompetitionPanel competition={competition} />}
     </main>
   );
 }
