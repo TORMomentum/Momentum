@@ -589,12 +589,12 @@
 }
 
 
-/* ---------- winners by category (TOR-281): category and counts on the left, the share as a bar on the right ---------- */
+/* ---------- winners by category (TOR-281): category and counts on the left, the share as a bar across the rest of the panel ---------- */
 .competition { margin-top: 36px; border-top: var(--rule); padding-top: 24px; }
 
-.competitionTable { width: 100%; max-width: 880px; border-collapse: collapse; table-layout: fixed; }
+.competitionTable { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
-.competitionShare { width: 44%; }
+.competitionShare { width: 62%; }
 
 .competitionTable th, .competitionTable td { padding: 11px 0; border-bottom: var(--rule); text-align: left; vertical-align: middle; }
 
@@ -615,7 +615,7 @@
 .competitionValue { font: 600 14px var(--data); font-variant-numeric: tabular-nums; text-align: right; }
 
 @media (max-width: 640px) {
-  .competitionShare { width: 46%; }
+  .competitionShare { width: 50%; }
   .competitionTable thead th + th, .competitionTable td { padding-left: 14px; }
   .competitionBar { grid-template-columns: 1fr 38px; gap: 8px; }
 }

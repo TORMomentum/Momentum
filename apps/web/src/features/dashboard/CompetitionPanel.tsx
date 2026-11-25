@@ -26,8 +26,8 @@ export function CompetitionPanel({ competition }: { competition: CompetitionPayl
         <span className={styles.panelHint}>ทั้งระบบ ไม่เปลี่ยนตามตัวกรอง · จากประกาศผู้ชนะ {count(meta.awardedProjects)} โครงการ</span>
       </div>
       {ranked.length > 0 ? (
-        // Two columns at a bounded width: the category with its counts beneath it, then the share as a bar with its
-        // figure beside it. Four columns across the full page left each name far from its numbers.
+        // Two columns: the category with its counts beneath it, then the share as a bar across the rest of the panel
+        // with its figure at the end. Four columns across the page left each name far from its numbers.
         <table className={styles.competitionTable}>
           <colgroup>
             <col />
