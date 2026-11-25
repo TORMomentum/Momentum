@@ -25,6 +25,29 @@ export function windowKeysFor(cohort: CohortKey, windowMonths: number): CohortKe
   }));
 }
 
+/**
+ * The paths `GET /stats/dashboard` reads: the route, `eligibilityOf` and the checklist (`checklistFieldsOf`).
+ * A path read there and missing here reads as absent, so a new one is added here in the same change.
+ */
+export const DASHBOARD_PROJECTION = {
+  cohort: 1,
+  announcedAt: 1,
+  "stage.kind": 1,
+  "provenance.modelVersion": 1,
+  "pipeline.state": 1,
+  "access.restricted": 1,
+  "fields.agency": 1,
+  "fields.budget": 1,
+  "fields.category": 1,
+  "fields.torStatus": 1,
+  "fields.deadline": 1,
+  "fields.title": 1,
+  "fields.qualifications": 1,
+  "fields.scopeSummary": 1,
+  "fields.scopeItems": 1,
+  "fields.scopeLocation": 1,
+} as const;
+
 export class StatsRepository {
   constructor(private readonly db: Db) {}
 
@@ -177,8 +200,15 @@ export class StatsRepository {
       Boolean(key) && typeof (key as CohortKey).category === "string" && typeof (key as CohortKey).month === "string");
   }
 
+  /**
+   * Only what the dashboard reads of each record. The whole document carries every extracted field with
+   * its raw text, and reading all of it for every record made one dashboard request take two minutes
+   * against Atlas; the page's figures come from these paths alone.
+   */
   async dashboardRecords(filter: Filter<TorDocument>): Promise<WithId<TorDocument>[]> {
-    return tors(this.db).find(filter, { sort: { "cohort.month": 1, _id: 1 } }).toArray();
+    return tors(this.db)
+      .find(filter, { sort: { "cohort.month": 1, _id: 1 }, projection: DASHBOARD_PROJECTION })
+      .toArray() as Promise<WithId<TorDocument>[]>;
   }
 
   async dashboardRollups(filter: Filter<TorRollupDocument>): Promise<TorRollupDocument[]> {
