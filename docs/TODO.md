@@ -604,6 +604,8 @@ Branch `feat/tor-214-225-completeness-persona`. Decisions made without a team me
 - [x] **TOR-286 — detail order**: deadline and budget first; qualifications and bidding method before the agency; readiness,
       draft and checklist last. Seen in a browser
 - [x] **TOR-287 — dashboard order**: winners by category moved above the charts. Seen in a browser
+- [x] **Revised 2026-11-25 (spec §4)**: winners by category moved again, to after the charts. It ignores the filter, so it
+      read out of place between the filter and the filtered figures. Seen in a browser against a local stack
 
 ## 2s. Admin upload reaches extraction (2026-11-12)
 

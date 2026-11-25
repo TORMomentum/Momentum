@@ -33,6 +33,13 @@ that. So the bar measures something narrower and true.
 | :--- | :--- | :--- |
 | 1 | Who is the primary user? | **The person deciding whether to bid** — the owner or manager of a small vendor, and for a freelancer (PROJECT.md P1 "Nok") the same person who later prepares the documents. Matching and email alerts exist to serve that go/no-go decision; preparing documents only follows a yes |
 | 2 | Detail page order | Decision facts first: deadline and days left, then budget, category, budget year, reference number. Then the scope summary, the bidder qualifications, and the bidding method (BiddingPanel). Then the context: agency, stage history, award. Document preparation last: readiness, draft, and the specification-quality checklist |
-| 3 | Dashboard order | Matched TORs first (unchanged), then the headline figures and state filter, then **winners by category** — who has been winning in each category is a bid/no-bid input — then the agency, trend and budget charts |
+| 3 | Dashboard order | Matched TORs first (unchanged), then the headline figures and state filter, then **winners by category** — who has been winning in each category is a bid/no-bid input — then the agency, trend and budget charts — *superseded by §4: winners by category now sits after the charts* |
 | 4 | Unchanged | Every field, label and value; the coverage note and last-updated time (FR-E-6); the stale banner |
 | 5 | The secondary persona | Bid staff still find every panel; nothing is removed, only moved |
+
+## 4. Revision 2026-11-25 — winners by category moves below the charts
+
+Row 3 of §3 put winners by category between the state filter and the charts. On the page it read out of place:
+it answers for the whole collected corpus and ignores the filter, yet sat between the filter and the figures the
+filter drives. It now sits after the agency, trend and budget charts. Nothing else in the order changes; with an
+empty filter result it still shows below the empty-state message.
