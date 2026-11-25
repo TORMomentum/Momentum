@@ -23,3 +23,15 @@ export const SOURCES: readonly SourceDefinition[] = [
   { id: NATIONAL_EGP_AWARDS_ID, name: "e-GP — ประกาศผู้ชนะ", kind: "manual", records: { system: "national-egp", measure: "awards" } },
   { id: BMA_EGP_IMPORT_ID, name: "e-GP กรุงเทพมหานคร — นำเข้า TOR", kind: "manual", records: { system: "bma-egp", measure: "tors" } },
 ];
+
+/** The sources the scheduled collector runs (spec 2026-11-25-scheduled-collector decision 10). */
+export const COLLECTED_SOURCE_IDS: readonly string[] = [NATIONAL_EGP_IMPORT_ID, NATIONAL_EGP_AWARDS_ID];
+
+/**
+ * The registry as this deployment runs it: the collector's sources are automatic — alerted on when they
+ * fail or go stale — only while the collector is enabled. Off, they are run by hand, as before.
+ */
+export function sourcesFor(settings: { collector: { enabled: boolean } }): readonly SourceDefinition[] {
+  if (!settings.collector.enabled) return SOURCES;
+  return SOURCES.map((source) => (COLLECTED_SOURCE_IDS.includes(source.id) ? { ...source, kind: "automatic" as const } : source));
+}

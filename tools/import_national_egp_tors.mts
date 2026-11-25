@@ -28,48 +28,28 @@
  *
  * Run the worker (`npm run worker -w @tor-radar/api`) to extract and publish what this queues.
  *
- * Run by hand, like the BMA import, with no schedule; each run's outcome is recorded as source
+ * The per-project work lives in modules/collector (spec 2026-11-25-scheduled-collector), which the
+ * collector worker also runs on a schedule when COLLECTOR_ENABLED is set; this tool picks its own targets.
+ * Run by hand, like the BMA import; each run's outcome is recorded as source
  * `national-egp-import` for the admin source-health page (TOR-87). Re-running is safe — a stored
  * document is recognised by its hash. It is a public government service, so requests are paced.
  */
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { DocumentType, TorFields } from "@tor-radar/shared";
+import { NationalEgpCollect } from "../apps/api/src/adapters/national-egp.collect.js";
 import { createStorage } from "../apps/api/src/adapters/storage.factory.js";
 import { MongoQueue } from "../apps/api/src/adapters/mongo.queue.js";
 import { loadConfig } from "../apps/api/src/core/config.js";
-import { connect, disconnect, ensureIndexes, tors } from "../apps/api/src/core/db.js";
+import { connect, disconnect, ensureIndexes } from "../apps/api/src/core/db.js";
+import { CollectorRepository } from "../apps/api/src/modules/collector/collector.repository.js";
+import { CollectorService, type ProjectTarget } from "../apps/api/src/modules/collector/collector.service.js";
 import { SourceHealthRepository } from "../apps/api/src/modules/sources/source-health.repository.js";
 import { SourceHealthService } from "../apps/api/src/modules/sources/source-health.service.js";
 import { NATIONAL_EGP_IMPORT_ID } from "../apps/api/src/modules/sources/sources.registry.js";
-import { asCalendarDay } from "../apps/api/src/lib/calendar-date.js";
-import { sha256 } from "../apps/api/src/lib/hash.js";
-import { packageKeyFor } from "../apps/api/src/lib/storage-key.js";
 import { IntakeRepository } from "../apps/api/src/modules/intake/intake.repository.js";
 import { IntakeService } from "../apps/api/src/modules/intake/intake.service.js";
-import type { ListItem } from "../apps/api/src/sources/national-egp/announcements.js";
-import {
-  downloadPackage,
-  fetchAnnouncementList,
-  fetchFeed,
-  fetchProjectStages,
-  fileIdFromLink,
-  getBidPackage,
-  packageUrl,
-  parseFeedDate,
-  type FeedItem,
-  type PackageRef,
-} from "../apps/api/src/sources/national-egp/client.js";
-import {
-  ANNOUNCE_TYPES,
-  MAX_PACKAGE_ENTRIES,
-  MAX_PACKAGE_UNPACKED_BYTES,
-  type AnnounceType,
-} from "../apps/api/src/sources/national-egp/config.js";
-import { knownFieldsFromFeedItem, knownFieldsFromListItem } from "../apps/api/src/sources/national-egp/enrich.js";
-import { torAnnouncedOn } from "../apps/api/src/sources/national-egp/stages.js";
-import { entryFilename, selectPackageDocuments } from "../apps/api/src/sources/national-egp/package.js";
-import { readZip, type ZipEntry } from "../apps/api/src/sources/national-egp/zip.js";
+import { fetchAnnouncementList, fetchFeed } from "../apps/api/src/sources/national-egp/client.js";
+import { ANNOUNCE_TYPES, type AnnounceType } from "../apps/api/src/sources/national-egp/config.js";
 
 const rootEnv = fileURLToPath(new URL("../.env", import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -116,14 +96,13 @@ if (badProject) {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const ZIP_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 
 const config = loadConfig(process.env);
 const db = await connect(config.mongoUrl);
 await ensureIndexes(db);
 
 const storage = createStorage(config, "worker");
-const service = new IntakeService(
+const intake = new IntakeService(
   storage,
   new MongoQueue(db, { maxAttempts: config.jobMaxAttempts, backoffMs: config.jobBackoffMs, lockMs: config.jobLockMs }),
   new IntakeRepository(db),
@@ -132,170 +111,59 @@ const service = new IntakeService(
   { timezone: config.stats.timezone },
 );
 
+const service = new CollectorService({
+  source: new NationalEgpCollect(config.search.timeZone),
+  repo: new CollectorRepository(db),
+  intake,
+  storage,
+  config,
+  requestDelayMs: DELAY_MS,
+});
+
 const tally = { projects: 0, alreadyCollected: 0, packages: 0, queued: 0, duplicate: 0, noPackage: 0, noTor: 0, noInvitation: 0, rejected: 0, failed: 0 };
 
-/** A project to import, with the list row or feed item that named it when there was one. */
-interface Target {
-  projectId: string;
-  /** Where it was found: a list row's kind decides which documents are taken and dated. */
-  from: "tor-list" | "invitation-list" | "feed" | "project";
-  item?: FeedItem;
-  row?: ListItem;
-}
-
-interface Submission {
-  target: Target;
-  entry: ZipEntry;
-  /** A TOR's other files, read with it (checklist C3). */
-  annexes?: ZipEntry[];
-  documentType: DocumentType;
-  source: PackageRef;
-  knownFields?: Partial<TorFields>;
-  /** The document's own publication date, when the list or the feed states it. */
-  publishedAt?: Date;
-}
-
-async function submitDocument({ target, entry, annexes, documentType, source, knownFields, publishedAt }: Submission) {
-  const filename = entryFilename(entry);
-  const label = `${documentType.padEnd(10)} ${target.projectId}  ${filename}`;
-  try {
-    const submitted = await service.submit(entry.data, {
-      route: "url",
-      url: packageUrl(source.fileId),
-      submittedBy: SUBMITTED_BY,
-      filename,
-      knownFields,
-      ...(annexes && annexes.length > 0
-        ? { annexes: annexes.map((annex) => ({ bytes: annex.data, filename: entryFilename(annex) })) }
-        : {}),
-      context: {
-        documentType,
-        sourceProject: { system: "national-egp", projectId: target.projectId, projectNumber: target.projectId },
-        announcedAt: publishedAt ? asCalendarDay(publishedAt, config.search.timeZone) : undefined,
-      },
-    });
-    if (submitted.duplicate) tally.duplicate += 1;
-    else tally.queued += 1;
-    const withAnnexes = annexes && annexes.length > 0 ? ` + ${annexes.length} annex(es)` : "";
-    console.log(`${submitted.duplicate ? "linked" : "queued"}  ${label}${withAnnexes}  (${Math.round(entry.data.byteLength / 1024)} KB)`);
-  } catch (error) {
-    const message = (error as Error).message;
-    if (/Unsupported document type|exceeds/.test(message)) tally.rejected += 1;
-    else tally.failed += 1;
-    console.log(`error   ${label} — ${message}`);
-  }
-}
-
-/** The final bid package, else — for a draft — the package the feed item links to. */
-async function findPackage(target: Target): Promise<{ ref: PackageRef; final: boolean } | null> {
-  const bid = await getBidPackage(target.projectId);
-  await sleep(DELAY_MS);
-  if (bid) return { ref: bid, final: true };
-
-  const draftFileId = target.item?.announceType === "B0" ? fileIdFromLink(target.item.link) : undefined;
-  return draftFileId ? { ref: { fileId: draftFileId, name: `${target.projectId}_draft.zip` }, final: false } : null;
-}
-
-/**
- * The source system that already collected this project, if another one did. A Bangkok project is
- * published on egp2.bangkok.go.th and on national e-GP under the same e-GP number; collecting it
- * twice would list it twice and leave this source's invitation unable to link to that TOR.
- */
-async function collectedElsewhere(projectNumber: string): Promise<string | null> {
-  const existing = await tors(db).findOne(
-    { "sourceProject.projectNumber": projectNumber, "sourceProject.system": { $ne: "national-egp" } },
-    { projection: { "sourceProject.system": 1 } },
-  );
-  return existing?.sourceProject?.system ?? null;
-}
-
-async function importProject(target: Target) {
+/** Imports one project through the collector module, and prints and counts what it did. */
+async function importProject(target: ProjectTarget) {
   tally.projects += 1;
-  const elsewhere = await collectedElsewhere(target.projectId);
-  if (elsewhere) {
+  const outcome = await service.importProject(target, SUBMITTED_BY);
+  const { projectId } = outcome;
+  if (outcome.status === "collected-elsewhere") {
     tally.alreadyCollected += 1;
-    console.log(`skip    ${target.projectId} — already collected from ${elsewhere}`);
+    console.log(`skip    ${projectId} — already collected from ${outcome.elsewhere}`);
     return;
   }
-  const found = await findPackage(target);
-  if (!found) {
+  if (outcome.status === "no-package") {
     tally.noPackage += 1;
-    console.log(`skip    ${target.projectId} — e-GP has no document package for it`);
+    console.log(`skip    ${projectId} — e-GP has no document package for it`);
     return;
   }
-
-  const bytes = await downloadPackage(found.ref.fileId);
-  await sleep(DELAY_MS);
-  if (!bytes.subarray(0, 4).equals(ZIP_MAGIC)) {
+  if (outcome.status === "not-zip") {
     tally.rejected += 1;
-    console.log(`skip    ${target.projectId} — the package is not a ZIP archive`);
+    console.log(`skip    ${projectId} — the package is not a ZIP archive`);
     return;
   }
-
-  // The package is an original too: archived whole, so nothing in it is lost (spec decision 4).
-  const archived = await storage.putIfAbsent(packageKeyFor(sha256(bytes), "application/zip"), bytes, "application/zip", {
-    originalFilename: found.ref.name,
-    route: "url",
-  });
-  tally.packages += 1;
-  console.log(`archive ${target.projectId}  ${found.ref.name} → ${archived.key}  (${Math.round(bytes.byteLength / 1024)} KB)`);
-
-  const documents = selectPackageDocuments(
-    readZip(bytes, {
-      maxEntries: MAX_PACKAGE_ENTRIES,
-      maxEntryBytes: config.maxUploadBytes,
-      maxTotalBytes: MAX_PACKAGE_UNPACKED_BYTES,
-    }),
-    // A draft-TOR list row's package carries the draft announcement, not the invitation.
-    { final: found.final && target.from !== "tor-list" },
-  );
-  if (!documents.tor) {
+  if (outcome.package) {
+    tally.packages += 1;
+    console.log(`archive ${projectId}  ${outcome.package.name} → ${outcome.package.key}  (${Math.round(outcome.package.bytes / 1024)} KB)`);
+  }
+  if (outcome.status === "no-tor") {
     tally.noTor += 1;
-    console.log(`skip    ${target.projectId} — the package holds no TOR document`);
+    console.log(`skip    ${projectId} — the package holds no TOR document`);
     return;
   }
-
-  const knownFields = target.row
-    ? knownFieldsFromListItem(target.row)
-    : knownFieldsFromFeedItem({ ...target.item, projectId: target.projectId });
-  // A listed or fed date is the date of the announcement it lists: the draft TOR (list type 1,
-  // feed B0) or the invitation (list type 2, feed D0). The other document's date is left alone.
-  const listedOn = target.row ? new Date(`${target.row.announcedOn}T00:00:00Z`) : parseFeedDate(target.item?.pubDate);
-  const datesTor = target.from === "tor-list" || target.item?.announceType === "B0";
-  const datesInvitation = target.from === "invitation-list" || target.item?.announceType === "D0";
-  const base = { target, source: found.ref, knownFields };
-
-  // From the invitation list or a D0 item the listed date is not the TOR's. e-GP's project page lists
-  // the draft TOR's own date (TOR-204), or, when the project had no draft hearing, its first invitation's.
-  let torPublishedAt = datesTor ? listedOn : undefined;
-  if (!torPublishedAt) {
-    try {
-      const day = torAnnouncedOn(await fetchProjectStages(target.projectId, config.search.timeZone));
-      if (day) torPublishedAt = new Date(`${day}T00:00:00Z`);
-    } catch (error) {
-      // The date is optional: the TOR is still collected, and the backfill tool can date it later.
-      console.log(`no date ${target.projectId} — project stages unavailable: ${(error as Error).message}`);
+  if (outcome.undated) console.log(`no date ${projectId} — project stages unavailable: ${outcome.undated}`);
+  for (const document of outcome.documents) {
+    const label = `${document.documentType.padEnd(10)} ${projectId}  ${document.filename}`;
+    if (document.status === "queued" || document.status === "linked") {
+      tally[document.status === "linked" ? "duplicate" : "queued"] += 1;
+      const withAnnexes = document.annexes > 0 ? ` + ${document.annexes} annex(es)` : "";
+      console.log(`${document.status.padEnd(7)} ${label}${withAnnexes}  (${Math.round(document.bytes / 1024)} KB)`);
+    } else {
+      tally[document.status] += 1;
+      console.log(`error   ${label} — ${document.message}`);
     }
-    await sleep(DELAY_MS);
   }
-
-  await submitDocument({
-    ...base,
-    entry: documents.tor,
-    annexes: documents.annexes,
-    documentType: "tor",
-    publishedAt: torPublishedAt,
-  });
-  if (documents.invitation) {
-    await submitDocument({
-      ...base,
-      entry: documents.invitation,
-      documentType: "invitation",
-      publishedAt: datesInvitation ? listedOn : undefined,
-    });
-  } else if (target.from !== "tor-list") {
-    tally.noInvitation += 1;
-  }
+  if (outcome.noInvitation) tally.noInvitation += 1;
 }
 
 /**
@@ -312,7 +180,7 @@ async function skipOnSourceError(projectId: string, work: () => Promise<void>) {
   }
 }
 
-async function targets(): Promise<Target[]> {
+async function targets(): Promise<ProjectTarget[]> {
   if (PROJECTS.length > 0) return PROJECTS.map((projectId) => ({ projectId, from: "project" as const }));
 
   if (FROM === "feed") {
@@ -347,7 +215,7 @@ async function targets(): Promise<Target[]> {
 let runError: string | null = null;
 
 try {
-  let list: Target[];
+  let list: ProjectTarget[];
   try {
     list = await targets();
   } catch (error) {

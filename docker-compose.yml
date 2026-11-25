@@ -10,6 +10,10 @@ x-api-env: &api-env
   VAULT_MAX_FILES: ${VAULT_MAX_FILES:-20}
   GCS_API_ENDPOINT: http://gcs:4443
   INTAKE_API_KEYS: ${INTAKE_API_KEYS:?INTAKE_API_KEYS is required}
+  # Scheduled e-GP collector (spec 2026-11-25-scheduled-collector): read by the api and the worker as
+  # well, which show and alert on the e-GP sources as automatic while it is on.
+  COLLECTOR_ENABLED: ${COLLECTOR_ENABLED:-false}
+  COLLECTOR_MAX_NEW_PER_DAY: ${COLLECTOR_MAX_NEW_PER_DAY:-50}
   ADMIN_API_KEYS: ${ADMIN_API_KEYS:?ADMIN_API_KEYS is required}
   SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
   APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
@@ -97,6 +101,19 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     command: ["npm", "run", "worker"]
+    environment: *api-env
+    depends_on:
+      - mongo
+      - gcs
+
+  # The scheduled e-GP collector (F12). Not started by `docker compose up`: every document it queues is a
+  # billed extraction. `COLLECTOR_ENABLED=true docker compose --profile collector up` to run it.
+  collector:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["npm", "run", "collector-worker"]
+    profiles: ["collector"]
     environment: *api-env
     depends_on:
       - mongo

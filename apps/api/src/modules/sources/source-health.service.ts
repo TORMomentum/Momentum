@@ -4,7 +4,7 @@ import { logger } from "../../core/logger.js";
 import type { Mailer } from "../../ports/mailer.port.js";
 import type { RunOutcome, SourceHealthRepository } from "./source-health.repository.js";
 import { renderSourceAlert } from "./source-alert.template.js";
-import { SOURCES, type SourceDefinition } from "./sources.registry.js";
+import { sourcesFor, type SourceDefinition } from "./sources.registry.js";
 
 export type SourceStatus = "ok" | "failing" | "stale" | "never";
 
@@ -63,7 +63,7 @@ export class SourceHealthService {
     const settings = this.deps.config.sources;
     const byId = new Map((await this.deps.repo.all()).map((record) => [record._id, record]));
     const sources = await Promise.all(
-      SOURCES.map(async (source): Promise<SourceView> => {
+      sourcesFor(this.deps.config).map(async (source): Promise<SourceView> => {
         const record = byId.get(source.id) ?? null;
         const { records, latestRecordAt } = await this.deps.repo.recordsOf(source);
         return {
@@ -95,7 +95,7 @@ export class SourceHealthService {
     const byId = new Map((await repo.all()).map((record) => [record._id, record]));
     let alerted = 0;
     let recovered = 0;
-    for (const source of SOURCES) {
+    for (const source of sourcesFor(config)) {
       if (source.kind !== "automatic") continue;
       const record = byId.get(source.id);
       if (!record) continue;

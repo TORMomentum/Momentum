@@ -135,6 +135,14 @@ const schema = z.object({
   STAGES_MAX_AGE_DAYS: z.coerce.number().int().positive().default(180),
   STAGES_BATCH: z.coerce.number().int().positive().default(50),
   STAGES_CLAIM_MS: z.coerce.number().int().positive().default(900_000),
+  // Scheduled e-GP collector (F12, spec 2026-11-25-scheduled-collector §2). Off by default: every document it
+  // queues is a billed extraction, so it is switched on deliberately, and capped per day when it is.
+  COLLECTOR_ENABLED: flag(false),
+  COLLECTOR_INTERVAL_HOURS: z.coerce.number().positive().default(6),
+  COLLECTOR_LIST_PAGES: z.coerce.number().int().positive().default(1),
+  COLLECTOR_MAX_NEW_PER_DAY: z.coerce.number().int().nonnegative().default(50),
+  COLLECTOR_REQUEST_DELAY_MS: z.coerce.number().int().nonnegative().default(2_000),
+  COLLECTOR_BACKOFF_MS: z.coerce.number().int().positive().default(3_600_000),
   // Source health (TOR-87, spec 2026-11-24-source-health §6).
   SOURCE_ALERT_FAILURES: z.coerce.number().int().positive().default(3),
   SOURCE_STALE_HOURS: z.coerce.number().positive().default(48),
@@ -458,6 +466,8 @@ export interface Config {
     claimMs: number;
     historyMax: number;
   };
+  /** Scheduled e-GP collector (F12, spec 2026-11-25-scheduled-collector). */
+  collector: { enabled: boolean; intervalMs: number; listPages: number; maxNewPerDay: number; requestDelayMs: number; backoffMs: number };
   /** Ingestion-source health (TOR-87, spec 2026-11-24-source-health). */
   sources: { alertFailures: number; staleMs: number; heartbeatMs: number; checkIntervalMs: number };
   /** Value for Express `trust proxy`; `false` leaves it unset. */
@@ -619,6 +629,14 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
       batch: parsed.STAGES_BATCH,
       claimMs: parsed.STAGES_CLAIM_MS,
       historyMax: parsed.STAGE_HISTORY_MAX,
+    },
+    collector: {
+      enabled: parsed.COLLECTOR_ENABLED,
+      intervalMs: parsed.COLLECTOR_INTERVAL_HOURS * 3_600_000,
+      listPages: parsed.COLLECTOR_LIST_PAGES,
+      maxNewPerDay: parsed.COLLECTOR_MAX_NEW_PER_DAY,
+      requestDelayMs: parsed.COLLECTOR_REQUEST_DELAY_MS,
+      backoffMs: parsed.COLLECTOR_BACKOFF_MS,
     },
     sources: {
       alertFailures: parsed.SOURCE_ALERT_FAILURES,

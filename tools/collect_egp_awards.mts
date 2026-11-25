@@ -15,7 +15,9 @@
  * attached. The extraction worker reads the winner, the price and the date with Gemini, and copies the result
  * onto the project's TORs. Run the worker to extract what this queues; every reading is a billed model call.
  *
- * Run by hand, with no schedule; each run's outcome is recorded as source `national-egp-awards` for the
+ * The per-announcement work lives in modules/collector (spec 2026-11-25-scheduled-collector), which the
+ * collector worker also runs on a schedule when COLLECTOR_ENABLED is set.
+ * Run by hand; each run's outcome is recorded as source `national-egp-awards` for the
  * admin source-health page (TOR-87). Re-running is safe — a stored document is recognised by its hash, and a
  * project with an award record is skipped. It is a public government service, so requests are paced.
  * Design: docs/superpowers/specs/2026-11-24-winner-announcements-design.md
@@ -23,17 +25,19 @@
 
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { AwardTarget } from "../apps/api/src/modules/collector/collector.repository.js";
+import { NationalEgpCollect } from "../apps/api/src/adapters/national-egp.collect.js";
 import { createStorage } from "../apps/api/src/adapters/storage.factory.js";
 import { MongoQueue } from "../apps/api/src/adapters/mongo.queue.js";
 import { loadConfig } from "../apps/api/src/core/config.js";
-import { connect, disconnect, ensureIndexes, tors } from "../apps/api/src/core/db.js";
+import { connect, disconnect, ensureIndexes } from "../apps/api/src/core/db.js";
+import { CollectorRepository } from "../apps/api/src/modules/collector/collector.repository.js";
+import { CollectorService } from "../apps/api/src/modules/collector/collector.service.js";
 import { IntakeRepository } from "../apps/api/src/modules/intake/intake.repository.js";
 import { IntakeService } from "../apps/api/src/modules/intake/intake.service.js";
 import { SourceHealthRepository } from "../apps/api/src/modules/sources/source-health.repository.js";
 import { SourceHealthService } from "../apps/api/src/modules/sources/source-health.service.js";
 import { NATIONAL_EGP_AWARDS_ID } from "../apps/api/src/modules/sources/sources.registry.js";
-import { awardPdfUrl, downloadAward, getAwardTemplateId } from "../apps/api/src/sources/national-egp/client.js";
-import { AWARD_STAGE_CODES } from "../apps/api/src/sources/national-egp/stages.js";
 
 const rootEnv = fileURLToPath(new URL("../.env", import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -58,94 +62,54 @@ if (badProject) {
   process.exit(1);
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const config = loadConfig(process.env);
 const db = await connect(config.mongoUrl);
 await ensureIndexes(db);
 
-const service = new IntakeService(
-  createStorage(config, "worker"),
-  new MongoQueue(db, { maxAttempts: config.jobMaxAttempts, backoffMs: config.jobBackoffMs, lockMs: config.jobLockMs }),
-  new IntakeRepository(db),
-  { allowedMimeTypes: config.allowedMimeTypes, maxUploadBytes: config.maxUploadBytes },
-  { timezone: config.stats.timezone },
-);
+const storage = createStorage(config, "worker");
+const service = new CollectorService({
+  source: new NationalEgpCollect(config.search.timeZone),
+  repo: new CollectorRepository(db),
+  intake: new IntakeService(
+    storage,
+    new MongoQueue(db, { maxAttempts: config.jobMaxAttempts, backoffMs: config.jobBackoffMs, lockMs: config.jobLockMs }),
+    new IntakeRepository(db),
+    { allowedMimeTypes: config.allowedMimeTypes, maxUploadBytes: config.maxUploadBytes },
+    { timezone: config.stats.timezone },
+  ),
+  storage,
+  config,
+  requestDelayMs: DELAY_MS,
+});
 
 const tally = { projects: 0, queued: 0, duplicate: 0, noAnnouncement: 0, rejected: 0, failed: 0 };
 
-interface Target {
-  projectId: string;
-  /** The winner stage's day, `YYYY-MM-DD`: the announcement's own publication date. */
-  announcedOn: string | null;
-}
-
-/** Awarded projects with a winner stage and no award record yet, newest announcement first. */
-async function targets(): Promise<Target[]> {
-  const collected = new Set(
-    (await tors(db).distinct("sourceProject.projectId", { "sourceProject.system": "national-egp", documentType: "award" })) as string[],
-  );
-  const records = await tors(db)
-    .find(
-      {
-        "sourceProject.system": "national-egp",
-        documentType: { $nin: ["invitation", "award"] },
-        duplicateOf: null,
-        "stageHistory.code": { $in: [...AWARD_STAGE_CODES] },
-        ...(PROJECTS.length > 0 ? { "sourceProject.projectId": { $in: PROJECTS } } : {}),
-      },
-      { projection: { "sourceProject.projectId": 1, stageHistory: 1 } },
-    )
-    .toArray();
-
-  const byProject = new Map<string, Target>();
-  for (const record of records) {
-    const projectId = record.sourceProject?.projectId;
-    if (!projectId || collected.has(projectId) || byProject.has(projectId)) continue;
-    const winner = (record.stageHistory ?? []).find((stage) => AWARD_STAGE_CODES.includes(stage.code));
-    byProject.set(projectId, { projectId, announcedOn: winner?.on ?? null });
-  }
-  return [...byProject.values()].sort((a, b) => (b.announcedOn ?? "").localeCompare(a.announcedOn ?? "")).slice(0, LIMIT);
-}
-
-async function collect(target: Target): Promise<void> {
+/** Collects one announcement through the collector module, and prints and counts what it did. */
+async function collect(target: AwardTarget): Promise<void> {
   tally.projects += 1;
   const label = `award ${target.projectId}`;
   try {
-    const templateId = await getAwardTemplateId(target.projectId);
-    await sleep(DELAY_MS);
-    if (!templateId) {
+    const outcome = await service.collectAward(target, SUBMITTED_BY);
+    if (outcome.status === "none") {
       tally.noAnnouncement += 1;
       console.log(`none    ${label} — e-GP holds no winner announcement template`);
-      return;
+    } else if (outcome.status === "queued" || outcome.status === "linked") {
+      tally[outcome.status === "linked" ? "duplicate" : "queued"] += 1;
+      console.log(`${outcome.status.padEnd(7)} ${label}  (${Math.round((outcome.bytes ?? 0) / 1024)} KB)`);
+    } else {
+      tally[outcome.status] += 1;
+      console.log(`error   ${label} — ${outcome.message}`);
     }
-    const bytes = await downloadAward(templateId);
-    await sleep(DELAY_MS);
-    const submitted = await service.submit(bytes, {
-      route: "url",
-      url: awardPdfUrl(templateId),
-      submittedBy: SUBMITTED_BY,
-      filename: `${target.projectId}_award.pdf`,
-      context: {
-        documentType: "award",
-        sourceProject: { system: "national-egp", projectId: target.projectId, projectNumber: target.projectId },
-        announcedAt: target.announcedOn ? new Date(`${target.announcedOn}T00:00:00Z`) : undefined,
-      },
-    });
-    if (submitted.duplicate) tally.duplicate += 1;
-    else tally.queued += 1;
-    console.log(`${submitted.duplicate ? "linked" : "queued"}  ${label}  (${Math.round(bytes.byteLength / 1024)} KB)`);
   } catch (error) {
-    const message = (error as Error).message;
-    if (/Unsupported document type|exceeds/.test(message)) tally.rejected += 1;
-    else tally.failed += 1;
-    console.log(`error   ${label} — ${message}`);
+    tally.failed += 1;
+    console.log(`error   ${label} — ${(error as Error).message}`);
   }
 }
 
 let runError: string | null = null;
 try {
-  const list = await targets();
+  const list = await service.awardTargets(PROJECTS.length > 0 ? PROJECTS.length : LIMIT, PROJECTS);
   if (list.length === 0) console.log("nothing to collect — every awarded project already has its announcement");
   for (const target of list) await collect(target);
 } catch (error) {
