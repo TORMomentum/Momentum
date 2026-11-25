@@ -68,3 +68,26 @@ describe("TorRecordView bidding fields", () => {
     expect(without).not.toContain("เกณฑ์การพิจารณา");
   });
 });
+
+describe("TorRecordView order for the bid decider (TOR-225)", () => {
+  it("leads with the deadline, then what is asked and how it is judged, and leaves document preparation last", () => {
+    const title = { raw: "ซื้อเครื่องเอกซเรย์", value: "ซื้อเครื่องเอกซเรย์", confidence: 1, verified: true };
+    const html = render(tor({
+      fields: {
+        title,
+        qualifications: { raw: "", value: ["นิติบุคคล"], confidence: 0.9, verified: true },
+        evaluationWeights: { raw: "", value: [{ name: "ด้านเทคนิค", weight: 100 }], confidence: 0.9, verified: true },
+        requiredDocuments: { raw: "", value: [{ name: "หนังสือรับรองบริษัท", holder: "company" }], confidence: 0.9, verified: true },
+      },
+    }));
+    const at = (text: string) => {
+      const index = html.indexOf(text);
+      expect(index, text).toBeGreaterThan(-1);
+      return index;
+    };
+    expect(at("กำหนดยื่นซอง")).toBeLessThan(at(">งบประมาณ<"));
+    expect(at(">งบประมาณ<")).toBeLessThan(at("เลขที่โครงการ"));
+    expect(at("คุณสมบัติผู้ยื่นข้อเสนอ")).toBeLessThan(at("หน่วยงาน:"));
+    expect(at("ด้านเทคนิค")).toBeLessThan(at("หน่วยงาน:"));
+  });
+});

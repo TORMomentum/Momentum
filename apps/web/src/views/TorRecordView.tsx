@@ -132,29 +132,6 @@ export function TorRecordView({
 
         <div className={styles.factGrid}>
           <div className={styles.factCell}>
-            <div className={styles.factLabel}>เลขที่โครงการ</div>
-            <div className={styles.factValue}>
-              <Value field={fields.referenceNo} missing="ไม่ระบุ" />
-            </div>
-            <div className={styles.factNote}>
-              <Unconfirmed field={fields.referenceNo} />
-            </div>
-          </div>
-          <div className={styles.factCell}>
-            <div className={styles.factLabel}>งบประมาณ</div>
-            <div className={styles.factValue}>
-              {typeof fields.budget?.value === "number" && fields.budget.raw ? (
-                formatBaht(fields.budget.value)
-              ) : (
-                <Value field={fields.budget} missing="ไม่ระบุ" />
-              )}
-            </div>
-            <div className={styles.factNote}>
-              {fields.budget?.origin === "source" ? "ตามข้อมูลจากระบบ e-GP ของหน่วยงาน" : "ตามที่ระบุในเอกสาร"}
-              <Unconfirmed field={fields.budget} />
-            </div>
-          </div>
-          <div className={styles.factCell}>
             <div className={styles.factLabel}>กำหนดยื่นซอง</div>
             <div className={styles.factValue}>
               {deadlineText ? (
@@ -187,11 +164,18 @@ export function TorRecordView({
             </div>
           </div>
           <div className={styles.factCell}>
-            <div className={styles.factLabel}>ปีงบประมาณ</div>
-            <div className={styles.factValue}>{budgetYear ?? "ไม่ระบุ"}</div>
-            {/* Derived from the announcement date, not read from the document,
-                so it is labelled as such rather than passed off as extracted. */}
-            <div className={styles.factNote}>{budgetYear ? "คำนวณจากวันที่ประกาศ (ต.ค.–ก.ย.)" : "ไม่มีวันที่ประกาศ"}</div>
+            <div className={styles.factLabel}>งบประมาณ</div>
+            <div className={styles.factValue}>
+              {typeof fields.budget?.value === "number" && fields.budget.raw ? (
+                formatBaht(fields.budget.value)
+              ) : (
+                <Value field={fields.budget} missing="ไม่ระบุ" />
+              )}
+            </div>
+            <div className={styles.factNote}>
+              {fields.budget?.origin === "source" ? "ตามข้อมูลจากระบบ e-GP ของหน่วยงาน" : "ตามที่ระบุในเอกสาร"}
+              <Unconfirmed field={fields.budget} />
+            </div>
           </div>
           <div className={styles.factCell}>
             <div className={styles.factLabel}>หมวดหมู่</div>
@@ -214,6 +198,22 @@ export function TorRecordView({
                 </div>
               )}
           </div>
+          <div className={styles.factCell}>
+            <div className={styles.factLabel}>ปีงบประมาณ</div>
+            <div className={styles.factValue}>{budgetYear ?? "ไม่ระบุ"}</div>
+            {/* Derived from the announcement date, not read from the document,
+                so it is labelled as such rather than passed off as extracted. */}
+            <div className={styles.factNote}>{budgetYear ? "คำนวณจากวันที่ประกาศ (ต.ค.–ก.ย.)" : "ไม่มีวันที่ประกาศ"}</div>
+          </div>
+          <div className={styles.factCell}>
+            <div className={styles.factLabel}>เลขที่โครงการ</div>
+            <div className={styles.factValue}>
+              <Value field={fields.referenceNo} missing="ไม่ระบุ" />
+            </div>
+            <div className={styles.factNote}>
+              <Unconfirmed field={fields.referenceNo} />
+            </div>
+          </div>
         </div>
 
         {fields.scopeSummary?.raw && (
@@ -225,6 +225,30 @@ export function TorRecordView({
             <p className={styles.scopeText}>{fields.scopeSummary.raw}</p>
           </div>
         )}
+
+        {/* Ordered for the reader deciding whether to bid (design 2026-11-25-completeness-and-persona §3):
+            what is asked and how it is judged, then the context, then document preparation. */}
+        {qualifications.length > 0 && (
+          <div className={styles.qualsBlock}>
+            <div className={labels.blockLabel}>
+              คุณสมบัติผู้ยื่นข้อเสนอ
+              <Unconfirmed field={fields.qualifications} />
+            </div>
+            <div className={styles.qualsRow}>
+              {qualifications.map((qualification) => (
+                <span key={qualification} className={styles.qualPill}>
+                  {qualification}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <BiddingPanel
+          evaluationMethod={fields.evaluationMethod}
+          evaluationWeights={fields.evaluationWeights}
+          requiredDocuments={fields.requiredDocuments}
+        />
 
         <dl className={styles.agencyBlock}>
           <div className={styles.agencyRow}>
@@ -264,22 +288,6 @@ export function TorRecordView({
           </div>
         </dl>
 
-        {qualifications.length > 0 && (
-          <div className={styles.qualsBlock}>
-            <div className={labels.blockLabel}>
-              คุณสมบัติผู้ยื่นข้อเสนอ
-              <Unconfirmed field={fields.qualifications} />
-            </div>
-            <div className={styles.qualsRow}>
-              {qualifications.map((qualification) => (
-                <span key={qualification} className={styles.qualPill}>
-                  {qualification}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
         <StagePanel
           torId={tor.id}
           stages={tor.stageHistory}
@@ -292,12 +300,6 @@ export function TorRecordView({
         />
 
         <AwardPanel award={tor.award} budget={fields.budget} originals={originals} title={previewProps.title} referenceNo={previewProps.referenceNo} />
-
-        <BiddingPanel
-          evaluationMethod={fields.evaluationMethod}
-          evaluationWeights={fields.evaluationWeights}
-          requiredDocuments={fields.requiredDocuments}
-        />
 
         <ReadinessPanel requiredDocuments={fields.requiredDocuments} vault={vault} />
 

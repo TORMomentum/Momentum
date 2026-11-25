@@ -573,6 +573,19 @@ Branch `feat/tor-217-recommended-feed`._
 - [x] Winners-by-category table (TOR-281) redesigned: category with its counts beneath it, the share as a bar across the
       panel with its figure at the end. Seen in a browser
 
+## 2r-c. Sprint 5 — what matching can use, and the page order for the bid decider (TOR-214, TOR-225)
+
+_Spec: [`specs/2026-11-25-completeness-and-persona-design.md`](superpowers/specs/2026-11-25-completeness-and-persona-design.md).
+Branch `feat/tor-214-225-completeness-persona`. Decisions made without a team meeting, at the team's request; recorded in the spec._
+
+- [x] **TOR-257/258 — "ข้อมูลที่ระบบใช้จับคู่ได้"**: a bar on the profile page, answered ÷ 6 of the items the scorer reads,
+      each missing one named for what it adds, with a link to its section; optional and never called incomplete.
+      Seen in a browser against a local stack: 50%, then 66% after saving a past project
+- [x] **TOR-285 — persona**: the person deciding whether to bid (spec §3)
+- [x] **TOR-286 — detail order**: deadline and budget first; qualifications and bidding method before the agency; readiness,
+      draft and checklist last. Seen in a browser
+- [x] **TOR-287 — dashboard order**: winners by category moved above the charts. Seen in a browser
+
 ## 2s. Admin upload reaches extraction (2026-11-12)
 
 - [x] **A worker with no usable Vertex credential no longer publishes.** It logs `extraction_disabled`, claims no

@@ -605,3 +605,28 @@
   font-size: 12px;
   color: var(--ink);
 }
+
+/* TOR-214: what matching can use. Neutral throughout — a missing item is not an error. */
+.completeness {
+  border: 1px solid var(--ink-20);
+  border-radius: var(--radius-card);
+  padding: 20px 28px;
+  margin-bottom: 20px;
+}
+.completenessHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.completenessTitle { font: 600 15px var(--body); color: var(--ink); margin: 0; }
+.completenessValue { font: 600 20px var(--body); color: var(--ink); font-variant-numeric: tabular-nums; }
+.completenessTrack {
+  display: block;
+  height: 8px;
+  margin: 10px 0 12px;
+  border-radius: 999px;
+  background: var(--ink-12);
+  overflow: hidden;
+}
+.completenessFill { display: block; height: 100%; border-radius: inherit; background: var(--blue); }
+.completenessNote, .completenessDone { font: 400 13px var(--body); color: var(--ink-62); margin: 0 0 6px; }
+.completenessList { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font: 400 13px var(--body); }
+.completenessLink { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.completenessAdds { color: var(--ink-62); }
+@media (max-width: 640px) { .completeness { padding: 16px 18px; } }

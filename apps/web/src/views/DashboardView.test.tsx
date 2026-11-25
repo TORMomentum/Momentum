@@ -152,3 +152,22 @@ describe("DashboardView state breakdown", () => {
     }
   });
 });
+
+describe("DashboardView order for the bid decider (TOR-225)", () => {
+  it("puts winners by category above the agency chart", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const competition = {
+      categories: [{ category: "งานก่อสร้าง", awarded: 40, winners: 39, topShare: 0.2, eligible: true }],
+      rule: { topWinners: 5, minAwarded: 10 },
+      meta: { awardedProjects: 40, lastAwardAt: null },
+    };
+    await act(async () => root.render(<DashboardView dashboard={dashboard()} filters={{}} competition={competition} />));
+    const text = container.textContent ?? "";
+    expect(text.indexOf("ผู้ชนะตามหมวดหมู่")).toBeGreaterThan(-1);
+    expect(text.indexOf("ผู้ชนะตามหมวดหมู่")).toBeLessThan(text.indexOf("TOR ตามหน่วยงาน"));
+    await act(async () => root.unmount());
+    container.remove();
+  });
+});

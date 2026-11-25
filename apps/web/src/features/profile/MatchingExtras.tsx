@@ -138,6 +138,8 @@ export function MatchingExtras({
       setCertsStated(saved.certifications !== null);
       setStaff(saved.personnel ?? []);
       setDirty(false);
+      // The completeness bar above reads the saved extras from the page's data, so the page re-reads it.
+      router.refresh();
       setMessage("บันทึกแล้ว — ใช้ในการจับคู่ครั้งถัดไป");
     } catch {
       setMessage("เชื่อมต่อไม่ได้ กรุณาลองอีกครั้ง");
@@ -147,7 +149,7 @@ export function MatchingExtras({
   }
 
   return (
-    <section className={`${profile.profileCard} ${profile.profileCardLast}`} aria-labelledby="extras-title">
+    <section className={`${profile.profileCard} ${profile.profileCardLast}`} aria-labelledby="extras-title" id="matching-extras">
       <h2 id="extras-title" className={profile.profileFactTitle}>สิ่งที่จะช่วยให้จับคู่แม่นขึ้น</h2>
       <p className={profile.profileSub}>ไม่บังคับ — ไม่กรอกก็ยังได้รับการจับคู่ตามปกติ</p>
 

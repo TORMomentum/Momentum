@@ -160,4 +160,22 @@ describe("VendorProfileView", () => {
 
     expect(container.textContent).toContain("มีหมวดหมู่งานที่ไม่อยู่ในรายการ");
   });
+
+  describe("what matching can use (TOR-214)", () => {
+    it("shows the share and what each missing item adds, without calling the profile incomplete", () => {
+      mount(FROM_API);
+      const bar = container.querySelector('[role="progressbar"]');
+      expect(bar?.getAttribute("aria-valuenow")).toBe("50");
+      const text = container.textContent ?? "";
+      expect(text).toContain("ข้อมูลที่ระบบใช้จับคู่ได้");
+      expect(text).toContain("เพิ่มผลงานที่ผ่านมา");
+      expect(text).toContain("ไม่บังคับ");
+      expect(text).not.toMatch(/ไม่ครบ|ไม่สมบูรณ์/);
+    });
+
+    it("is not shown during first-time setup", () => {
+      mount({ ...FROM_API, categories: [] });
+      expect(container.querySelector('[role="progressbar"]')).toBeNull();
+    });
+  });
 });
