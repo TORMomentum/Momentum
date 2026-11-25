@@ -1,7 +1,7 @@
-import { matchPercent } from "@tor-radar/shared";
 import Link from "next/link";
-import type { MatchRow, OwnMatches } from "../../shared/api/matches.api";
-import { DEADLINE_SOON_DAYS, daysLeftLabel, daysUntil, formatBaht, thaiDigitsToArabic } from "../../shared/lib/format";
+import { MATCH_RANGE, matchPercent as percentOf } from "@tor-radar/shared";
+import type { MatchRow, OwnMatches } from "../api/matches.api";
+import { DEADLINE_SOON_DAYS, daysLeftLabel, daysUntil, formatBaht, thaiDigitsToArabic } from "../lib/format";
 import styles from "./matched-tors.module.css";
 
 /** Enough to act on at a glance; the rest are a search away. */
@@ -12,22 +12,34 @@ function isWorkReason(code: string): boolean {
   return code.startsWith("category") || code === "free-text";
 }
 
+/** Every match the scorer returned, as the search lists them: its own filter at the lowest step. */
+export const ALL_MATCHES_HREF = `/search?minMatch=${MATCH_RANGE.step}`;
+
 /**
  * The vendor's best matches, at the top of the dashboard they land on after
- * signing in — the question they arrive with is "is there anything for me".
+ * signing in and of the search page before they search (TOR-217) — the
+ * question they arrive with is "is there anything for me".
  *
  * Every row says WHY it matched, in the scorer's own Thai sentences (NFR-F6:
  * AI-assisted output is explainable). The score is shown as the scorer's own
  * figure, never rounded into a promise; matching ranks, it does not certify.
  */
-export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
+export function MatchedTorsPanel({
+  matches,
+  title = "TOR ที่ตรงกับคุณ",
+  headingId = "matched-heading",
+}: {
+  matches: OwnMatches;
+  title?: string;
+  headingId?: string;
+}) {
   const rows = matches.items.slice(0, SHOWN);
 
   return (
-    <section className={styles.panel} aria-labelledby="matched-heading">
+    <section className={styles.panel} aria-labelledby={headingId}>
       <div className={styles.head}>
-        <h2 id="matched-heading" className={styles.title}>
-          TOR ที่ตรงกับคุณ
+        <h2 id={headingId} className={styles.title}>
+          {title}
         </h2>
         <Link href="/profile" className={styles.edit}>
           ปรับโปรไฟล์การจับคู่
@@ -49,8 +61,8 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
               {/* Score and time left together on the left: the two things that
                   decide which card to open first. */}
               <div className={styles.lead}>
-                <span className={styles.score} aria-label={`ความเกี่ยวข้อง ${matchPercent(row.score)}%`}>
-                  {matchPercent(row.score)}%
+                <span className={styles.score} aria-label={`ความเกี่ยวข้อง ${percentOf(row.score)}%`}>
+                  {percentOf(row.score)}%
                 </span>
                 <DaysLeft row={row} />
               </div>
@@ -74,7 +86,9 @@ export function MatchedTorsPanel({ matches }: { matches: OwnMatches }) {
       )}
 
       {matches.items.length > SHOWN && (
-        <p className={styles.more}>และอีก {matches.items.length - SHOWN} รายการที่ตรงกับคุณ — ดูได้ในหน้าค้นหา</p>
+        <p className={styles.more}>
+          และอีก {matches.items.length - SHOWN} รายการที่ตรงกับคุณ — <Link href={ALL_MATCHES_HREF}>ดูทั้งหมด</Link>
+        </p>
       )}
     </section>
   );

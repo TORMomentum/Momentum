@@ -7,19 +7,101 @@
    ========================================================================= */
 
 .searchPage {
-  display: grid;
-  grid-template-columns: 270px 1fr;
   min-height: calc(100vh - 62px);
 }
 
+/* ---- the filters: a drawer, closed until asked for (TOR-217) ---- */
+
 .sidebar {
-  border-right: var(--rule);
-  padding: 26px 24px;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  width: min(340px, 92vw);
+  padding: 22px 24px 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  background: var(--paper);
+  border-right: var(--rule);
+  box-shadow: 8px 0 32px rgba(18, 35, 60, 0.16);
+  animation: drawerIn 0.2s ease-out;
 }
 
-.sidebarHead { padding-bottom: 6px; }
+.sidebar[hidden] { display: none; }
+
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: rgba(18, 35, 60, 0.28);
+}
+
+@keyframes drawerIn {
+  from { transform: translateX(-24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.sidebarHead { display: flex; align-items: center; gap: 12px; padding-bottom: 6px; }
+
+.sidebarHead .sidebarLabel { flex: 1; }
+
+.drawerClose {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-62);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.drawerClose:hover { background: var(--ink-12); color: var(--ink); }
+
+.drawerFoot {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding: 14px 0 18px;
+  background: var(--paper);
+  border-top: 1px solid var(--ink-12);
+}
+
+.drawerDone {
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--blue);
+  color: #fff;
+  font: 600 13px var(--body);
+  cursor: pointer;
+}
+
+.filterToggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(18, 35, 60, 0.35);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 13px var(--body);
+  cursor: pointer;
+}
+
+.filterToggle:hover, .filterToggle[aria-expanded="true"] { border-color: var(--blue); color: var(--blue); }
+
+/* The count sits on the icon's corner, as a badge. */
+.filterToggleCount { position: absolute; top: -7px; right: -7px; box-shadow: 0 0 0 2px var(--paper); }
+
+.filterToggle:focus-visible, .drawerClose:focus-visible, .drawerDone:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--blue-ring); }
+
+.coverageNote { margin: 22px 0 0; font: 10px var(--data); color: rgba(18, 35, 60, 0.55); line-height: 1.7; }
 
 /* ---- collapsible filter groups ---- */
 
@@ -120,11 +202,9 @@
 
 .facetRowOn { color: var(--blue); }
 
-.sidebarFoot { margin-top: auto; font: 10px var(--data); color: rgba(18, 35, 60, 0.55); line-height: 1.7; }
-
 /* ---- results ---- */
 
-.results { padding: 26px 32px; }
+.results { width: 100%; max-width: 1240px; margin: 0 auto; padding: 26px 32px; box-sizing: border-box; }
 
 .searchBar { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
 
@@ -391,8 +471,7 @@
 }
 
 @media (max-width: 900px) {
-  .searchPage { grid-template-columns: 1fr; }
-  .sidebar { border-right: 0; border-bottom: var(--rule); }
+  .results { padding: 20px 16px; }
   .resultRow { grid-template-columns: 1fr; }
   .resultActions { justify-content: flex-start; }
   .skeletonResultRow { grid-template-columns: 1fr; }
@@ -400,6 +479,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skeletonBlock { animation: none; }
+  .sidebar { animation: none; }
 }
 
 .facetSearch {

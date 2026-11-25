@@ -559,6 +559,20 @@ Branch `feat/tor-224-company-path`._
 - [ ] The sample reads every classified TOR id of the field before capping (so the cap follows announcement date); not timed on a real-size corpus
 - [ ] Not seen in a browser
 
+## 2r-b. Sprint 5 — recommended for you, filters on demand (TOR-217)
+
+_Spec: [`specs/2026-11-25-search-recommended-feed-design.md`](superpowers/specs/2026-11-25-search-recommended-feed-design.md).
+Branch `feat/tor-217-recommended-feed`._
+
+- [x] **TOR-266 — filters collapsed by default**: the search sidebar is a drawer behind a funnel icon button whose badge
+      counts the active filters; the chips stay above the results; the coverage note moved under the results (FR-E-6).
+      Seen in a browser (desktop and phone width): opens, applies a filter, closes with Escape
+- [x] **TOR-265 — recommended-for-you feed**: "แนะนำสำหรับคุณ" (top 5 of `/me/matches`) leads `/search` for a
+      signed-in account until a keyword or filter is set; `MatchedTorsPanel` moved to `shared/ui`
+  - [ ] seen signed in, in a browser: covered by view tests only (TC-F4-3)
+- [x] Winners-by-category table (TOR-281) redesigned: category with its counts beneath it, the share as a bar across the
+      panel with its figure at the end. Seen in a browser
+
 ## 2s. Admin upload reaches extraction (2026-11-12)
 
 - [x] **A worker with no usable Vertex credential no longer publishes.** It logs `extraction_disabled`, claims no
