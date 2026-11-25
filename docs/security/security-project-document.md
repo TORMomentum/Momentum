@@ -152,7 +152,7 @@ rows the last column says what is planned.
 | V3.2.3 | 3 | Have now | P0 | T05 | ES modules and TypeScript strict; nothing stored on document globals. |
 | V3.3.1 | 1 | Partial | P1 | T10 | Keep Secure on https and rename session cookies with the __Host- prefix, since cookies protect vendor accounts |
 | V3.3.2 | 2 | Have now | P0 | T06 | SameSite=Lax plus server-side Origin checks. |
-| V3.3.3 | 2 | Planned | P1 | T10 | Rename tor-radar-session and tor_staff to __Host- names, as both are host-only |
+| V3.3.3 | 2 | Planned | P1 | T10 | Rename tor-radar-session to a __Host- name, as it is host-only (the tor_staff cookie is gone since TOR-199) |
 | V3.3.4 | 2 | Have now | P0 | T10 | HttpOnly session cookie; the id is set only by the Next route and stripped from the JSON reply. |
 | V3.3.5 | 3 | Have now | P0 |  | Cookies hold a 64-character id or a short signed token. |
 | V3.4.1 | 1 | Have now | P0 | T10 | No HSTS header today. Add globally with max-age of at least one year. [Sprint 6, PR #48, open until merged] apps/web/src/shared/lib/security-headers.ts: HSTS max-age=63072000; includeSubDomains in production. |
@@ -197,7 +197,7 @@ rows the last column says what is planned.
 | **V6 Authentication** | | | | | |
 | V6.1.1 | 1 | Planned | P1 | T01 | Document login rate limits and how lockout abuse is prevented |
 | V6.1.2 | 2 | Planned | P2 | T01 | Document a blocked word list (TOR Radar, Momentum, agency terms) |
-| V6.1.3 | 2 | Planned | P2 | T02 | Document password, staff pass, and API key paths together |
+| V6.1.3 | 2 | Planned | P2 | T02 | Document password, Google and intake API key paths together (the staff pass is removed, TOR-199) |
 | V6.2.1 | 1 | Have now | P0 | T01 | Zod min(8) on register, reset, and change. |
 | V6.2.2 | 1 | Have now | P0 |  | POST /password/change. |
 | V6.2.3 | 1 | Have now | P0 |  | The route requires currentPassword and the new password. |
@@ -211,9 +211,9 @@ rows the last column says what is planned.
 | V6.2.11 | 2 | Planned | P2 | T01 | Reject passwords containing the 6.1.2 word list |
 | V6.2.12 | 2 | Have now | P0 | T01 | Add a breached-password check (k-anonymity range API or a bundled list). [Sprint 6, PR #49, open until merged] apps/api/src/adapters/hibp.breached-passwords.ts (k-anonymity range query, fails open on outage). |
 | V6.3.1 | 1 | Have now | P0 | T01 | Limits per IP and per email exist. The IP limit is unreliable behind the proxy (see 15.3.4) and counters are per instance. [Sprint 6, PR #47, open until merged] apps/web/src/shared/api/client-ip.ts forwards the client IP; TRUST_PROXY in core/config.ts; limits in core/auth-rate-limit.ts. |
-| V6.3.2 | 1 | Have now | P0 | T02 | No seeded accounts; a staff pass with no configured secret fails closed. Compose default API keys are tracked under 13.2.3. |
+| V6.3.2 | 1 | Have now | P0 | T02 | No seeded accounts; the first admin is granted per person with tools/grant_admin.mts (TOR-199), and the staff gate fails closed when the role cannot be read. Compose default API keys are tracked under 13.2.3. |
 | V6.3.3 | 2 | Planned | P1 | T02 | Add TOTP for admin accounts, the top risk in our Threat Model |
-| V6.3.4 | 2 | Planned | P1 | T02 | Replace static admin keys and the shared staff pass with individual admin accounts |
+| V6.3.4 | 2 | Have now | P1 | T02 | Individual admin accounts replace the static admin key and the shared staff pass (TOR-199, 2026-11-25) |
 | V6.3.5 | 3 | Planned | P3 |  | Email vendors after a sign-in that follows repeated failures or a long inactive period |
 | V6.3.6 | 3 | Have now | P0 |  | Email is used only for verification and recovery, never as a login factor. |
 | V6.3.7 | 3 | Planned | P3 | T01 | Email vendors after a password change or reset, using the existing mail templates |
@@ -268,7 +268,7 @@ rows the last column says what is planned.
 | **V9 Self-contained Tokens** | | | | | |
 | V9.1.1 | 1 | Have now | P0 | T02 | Staff token HMAC verified with timingSafeEqual before use. |
 | V9.1.2 | 1 | Have now | P0 | T02 | Fixed HMAC-SHA256; the token carries no algorithm field. |
-| V9.1.3 | 1 | Have now | P0 | T02 | Key comes only from STAFF_ACCESS_SECRET. |
+| V9.1.3 | 1 | Have now | P0 | T02 | No self-contained tokens remain: the signed staff cookie (STAFF_ACCESS_SECRET) was removed in TOR-199; sessions are opaque ids checked server-side. |
 | V9.2.1 | 1 | Have now | P0 | T02 | Expiry is checked on every request. |
 | V9.2.2 | 2 | Have now | P0 |  | Version-tagged staff token; account tokens are bound to a purpose. |
 | V9.2.3 | 2 | Have now | P0 |  | Cloud Run identity token is audience-bound to the API URL; staff token is used only by web. |
@@ -317,7 +317,7 @@ rows the last column says what is planned.
 | V13.1.4 | 3 | Planned | P3 | T13 | List critical secrets and a rotation schedule |
 | V13.2.1 | 2 | Planned | P2 | T13 | Move from static Mongo and intake credentials where possible; keep identity tokens for web to API |
 | V13.2.2 | 2 | Planned | P2 | T13 | Review Mongo and Vertex roles, so each service has only what it needs |
-| V13.2.3 | 2 | Have now | P0 | T13 | Production keys come from Secret Manager, but docker-compose.yml falls back to change-me API keys when none are set. [Sprint 6, PR #51, open until merged] docker-compose.yml: INTAKE_API_KEYS and ADMIN_API_KEYS are required, no change-me defaults. |
+| V13.2.3 | 2 | Have now | P0 | T13 | Production keys come from Secret Manager, but docker-compose.yml falls back to change-me API keys when none are set. [Sprint 6, PR #51, open until merged] docker-compose.yml: INTAKE_API_KEYS is required, no change-me default (ADMIN_API_KEYS removed in TOR-199). |
 | V13.2.4 | 2 | Planned | P2 | T04 | Add a host allowlist for URL intake, the only outbound address users can set |
 | V13.2.5 | 2 | Planned | P2 | T04 | Route Cloud Run egress through a VPC connector with a firewall allowlist |
 | V13.2.6 | 3 | Planned | P3 |  | Apply the documented connection limits and retry settings in config |
@@ -459,7 +459,7 @@ section 8. Status was set on 2026-11-21.
 
 | ID | Pri. | Risk (L x I) | STRIDE | Threat | Mitigation designed | Status |
 | :-- | :-: | :-: | :-- | :-- | :-- | :-- |
-| T02 | P1 | 15 (3x5) | E | Staff pass or admin API key stolen | Constant-time key compare, signed 8-hour staff cookie, staff check on every admin page and action; planned individual admin accounts with TOTP | Partial. Shared secrets remain |
+| T02 | P1 | 15 (3x5) | E | Admin account session stolen | Individual admin accounts (TOR-199): role checked on every admin page and API call, role change revokes sessions, 30-minute idle and 7-day absolute lifetime; planned TOTP | Partial. No MFA yet |
 | T01 | P1 | 12 (4x3) | S | Credential stuffing, brute force on login | argon2id, per-IP and per-email limits, real client IP (#47), breached password check (#49), login logging (#46), uniform error | Mostly done |
 | T11 | P1 | 12 (3x4) | D | Abuse of costly operations | Upload caps, queue, timeouts, search and document limits (#47), escaped vendor regex (#51) | Mostly done |
 | T09 | P1 | 12 (3x4) | I | Personal data exposed | One redaction serializer, no trackers, export and delete, `Clear-Site-Data` (#50), Referrer-Policy (#48); planned tokens out of URLs, classification, retention | Partial |

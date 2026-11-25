@@ -172,7 +172,7 @@ and enable each of these three, one at a time:
 
 ### 7.3 Secret Manager (TOR-141)
 
-Eight secrets the Cloud Run services read at request time; none of them belong in
+Six secrets the Cloud Run services read at request time; none of them belong in
 `.env.example` because they're deployment-only. **Secret Manager → Create secret**, once
 per row. **The name must match the first column exactly, including case** —
 `deploy/cloudrun/*.yaml` looks up each secret by this literal name, and Secret Manager
@@ -180,32 +180,35 @@ answers a name that doesn't exist with the same "Permission denied" error as a r
 permissions problem, so a typo'd case reads as an IAM misconfiguration (found the hard
 way: `ADMIN_API_KEYS` and `STAFF_ACCESS_SECRET` got created upper-case against the lower-
 case names the YAML expected — the fix was changing the YAML to match what already
-existed, not recreating the secrets):
+existed, not recreating the secrets; both were retired in TOR-199 — admins are accounts now, see
+"First admin" below — and can be deleted from Secret Manager once the TOR-199 deploy is live):
 
 | Secret name | Secret value |
 | :--- | :--- |
 | `mongo-url` | the real `mongodb+srv://...` connection string, pasted into **Secret value** |
 | `intake-api-keys` | your comma-separated intake keys, pasted in |
-| `ADMIN_API_KEYS` | your comma-separated admin keys, pasted in |
-| `STAFF_ACCESS_SECRET` | the staff login passphrase, pasted in |
 | `SESSION_SECRET` | a random string of 32+ characters — generate one, don't reuse a short local-dev value |
 | `SMTP_URL` | a real SMTP provider's connection string (Mailtrap, SendGrid, Gmail SMTP relay with an app password, …) — `apps/api` refuses to start in production without one; no local-dev equivalent exists because Compose uses the mailpit container instead |
 | `gcs-storage-sa` | switch **Secret value** to **Upload file** → pick `secrets/gcs-storage-sa.json` |
 | `vertex-sa` | **Upload file** → pick `secrets/gcp-sa.json` |
 
-Leave replication at **Automatic** for all eight, and **Create secret** each time.
+Leave replication at **Automatic** for all six, and **Create secret** each time.
 
 **Grant access to each**, so the running service can actually read it:
 
 1. First find your project's **number** (not its id) — Console home page, the "Project
    info" card, or **IAM & Admin → Settings**
-2. Open each of the eight secrets → **Permissions** tab → **Grant access**
+2. Open each of the six secrets → **Permissions** tab → **Grant access**
 3. New principals: `<project-number>-compute@developer.gserviceaccount.com`
 4. Role: **Secret Manager Secret Accessor** → **Save**
-5. Repeat for all eight — `api` reads all eight; `worker` reads everything except
-   `SMTP_URL` (it never sends mail); `web` only ever reads `ADMIN_API_KEYS` and
-   `STAFF_ACCESS_SECRET`. Granting access on ones a service never asked for doesn't
-   hurt, so it's simpler to just grant all eight everywhere than track the difference.
+5. Repeat for all six — `api` reads all six; `worker` reads everything except
+   `SMTP_URL` (it never sends mail); `web` reads none of them (TOR-199). Granting access on ones a service never asked for doesn't
+   hurt, so it's simpler to just grant all six everywhere than track the difference.
+
+**First admin (TOR-199).** No admin exists until one is granted. After the deploy, each admin signs up (or
+signs in with Google) once, then, from a machine whose `.env` points `MONGO_URL` at the deployed database:
+`npx tsx tools/grant_admin.mts --email <their address> --apply`. That signs them out; they sign in again and
+`/admin` opens. Later admins are promoted from `/admin/vendors`.
 
 `APP_ORIGIN` is **not** a secret — it isn't sensitive, and `deploy.yml` fills it in itself
 from `tor-radar-web`'s own Cloud Run URL once that service exists (§7.5). Nothing to create
@@ -374,7 +377,7 @@ Tick the "Cloud Logging alerts" line in `docs/TODO.md` and update the A09 row of
 | Cloud Run service shape (scaling, ports, env var *names*) | `deploy/cloudrun/*.yaml` | yes |
 | Project id, region, repo name, bucket name | GitHub Actions **variables** | no (set per-repo) |
 | The deploy service account's key | GitHub Actions **secrets** | never |
-| Mongo URL, API keys, staff passphrase, the two SA key files | GCP **Secret Manager** | never |
+| Mongo URL, intake API keys, session secret, the two SA key files | GCP **Secret Manager** | never |
 | Who can call the deployed services | Cloud Run IAM (`run.invoker`) | n/a |
 
 Automatic rollout compares the tested SHA to the remote main ref immediately before rollout. A superseded run skips every Cloud Run mutation. Bootstrap requires a successful region-scoped service list with no web service.

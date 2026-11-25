@@ -76,8 +76,7 @@ Or the full stack in containers:
 docker compose up           # web · api · worker · mongo · gcs (emulator) · mail (Mailpit)
 ```
 
-Compose refuses to start unless `.env` sets `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS`,
-`STAFF_ACCESS_SECRET` and `APP_ORIGIN`: there are no default keys (TOR-324). `.env.example` shows how to
+Compose refuses to start unless `.env` sets `SESSION_SECRET`, `INTAKE_API_KEYS` and `APP_ORIGIN`: there are no default keys (TOR-324). `.env.example` shows how to
 generate each one.
 
 Production mode on your machine:
@@ -101,8 +100,15 @@ does not update.
 
 ### 3.5 The admin area
 
-Go to `/admin` and enter the `STAFF_ACCESS_SECRET` value from `.env`.
-If you are also signed in with a user account, that account must have `role: "admin"`.
+The admin area opens to an account with `role: "admin"`, and to nothing else (TOR-199). Sign up (or sign
+in with Google) at `/login`, then make your account an admin:
+
+```bash
+npx tsx tools/grant_admin.mts --email you@example.com           # dry run: shows the role change
+npx tsx tools/grant_admin.mts --email you@example.com --apply   # writes it and signs the account out
+```
+
+Sign in again and go to `/admin`. Later admins can be promoted from `/admin/vendors`.
 
 ### 3.6 Check it works
 

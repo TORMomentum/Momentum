@@ -63,8 +63,8 @@ verification emails from Mailpit, like a person would), A's private file id, and
 Note: no Vertex AI credential on the demo laptop, so the worker leaves the two TORs `queued` and publishes
 nothing it did not extract. That is the intended fail-safe, say so if asked.
 
-Secret handling (needs #51): open `.env.example` and point at the empty `SESSION_SECRET=`, `INTAKE_API_KEYS=`,
-`ADMIN_API_KEYS=` and `STAFF_ACCESS_SECRET=` lines, then at `docker-compose.yml`, where each is `${NAME:?... is required}`:
+Secret handling (needs #51): open `.env.example` and point at the empty `SESSION_SECRET=` and `INTAKE_API_KEYS=`
+lines (there is no admin key or staff password any more: admins are accounts, TOR-199), then at `docker-compose.yml`, where each is `${NAME:?... is required}`:
 Compose refuses to start without them, and no default key exists.
 
 ## 1. Web security headers (1:30 – 2:45) — needs #48
@@ -190,16 +190,22 @@ returns the same `404` as a missing one, so B cannot even tell the file exists. 
 ## 8. Admin action in the security log (7:00 – 8:00) — needs #46
 
 ```bash
-ADMIN=${ADMIN_API_KEYS%%,*}
+# admins are accounts (TOR-199): make vendor B an admin for this step (it signs B out), then sign in again
+npx tsx tools/grant_admin.mts --email vendor-b@demo.example --apply
+ADMIN=$(login vendor-b@demo.example)
 # a harmless admin write (restoring a TOR that does not exist) is still an audited admin action
-curl -s -X POST "$API/admin/tors/000000000000000000000000/restore" -H "X-Api-Key: $ADMIN" -H "Origin: $APP_ORIGIN"; echo
-# wrong key: refused and logged
-curl -s -o /dev/null -w "%{http_code}\n" -X POST "$API/admin/tors/000000000000000000000000/restore" -H "X-Api-Key: wrong"
+curl -s -X POST "$API/admin/tors/000000000000000000000000/restore" -H "x-session-id: $ADMIN" -H "Origin: $APP_ORIGIN"; echo
+# a vendor session is refused (403), no session is refused (401); both are logged
+curl -s -o /dev/null -w "%{http_code}\n" -X POST "$API/admin/tors/000000000000000000000000/restore" -H "x-session-id: $A"
+curl -s -o /dev/null -w "%{http_code}\n" -X POST "$API/admin/tors/000000000000000000000000/restore"
 docker compose logs api | grep -E "admin.action|auth.denied" | tail -3
+# put B back afterwards
+npx tsx tools/grant_admin.mts --email vendor-b@demo.example --revoke --apply
 ```
 
-Show the JSON lines: `admin.action` with actor, route pattern and target id; `auth.denied` 401. Then show the
-sanitizer: `docker compose logs api | grep -ciE "$ADMIN|$DEMO_VENDOR_PASSWORD"` prints `0`.
+Show the JSON lines: `admin.action` with the admin's account id as actor (`authMethod: "session"`), route pattern
+and target id; `auth.denied` 403 and 401. Then show the sanitizer:
+`docker compose logs api | grep -ciE "$ADMIN|$DEMO_VENDOR_PASSWORD"` prints `0`.
 
 ## 9. Reports and pipeline (8:00 – 9:00)
 

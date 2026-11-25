@@ -143,7 +143,7 @@ Where each kind of code lives, and — as importantly — what each folder is no
 | `packages/shared/` | Types and Zod schemas both apps import | No runtime dependencies on either app |
 | `docs/` | SRS, this file, design specs, plans, benchmark evidence | — |
 | `mockups/` | Design-canvas source the UI was ported from | Never built, never linted, never imported |
-| `tools/` | Jira seeding, Vertex checks, extraction scoring | Operational scripts, not app code |
+| `tools/` | Jira seeding, Vertex checks, extraction scoring, `grant_admin.mts` (makes an account an admin, TOR-199) | Operational scripts, not app code |
 
 ### `apps/api/src/`
 
@@ -252,6 +252,13 @@ Cloud Run restarts the instance. The API and all three workers install it at sta
 lines reach Cloud Logging with no agent; log-based metrics and alert policies on them are set up in the console
 (docs/gcp-setup.md §7.6).
 
+**Admin access (TOR-199).** Admin routes open to an account session whose role is `admin`, and to nothing
+else: `sessionContext` resolves `x-session-id` to the live account, then `core/require-role.ts`
+(`requireRole("admin")`) answers 401 without a session and 403 for another role; `adminActor(req)` gives the
+account id every admin write records as its actor. The web staff gate (`shared/lib/staff-session.ts`) asks
+`GET /me` with the session cookie and forwards the same session id. There is no admin API key and no staff
+cookie. The only API key left is `INTAKE_API_KEYS`, for `POST /intake`.
+
 `core/security-log.ts` gives each request an id (`X-Request-Id`, generated, never taken from the caller) and
 writes security events (`category: "security"`) from a fixed vocabulary. Each carries `requestId`, `method`,
 `path` (no query string), `ip`, `userAgent` (120 characters), and `accountId` when a session resolved.
@@ -263,7 +270,7 @@ writes security events (`category: "security"`) from a fixed vocabulary. Each ca
 | `auth.logout` | INFO | `POST /logout` | `revoked` |
 | `auth.denied` | WARNING | any 401 or 403 (response hook) | `status` |
 | `ratelimit.hit` | WARNING | any 429 (response hook) | `keyType`: `ip`, `email`, `account`; the key itself is never logged |
-| `admin.action` | INFO | every non-GET request under `/admin/*` | `actor`, `authMethod: "staff-secret"`, `action` (route pattern), `target` (id), `status` |
+| `admin.action` | INFO | every non-GET request under `/admin/*` | `actor` (the admin's account id), `authMethod: "session"`, `action` (route pattern), `target` (id), `status` |
 
 A failed login that already logged `auth.login.failure` does not also log `auth.denied`.
 

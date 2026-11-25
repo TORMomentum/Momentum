@@ -90,12 +90,11 @@ re-asserts the proxy and smoke-checks each service. How it works, and how to rol
 cp .env.example .env
 ```
 
-Compose refuses to start without `SESSION_SECRET`, `INTAKE_API_KEYS`, `ADMIN_API_KEYS` and
-`STAFF_ACCESS_SECRET`. Generate each one on your machine. Never reuse one, and never commit `.env`:
+Compose refuses to start without `SESSION_SECRET` and `INTAKE_API_KEYS`. Generate each one on your machine. Never reuse one, and never commit `.env`:
 
 ```bash
 openssl rand -base64 48     # SESSION_SECRET (32+ characters)
-openssl rand -hex 32        # INTAKE_API_KEYS, ADMIN_API_KEYS, STAFF_ACCESS_SECRET (one run each)
+openssl rand -hex 32        # INTAKE_API_KEYS
 # without openssl:  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
