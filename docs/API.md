@@ -442,6 +442,13 @@ No winner is named in the response (names stay on each TOR's page, where a natur
 the number of bidders is not in it: bidders are not collected (FR-B-2). The figures describe how wins are spread;
 they say nothing about whether a category is easy or hard (NFR-F5).
 
+**Cached (2026-11-25).** One answer per filter set is reused for `STATS_DASHBOARD_CACHE_MS` (default
+120000; `0` turns it off), at most `STATS_DASHBOARD_CACHE_ENTRIES` (100) filter sets, oldest dropped.
+Requests arriving while an answer is built share it; a failed read is not kept. A new record can
+therefore appear up to that long after intake; `meta` is part of the cached answer, so it never claims
+newer figures than it holds. The route reads only the record paths it uses (`DASHBOARD_PROJECTION` in
+`stats.repository.ts`), not whole documents.
+
 ### `GET /api/v1/export/tors.csv` ✅ (TOR-69)
 
 The current search as CSV (FR-E-7). Design: [csv-export spec](superpowers/specs/2026-11-23-csv-export-design.md).

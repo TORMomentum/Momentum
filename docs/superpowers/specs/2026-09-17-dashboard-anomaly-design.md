@@ -478,6 +478,8 @@ No literals (NFR-S7). All in `core/config.ts` with open status recorded:
 | `STATS_SWEEP_INTERVAL_MS` | 300000 | Belt-and-braces sweep |
 | `STATS_LEASE_MS` | 60000 | Claim lease |
 | `STATS_STALE_AFTER_MS` | 3600000 | When §5.5's banner appears |
+| `STATS_DASHBOARD_CACHE_MS` | 120000 | How long one dashboard answer is reused; `0` = never (revision 2026-11-25) |
+| `STATS_DASHBOARD_CACHE_ENTRIES` | 100 | Filter sets kept at once, oldest dropped (revision 2026-11-25) |
 | `COHORT_TIMEZONE` | `Asia/Bangkok` | §2.4 |
 
 Budget plausibility bounds reuse the existing `BUDGET_MIN_THB` / `BUDGET_MAX_THB`.
@@ -528,3 +530,18 @@ Kept deliberately: each line is a defect a review found in a design that read as
 18. Divided by zero on identical budgets.
 19. Called the stats job "a second handler" with no lifecycle.
 20. Left the agency key undecided while keying rollups on it.
+
+## Revision 2026-11-25 — reading the dashboard faster
+
+Measured against Atlas: `GET /stats/dashboard` took 110–120 s on every request, the homepage with it.
+The route read every public record whole (1,721 records, about 10 MB of extracted fields with their raw
+text) and Atlas returned it at about 100 KB/s. Two changes, neither altering a figure:
+
+1. **Projection.** `dashboardRecords` reads only the paths the route, `eligibilityOf` and the checklist use
+   (`DASHBOARD_PROJECTION`). First request: 47 s.
+2. **Answer cache.** One answer per filter set for `STATS_DASHBOARD_CACHE_MS` (120 s), bounded by
+   `STATS_DASHBOARD_CACHE_ENTRIES`; concurrent requests share one read. Later requests: under 10 ms.
+   §5's "every figure from one snapshot" still holds: a cached answer is one snapshot, `meta` included.
+   A new record reaches the dashboard up to the cache window after intake.
+
+Still open: the first request after the window is slow while the corpus is read from Atlas at that rate.
