@@ -79,10 +79,13 @@
 }
 
 .filterToggle {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
   border: 1px solid rgba(18, 35, 60, 0.35);
   border-radius: 6px;
   background: var(--paper);
@@ -91,7 +94,10 @@
   cursor: pointer;
 }
 
-.filterToggle:hover { border-color: var(--blue); color: var(--blue); }
+.filterToggle:hover, .filterToggle[aria-expanded="true"] { border-color: var(--blue); color: var(--blue); }
+
+/* The count sits on the icon's corner, as a badge. */
+.filterToggleCount { position: absolute; top: -7px; right: -7px; box-shadow: 0 0 0 2px var(--paper); }
 
 .filterToggle:focus-visible, .drawerClose:focus-visible, .drawerDone:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--blue-ring); }
 

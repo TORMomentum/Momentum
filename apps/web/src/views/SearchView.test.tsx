@@ -127,6 +127,9 @@ describe("SearchView filters on demand (TOR-217)", () => {
     render(VENDOR);
     expect(drawer()?.hidden).toBe(true);
     expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
+    // An icon, named for screen readers.
+    expect(toggle()?.querySelector("svg")).not.toBeNull();
+    expect(toggle()?.getAttribute("aria-label")).toBe("ตัวกรอง");
   });
 
   it("opens the drawer from the button, and closes it with Escape, giving focus back to the button", () => {
@@ -143,7 +146,8 @@ describe("SearchView filters on demand (TOR-217)", () => {
 
   it("counts the filters in the drawer on its button, not the keyword", () => {
     render(VENDOR, 40, null, { q: "ถนน" });
-    expect(toggle()?.textContent).toBe("ตัวกรอง1");
+    expect(toggle()?.getAttribute("aria-label")).toBe("ตัวกรอง (ใช้อยู่ 1)");
+    expect(toggle()?.textContent).toBe("1");
   });
 
   it("keeps the coverage note on the page while the drawer is closed (FR-E-6)", () => {

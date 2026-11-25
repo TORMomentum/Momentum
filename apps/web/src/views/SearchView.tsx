@@ -554,9 +554,18 @@ export function SearchView({
             aria-expanded={filtersOpen}
             aria-controls="search-filters"
             onClick={() => setFiltersOpen(true)}
+            aria-label={activeFilterCount > 0 ? `ตัวกรอง (ใช้อยู่ ${activeFilterCount})` : "ตัวกรอง"}
+            title="ตัวกรอง"
           >
-            ตัวกรอง
-            {activeFilterCount > 0 && <span className={styles.facetSelected}>{activeFilterCount}</span>}
+            {/* A funnel: the filters, as an icon; its name is in the label for screen readers. */}
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5z" />
+            </svg>
+            {activeFilterCount > 0 && (
+              <span className={`${styles.facetSelected} ${styles.filterToggleCount}`} aria-hidden="true">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
           {results && <span className={styles.resultCount}>{results.total} ผลลัพธ์</span>}
           {results && results.total > 0 && (
