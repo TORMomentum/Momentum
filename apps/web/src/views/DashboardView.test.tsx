@@ -154,7 +154,7 @@ describe("DashboardView state breakdown", () => {
 });
 
 describe("DashboardView order for the bid decider (TOR-225)", () => {
-  it("puts winners by category above the agency chart", async () => {
+  it("puts winners by category after the charts", async () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -166,7 +166,7 @@ describe("DashboardView order for the bid decider (TOR-225)", () => {
     await act(async () => root.render(<DashboardView dashboard={dashboard()} filters={{}} competition={competition} />));
     const text = container.textContent ?? "";
     expect(text.indexOf("ผู้ชนะตามหมวดหมู่")).toBeGreaterThan(-1);
-    expect(text.indexOf("ผู้ชนะตามหมวดหมู่")).toBeLessThan(text.indexOf("TOR ตามหน่วยงาน"));
+    expect(text.indexOf("ผู้ชนะตามหมวดหมู่")).toBeGreaterThan(text.indexOf("งบประมาณตามหมวดหมู่"));
     await act(async () => root.unmount());
     container.remove();
   });
