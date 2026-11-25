@@ -1,17 +1,16 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { auditAdmin } from "../../core/security-log.js";
-import { requireKey } from "../intake/intake.auth.js";
+import { adminActor as actorOf, requireRole } from "../../core/require-role.js";
 import type { MatchQualityService } from "./match-quality.service.js";
 
 const labelSchema = z.object({ label: z.enum(["relevant", "not-relevant", "unsure"]) }).strict();
 const objectId = z.string().regex(/^[0-9a-f]{24}$/i);
-const actorOf = (req: Request) => (req as Request & { actor?: string }).actor ?? "admin";
 
-/** The match-quality benchmark (design §7.8). Staff only, behind the admin key like the rest of /admin. */
-export function buildMatchQualityRouter(deps: { service: MatchQualityService; adminKeys: string[] }): Router {
+/** The match-quality benchmark (design §7.8). Staff only: an admin account, like the rest of /admin (TOR-199). */
+export function buildMatchQualityRouter(deps: { service: MatchQualityService }): Router {
   const router = Router();
-  router.use(requireKey(deps.adminKeys, "admin"));
+  router.use(requireRole("admin"));
   router.use(auditAdmin(actorOf));
 
   router.get("/match-quality", async (_req, res) => {

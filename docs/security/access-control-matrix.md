@@ -16,12 +16,12 @@ matches, by listing or by id.
 | :---- | :---- | :---- |
 | `public` | none | not checked. Reads of published, unrestricted records only |
 | `vendor` | session id in `x-session-id`, set by the Next server from its `httpOnly` cookie | `sessionContext` resolves it to the live account on every request ([session-context.ts:22](../../apps/api/src/core/session-context.ts)); a disabled or deleted account resolves to nothing ([sessions.ts:30](../../apps/api/src/modules/accounts/sessions.ts)). Each route then refuses a missing `req.auth` |
-| `admin-key` | `x-api-key` equal to one of `ADMIN_API_KEYS` | `requireKey`, constant-time compare ([intake.auth.ts:35](../../apps/api/src/modules/intake/intake.auth.ts)). The key is held by the Next server and never reaches the browser |
+| `admin` | session id in `x-session-id` of an account whose role is `admin` (TOR-199) | `sessionContext` as for `vendor`, then `requireRole("admin")` ([require-role.ts](../../apps/api/src/core/require-role.ts)): no session 401, any other role 403. The role is read from the account row on every request, so a demotion takes effect on the next call |
 | `intake-key` | `x-api-key` equal to one of `INTAKE_API_KEYS` | the same `requireKey`, with the intake key list |
 
-There is **no admin session in the API**. A signed-in account's role does not open an admin route: only the
-key does. `requireRole` ([require-role.ts](../../apps/api/src/core/require-role.ts)) exists and is unit-tested
-but no route uses it (finding F2).
+Since 2026-11-25 (TOR-199) **an admin route opens only to an admin account's session**. The shared
+`ADMIN_API_KEYS` key is gone, so no credential opens the admin API without naming a person, and every admin action
+is recorded against that account's id (`adminActor`). Findings F2 and F3 are resolved.
 
 State-changing vendor routes also pass `requireSameOrigin` ([require-same-origin.ts](../../apps/api/src/core/require-same-origin.ts)),
 and the sign-in family adds `authRateLimit`; both run before the session check, so a request with a wrong
@@ -94,39 +94,39 @@ test: keep the first three columns exactly `METHOD`, `` `path` ``, caller.
 | GET | `/api/v1/tors/:id` | public | none | none |
 | GET | `/api/v1/stats/dashboard` | public | none | none, aggregate |
 | GET | `/api/v1/stats/competition` | public | own rate limit (`PUBLIC_SEARCH_RATE_LIMIT_PER_MIN`, [stats.routes.ts](../../apps/api/src/modules/stats/stats.routes.ts)) | none, aggregate: counts and a share per category, no winner named |
-| POST | `/api/v1/intake/upload` | admin-key | `requireKey` ([intake.routes.ts:105](../../apps/api/src/modules/intake/intake.routes.ts)), IP rate limit | none |
-| POST | `/api/v1/intake/url` | admin-key | `requireKey` ([intake.routes.ts:115](../../apps/api/src/modules/intake/intake.routes.ts)), SSRF helper | none |
+| POST | `/api/v1/intake/upload` | admin | `requireRole("admin")` ([intake.routes.ts:105](../../apps/api/src/modules/intake/intake.routes.ts)), IP rate limit | none |
+| POST | `/api/v1/intake/url` | admin | `requireRole("admin")` ([intake.routes.ts:116](../../apps/api/src/modules/intake/intake.routes.ts)), SSRF helper | none |
 | POST | `/api/v1/intake` | intake-key | `requireKey` with the intake keys ([intake.routes.ts:128](../../apps/api/src/modules/intake/intake.routes.ts)) | none |
-| GET | `/api/v1/admin/queue` | admin-key | `router.use(requireKey)` ([admin.routes.ts:87](../../apps/api/src/modules/admin/admin.routes.ts)) | all records |
-| GET | `/api/v1/admin/overview` | admin-key | as above | all records |
-| GET | `/api/v1/admin/events` | admin-key | as above | all records |
-| GET | `/api/v1/admin/tors` | admin-key | as above | all records |
-| GET | `/api/v1/admin/tors/ids` | admin-key | as above | all records |
-| GET | `/api/v1/admin/tors/:id` | admin-key | as above | all records |
-| HEAD | `/api/v1/admin/tors/:id/document` | admin-key | as above | includes restricted records |
-| GET | `/api/v1/admin/tors/:id/document` | admin-key | as above | includes restricted records |
-| GET | `/api/v1/admin/tors/:id/pages/:page` | admin-key | as above | includes restricted records |
-| PATCH | `/api/v1/admin/tors/:id/fields` | admin-key | as above | all records |
-| PATCH | `/api/v1/admin/tors/:id/fields/:field/verification` | admin-key | as above | all records |
-| POST | `/api/v1/admin/tors/:id/approve` | admin-key | as above | all records |
-| POST | `/api/v1/admin/tors/bulk` | admin-key | as above | all records |
-| POST | `/api/v1/admin/tors/:id/reextract` | admin-key | as above | all records |
-| POST | `/api/v1/admin/tors/:id/reject` | admin-key | as above | all records |
-| POST | `/api/v1/admin/tors/:id/restore` | admin-key | as above | all records |
-| GET | `/api/v1/admin/reports/other-terms` | admin-key | `router.use(requireKey)` ([admin-accounts.routes.ts:30](../../apps/api/src/modules/admin/admin-accounts.routes.ts)) | all accounts |
-| GET | `/api/v1/admin/accounts` | admin-key | as above | all accounts |
-| GET | `/api/v1/admin/accounts/:id` | admin-key | as above | any account, by design |
-| PUT | `/api/v1/admin/accounts/:id/profile` | admin-key | as above | any account, by design |
-| POST | `/api/v1/admin/accounts/:id/role` | admin-key | as above | any account, by design |
-| POST | `/api/v1/admin/accounts/:id/disable` | admin-key | as above | any account, by design |
-| POST | `/api/v1/admin/accounts/:id/enable` | admin-key | as above | any account, by design |
-| POST | `/api/v1/admin/accounts/:id/verification-email` | admin-key | as above | any account, by design |
-| POST | `/api/v1/admin/accounts/:id/match-email` | admin-key | as above | any account, by design |
-| POST | `/api/v1/admin/accounts/:id/password-reset` | admin-key | as above | any account, by design |
-| GET | `/api/v1/admin/match-quality` | admin-key | `router.use(requireKey)` ([match-quality.routes.ts:13](../../apps/api/src/modules/match-quality/match-quality.routes.ts)) | all accounts |
-| GET | `/api/v1/admin/sources` | admin-key | `router.use(requireKey)` ([sources.routes.ts:11](../../apps/api/src/modules/sources/sources.routes.ts)) | all sources (TOR-87) |
-| GET | `/api/v1/admin/accounts/:id/labels` | admin-key | as above | any account, by design |
-| PUT | `/api/v1/admin/accounts/:id/labels/:torId` | admin-key | as above | any account, by design |
+| GET | `/api/v1/admin/queue` | admin | `router.use(requireRole("admin"))` ([admin.routes.ts:82](../../apps/api/src/modules/admin/admin.routes.ts)) | all records |
+| GET | `/api/v1/admin/overview` | admin | as above | all records |
+| GET | `/api/v1/admin/events` | admin | as above | all records |
+| GET | `/api/v1/admin/tors` | admin | as above | all records |
+| GET | `/api/v1/admin/tors/ids` | admin | as above | all records |
+| GET | `/api/v1/admin/tors/:id` | admin | as above | all records |
+| HEAD | `/api/v1/admin/tors/:id/document` | admin | as above | includes restricted records |
+| GET | `/api/v1/admin/tors/:id/document` | admin | as above | includes restricted records |
+| GET | `/api/v1/admin/tors/:id/pages/:page` | admin | as above | includes restricted records |
+| PATCH | `/api/v1/admin/tors/:id/fields` | admin | as above | all records |
+| PATCH | `/api/v1/admin/tors/:id/fields/:field/verification` | admin | as above | all records |
+| POST | `/api/v1/admin/tors/:id/approve` | admin | as above | all records |
+| POST | `/api/v1/admin/tors/bulk` | admin | as above | all records |
+| POST | `/api/v1/admin/tors/:id/reextract` | admin | as above | all records |
+| POST | `/api/v1/admin/tors/:id/reject` | admin | as above | all records |
+| POST | `/api/v1/admin/tors/:id/restore` | admin | as above | all records |
+| GET | `/api/v1/admin/reports/other-terms` | admin | `router.use(requireRole("admin"))` ([admin-accounts.routes.ts:29](../../apps/api/src/modules/admin/admin-accounts.routes.ts)) | all accounts |
+| GET | `/api/v1/admin/accounts` | admin | as above | all accounts |
+| GET | `/api/v1/admin/accounts/:id` | admin | as above | any account, by design |
+| PUT | `/api/v1/admin/accounts/:id/profile` | admin | as above | any account, by design |
+| POST | `/api/v1/admin/accounts/:id/role` | admin | as above | any account, by design |
+| POST | `/api/v1/admin/accounts/:id/disable` | admin | as above | any account, by design |
+| POST | `/api/v1/admin/accounts/:id/enable` | admin | as above | any account, by design |
+| POST | `/api/v1/admin/accounts/:id/verification-email` | admin | as above | any account, by design |
+| POST | `/api/v1/admin/accounts/:id/match-email` | admin | as above | any account, by design |
+| POST | `/api/v1/admin/accounts/:id/password-reset` | admin | as above | any account, by design |
+| GET | `/api/v1/admin/match-quality` | admin | `router.use(requireRole("admin"))` ([match-quality.routes.ts:13](../../apps/api/src/modules/match-quality/match-quality.routes.ts)) | all accounts |
+| GET | `/api/v1/admin/sources` | admin | `router.use(requireRole("admin"))` ([sources.routes.ts:9](../../apps/api/src/modules/sources/sources.routes.ts)) | all sources (TOR-87) |
+| GET | `/api/v1/admin/accounts/:id/labels` | admin | as above | any account, by design |
+| PUT | `/api/v1/admin/accounts/:id/labels/:torId` | admin | as above | any account, by design |
 
 ## 4. Web layer (Next.js)
 
@@ -135,22 +135,22 @@ and the API decides. It does enforce the two things the API cannot see.
 
 | Surface | Who | Check |
 | :---- | :---- | :---- |
-| `/api/auth/[...path]` ([route.ts](../../apps/web/app/api/auth/[...path]/route.ts)) | public and vendor | same-origin check on every write, then forwards under `/auth` with the session cookie. Sets the session cookie on login and clears the staff cookie |
+| `/api/auth/[...path]` ([route.ts](../../apps/web/app/api/auth/[...path]/route.ts)) | public and vendor | same-origin check on every write, then forwards under `/auth` with the session cookie. Sets the session cookie on login |
 | `/api/vault`, `/api/vault/[id]` | vendor | no cookie gives 401 before the API is called; same-origin on writes; the API answers 404 for another account's file and only 404/401 are passed on |
 | `/api/tors/[id]/draft` | vendor | same-origin; no cookie gives 401; the TOR is the only thing taken from the request |
 | `/api/export/tors.csv` ([route.ts](../../apps/web/app/api/export/tors.csv/route.ts)) | public and vendor | relays the API's CSV through the document proxy unbuffered, forwarding the session cookie as `x-session-id` only so the match filter works; the API's `attachment`, `no-store` and `nosniff` headers pass through |
 | `/tors/[id]/document` | public | proxies the public API route |
-| `/admin/tors/[id]/document`, `/admin/tors/[id]/pages/[page]` | staff | `isStaff()` first, then the server-held admin key is attached; otherwise 404 ([staff-session.ts:132](../../apps/web/src/shared/lib/staff-session.ts)) |
-| every `/admin/*` page (overview, log, review, sources, terms, tors, tors/[id], upload, vendors, vendors/[id], vendors/[id]/labels) | staff | `isStaff()` else redirect to `/admin/login` |
+| `/admin/tors/[id]/document`, `/admin/tors/[id]/pages/[page]` | staff | `requireStaff()` first, then the admin's own session id is forwarded as `x-session-id`; otherwise 404 ([staff-session.ts:24](../../apps/web/src/shared/lib/staff-session.ts)) |
+| every `/admin/*` page (overview, log, review, sources, terms, tors, tors/[id], upload, vendors, vendors/[id], vendors/[id]/labels) | staff (admin account) | `isStaff()` else redirect to `/admin/login`, the sign-in notice |
 | every Server Action in `admin.actions.ts` and `admin-accounts.actions.ts` | staff | `requireStaff()` first |
-| `/admin/login` | public | accepts `STAFF_ACCESS_SECRET` (constant-time), sets a signed 8-hour cookie |
+| `/admin/login` | public | takes no credential. An admin account is sent on to `/admin`; anyone else is told to sign in at `/login` with an admin account (a signed-in vendor is told the account is not an admin) |
 | `/profile`, `/account`, `/notifications`, `/profile/path` | vendor | render a sign-in prompt without a session; data comes only from the API, which answers 401 |
 | `/`, `/search`, `/tors/[id]`, `/dashboard`, `/methodology`, `/login`, `/verify`, `/forgot-password`, `/reset-password` | public | none |
 
-**Staff pass.** `STAFF_ACCESS_SECRET` gives a signed cookie, not tied to an account. If an account session is
-also present, that account must have role `admin`, or the pass is refused; if the role cannot be read the
-answer is no ([staff-session.ts:25](../../apps/web/src/shared/lib/staff-session.ts)). Signing in as an account
-drops the staff cookie. There is no Next `middleware.ts` or `proxy.ts`: each page and handler checks for itself.
+**Staff gate.** "Staff" means a signed-in account whose role is `admin` (TOR-199). `requireStaff()` reads the
+`tor-radar-session` cookie and asks the API `GET /me`; anything but role `admin` — no cookie, an expired session,
+the API down — is a no ([staff-session.ts:24](../../apps/web/src/shared/lib/staff-session.ts)). There is no shared
+staff password or staff cookie any more, and the API checks the role again on every admin call. There is no Next `middleware.ts` or `proxy.ts`: each page and handler checks for itself.
 
 ## 5. Findings
 
@@ -158,7 +158,7 @@ Left alone on purpose; each is larger than a small fix.
 
 | # | Finding | Why it matters | Suggested follow-up |
 | :---- | :---- | :---- | :---- |
-| F1 | `/sources/bma-egp/*` is public, unauthenticated, not rate-limited, and mounted outside `/api/v1` ([app.ts](../../apps/api/src/app.ts), [routes/sources.ts](../../apps/api/src/routes/sources.ts)). Each call fans out to the upstream BMA eGP service | exposes no vendor data, but lets any caller spend the upstream's goodwill and our egress. It is a developer exploration route that ships in the production app | gate behind `admin-key`, or mount it only in development |
-| F2 | The admin API authenticates with a shared key, not a person. Every admin action is attributed to the literal actor `admin`, and `requireRole` is used by no route | no per-admin accountability; a leaked key is full admin. A known stopgap (TOR-199) | replace `requireKey` with an admin-role session check and stamp the account id as actor |
-| F3 | The web staff gate and the API admin gate use different credentials (`STAFF_ACCESS_SECRET` and `ADMIN_API_KEYS`) | acceptable while the Next server is the only holder of the key, but an admin-role account session alone opens nothing | resolved by F2 |
+| F1 | `/sources/bma-egp/*` is public, unauthenticated, not rate-limited, and mounted outside `/api/v1` ([app.ts](../../apps/api/src/app.ts), [routes/sources.ts](../../apps/api/src/routes/sources.ts)). Each call fans out to the upstream BMA eGP service | exposes no vendor data, but lets any caller spend the upstream's goodwill and our egress. It is a developer exploration route that ships in the production app | gate behind an admin account, or mount it only in development |
+| F2 | ~~The admin API authenticates with a shared key, not a person~~ | **Resolved 2026-11-25 (TOR-199):** admin routes use `requireRole("admin")` on an account session and record the account id as actor | done |
+| F3 | ~~The web staff gate and the API admin gate use different credentials~~ | **Resolved 2026-11-25 (TOR-199):** both gates read the same admin account session; `STAFF_ACCESS_SECRET` and `ADMIN_API_KEYS` are removed | done |
 | F4 | `POST /logout` revokes whatever session id is presented, valid or not, with no check that it is the caller's | the id is an unguessable secret, so this already needs the secret; noted for completeness | none needed |

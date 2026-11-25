@@ -7,7 +7,6 @@ import { SmtpMailer } from "./smtp.mailer.js";
 const base = {
   MONGO_URL: "mongodb://mongo:27017/tor_radar",
   INTAKE_API_KEYS: "test-key",
-  ADMIN_API_KEYS: "admin-key",
   SESSION_SECRET: "test-session-secret-that-is-at-least-32-characters",
   APP_ORIGIN: "https://app.example.test",
   GCS_BUCKET: "tor-raw",

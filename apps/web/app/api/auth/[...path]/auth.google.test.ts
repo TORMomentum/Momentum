@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { apiRequest } = vi.hoisted(() => ({ apiRequest: vi.fn() }));
 vi.mock("../../../../src/shared/api/api-client", () => ({ apiRequest }));
-// The handler reads one constant from the staff-session module, which is server-only and reads next/headers.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 
@@ -74,7 +73,6 @@ describe("Google sign-in handler", () => {
     expect(response.headers.get("location")).toBe(`${ORIGIN}/dashboard`);
     const cookie = setCookie(response);
     expect(cookie).toMatch(/tor-radar-session=sess-1;.*HttpOnly/is);
-    expect(cookie).toContain("tor_staff=;");
     expect(response.headers.get("location")).not.toContain("sess-1");
     const [path, init] = apiRequest.mock.calls[0]!;
     expect(path).toBe("/auth/google/callback");

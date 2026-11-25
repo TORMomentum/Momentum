@@ -24,8 +24,6 @@ jobs:
       SESSION_SECRET: zap-session-secret-not-used-outside-this-run
       APP_ORIGIN: http://web:3000
       INTAKE_API_KEYS: zap-intake-key
-      ADMIN_API_KEYS: zap-admin-key
-      STAFF_ACCESS_SECRET: zap-staff-secret-not-used-outside-this-run
       WEB_PORT: 3000
       API_PORT: 4000
     steps:

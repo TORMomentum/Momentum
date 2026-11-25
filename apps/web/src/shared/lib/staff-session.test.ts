@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies } from "next/headers";
 
 vi.mock("server-only", () => ({}));
@@ -6,137 +6,50 @@ vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("../api/api-client", () => ({ apiRequest: vi.fn() }));
 
 import { apiRequest } from "../api/api-client";
+import { isStaff, requireStaff, StaffAuthRequired } from "./staff-session";
 
-import {
-  requireStaff,
-  signIn,
-  StaffAuthRequired,
-} from "./staff-session";
-
-interface StoredCookie {
-  name: string;
-  value: string;
-  options?: Record<string, unknown>;
-}
-
-const cookieJar = new Map<string, StoredCookie>();
-const cookieStore = {
-  get: vi.fn((name: string) => cookieJar.get(name)),
-  set: vi.fn((name: string, value: string, options?: Record<string, unknown>) => {
-    cookieJar.set(name, { name, value, options });
-  }),
-  delete: vi.fn((name: string) => cookieJar.delete(name)),
-};
+const jar = new Map<string, string>();
+const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 
 beforeEach(() => {
-  vi.mocked(cookies).mockResolvedValue(
-    cookieStore as unknown as Awaited<ReturnType<typeof cookies>>,
-  );
-  vi.stubEnv("STAFF_ACCESS_SECRET", "correct horse battery staple");
-  cookieJar.clear();
-  cookieStore.get.mockClear();
-  cookieStore.set.mockClear();
-  cookieStore.delete.mockClear();
+  jar.clear();
+  vi.mocked(cookies).mockResolvedValue({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) } as never);
+  vi.mocked(apiRequest).mockReset();
 });
 
-afterEach(() => {
-  vi.useRealTimers();
-  vi.unstubAllEnvs();
-});
-
-describe("signIn", () => {
-  it("refuses a wrong secret without issuing a cookie", async () => {
-    await expect(signIn("wrong secret")).resolves.toBe(false);
-    expect(cookieStore.set).not.toHaveBeenCalled();
+describe("requireStaff (TOR-199): the staff area opens to an admin account, and to nothing else", () => {
+  it("refuses a browser with no account session, without asking the API", async () => {
+    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
+    expect(apiRequest).not.toHaveBeenCalled();
   });
 
-  it("issues a hardened cookie for the configured secret", async () => {
-    await expect(signIn("correct horse battery staple")).resolves.toBe(true);
-
-    const cookie = cookieJar.get("tor_staff");
-    expect(cookie?.value).toBeTruthy();
-    expect(cookie?.value).not.toContain("correct horse battery staple");
-    expect(cookie?.options).toMatchObject({
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      secure: false,
-      expires: expect.any(Date),
-    });
+  it("refuses a vendor account", async () => {
+    jar.set("tor-radar-session", "vendor-session");
+    vi.mocked(apiRequest).mockImplementation(async () => json({ role: "vendor", email: "v@example.test" }));
+    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
+    expect(await isStaff()).toBe(false);
   });
-});
 
-describe("requireStaff", () => {
-  it("refuses when there is no cookie", async () => {
+  it("accepts an admin account and hands back its session id for the admin API", async () => {
+    jar.set("tor-radar-session", "admin-session");
+    vi.mocked(apiRequest).mockImplementation(async () => json({ role: "admin", email: "a@example.test" }));
+    expect(await requireStaff()).toBe("admin-session");
+    expect(apiRequest).toHaveBeenCalledWith("/api/v1/me", {}, "admin-session");
+    expect(await isStaff()).toBe(true);
+  });
+
+  it("fails closed: an expired session, an API error or an unreachable API is no", async () => {
+    jar.set("tor-radar-session", "some-session");
+    vi.mocked(apiRequest).mockResolvedValueOnce(json({ error: "expired" }, 401));
+    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
+    vi.mocked(apiRequest).mockResolvedValueOnce(json({ error: "down" }, 503));
+    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
+    vi.mocked(apiRequest).mockRejectedValueOnce(new Error("ECONNREFUSED"));
     await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
   });
 
-  it("refuses a malformed cookie", async () => {
-    cookieJar.set("tor_staff", { name: "tor_staff", value: "not-a-token" });
-
-    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
-  });
-
-  it("refuses a token with a tampered signature", async () => {
-    await signIn("correct horse battery staple");
-    const cookie = cookieJar.get("tor_staff");
-    if (!cookie) throw new Error("Expected signIn to issue a cookie");
-    const signatureStart = cookie.value.lastIndexOf(".") + 1;
-    const replacement = cookie.value[signatureStart] === "A" ? "B" : "A";
-    cookie.value = `${cookie.value.slice(0, signatureStart)}${replacement}${cookie.value.slice(signatureStart + 1)}`;
-
-    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
-  });
-
-  it("refuses an expired token", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-10T08:00:00.000Z"));
-    await signIn("correct horse battery staple");
-    const cookie = cookieJar.get("tor_staff");
-    if (!cookie) throw new Error("Expected signIn to issue a cookie");
-    const expiresAt = Number(cookie.value.split(".")[1]);
-    vi.setSystemTime(expiresAt + 1);
-
-    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
-  });
-
-  it("refuses when STAFF_ACCESS_SECRET is unset", async () => {
-    await signIn("correct horse battery staple");
-    vi.stubEnv("STAFF_ACCESS_SECRET", "");
-
-    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
-  });
-
-  it("accepts a freshly issued valid cookie", async () => {
-    await signIn("correct horse battery staple");
-
-    await expect(requireStaff()).resolves.toBeUndefined();
-  });
-
-  it("refuses a valid pass while a vendor account is signed in", async () => {
-    await signIn("correct horse battery staple");
-    cookieJar.set("tor-radar-session", { name: "tor-radar-session", value: "vendor-session" });
-    vi.mocked(apiRequest).mockResolvedValue(Response.json({ role: "vendor" }));
-
-    await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
-    expect(apiRequest).toHaveBeenCalledWith("/api/v1/me", {}, "vendor-session");
-  });
-
-  it("accepts a valid pass while an admin account is signed in", async () => {
-    await signIn("correct horse battery staple");
-    cookieJar.set("tor-radar-session", { name: "tor-radar-session", value: "admin-session" });
-    vi.mocked(apiRequest).mockResolvedValue(Response.json({ role: "admin" }));
-
-    await expect(requireStaff()).resolves.toBeUndefined();
-  });
-
-  it("treats an expired account session as no account, and fails closed when the role cannot be read", async () => {
-    await signIn("correct horse battery staple");
-    cookieJar.set("tor-radar-session", { name: "tor-radar-session", value: "old-session" });
-    vi.mocked(apiRequest).mockResolvedValue(new Response(null, { status: 401 }));
-    await expect(requireStaff()).resolves.toBeUndefined();
-
-    vi.mocked(apiRequest).mockResolvedValue(new Response(null, { status: 503 }));
+  it("ignores a staff cookie left from before TOR-199: the old shared pass opens nothing", async () => {
+    jar.set("tor_staff", "1.9999999999999.signature");
     await expect(requireStaff()).rejects.toBeInstanceOf(StaffAuthRequired);
   });
 });

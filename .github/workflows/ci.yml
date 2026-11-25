@@ -15,14 +15,12 @@ jobs:
       GCS_BUCKET: tor-raw
       GCS_API_ENDPOINT: http://localhost:4443
       INTAKE_API_KEYS: ci-intake-key
-      ADMIN_API_KEYS: ci-admin-key
       # Compose refuses to start without one, deliberately: a session signing key
       # must never fall back to a default. CI supplies a throwaway value — it
       # signs nothing that outlives the run.
       SESSION_SECRET: ci-session-secret-not-used-outside-this-run
       APP_ORIGIN: http://web:3000
       # Compose requires it for the web service; a throwaway value, like the others.
-      STAFF_ACCESS_SECRET: ci-staff-secret-not-used-outside-this-run
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

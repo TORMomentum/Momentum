@@ -7,7 +7,6 @@ import styles from "./app-shell.module.css";
 import { HEADER_NOTIFICATIONS } from "../../data/notifications";
 import { useNotifications } from "../../shared/lib/notifications";
 import { useViewer } from "../../shared/lib/viewer";
-import { endStaffSessionAction } from "./session.actions";
 
 const DOT_CLASS: Record<string, string> = {
   match: styles.bellItemDotMatch,
@@ -209,23 +208,17 @@ export function AccountControls() {
             <div className={styles.menuDivider} />
 
             {/*
-              Signing out ends BOTH sessions: the prototype viewer in browser
-              storage, which the client forgets, and the staff session, which
-              is an httpOnly cookie only the server can clear. Dropping the
-              visible identity while leaving privileges live is the failure
-              this call exists to prevent.
+              Signing out ends the account session, and with it the staff area:
+              since TOR-199 an admin is an account, so there is no second staff
+              session left behind to clear.
             */}
             <button
               type="button"
               role="menuitem"
               className={styles.menuSignOut}
-              onClick={async () => {
+              onClick={() => {
                 setMenuOpen(false);
                 signOut();
-                // Awaited, not fired and forgotten: navigating first cancels
-                // the request, and the staff cookie survives a sign-out that
-                // looked like it worked.
-                await endStaffSessionAction();
                 router.replace("/");
                 router.refresh();
               }}

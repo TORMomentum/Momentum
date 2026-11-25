@@ -6,14 +6,13 @@ import { parseDisposition } from "../../lib/content-disposition.js";
 import { streamDocument } from "../../lib/stream-document.js";
 import type { Storage } from "../../ports/storage.port.js";
 import { auditAdmin } from "../../core/security-log.js";
-import { requireKey } from "../intake/intake.auth.js";
+import { adminActor as actorOf, requireRole } from "../../core/require-role.js";
 import type { ReviewFieldName } from "./admin.repository.js";
 import type { AdminService } from "./admin.service.js";
 
 export interface AdminRouterDeps {
   service: AdminService;
   storage: Storage;
-  adminKeys: string[];
   /** How many queue rows one request may return. */
   queuePageSize: number;
   /** How many TORs one bulk action may touch. */
@@ -75,17 +74,12 @@ const verificationBodySchema = z.object({ confirmed: z.boolean() });
 /**
  * The review queue's HTTP surface (FR-G-1, FR-G-2).
  *
- * Every route is behind the admin key. Slice 4 replaces that with a staff
- * session; the routes do not change, only what `requireKey` becomes — which is
- * why the actor is read from the request rather than hard-coded.
+ * Every route needs an account with role `admin` (TOR-199), and every action is
+ * recorded against that account's id (TOR-300).
  */
 export function buildAdminRouter(deps: AdminRouterDeps): Router {
   const router = Router();
-  // requireKey stamps the actor on the request; slice 4 replaces the key with a
-  // staff session and stamps a real identity in the same place.
-  const actorOf = (req: Request) => (req as Request & { actor?: string }).actor ?? "admin";
-
-  router.use(requireKey(deps.adminKeys, "admin"));
+  router.use(requireRole("admin"));
   router.use(auditAdmin(actorOf));
 
   router.get("/queue", async (req, res) => {

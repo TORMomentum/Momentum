@@ -1,5 +1,6 @@
 import "../../test/env.js";
 
+import { AS_ADMIN, testSession } from "../../test/admin-session.js";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
@@ -129,12 +130,13 @@ describe("recording a source's runs (TOR-292)", () => {
 describe("GET /admin/sources (TOR-293)", () => {
   function app() {
     const result = express();
-    result.use("/api/v1/admin", buildSourcesRouter({ service: service(false), adminKeys: config.adminApiKeys }));
+    result.use(testSession());
+    result.use("/api/v1/admin", buildSourcesRouter({ service: service(false) }));
     result.use(errorMiddleware);
     return result;
   }
 
-  it("is refused without the admin key", async () => {
+  it("is refused without a signed-in admin account", async () => {
     expect((await request(app()).get("/api/v1/admin/sources")).status).toBe(401);
   });
 
@@ -148,7 +150,7 @@ describe("GET /admin/sources (TOR-293)", () => {
     await service().recordRun(STAGES_SOURCE_ID, ok, new Date());
     await service().recordRun(BMA_EGP_IMPORT_ID, { ok: false, items: 0, failed: 0, error: "e-GP list unavailable" }, NOW);
 
-    const response = await request(app()).get("/api/v1/admin/sources").set({ "x-api-key": config.adminApiKeys[0]! });
+    const response = await request(app()).get("/api/v1/admin/sources").set(AS_ADMIN);
 
     expect(response.status).toBe(200);
     expect(response.body.settings).toEqual({ alertFailures: 3, staleHours: 48 });

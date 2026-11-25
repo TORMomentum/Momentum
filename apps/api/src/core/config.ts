@@ -101,7 +101,6 @@ const schema = z.object({
   MULTIPART_MAX_FIELD_BYTES: z.coerce.number().int().positive().default(8_192),
   INTAKE_RATE_LIMIT: z.coerce.number().int().positive().default(60),
   INTAKE_API_KEYS: z.string().min(1),
-  ADMIN_API_KEYS: z.string().min(1),
 
   // Accounts and sessions (accounts and sessions design §5).
   SESSION_SECRET: z.string().min(32),
@@ -435,7 +434,6 @@ export interface Config {
   multipartMaxFieldBytes: number;
   intakeRateLimit: number;
   intakeApiKeys: string[];
-  adminApiKeys: string[];
   session: {
     secret: string;
     lifetimeMs: number;
@@ -601,7 +599,6 @@ export function loadConfig(env: NodeJS.ProcessEnv | Record<string, string | unde
     multipartMaxFieldBytes: parsed.MULTIPART_MAX_FIELD_BYTES,
     intakeRateLimit: parsed.INTAKE_RATE_LIMIT,
     intakeApiKeys: parsed.INTAKE_API_KEYS.split(",").map((value) => value.trim()).filter(Boolean),
-    adminApiKeys: parsed.ADMIN_API_KEYS.split(",").map((value) => value.trim()).filter(Boolean),
     session: {
       secret: parsed.SESSION_SECRET,
       lifetimeMs: parsed.SESSION_LIFETIME_MS,

@@ -21,11 +21,11 @@ import { isolatedDbUrl } from "../test/mongo.js";
  * routes and who may call them, and this file proves it. The route list is read from the matrix and compared with
  * the routers `buildApp` really mounts, so a route added without a matrix row (or a row left behind) fails here.
  */
-type Caller = "public" | "vendor" | "admin-key" | "intake-key";
+type Caller = "public" | "vendor" | "admin" | "intake-key";
 interface Row { method: string; path: string; caller: Caller }
 
 const MATRIX = fileURLToPath(new URL("../../../../docs/security/access-control-matrix.md", import.meta.url));
-const CALLERS = new Set<string>(["public", "vendor", "admin-key", "intake-key"]);
+const CALLERS = new Set<string>(["public", "vendor", "admin", "intake-key"]);
 
 /** Rows of the API table: `| METHOD | `path` | caller | ...`. The web tables start with a path, so they never match. */
 function matrixRows(): Row[] {
@@ -78,10 +78,10 @@ let mounted: Set<string>;
 const FILL: Record<string, string> = { id: "0123456789abcdef01234567", torId: "0123456789abcdef01234567", projectId: "1", page: "1", field: "title" };
 const concrete = (path: string) => path.replace(/:(\w+)/g, (_m, name: string) => FILL[name] ?? "x");
 
-async function vendor(email: string, displayName: string) {
+async function vendor(email: string, displayName: string, role: "vendor" | "admin" = "vendor") {
   const now = new Date();
   const account = await accounts(db).insertOne({
-    role: "vendor", emailVerifiedAt: now, createdAt: now, updatedAt: now,
+    role, emailVerifiedAt: now, createdAt: now, updatedAt: now,
     email, displayName, passwordHash: await hashPassword("correct-password", config),
     consent: { noticeVersion: "test", noticeHash: "test", agreedAt: new Date(), action: "checkbox" },
   });
@@ -111,6 +111,7 @@ async function seedTor(title: string) {
 
 let a: Vendor;
 let b: Vendor;
+let staff: Vendor;
 let torId: string;
 let vaultId: string;
 const A_PROJECT = "ผลงานลับของผู้ขายเอ-A-PROJECT";
@@ -138,6 +139,7 @@ beforeAll(async () => {
   await Promise.all([accounts, sessions, bookmarks, vendorProfiles, vaultDocuments, behaviourEvents, tors].map((collection) => (collection(db) as { deleteMany(filter: object): Promise<unknown> }).deleteMany({})));
   a = await vendor("vendor-a@example.test", "ผู้ขายเอ-A-NAME");
   b = await vendor("vendor-b@example.test", "ผู้ขายบี-B-NAME");
+  staff = await vendor("admin@example.test", "แอดมิน", "admin");
   torId = await seedTor("โครงการของเอ-A-TOR");
 
   // Everything A can own: a profile with past work, a bookmark, a kept file, and recorded behaviour.
@@ -189,7 +191,7 @@ describe("no session: every vendor route answers 401", () => {
 });
 
 describe("a vendor session is not staff: every admin and intake route refuses it", () => {
-  for (const row of apiRoutes.filter((r) => r.caller === "admin-key" || r.caller === "intake-key")) {
+  for (const row of apiRoutes.filter((r) => r.caller === "admin" || r.caller === "intake-key")) {
     it(`${row.method} ${row.path}`, async () => {
       const res = await as(b, row.method, concrete(row.path)).send(row.method === "HEAD" ? undefined : {});
       expect([401, 403]).toContain(res.status);
@@ -197,6 +199,19 @@ describe("a vendor session is not staff: every admin and intake route refuses it
       // a wrong key is as good as none
       const wrong = await as(b, row.method, concrete(row.path)).set("x-api-key", "wrong-key").send(row.method === "HEAD" ? undefined : {});
       expect([401, 403]).toContain(wrong.status);
+    });
+  }
+});
+
+describe("an admin route opens to an admin account's session, and to nothing else (TOR-199)", () => {
+  for (const row of apiRoutes.filter((r) => r.caller === "admin")) {
+    it(`${row.method} ${row.path}`, async () => {
+      const body = row.method === "HEAD" ? undefined : {};
+      expect((await as(null, row.method, concrete(row.path)).send(body)).status).toBe(401);
+      // The old shared key opens nothing now.
+      expect((await as(null, row.method, concrete(row.path)).set("x-api-key", "ci-admin-key").send(body)).status).toBe(401);
+      // Past the gate: whatever the route answers next (a 404 for a made-up id, a 400 for an empty body), it is not a refusal.
+      expect([401, 403]).not.toContain((await as(staff, row.method, concrete(row.path)).send(body)).status);
     });
   }
 });

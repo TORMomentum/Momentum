@@ -39,16 +39,6 @@ spec:
             # Shows the "Sign in with Google" button; the API holds the client id and secret.
             - name: GOOGLE_OAUTH_ENABLED
               value: "${GOOGLE_OAUTH_ENABLED}"
-            - name: ADMIN_API_KEYS
-              valueFrom:
-                secretKeyRef:
-                  name: ADMIN_API_KEYS
-                  key: latest
-            - name: STAFF_ACCESS_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: STAFF_ACCESS_SECRET
-                  key: latest
           resources:
             limits:
               cpu: "1"

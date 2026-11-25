@@ -1,4 +1,5 @@
 import "../../test/env.js";
+import { AS_ADMIN, TEST_ADMIN_ID, testSession } from "../../test/admin-session.js";
 import express from "express";
 import { ObjectId, type Db } from "mongodb";
 import request from "supertest";
@@ -14,15 +15,15 @@ import { buildMatchQualityRouter } from "./match-quality.routes.js";
 import { MatchQualityService } from "./match-quality.service.js";
 
 const config = loadConfig(process.env);
-const auth = { "x-api-key": config.adminApiKeys[0]! };
+const auth = AS_ADMIN;
 let db: Db;
 
 function app() {
   const result = express();
   result.use(express.json());
+  result.use(testSession());
   result.use("/api/v1/admin", buildMatchQualityRouter({
     service: new MatchQualityService({ config, profiles: new ProfileRepository(db), matching: new MatchingRepository(db, config), labels: new MatchLabelsRepository(db) }),
-    adminKeys: config.adminApiKeys,
   }));
   result.use(errorMiddleware);
   return result;
@@ -73,7 +74,7 @@ describe("match-quality benchmark", () => {
     await request(app()).put(`/api/v1/admin/accounts/${vendor}/labels/${overBudget}`).set(auth).send({ label: "relevant" }).expect(200);
 
     const stored = await matchLabels(db).findOne({ accountId: vendor, torId: inBudget });
-    expect(stored).toMatchObject({ label: "relevant", matched: true, labelledBy: "admin" });
+    expect(stored).toMatchObject({ label: "relevant", matched: true, labelledBy: TEST_ADMIN_ID });
     expect(stored?.score).toBeGreaterThan(0.9);
 
     const figures = (await request(app()).get("/api/v1/admin/match-quality").set(auth)).body;
